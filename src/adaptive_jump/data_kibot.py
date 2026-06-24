@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 
@@ -42,21 +43,22 @@ def load_kibot_tick_bidask_csv(path: str) -> pd.DataFrame:
     for column in ["price", "bid", "ask", "size"]:
         df[column] = _parse_numeric(raw[column], column).to_numpy()
 
-    valid = (
-        (df["price"] > 0)
-        & (df["bid"] > 0)
-        & (df["ask"] > 0)
-        & (df["size"] > 0)
-        & (df["ask"] >= df["bid"])
-    )
-    df = df.loc[valid].sort_index()
+    dropped_rows = {}
+    _raise_if_invalid(_finite(df, ["price", "bid", "ask", "size"]), "tick rows must be finite", df.index)
+    df = _drop_invalid(df, (df[["price", "bid", "ask", "size"]] > 0).all(axis=1), "nonpositive_tick_values", dropped_rows)
+    df = _drop_invalid(df, df["ask"] >= df["bid"], "crossed_tick_quotes", dropped_rows)
+    df = df.sort_index(kind="mergesort")
+    before_session = len(df)
     df = df.between_time("09:30", "16:00")
+    _record_drop(dropped_rows, "outside_regular_session", before_session - len(df))
 
     df["mid"] = (df["bid"] + df["ask"]) / 2
     df["spread"] = df["ask"] - df["bid"]
     df["rel_spread"] = df["spread"] / df["mid"]
 
-    return df[["price", "bid", "ask", "size", "mid", "spread", "rel_spread"]]
+    result = df[["price", "bid", "ask", "size", "mid", "spread", "rel_spread"]].copy()
+    result.attrs["dropped_rows"] = dropped_rows
+    return result
 
 
 def load_kibot_minute_bidask_csv(path: str) -> pd.DataFrame:
@@ -73,6 +75,7 @@ def load_kibot_minute_bidask_csv(path: str) -> pd.DataFrame:
     for column in numeric_columns:
         df[column] = _parse_numeric(raw[column], column).to_numpy()
 
+    dropped_rows = {}
     positive_columns = [
         "open",
         "high",
@@ -87,8 +90,20 @@ def load_kibot_minute_bidask_csv(path: str) -> pd.DataFrame:
         "ask_low",
         "ask_close",
     ]
-    valid = (df[positive_columns] > 0).all(axis=1) & (df["ask_close"] >= df["bid_close"])
-    df = df.loc[valid].sort_index()
+    _raise_if_invalid(_finite(df, numeric_columns), "minute bid/ask rows must be finite", df.index)
+    df = _drop_invalid(df, (df[positive_columns] > 0).all(axis=1), "nonpositive_minute_bidask_prices", dropped_rows)
+    df = _drop_invalid(df, df["volume"] >= 0, "negative_minute_bidask_volume", dropped_rows)
+    for suffix in ["open", "high", "low", "close"]:
+        df = _drop_invalid(
+            df,
+            df[f"ask_{suffix}"] >= df[f"bid_{suffix}"],
+            f"crossed_minute_{suffix}_quotes",
+            dropped_rows,
+        )
+    df = df.sort_index(kind="mergesort")
+    before_session = len(df)
+    df = df.between_time("09:30", "16:00")
+    _record_drop(dropped_rows, "outside_regular_session", before_session - len(df))
 
     df["mid_close"] = (df["bid_close"] + df["ask_close"]) / 2
     df["spread_close"] = df["ask_close"] - df["bid_close"]
@@ -112,7 +127,9 @@ def load_kibot_minute_bidask_csv(path: str) -> pd.DataFrame:
         "spread_close",
         "rel_spread_close",
     ]
-    return df[output_columns]
+    result = df[output_columns].copy()
+    result.attrs["dropped_rows"] = dropped_rows
+    return result
 
 
 def load_kibot_adjusted_ohlcv_csv(path: str) -> pd.DataFrame:
@@ -128,12 +145,19 @@ def load_kibot_adjusted_ohlcv_csv(path: str) -> pd.DataFrame:
     for column in ["open", "high", "low", "close", "volume"]:
         df[column] = _parse_numeric(raw[column], column).to_numpy()
 
+    dropped_rows = {}
     price_columns = ["open", "high", "low", "close"]
-    valid = (df[price_columns] > 0).all(axis=1) & (df["volume"] >= 0)
-    df = df.loc[valid].sort_index()
+    _raise_if_invalid(_finite(df, ["open", "high", "low", "close", "volume"]), "adjusted OHLCV rows must be finite", df.index)
+    df = _drop_invalid(df, (df[price_columns] > 0).all(axis=1), "nonpositive_adjusted_ohlc_prices", dropped_rows)
+    df = _drop_invalid(df, df["volume"] >= 0, "negative_adjusted_ohlcv_volume", dropped_rows)
+    df = df.sort_index(kind="mergesort")
+    before_session = len(df)
     df = df.between_time("09:30", "16:00")
+    _record_drop(dropped_rows, "outside_regular_session", before_session - len(df))
 
-    return df[["open", "high", "low", "close", "volume"]]
+    result = df[["open", "high", "low", "close", "volume"]].copy()
+    result.attrs["dropped_rows"] = dropped_rows
+    return result
 
 
 def _read_headerless_csv(path: str, columns: list[str]) -> pd.DataFrame:
@@ -159,3 +183,27 @@ def _parse_numeric(series: pd.Series, column: str) -> pd.Series:
         return pd.to_numeric(series, errors="raise")
     except ValueError as exc:
         raise ValueError(f"Column {column!r} contains non-numeric values") from exc
+
+
+def _finite(df: pd.DataFrame, columns: list[str]) -> pd.Series:
+    return pd.Series(np.isfinite(df[columns].to_numpy()).all(axis=1), index=df.index)
+
+
+def _raise_if_invalid(valid: pd.Series, rule: str, index: pd.Index) -> None:
+    invalid = ~valid
+    if invalid.any():
+        first = index[invalid.to_numpy()][0]
+        raise ValueError(f"{rule}: {int(invalid.sum())} invalid rows; first at {first}")
+
+
+def _drop_invalid(df: pd.DataFrame, valid: pd.Series, reason: str, dropped_rows: dict[str, int]) -> pd.DataFrame:
+    dropped = int((~valid).sum())
+    _record_drop(dropped_rows, reason, dropped)
+    if dropped == 0:
+        return df
+    return df.loc[valid].copy()
+
+
+def _record_drop(dropped_rows: dict[str, int], reason: str, count: int) -> None:
+    if count > 0:
+        dropped_rows[reason] = dropped_rows.get(reason, 0) + int(count)

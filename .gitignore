@@ -11,6 +11,14 @@ venv/
 # Market data and generated outputs
 data/raw/*
 data/processed/*
+artifacts/
+*.log
+*.pid
+*.sqlite*
+*.db
+*.pt
+*.pth
+*.safetensors
 
 # Local notebooks checkpoints
 .ipynb_checkpoints/
