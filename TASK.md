@@ -2,24 +2,21 @@
 
 ## Task ID
 
-001b-kibot-adjusted-ohlcv-loader
+002a-tick-to-minute-aggregation
 
 ## Goal
 
-Add a loader for headerless Kibot adjusted OHLCV intraday files.
+Implement tick bid/ask aggregation to minute bars.
 
 ## Allowed Files
 
 - TASK.md
 - STATUS.md
-- .gitignore
-- src/adaptive_jump/__init__.py
-- src/adaptive_jump/data_kibot.py
-- tests/test_data_kibot.py
+- src/adaptive_jump/features.py
+- tests/test_features.py
 
 ## Forbidden
 
-- features.py
 - notebooks
 - HMM
 - jump model
@@ -31,9 +28,8 @@ Add a loader for headerless Kibot adjusted OHLCV intraday files.
 
 ## Done When
 
-- Kibot tick-with-bid-ask CSV loader is implemented;
-- Kibot 1-minute bid/ask companion CSV loader is implemented;
-- Kibot adjusted OHLCV CSV loader is implemented;
-- synthetic CSV tests pass;
+- aggregate_tick_to_minutes is implemented;
+- synthetic tick aggregation tests pass;
+- IVE/WDC sample smoke checks pass;
 - raw data is not modified;
 - raw data and generated outputs are ignored by git.
