@@ -2,11 +2,11 @@
 
 ## Task ID
 
-002a-tick-to-minute-aggregation
+002b-minute-features
 
 ## Goal
 
-Implement tick bid/ask aggregation to minute bars.
+Implement minute-level feature construction for IVE/WDC tick-derived bars.
 
 ## Allowed Files
 
@@ -28,8 +28,9 @@ Implement tick bid/ask aggregation to minute bars.
 
 ## Done When
 
-- aggregate_tick_to_minutes is implemented;
-- synthetic tick aggregation tests pass;
-- IVE/WDC sample smoke checks pass;
+- zscore_series is implemented;
+- make_minute_features_from_minute_bidask is implemented;
+- synthetic feature tests pass;
+- IVE/WDC tick-to-minute feature smoke checks pass;
 - raw data is not modified;
 - raw data and generated outputs are ignored by git.
