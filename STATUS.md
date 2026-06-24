@@ -7,14 +7,16 @@
 - Kibot adjusted OHLCV loader with synthetic tests.
 - Tick bid/ask aggregation to minute bars for IVE and WDC.
 - Minute-level feature construction for IVE and WDC tick-derived bars.
+- Data and feature math stabilization.
+- Duration-calibrated penalty functions with tests.
 
 ## Current Module
 
-Data and feature math stabilization before penalties.
+None. Next task is dynamic programming solver.
 
 ## Next Module
 
-Penalty functions.
+Dynamic programming solver.
 
 ## Risks
 
@@ -27,3 +29,4 @@ Penalty functions.
 - Current feature scores are raw diagnostics, not calibrated model inputs yet.
 - Realized variance now needs to remain aligned with the standard sum of squared intraday returns definition.
 - Some real Kibot tick rows have crossed quotes; loaders drop expected bad market rows and record counts in `DataFrame.attrs`.
+- Penalty scale is meaningful only relative to the later model's fit-cost scale.

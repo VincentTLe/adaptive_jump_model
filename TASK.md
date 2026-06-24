@@ -2,42 +2,39 @@
 
 ## Task ID
 
-002c-stabilize-data-and-feature-math
+003-penalty-functions
 
 ## Goal
 
-Stabilize data validation and feature mathematics before penalty functions.
+Implement duration-calibrated penalty helpers only.
 
 ## Allowed Files
 
 - TASK.md
 - STATUS.md
-- .gitignore
-- requirements.txt
-- src/adaptive_jump/data_kibot.py
-- src/adaptive_jump/features.py
-- tests/test_data_kibot.py
-- tests/test_features.py
+- MATH_REFERENCE.html
+- src/adaptive_jump/penalties.py
+- tests/test_penalties.py
 
 ## Forbidden
 
+- data loading
+- feature construction
 - notebooks
 - HMM
 - jump model
 - dynamic programming
-- adaptive penalty
 - backtesting
 - external paid-data download
 - modifying, deleting, or overwriting data/raw files
 
 ## Done When
 
-- schema, timestamp, non-numeric, and non-finite data fail loudly;
-- dropped market-quality rows are recorded in dataframe metadata;
-- duplicate timestamp ordering is stable;
-- realized_var uses standard tick return assignment to the later tick minute;
-- minute returns reset across trading dates;
-- zscore_series preserves missing values;
-- tests and IVE/WDC smoke checks pass;
+- lambda_from_expected_duration and expected_duration_from_lambda are inverse maps on the nonnegative penalty domain;
+- larger expected duration gives larger lambda;
+- adaptive lambda increases with noise when shock is fixed;
+- adaptive lambda decreases with shock when noise is fixed;
+- invalid inputs fail loudly;
+- tests pass;
 - raw data is not modified;
-- raw data and generated outputs are ignored by git.
+- no DP, model fitting, HMM, or backtest code is created.

@@ -438,19 +438,37 @@
   </section>
 
   <section>
-    <h2>How This Connects To The Adaptive Jump Model</h2>
-    <p>The later jump model will minimize a path cost that looks conceptually like:</p>
+    <h2>Penalty Calibration</h2>
+    <p>The fixed jump model will minimize a path cost that looks conceptually like:</p>
     <span class="formula">total_cost = fit_cost + Σ penalty_t(state_t != state_{t-1})</span>
-    <p>The adaptive part is that <code>penalty_t</code> changes with market conditions.</p>
+    <p>
+      The duration calibration maps a target expected regime duration <code>D</code>
+      to a nonnegative switch penalty <code>lambda</code>.
+    </p>
+    <span class="formula">p_switch = 1 / D</span>
+    <span class="formula">lambda = log((1 - p_switch) / p_switch) = log(D - 1)</span>
+    <span class="formula">D = 1 + exp(lambda)</span>
+    <div class="callout">
+      This implementation treats <code>lambda</code> as an event-level persistence
+      penalty, so <code>D &gt;= 2</code> and <code>lambda &gt;= 0</code>. For a
+      uniform per-destination HMM-style transition with <code>K &gt; 2</code>, add
+      <code>log(K - 1)</code>. Durations below two bars imply a switch reward.
+    </div>
+  </section>
+
+  <section>
+    <h2>Adaptive Penalty</h2>
+    <p>The adaptive mapping keeps penalties nonnegative while preserving sign invariants.</p>
+    <span class="formula">lambda_t = clip(base_lambda + noise_scale * noise_t - shock_scale * shock_t)</span>
     <div class="grid">
       <div class="card">
         <h3 class="bad">High Noise</h3>
-        <span class="formula">noise_score_raw ↑ ⇒ penalty_t ↑</span>
+        <span class="formula">noise_score_raw ↑ ⇒ lambda_t ↑</span>
         <p>When data quality is noisy, make switching harder to avoid chasing quote noise.</p>
       </div>
       <div class="card">
         <h3 class="good">High Shock</h3>
-        <span class="formula">shock_score_raw ↑ ⇒ penalty_t ↓</span>
+        <span class="formula">shock_score_raw ↑ ⇒ lambda_t ↓</span>
         <p>When price movement looks abnormal, make switching easier to capture regime shifts.</p>
       </div>
     </div>
