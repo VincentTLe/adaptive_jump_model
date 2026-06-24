@@ -9,14 +9,15 @@
 - Minute-level feature construction for IVE and WDC tick-derived bars.
 - Data and feature math stabilization.
 - Duration-calibrated penalty functions with tests.
+- Dynamic-programming path solver with brute-force oracle tests.
 
 ## Current Module
 
-None. Next task is dynamic programming solver.
+None. Next task is Fixed Jump Model.
 
 ## Next Module
 
-Dynamic programming solver.
+Fixed Jump Model.
 
 ## Risks
 

@@ -2,19 +2,18 @@
 
 ## Task ID
 
-003-penalty-functions
+004-dp-solver
 
 ## Goal
 
-Implement duration-calibrated penalty helpers only.
+Implement the dynamic-programming path solver only.
 
 ## Allowed Files
 
 - TASK.md
 - STATUS.md
-- MATH_REFERENCE.html
-- src/adaptive_jump/penalties.py
-- tests/test_penalties.py
+- src/adaptive_jump/dp.py
+- tests/test_dp.py
 
 ## Forbidden
 
@@ -23,18 +22,19 @@ Implement duration-calibrated penalty helpers only.
 - notebooks
 - HMM
 - jump model
-- dynamic programming
+- adaptive jump model
 - backtesting
 - external paid-data download
 - modifying, deleting, or overwriting data/raw files
 
 ## Done When
 
-- lambda_from_expected_duration and expected_duration_from_lambda are inverse maps on the nonnegative penalty domain;
-- larger expected duration gives larger lambda;
-- adaptive lambda increases with noise when shock is fixed;
-- adaptive lambda decreases with shock when noise is fixed;
+- DP result equals brute-force oracle on small deterministic cases;
+- lambda = 0 chooses independent row-wise argmins with deterministic tie-breaking;
+- huge lambda favors a constant state path;
+- objective accounting matches fit cost plus switch cost;
+- scalar and row-aligned vector switch penalties are supported;
 - invalid inputs fail loudly;
 - tests pass;
 - raw data is not modified;
-- no DP, model fitting, HMM, or backtest code is created.
+- no model fitting, HMM, adaptive jump model, or backtest code is created.
