@@ -12,8 +12,11 @@ def aggregate_tick_to_minutes(df_tick: pd.DataFrame) -> pd.DataFrame:
         raise ValueError(f"df_tick is missing required columns: {missing_columns}")
     if not isinstance(df_tick.index, pd.DatetimeIndex):
         raise TypeError("df_tick index must be a pandas.DatetimeIndex")
+    _raise_if_not_finite(df_tick, required_columns, "df_tick")
+    _raise_if_invalid((df_tick[["price", "bid", "ask", "size", "mid"]] > 0).all(axis=1), "df_tick prices and size must be positive")
+    _raise_if_invalid((df_tick[["spread", "rel_spread"]] >= 0).all(axis=1), "df_tick spreads must be nonnegative")
 
-    df = df_tick.sort_index()
+    df = df_tick.sort_index(kind="mergesort")
     minute = df.index.floor("min")
     grouped = df.groupby(minute, sort=True)
 
@@ -30,7 +33,7 @@ def aggregate_tick_to_minutes(df_tick: pd.DataFrame) -> pd.DataFrame:
     out["mid_close"] = grouped["mid"].last()
     out["spread_close"] = grouped["spread"].last()
     out["rel_spread_close"] = grouped["rel_spread"].last()
-    out["realized_var"] = grouped["price"].apply(_minute_realized_var)
+    out["realized_var"] = _realized_var_by_later_tick_minute(df["price"], minute).reindex(out.index, fill_value=0.0)
 
     return out[
         [
@@ -56,10 +59,17 @@ def make_minute_features_from_minute_bidask(df: pd.DataFrame) -> pd.DataFrame:
     missing_columns = [column for column in required_columns if column not in df.columns]
     if missing_columns:
         raise ValueError(f"df is missing required columns: {missing_columns}")
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise TypeError("df index must be a pandas.DatetimeIndex")
+    _raise_if_not_finite(df, required_columns, "df")
+    _raise_if_invalid(df["mid_close"] > 0, "mid_close must be positive")
+    _raise_if_invalid(df["volume"] >= 0, "volume must be nonnegative")
+    _raise_if_invalid((df[["spread_close", "rel_spread_close"]] >= 0).all(axis=1), "spreads must be nonnegative")
 
     out = pd.DataFrame(index=df.index)
     out.index.name = df.index.name
-    out["mid_return"] = np.log(df["mid_close"] / df["mid_close"].shift(1))
+    same_date = _same_date_as_previous(df.index)
+    out["mid_return"] = np.log(df["mid_close"] / df["mid_close"].shift(1)).where(same_date)
     out["abs_mid_return"] = out["mid_return"].abs()
     out["volume"] = df["volume"]
     out["log_volume"] = np.log1p(df["volume"])
@@ -68,10 +78,11 @@ def make_minute_features_from_minute_bidask(df: pd.DataFrame) -> pd.DataFrame:
     out["rolling_vol_5"] = out["mid_return"].rolling(5).std()
     out["rolling_vol_20"] = out["mid_return"].rolling(20).std()
 
+    z_rel_spread = zscore_series(out["rel_spread_close"])
     z_log_volume = zscore_series(out["log_volume"])
     z_mid_return = zscore_series(out["mid_return"])
     z_rolling_vol_20 = zscore_series(out["rolling_vol_20"])
-    out["noise_score_raw"] = out["rel_spread_close"] - z_log_volume
+    out["noise_score_raw"] = z_rel_spread - z_log_volume
     out["shock_score_raw"] = z_mid_return.abs() + z_rolling_vol_20
 
     return out[
@@ -92,12 +103,36 @@ def make_minute_features_from_minute_bidask(df: pd.DataFrame) -> pd.DataFrame:
 
 def zscore_series(s: pd.Series, min_std: float = 1e-12) -> pd.Series:
     """Return a z-scored series, avoiding division by near-zero standard deviation."""
-    std = s.std()
+    values = s.astype(float)
+    valid = values.dropna()
+    result = pd.Series(np.nan, index=s.index, dtype=float)
+    std = valid.std()
     if pd.isna(std) or std < min_std:
-        return pd.Series(0.0, index=s.index)
-    return (s - s.mean()) / std
+        result.loc[valid.index] = 0.0
+        return result
+    result.loc[valid.index] = (valid - valid.mean()) / std
+    return result
 
 
-def _minute_realized_var(price: pd.Series) -> float:
-    log_returns = np.log(price / price.shift(1))
-    return float((log_returns.dropna() ** 2).sum())
+def _realized_var_by_later_tick_minute(price: pd.Series, minute: pd.DatetimeIndex) -> pd.Series:
+    same_date = _same_date_as_previous(price.index)
+    log_returns = np.log(price / price.shift(1)).where(same_date)
+    squared_returns = log_returns.pow(2)
+    return squared_returns.groupby(minute).sum(min_count=1).fillna(0.0)
+
+
+def _same_date_as_previous(index: pd.DatetimeIndex) -> pd.Series:
+    dates = pd.Series(index.normalize(), index=index)
+    return dates == dates.shift(1)
+
+
+def _raise_if_not_finite(df: pd.DataFrame, columns: list[str], name: str) -> None:
+    valid = pd.Series(np.isfinite(df[columns].to_numpy()).all(axis=1), index=df.index)
+    _raise_if_invalid(valid, f"{name} columns must be finite: {columns}")
+
+
+def _raise_if_invalid(valid: pd.Series, rule: str) -> None:
+    invalid = ~valid
+    if invalid.any():
+        first = invalid[invalid].index[0]
+        raise ValueError(f"{rule}: {int(invalid.sum())} invalid rows; first at {first}")

@@ -10,7 +10,7 @@
 
 ## Current Module
 
-None. Step 2B is ready for review.
+Data and feature math stabilization before penalties.
 
 ## Next Module
 
@@ -25,3 +25,5 @@ Penalty functions.
 - IBM and OIH files are adjusted OHLCV, not bid/ask data, so they cannot produce spread features.
 - Equal-timestamp trades rely on file order after loading.
 - Current feature scores are raw diagnostics, not calibrated model inputs yet.
+- Realized variance now needs to remain aligned with the standard sum of squared intraday returns definition.
+- Some real Kibot tick rows have crossed quotes; loaders drop expected bad market rows and record counts in `DataFrame.attrs`.

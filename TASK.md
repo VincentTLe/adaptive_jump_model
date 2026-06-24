@@ -2,17 +2,21 @@
 
 ## Task ID
 
-002b-minute-features
+002c-stabilize-data-and-feature-math
 
 ## Goal
 
-Implement minute-level feature construction for IVE/WDC tick-derived bars.
+Stabilize data validation and feature mathematics before penalty functions.
 
 ## Allowed Files
 
 - TASK.md
 - STATUS.md
+- .gitignore
+- requirements.txt
+- src/adaptive_jump/data_kibot.py
 - src/adaptive_jump/features.py
+- tests/test_data_kibot.py
 - tests/test_features.py
 
 ## Forbidden
@@ -28,9 +32,12 @@ Implement minute-level feature construction for IVE/WDC tick-derived bars.
 
 ## Done When
 
-- zscore_series is implemented;
-- make_minute_features_from_minute_bidask is implemented;
-- synthetic feature tests pass;
-- IVE/WDC tick-to-minute feature smoke checks pass;
+- schema, timestamp, non-numeric, and non-finite data fail loudly;
+- dropped market-quality rows are recorded in dataframe metadata;
+- duplicate timestamp ordering is stable;
+- realized_var uses standard tick return assignment to the later tick minute;
+- minute returns reset across trading dates;
+- zscore_series preserves missing values;
+- tests and IVE/WDC smoke checks pass;
 - raw data is not modified;
 - raw data and generated outputs are ignored by git.
