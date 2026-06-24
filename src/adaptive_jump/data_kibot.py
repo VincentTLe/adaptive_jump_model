@@ -25,6 +25,8 @@ MINUTE_BIDASK_COLUMNS = [
     "ask_close",
 ]
 
+ADJUSTED_OHLCV_COLUMNS = ["date", "time", "open", "high", "low", "close", "volume"]
+
 
 def load_kibot_tick_bidask_csv(path: str) -> pd.DataFrame:
     """Load a headerless Kibot tick-with-bid-ask CSV file.
@@ -111,6 +113,27 @@ def load_kibot_minute_bidask_csv(path: str) -> pd.DataFrame:
         "rel_spread_close",
     ]
     return df[output_columns]
+
+
+def load_kibot_adjusted_ohlcv_csv(path: str) -> pd.DataFrame:
+    """Load a headerless Kibot adjusted OHLCV intraday CSV file.
+
+    The expected format is: Date,Time,Open,High,Low,Close,Volume.
+    """
+    raw = _read_headerless_csv(path, ADJUSTED_OHLCV_COLUMNS)
+    timestamp = _parse_timestamp(raw)
+
+    df = pd.DataFrame(index=timestamp)
+    df.index.name = "timestamp"
+    for column in ["open", "high", "low", "close", "volume"]:
+        df[column] = _parse_numeric(raw[column], column).to_numpy()
+
+    price_columns = ["open", "high", "low", "close"]
+    valid = (df[price_columns] > 0).all(axis=1) & (df["volume"] >= 0)
+    df = df.loc[valid].sort_index()
+    df = df.between_time("09:30", "16:00")
+
+    return df[["open", "high", "low", "close", "volume"]]
 
 
 def _read_headerless_csv(path: str, columns: list[str]) -> pd.DataFrame:

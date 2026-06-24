@@ -1,7 +1,11 @@
 import pandas as pd
 import pytest
 
-from adaptive_jump.data_kibot import load_kibot_minute_bidask_csv, load_kibot_tick_bidask_csv
+from adaptive_jump.data_kibot import (
+    load_kibot_adjusted_ohlcv_csv,
+    load_kibot_minute_bidask_csv,
+    load_kibot_tick_bidask_csv,
+)
 
 
 def test_load_kibot_tick_bidask_csv_cleans_and_computes_fields(tmp_path):
@@ -69,3 +73,31 @@ def test_loader_raises_for_wrong_column_count(tmp_path):
 
     with pytest.raises(ValueError, match="Expected 6 columns"):
         load_kibot_tick_bidask_csv(str(csv_path))
+
+
+def test_load_kibot_adjusted_ohlcv_csv_cleans_and_sorts(tmp_path):
+    csv_path = tmp_path / "IBM_adjusted_ohlcv.csv"
+    csv_path.write_text(
+        "\n".join(
+            [
+                "01/02/1998,09:31,25.196,25.226,25.196,25.196,44739",
+                "01/02/1998,09:30,25.226,25.226,25.226,25.226,277549",
+                "01/02/1998,09:32,0.000,25.226,25.196,25.226,55096",
+                "01/02/1998,09:33,25.211,25.226,25.196,25.196,-1",
+                "01/02/1998,08:00,25.196,25.226,25.196,25.196,19888",
+            ]
+        )
+    )
+
+    df = load_kibot_adjusted_ohlcv_csv(str(csv_path))
+
+    assert list(df.index) == [
+        pd.Timestamp("1998-01-02 09:30:00"),
+        pd.Timestamp("1998-01-02 09:31:00"),
+    ]
+    assert df.index.name == "timestamp"
+    assert list(df.columns) == ["open", "high", "low", "close", "volume"]
+    assert df.loc[pd.Timestamp("1998-01-02 09:30:00"), "open"] == pytest.approx(25.226)
+    assert df.loc[pd.Timestamp("1998-01-02 09:30:00"), "volume"] == pytest.approx(277549)
+    assert ((df[["open", "high", "low", "close"]] > 0).all()).all()
+    assert (df["volume"] >= 0).all()

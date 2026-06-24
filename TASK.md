@@ -2,11 +2,11 @@
 
 ## Task ID
 
-001-kibot-loader
+001b-kibot-adjusted-ohlcv-loader
 
 ## Goal
 
-Implement the Kibot free sample CSV loaders.
+Add a loader for headerless Kibot adjusted OHLCV intraday files.
 
 ## Allowed Files
 
@@ -33,6 +33,7 @@ Implement the Kibot free sample CSV loaders.
 
 - Kibot tick-with-bid-ask CSV loader is implemented;
 - Kibot 1-minute bid/ask companion CSV loader is implemented;
+- Kibot adjusted OHLCV CSV loader is implemented;
 - synthetic CSV tests pass;
 - raw data is not modified;
 - raw data and generated outputs are ignored by git.
