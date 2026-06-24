@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adaptive Jump Model Math Reference</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101214;
+      --panel: #171b20;
+      --panel-2: #20262d;
+      --text: #e8edf2;
+      --muted: #a9b3bd;
+      --line: #33404c;
+      --accent: #7dd3fc;
+      --warn: #fbbf24;
+      --good: #86efac;
+      --bad: #fca5a5;
+      --code: #0b0d10;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 56px;
+    }
+
+    h1, h2, h3 {
+      line-height: 1.15;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 4vw, 4rem);
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: 1.7rem;
+      margin-bottom: 14px;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    p {
+      color: var(--muted);
+      margin: 8px 0 0;
+    }
+
+    code, .formula {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    code {
+      background: var(--code);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      padding: 2px 5px;
+    }
+
+    .hero {
+      min-height: 70vh;
+      display: grid;
+      align-content: center;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 28px;
+    }
+
+    .hero p {
+      max-width: 760px;
+      font-size: 1.1rem;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 22px;
+    }
+
+    .tag {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.88rem;
+    }
+
+    section {
+      padding: 28px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .formula {
+      display: block;
+      background: var(--code);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      color: var(--text);
+      overflow-x: auto;
+      margin-top: 10px;
+      white-space: nowrap;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+      align-items: stretch;
+    }
+
+    .node {
+      min-height: 92px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 12px;
+      position: relative;
+    }
+
+    .node:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      right: -18px;
+      top: 34px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .node strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .node span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .callout {
+      border-left: 4px solid var(--warn);
+      background: var(--panel-2);
+      padding: 14px 16px;
+      border-radius: 0 8px 8px 0;
+      margin-top: 14px;
+      color: var(--muted);
+    }
+
+    .good {
+      color: var(--good);
+    }
+
+    .bad {
+      color: var(--bad);
+    }
+
+    .table {
+      display: grid;
+      gap: 1px;
+      background: var(--line);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 210px 1fr 1fr;
+      gap: 1px;
+      background: var(--line);
+    }
+
+    .cell {
+      background: var(--panel);
+      padding: 12px;
+      min-width: 0;
+    }
+
+    .head .cell {
+      background: var(--panel-2);
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    ul {
+      margin: 10px 0 0;
+      color: var(--muted);
+      padding-left: 20px;
+    }
+
+    li + li {
+      margin-top: 6px;
+    }
+
+    @media (max-width: 760px) {
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .node:not(:last-child)::after {
+        content: "↓";
+        right: 14px;
+        top: auto;
+        bottom: -20px;
+      }
+
+      .row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <h1>Math Reference</h1>
+    <p>
+      Working definitions for the Duration-Calibrated Adaptive Jump Model project.
+      This file documents formulas already implemented in <code>data_kibot.py</code>
+      and <code>features.py</code>, plus the intended role of the feature scores in
+      later penalty and dynamic-programming modules.
+    </p>
+    <div class="tag-row">
+      <span class="tag">No HMM yet</span>
+      <span class="tag">No jump model yet</span>
+      <span class="tag">No backtest yet</span>
+      <span class="tag">IVE/WDC tick bid-ask path first</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>Pipeline</h2>
+    <p>The current implemented path is data ingestion and feature construction only.</p>
+    <div class="flow">
+      <div class="node">
+        <strong>Raw Tick Data</strong>
+        <span>Date, Time, Price, Bid, Ask, Size</span>
+      </div>
+      <div class="node">
+        <strong>Clean Loader</strong>
+        <span>timestamp index, bid/ask sanity, session filter</span>
+      </div>
+      <div class="node">
+        <strong>Minute Bars</strong>
+        <span>OHLC, volume, trade count, close quote state</span>
+      </div>
+      <div class="node">
+        <strong>Feature Scores</strong>
+        <span>returns, rolling vol, noise, shock</span>
+      </div>
+      <div class="node">
+        <strong>Later Model</strong>
+        <span>adaptive penalty, DP, jump regimes</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Tick-Level Definitions</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Mid Price</h3>
+        <span class="formula">mid_t = (bid_t + ask_t) / 2</span>
+        <p>Center of the prevailing bid/ask quote at a trade timestamp.</p>
+      </div>
+      <div class="card">
+        <h3>Spread</h3>
+        <span class="formula">spread_t = ask_t - bid_t</span>
+        <p>Quoted transaction friction. Crossed quotes are dropped and counted.</p>
+      </div>
+      <div class="card">
+        <h3>Relative Spread</h3>
+        <span class="formula">rel_spread_t = spread_t / mid_t</span>
+        <p>Scale-free spread measure used for noise diagnostics.</p>
+      </div>
+    </div>
+    <div class="callout">
+      Loaders fail loudly for schema, timestamp, non-numeric, and non-finite data.
+      Market-quality rows such as crossed quotes are dropped and recorded in
+      <code>DataFrame.attrs["dropped_rows"]</code>.
+    </div>
+  </section>
+
+  <section>
+    <h2>Minute Aggregation</h2>
+    <p>Each tick belongs to minute <code>m = floor(timestamp, "min")</code>.</p>
+    <div class="table">
+      <div class="row head">
+        <div class="cell">Feature</div>
+        <div class="cell">Formula</div>
+        <div class="cell">Meaning</div>
+      </div>
+      <div class="row">
+        <div class="cell"><code>open</code></div>
+        <div class="cell"><code>first(price in minute)</code></div>
+        <div class="cell">First trade price in the minute.</div>
+      </div>
+      <div class="row">
+        <div class="cell"><code>high</code>, <code>low</code></div>
+        <div class="cell"><code>max(price)</code>, <code>min(price)</code></div>
+        <div class="cell">Intraminute price range.</div>
+      </div>
+      <div class="row">
+        <div class="cell"><code>close</code></div>
+        <div class="cell"><code>last(price in minute)</code></div>
+        <div class="cell">Last trade price in the minute.</div>
+      </div>
+      <div class="row">
+        <div class="cell"><code>volume</code></div>
+        <div class="cell"><code>sum(size)</code></div>
+        <div class="cell">Total traded size in the minute.</div>
+      </div>
+      <div class="row">
+        <div class="cell"><code>trade_count</code></div>
+        <div class="cell"><code>count(ticks)</code></div>
+        <div class="cell">Number of tick rows in the minute.</div>
+      </div>
+      <div class="row">
+        <div class="cell"><code>*_close</code> quote fields</div>
+        <div class="cell"><code>last(bid, ask, mid, spread, rel_spread)</code></div>
+        <div class="cell">Last known quote state inside the minute.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Realized Variance</h2>
+    <p>
+      Realized variance follows the standard high-frequency definition: sum of
+      squared log returns over a fixed interval. The return is assigned to the
+      minute of the later tick.
+    </p>
+    <span class="formula">r_i = log(P_i / P_{i-1})</span>
+    <span class="formula">RV_m = Σ r_i² for ticks i where floor(t_i, minute) = m</span>
+    <div class="callout">
+      Overnight returns are excluded. If tick <code>i</code> and tick
+      <code>i-1</code> are on different calendar dates, <code>r_i</code> is not
+      counted. This avoids treating overnight gaps as intraday realized variance.
+    </div>
+  </section>
+
+  <section>
+    <h2>Minute Returns And Volatility</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Minute Mid Return</h3>
+        <span class="formula">mid_return_m = log(mid_close_m / mid_close_{m-1})</span>
+        <p>Reset across dates. First minute per date is <code>NaN</code>.</p>
+      </div>
+      <div class="card">
+        <h3>Absolute Return</h3>
+        <span class="formula">abs_mid_return_m = |mid_return_m|</span>
+        <p>Magnitude of the minute move, ignoring direction.</p>
+      </div>
+      <div class="card">
+        <h3>Log Volume</h3>
+        <span class="formula">log_volume_m = log(1 + volume_m)</span>
+        <p>Compresses the scale of volume while keeping zero volume valid.</p>
+      </div>
+      <div class="card">
+        <h3>Rolling Volatility</h3>
+        <span class="formula">rolling_vol_k = std(mid_return over last k rows)</span>
+        <p>Uses pandas sample standard deviation with full window required.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Z-Score Convention</h2>
+    <p>All z-scores are computed over non-missing values.</p>
+    <span class="formula">z(x_t) = (x_t - mean(x)) / std(x)</span>
+    <ul>
+      <li>Original <code>NaN</code> values remain <code>NaN</code>.</li>
+      <li>If valid standard deviation is unavailable or near zero, valid entries become <code>0</code>.</li>
+      <li>This prevents a flat series from causing division by zero.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Raw Diagnostic Scores</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Noise Score</h3>
+        <span class="formula">noise_score_raw = z(rel_spread_close) - z(log_volume)</span>
+        <p>
+          Higher when relative spreads are unusually wide and volume is unusually
+          low. Interpreted as microstructure noise / low liquidity.
+        </p>
+      </div>
+      <div class="card">
+        <h3>Shock Score</h3>
+        <span class="formula">shock_score_raw = |z(mid_return)| + z(rolling_vol_20)</span>
+        <p>
+          Higher when the minute return is unusually large or recent volatility is
+          unusually elevated.
+        </p>
+      </div>
+    </div>
+    <div class="callout">
+      These are raw diagnostics, not calibrated probabilities. They should be
+      inspected before using them in penalty functions.
+    </div>
+  </section>
+
+  <section>
+    <h2>How This Connects To The Adaptive Jump Model</h2>
+    <p>The later jump model will minimize a path cost that looks conceptually like:</p>
+    <span class="formula">total_cost = fit_cost + Σ penalty_t(state_t != state_{t-1})</span>
+    <p>The adaptive part is that <code>penalty_t</code> changes with market conditions.</p>
+    <div class="grid">
+      <div class="card">
+        <h3 class="bad">High Noise</h3>
+        <span class="formula">noise_score_raw ↑ ⇒ penalty_t ↑</span>
+        <p>When data quality is noisy, make switching harder to avoid chasing quote noise.</p>
+      </div>
+      <div class="card">
+        <h3 class="good">High Shock</h3>
+        <span class="formula">shock_score_raw ↑ ⇒ penalty_t ↓</span>
+        <p>When price movement looks abnormal, make switching easier to capture regime shifts.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Research Cross-Checks</h2>
+    <ul>
+      <li>Realized variance should be checked against realized volatility and quadratic variation literature.</li>
+      <li>Noise score should be checked against market microstructure noise and liquidity proxies.</li>
+      <li>Shock score should be checked against jump detection and volatility-regime literature.</li>
+      <li>Penalty mapping must preserve invariants: noise up means penalty up; shock up means penalty down.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
