@@ -2,27 +2,37 @@
 
 ## Task ID
 
-000-project-rules
+001-kibot-loader
 
 ## Goal
 
-Create project governance files only.
+Implement the Kibot free sample CSV loaders.
 
 ## Allowed Files
 
-- AGENTS.md
-- CLAUDE.md
 - TASK.md
 - STATUS.md
+- .gitignore
+- src/adaptive_jump/__init__.py
+- src/adaptive_jump/data_kibot.py
+- tests/test_data_kibot.py
 
 ## Forbidden
 
-- src code
-- tests
+- features.py
 - notebooks
-- data files
+- HMM
+- jump model
+- dynamic programming
+- adaptive penalty
+- backtesting
+- external paid-data download
+- modifying, deleting, or overwriting data/raw files
 
 ## Done When
 
-- all four files exist;
-- no implementation code is created.
+- Kibot tick-with-bid-ask CSV loader is implemented;
+- Kibot 1-minute bid/ask companion CSV loader is implemented;
+- synthetic CSV tests pass;
+- raw data is not modified;
+- raw data and generated outputs are ignored by git.

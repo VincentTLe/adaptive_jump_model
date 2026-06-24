@@ -1,0 +1,16 @@
+# Python runtime artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Local environments
+.venv/
+venv/
+
+# Market data and generated outputs
+data/raw/*
+data/processed/*
+
+# Local notebooks checkpoints
+.ipynb_checkpoints/
