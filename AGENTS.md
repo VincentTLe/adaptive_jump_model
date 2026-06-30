@@ -14,6 +14,23 @@ Do one task at a time.
 Do not expand scope.
 Do not implement modules that were not explicitly requested.
 
+## Research Execution Rule
+
+This is a serious research project, not a toy demo project.
+
+- Do not silently reduce requested experiments to save computation.
+- Do not assume the owner wants the lightest possible demo.
+- Quick mode is for debugging only.
+- Full mode must perform real validation over available local data, relevant
+  hyperparameter grids, sufficient seeds/initializations for stochastic models,
+  and delay/cost sensitivity when backtesting.
+- If full mode is slower, document expected runtime; do not fake a full mode.
+- Backtesting is required when claiming market regimes are economically
+  meaningful.
+- Static dashboards/reports are useful research artifacts and should not be
+  dismissed as unnecessary.
+- Be honest about limitations and results, but do not under-test.
+
 ## Allowed Default Dependencies
 
 - numpy
@@ -78,3 +95,8 @@ At the end of every task, report:
 - implementing jump model before penalty and DP modules are complete;
 - implementing dynamic programming before penalty rules are complete;
 - implementing backtests before model correctness is verified.
+
+When the current `TASK.md` explicitly allows HMMs, Jump Models, adaptive models,
+backtests, reports, dashboards, or additional dependencies, that task-specific
+approval is sufficient. Continue to obey the data, security, testing, and
+reporting rules above.
