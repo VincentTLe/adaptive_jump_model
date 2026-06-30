@@ -1,0 +1,528 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Adaptive Jump Model Demo</title>
+  <style>
+    body { margin: 24px; background: #111827; color: #e5e7eb; font-family: Arial, sans-serif; }
+    h1, h2 { color: #f9fafb; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0 28px; font-size: 13px; }
+    th, td { border: 1px solid #374151; padding: 6px 8px; text-align: right; }
+    th { background: #1f2937; }
+    td:first-child, th:first-child { text-align: left; }
+    img { max-width: 100%; background: #ffffff; margin: 12px 0 28px; }
+  </style>
+</head>
+<body>
+  <h1>Adaptive Jump Model Demo</h1>
+  <p>Local-data research dashboard. Backtests use train-only normalization, causal states, one-bar delay, and transaction costs.</p>
+  <h2>Summary</h2>
+  <table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>symbol</th>
+      <th>n_obs</th>
+      <th>feature_columns</th>
+      <th>hmm_loglik</th>
+      <th>hmm_transmat</th>
+      <th>fixed_lambda</th>
+      <th>adaptive_lambda_min</th>
+      <th>adaptive_lambda_median</th>
+      <th>adaptive_lambda_max</th>
+      <th>hmm_n_switches</th>
+      <th>fixed_jm_n_switches</th>
+      <th>adaptive_jm_n_switches</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>IBM</td>
+      <td>1053040</td>
+      <td>mid_return,rolling_vol_5,rolling_vol_20,noise_score_raw,shock_score_raw,return,realized_var</td>
+      <td>9.510698e+06</td>
+      <td>[[0.9797510474003173, 0.02024895259968277], [0.048414451731771384, 0.9515855482682286]]</td>
+      <td>3.367296</td>
+      <td>0.0</td>
+      <td>3.836132</td>
+      <td>5.914884</td>
+      <td>49232</td>
+      <td>20013</td>
+      <td>21435</td>
+    </tr>
+    <tr>
+      <td>OIH</td>
+      <td>823965</td>
+      <td>mid_return,rolling_vol_5,rolling_vol_20,noise_score_raw,shock_score_raw,return,realized_var</td>
+      <td>7.060404e+06</td>
+      <td>[[0.9857828373295618, 0.014217162670438111], [0.03560659829832608, 0.964393401701674]]</td>
+      <td>3.367296</td>
+      <td>0.0</td>
+      <td>3.363840</td>
+      <td>4.823814</td>
+      <td>56044</td>
+      <td>34188</td>
+      <td>37624</td>
+    </tr>
+    <tr>
+      <td>IVE</td>
+      <td>522799</td>
+      <td>mid_return,rolling_vol_5,rolling_vol_20,noise_score_raw,shock_score_raw,return,realized_var</td>
+      <td>5.085303e+06</td>
+      <td>[[0.9853046801311536, 0.014695319868846446], [0.40331392300353464, 0.5966860769964654]]</td>
+      <td>3.367296</td>
+      <td>0.0</td>
+      <td>3.365221</td>
+      <td>7.479763</td>
+      <td>19844</td>
+      <td>39987</td>
+      <td>45251</td>
+    </tr>
+    <tr>
+      <td>WDC</td>
+      <td>605825</td>
+      <td>mid_return,rolling_vol_5,rolling_vol_20,noise_score_raw,shock_score_raw,return,realized_var</td>
+      <td>5.251547e+06</td>
+      <td>[[0.9839123864578684, 0.01608761354213164], [0.04156239442524632, 0.9584376055747538]]</td>
+      <td>3.367296</td>
+      <td>0.0</td>
+      <td>3.214540</td>
+      <td>10.101887</td>
+      <td>45424</td>
+      <td>28791</td>
+      <td>31561</td>
+    </tr>
+  </tbody>
+</table>
+  <h2>Path Diagnostics</h2>
+  <table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>n_obs</th>
+      <th>n_switches</th>
+      <th>average_duration</th>
+      <th>min_duration</th>
+      <th>max_duration</th>
+      <th>fraction_state_0</th>
+      <th>fraction_state_1</th>
+      <th>symbol</th>
+      <th>model</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1053040</td>
+      <td>49232</td>
+      <td>21.388906</td>
+      <td>1</td>
+      <td>3323</td>
+      <td>0.858675</td>
+      <td>0.141325</td>
+      <td>IBM</td>
+      <td>HMM</td>
+    </tr>
+    <tr>
+      <td>1053040</td>
+      <td>20013</td>
+      <td>52.615169</td>
+      <td>1</td>
+      <td>7746</td>
+      <td>0.936762</td>
+      <td>0.063238</td>
+      <td>IBM</td>
+      <td>Fixed JM</td>
+    </tr>
+    <tr>
+      <td>1053040</td>
+      <td>21435</td>
+      <td>49.124837</td>
+      <td>1</td>
+      <td>7746</td>
+      <td>0.937695</td>
+      <td>0.062305</td>
+      <td>IBM</td>
+      <td>Adaptive JM</td>
+    </tr>
+    <tr>
+      <td>823965</td>
+      <td>56044</td>
+      <td>14.701847</td>
+      <td>1</td>
+      <td>1821</td>
+      <td>0.719806</td>
+      <td>0.280194</td>
+      <td>OIH</td>
+      <td>HMM</td>
+    </tr>
+    <tr>
+      <td>823965</td>
+      <td>34188</td>
+      <td>24.100295</td>
+      <td>1</td>
+      <td>3311</td>
+      <td>0.860868</td>
+      <td>0.139132</td>
+      <td>OIH</td>
+      <td>Fixed JM</td>
+    </tr>
+    <tr>
+      <td>823965</td>
+      <td>37624</td>
+      <td>21.899402</td>
+      <td>1</td>
+      <td>3311</td>
+      <td>0.863526</td>
+      <td>0.136474</td>
+      <td>OIH</td>
+      <td>Adaptive JM</td>
+    </tr>
+    <tr>
+      <td>522799</td>
+      <td>19844</td>
+      <td>26.344117</td>
+      <td>1</td>
+      <td>5119</td>
+      <td>0.966083</td>
+      <td>0.033917</td>
+      <td>IVE</td>
+      <td>HMM</td>
+    </tr>
+    <tr>
+      <td>522799</td>
+      <td>39987</td>
+      <td>13.073897</td>
+      <td>1</td>
+      <td>1095</td>
+      <td>0.744674</td>
+      <td>0.255326</td>
+      <td>IVE</td>
+      <td>Fixed JM</td>
+    </tr>
+    <tr>
+      <td>522799</td>
+      <td>45251</td>
+      <td>11.553058</td>
+      <td>1</td>
+      <td>1065</td>
+      <td>0.736799</td>
+      <td>0.263201</td>
+      <td>IVE</td>
+      <td>Adaptive JM</td>
+    </tr>
+    <tr>
+      <td>605825</td>
+      <td>45424</td>
+      <td>13.336819</td>
+      <td>1</td>
+      <td>1202</td>
+      <td>0.603881</td>
+      <td>0.396119</td>
+      <td>WDC</td>
+      <td>HMM</td>
+    </tr>
+    <tr>
+      <td>605825</td>
+      <td>28791</td>
+      <td>21.041435</td>
+      <td>1</td>
+      <td>4076</td>
+      <td>0.701409</td>
+      <td>0.298591</td>
+      <td>WDC</td>
+      <td>Fixed JM</td>
+    </tr>
+    <tr>
+      <td>605825</td>
+      <td>31561</td>
+      <td>19.194760</td>
+      <td>1</td>
+      <td>4076</td>
+      <td>0.702967</td>
+      <td>0.297033</td>
+      <td>WDC</td>
+      <td>Adaptive JM</td>
+    </tr>
+  </tbody>
+</table>
+  <h2>Backtest Metrics</h2>
+  <table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>total_return</th>
+      <th>annualized_return</th>
+      <th>annualized_volatility</th>
+      <th>sharpe</th>
+      <th>max_drawdown</th>
+      <th>calmar</th>
+      <th>expected_shortfall_5pct</th>
+      <th>turnover</th>
+      <th>n_trades</th>
+      <th>exposure</th>
+      <th>symbol</th>
+      <th>model</th>
+      <th>delay_bars</th>
+      <th>transaction_cost</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1.630566</td>
+      <td>0.094468</td>
+      <td>0.177263</td>
+      <td>0.597859</td>
+      <td>0.500194</td>
+      <td>0.188863</td>
+      <td>-0.001308</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>1.000000</td>
+      <td>IBM</td>
+      <td>Buy and Hold</td>
+      <td>0</td>
+      <td>0.000</td>
+    </tr>
+    <tr>
+      <td>-1.000000</td>
+      <td>-1.000000</td>
+      <td>0.141551</td>
+      <td>-31.879753</td>
+      <td>1.000000</td>
+      <td>-1.000000</td>
+      <td>-0.001208</td>
+      <td>49232.0</td>
+      <td>49232</td>
+      <td>0.858675</td>
+      <td>IBM</td>
+      <td>HMM</td>
+      <td>1</td>
+      <td>0.001</td>
+    </tr>
+    <tr>
+      <td>-1.000000</td>
+      <td>-0.840190</td>
+      <td>0.146000</td>
+      <td>-12.486951</td>
+      <td>1.000000</td>
+      <td>-0.840190</td>
+      <td>-0.001162</td>
+      <td>20014.0</td>
+      <td>20014</td>
+      <td>0.936762</td>
+      <td>IBM</td>
+      <td>Fixed JM</td>
+      <td>1</td>
+      <td>0.001</td>
+    </tr>
+    <tr>
+      <td>-1.000000</td>
+      <td>-0.860560</td>
+      <td>0.146777</td>
+      <td>-13.349067</td>
+      <td>1.000000</td>
+      <td>-0.860560</td>
+      <td>-0.001172</td>
+      <td>21436.0</td>
+      <td>21436</td>
+      <td>0.937695</td>
+      <td>IBM</td>
+      <td>Adaptive JM</td>
+      <td>1</td>
+      <td>0.001</td>
+    </tr>
+    <tr>
+      <td>-0.454269</td>
+      <td>-0.069690</td>
+      <td>0.306781</td>
+      <td>-0.082099</td>
+      <td>0.693103</td>
+      <td>-0.100548</td>
+      <td>-0.002275</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>1.000000</td>
+      <td>OIH</td>
+      <td>Buy and Hold</td>
+      <td>0</td>
+      <td>0.000</td>
+    </tr>
+    <tr>
+      <td>-1.000000</td>
+      <td>-1.000000</td>
+      <td>0.206617</td>
+      <td>-32.835600</td>
+      <td>1.000000</td>
+      <td>-1.000000</td>
+      <td>-0.001661</td>
+      <td>56043.0</td>
+      <td>56043</td>
+      <td>0.719806</td>
+      <td>OIH</td>
+      <td>HMM</td>
+      <td>1</td>
+      <td>0.001</td>
+    </tr>
+    <tr>
+      <td>-1.000000</td>
+      <td>-0.985250</td>
+      <td>0.233933</td>
+      <td>-17.895796</td>
+      <td>1.000000</td>
+      <td>-0.985250</td>
+      <td>-0.001801</td>
+      <td>34189.0</td>
+      <td>34189</td>
+      <td>0.860867</td>
+      <td>OIH</td>
+      <td>Fixed JM</td>
+      <td>1</td>
+      <td>0.001</td>
+    </tr>
+    <tr>
+      <td>-1.000000</td>
+      <td>-1.000000</td>
+      <td>0.235824</td>
+      <td>-19.538826</td>
+      <td>1.000000</td>
+      <td>-1.000000</td>
+      <td>-0.001821</td>
+      <td>37625.0</td>
+      <td>37625</td>
+      <td>0.863525</td>
+      <td>OIH</td>
+      <td>Adaptive JM</td>
+      <td>1</td>
+      <td>0.001</td>
+    </tr>
+    <tr>
+      <td>0.291668</td>
+      <td>0.049289</td>
+      <td>0.148749</td>
+      <td>0.397807</td>
+      <td>0.130194</td>
+      <td>0.378579</td>
+      <td>-0.001097</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>1.000000</td>
+      <td>IVE</td>
+      <td>Buy and Hold</td>
+      <td>0</td>
+      <td>0.000</td>
+    </tr>
+    <tr>
+      <td>-1.000000</td>
+      <td>-0.976378</td>
+      <td>0.138420</td>
+      <td>-26.989742</td>
+      <td>1.000000</td>
+      <td>-0.976378</td>
+      <td>-0.001215</td>
+      <td>19845.0</td>
+      <td>19845</td>
+      <td>0.966081</td>
+      <td>IVE</td>
+      <td>HMM</td>
+      <td>1</td>
+      <td>0.001</td>
+    </tr>
+    <tr>
+      <td>-1.000000</td>
+      <td>-1.000000</td>
+      <td>0.127528</td>
+      <td>-58.669395</td>
+      <td>1.000000</td>
+      <td>-1.000000</td>
+      <td>-0.001131</td>
+      <td>39988.0</td>
+      <td>39988</td>
+      <td>0.744674</td>
+      <td>IVE</td>
+      <td>Fixed JM</td>
+      <td>1</td>
+      <td>0.001</td>
+    </tr>
+    <tr>
+      <td>-1.000000</td>
+      <td>-1.000000</td>
+      <td>0.130932</td>
+      <td>-64.714210</td>
+      <td>1.000000</td>
+      <td>-1.000000</td>
+      <td>-0.001128</td>
+      <td>45252.0</td>
+      <td>45252</td>
+      <td>0.736799</td>
+      <td>IVE</td>
+      <td>Adaptive JM</td>
+      <td>1</td>
+      <td>0.001</td>
+    </tr>
+    <tr>
+      <td>-0.100330</td>
+      <td>-0.017005</td>
+      <td>0.369190</td>
+      <td>0.138092</td>
+      <td>0.640051</td>
+      <td>-0.026569</td>
+      <td>-0.002751</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>1.000000</td>
+      <td>WDC</td>
+      <td>Buy and Hold</td>
+      <td>0</td>
+      <td>0.000</td>
+    </tr>
+    <tr>
+      <td>-1.000000</td>
+      <td>-1.000000</td>
+      <td>0.201699</td>
+      <td>-36.822153</td>
+      <td>1.000000</td>
+      <td>-1.000000</td>
+      <td>-0.001668</td>
+      <td>45424.0</td>
+      <td>45424</td>
+      <td>0.603881</td>
+      <td>WDC</td>
+      <td>HMM</td>
+      <td>1</td>
+      <td>0.001</td>
+    </tr>
+    <tr>
+      <td>-1.000000</td>
+      <td>-0.991108</td>
+      <td>0.214379</td>
+      <td>-21.921204</td>
+      <td>1.000000</td>
+      <td>-0.991108</td>
+      <td>-0.001701</td>
+      <td>28792.0</td>
+      <td>28792</td>
+      <td>0.701409</td>
+      <td>WDC</td>
+      <td>Fixed JM</td>
+      <td>1</td>
+      <td>0.001</td>
+    </tr>
+    <tr>
+      <td>-1.000000</td>
+      <td>-0.994280</td>
+      <td>0.215732</td>
+      <td>-23.828663</td>
+      <td>1.000000</td>
+      <td>-0.994280</td>
+      <td>-0.001715</td>
+      <td>31562.0</td>
+      <td>31562</td>
+      <td>0.702967</td>
+      <td>WDC</td>
+      <td>Adaptive JM</td>
+      <td>1</td>
+      <td>0.001</td>
+    </tr>
+  </tbody>
+</table>
+  <h2>State Figure</h2>
+  <img src="figures/model_comparison_states.png" alt="Model comparison states">
+</body>
+</html>

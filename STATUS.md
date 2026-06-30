@@ -10,6 +10,11 @@
 - Data and feature math stabilization.
 - Duration-calibrated penalty functions with tests.
 - Dynamic-programming path solver with brute-force oracle tests.
+- Full local data processing/cache for IBM, OIH, IVE, and WDC under `data/processed`.
+- First one-shot HMM vs fixed JM vs adaptive JM demo over IBM, OIH, IVE,
+  and WDC processed data.
+- Research/design notes from paper, GitHub, visualization, and backtest-methodology
+  review saved to `reports/research_design_notes.html`.
 
 ## Current Module
 
@@ -19,14 +24,16 @@ Full model stack and backtest for advisor-meeting research validation.
 
 005-full-model-stack-and-backtest:
 
-- Gaussian HMM baseline.
-- Fixed-penalty Jump Model.
-- Adaptive-penalty Jump Model.
-- Synthetic fixed-vs-adaptive separation experiment.
-- Real-data model comparison.
-- Vectorized 0/1 backtest with delay and transaction costs.
-- Static dashboard/report outputs.
-- Quick mode and full research mode.
+- Upgrade the current one-shot demo into true full research validation:
+  walk-forward splits, validation-selected fixed lambda, adaptive lambda grids,
+  delay/cost sensitivity, and better figures.
+
+## Verified Local Commands
+
+- Tests: `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src:. /tmp/adaptive_jump_model_venv/bin/python -m pytest -q -p no:cacheprovider`
+- Lint for the data-processing patch: `/tmp/adaptive_jump_model_venv/bin/python -m ruff check scripts/prepare_processed_data.py tests/test_prepare_processed_data.py`
+- Full local data materialization: `PYTHONPATH=src:. /tmp/adaptive_jump_model_venv/bin/python scripts/prepare_processed_data.py --symbols IBM OIH IVE WDC --chunksize 2000000 --force`
+- One-shot full model comparison: `PYTHONPATH=src:. /tmp/adaptive_jump_model_venv/bin/python scripts/run_model_comparison_demo.py --mode full`
 
 ## Risks
 
@@ -44,5 +51,14 @@ Full model stack and backtest for advisor-meeting research validation.
 - Full mode must not be silently reduced to a toy demo to save compute.
 - Real-data backtests must use signal delay and transaction costs to avoid
   overstating economic meaning.
+- Backtests must not use full-sample standardized diagnostics as if they were
+  live signals; use delay and train-only, rolling, or expanding normalization in
+  model/backtest code.
 - External market-data and brokerage APIs are out of scope for the current task;
   use local data only.
+- `data/processed` is intentionally ignored by git; generated cache files must
+  be validated locally but not committed.
+- The current one-shot full run is not a final validation. Fixed JM and Adaptive
+  JM are still highly similar on real data, so the adaptive lambda construction
+  likely needs a stronger dynamic range and must be tested against a
+  validation-selected fixed-lambda baseline.
