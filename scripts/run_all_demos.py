@@ -13,12 +13,20 @@ def main() -> None:
     parser.add_argument("--mode", choices=["quick", "full"], default="quick")
     args = parser.parse_args()
 
-    _run(["scripts/run_synthetic_separation_demo.py"])
+    output_root = Path("reports") / args.mode
+    _run(["scripts/run_synthetic_separation_demo.py", "--output-root", str(output_root)])
     _run(["scripts/run_model_comparison_demo.py", "--mode", args.mode])
 
     print("Generated files:")
-    for pattern in ["reports/tables/*.csv", "reports/figures/*.png", "reports/demo_summary.md", "reports/dashboard.html"]:
+    for pattern in [
+        f"{output_root}/tables/*.csv",
+        f"{output_root}/figures/*.png",
+        f"{output_root}/demo_summary.md",
+        f"{output_root}/dashboard.html",
+    ]:
         for path in sorted(Path(".").glob(pattern)):
+            if path.name == "image.png":
+                continue
             print(path)
 
 
