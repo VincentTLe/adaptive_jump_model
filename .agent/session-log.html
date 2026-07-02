@@ -29,8 +29,19 @@
   .dim{color:var(--dim);} .empty{color:var(--dim);text-align:center;padding:40px;}
 </style></head>
 <body>
-<header><h1>Session log</h1><p class="sub">4 session(s) · newest first · generated 2026-07-02 19:55 UTC</p></header>
+<header><h1>Session log</h1><p class="sub">5 session(s) · newest first · generated 2026-07-02 20:07 UTC</p></header>
 <main>
+    <article class="card">
+      <div class="head"><span class="ts">2026-07-02T20:07Z</span><span class="who">codex · gpt-5</span></div>
+      <p class="goal">Fix backtest evaluation mapping after IBM full output showed state-0-only trading rule was not a valid conclusion basis</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/backtesting.py (explicit low/high/train-selected policies, policy metadata in frames/trades/round trips)</code></li><li><code>scripts/run_model_comparison_demo.py (passes train paths/returns and plots primary train-selected policy)</code></li><li><code>src/adaptive_jump/library_checks.py + scripts/run_library_backtest_audit.py (policy-aware independent audit)</code></li><li><code>src/adaptive_jump/reporting.py (documents policy semantics)</code></li><li><code>tests/test_experiments.py (policy/delay/train-selection coverage)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>pytest: 96 passed; ruff check src scripts tests: passed; quick demo --mode quick --force completed; cached library audit grouped by policy completed</p></div>
+        <div><span class="lbl">Commit</span><p><code>c880371 pushed to origin/fix/backtest-trade-audit</code></p></div>
+        <div><span class="lbl">Next step</span><p>Regenerate IBM/full outputs under the new backtest_policy schema before interpreting backtest results. Then compare low_vol_invested vs high_vol_invested vs train_return_selected; do not reuse old reports/full IBM metrics for the trading-rule conclusion. Consider a structural split because backtesting.py and run_model_comparison_demo.py are now just over 500 lines.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Local dirty state intentionally remains: reports/full/ old IBM generated artifacts and HANDOFF_NEW_CHAT.md untracked. Full all-symbol validation remains incomplete; adaptive claim still unproven.</p>
+    </article>
     <article class="card">
       <div class="head"><span class="ts">2026-07-02T19:55Z</span><span class="who">codex · gpt-5</span></div>
       <p class="goal">Clean/refactor backtest/reporting patch, fix adaptive-lambda evaluation design, push source branch, and start full validation</p>
