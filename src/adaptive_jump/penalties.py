@@ -38,6 +38,9 @@ def make_adaptive_lambda(
     shock_scale: float = 0.5,
     min_lambda: float = 0.0,
     max_lambda: float | None = None,
+    min_duration: float | None = None,
+    max_duration: float | None = None,
+    form: str = "additive",
     noise_column: str = "noise_score_raw",
     shock_column: str = "shock_score_raw",
 ) -> pd.Series:
@@ -45,8 +48,9 @@ def make_adaptive_lambda(
 
     ``noise_score_raw`` raises the penalty because noisy quotes can create false
     switches. ``shock_score_raw`` lowers the penalty because abrupt price moves
-    are candidates for regime changes. The scores are added directly on the
-    lambda scale, preserving the log-odds duration calibration.
+    are candidates for regime changes. ``form="additive"`` changes lambda
+    directly; ``form="multiplicative"`` applies the scores as a log-linear
+    multiplier around ``base_lambda``.
     """
     if not isinstance(df, pd.DataFrame):
         raise TypeError("df must be a pandas.DataFrame")
@@ -59,6 +63,15 @@ def make_adaptive_lambda(
         max_lambda = _nonnegative_scalar(max_lambda, "max_lambda")
         if max_lambda < min_lambda:
             raise ValueError("max_lambda must be greater than or equal to min_lambda")
+    if min_duration is not None:
+        min_lambda = max(min_lambda, lambda_from_expected_duration(min_duration))
+    if max_duration is not None:
+        duration_cap = lambda_from_expected_duration(max_duration)
+        max_lambda = duration_cap if max_lambda is None else min(max_lambda, duration_cap)
+    if max_lambda is not None and max_lambda < min_lambda:
+        raise ValueError("max duration/lambda bound must be greater than or equal to min bound")
+    if form not in {"additive", "multiplicative"}:
+        raise ValueError("form must be one of {'additive', 'multiplicative'}")
 
     scores = df[[noise_column, shock_column]].astype(float)
     valid = np.isfinite(scores.to_numpy()).all(axis=1)
@@ -66,7 +79,11 @@ def make_adaptive_lambda(
         first = scores.index[~valid][0]
         raise ValueError(f"adaptive lambda scores must be finite; first invalid row at {first}")
 
-    values = base + noise_scale * scores[noise_column] - shock_scale * scores[shock_column]
+    score_delta = noise_scale * scores[noise_column] - shock_scale * scores[shock_column]
+    if form == "additive":
+        values = base + score_delta
+    else:
+        values = base * np.exp(score_delta)
     result = pd.Series(values, index=df.index, name="lambda")
     result = result.clip(lower=min_lambda, upper=max_lambda)
     if not np.isfinite(result.to_numpy()).all():

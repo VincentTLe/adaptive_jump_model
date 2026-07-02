@@ -81,6 +81,32 @@ def test_adaptive_lambda_is_additive_on_lambda_scale():
     assert expected_duration_from_lambda(result.iloc[0]) == pytest.approx(1.0 + math.exp(expected_lambda))
 
 
+def test_adaptive_lambda_can_be_multiplicative_on_lambda_scale():
+    df = pd.DataFrame({"noise_score_raw": [1.0], "shock_score_raw": [2.0]})
+
+    result = make_adaptive_lambda(df, base_lambda=2.0, noise_scale=0.4, shock_scale=0.25, form="multiplicative")
+
+    expected_lambda = 2.0 * math.exp(0.4 * 1.0 - 0.25 * 2.0)
+    assert result.iloc[0] == pytest.approx(expected_lambda)
+
+
+def test_adaptive_lambda_duration_bounds_clip_lambda_values():
+    df = pd.DataFrame({"noise_score_raw": [100.0, -100.0], "shock_score_raw": [-100.0, 100.0]})
+
+    result = make_adaptive_lambda(
+        df,
+        base_lambda=lambda_from_expected_duration(30.0),
+        noise_scale=1.0,
+        shock_scale=1.0,
+        min_duration=5.0,
+        max_duration=60.0,
+        form="multiplicative",
+    )
+
+    assert result.iloc[0] == pytest.approx(lambda_from_expected_duration(60.0))
+    assert result.iloc[1] == pytest.approx(lambda_from_expected_duration(5.0))
+
+
 def test_adaptive_lambda_increases_with_noise_when_shock_fixed():
     df = pd.DataFrame({"noise_score_raw": [-1.0, 0.0, 1.0], "shock_score_raw": [0.0, 0.0, 0.0]})
 
@@ -138,6 +164,7 @@ def test_adaptive_lambda_rejects_nan_scores():
         ({"base_lambda": 1.0, "shock_scale": -0.1}, "shock_scale must be nonnegative"),
         ({"base_lambda": 1.0, "min_lambda": -0.1}, "min_lambda must be nonnegative"),
         ({"base_lambda": 1.0, "min_lambda": 2.0, "max_lambda": 1.0}, "max_lambda"),
+        ({"base_lambda": 1.0, "form": "bad"}, "form must be one of"),
     ],
 )
 def test_adaptive_lambda_rejects_invalid_parameters(kwargs, message):
