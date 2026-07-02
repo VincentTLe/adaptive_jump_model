@@ -100,3 +100,15 @@ When the current `TASK.md` explicitly allows HMMs, Jump Models, adaptive models,
 backtests, reports, dashboards, or additional dependencies, that task-specific
 approval is sufficient. Continue to obey the data, security, testing, and
 reporting rules above.
+
+## Session Handoff (mọi agent: Claude / Codex / Cursor)
+
+Nguồn sự thật là `.agent/session-log.jsonl` (append-only, mỗi phiên đúng 1 dòng JSON).
+
+- **Đầu phiên:** đọc dòng cuối của `.agent/session-log.jsonl` + chạy `git status` trước
+  khi làm; nêu tình hình hiện tại và bước kế tiếp.
+- **Cuối phiên:** append đúng 1 dòng JSON với các field
+  `ts, agent, model, goal, files, verification, commit, next, notes`, rồi chạy
+  `python3 .agent/render_log.py .agent` để dựng lại `session-log.html`.
+- Đặt `agent` = `claude` / `codex` / `cursor`. Không sửa tay file HTML, không xoá
+  dòng cũ, không bịa kết quả verification hay commit sha. Tiện ích: `bash .agent/handoff.sh`.

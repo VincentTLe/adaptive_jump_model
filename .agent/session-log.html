@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session log — adaptive_jump_model</title>
+<style>
+  :root{--bg:#0f1117;--bg2:#161922;--bg3:#1f2330;--fg:#e7ecef;--dim:#9aa5b1;--accent:#7bdcb5;--cyan:#7bf0ff;--border:#2a3040;}
+  *{box-sizing:border-box;} body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;line-height:1.6;font-size:15px;}
+  code{font-family:'JetBrains Mono',ui-monospace,monospace;background:var(--bg3);color:var(--cyan);
+    padding:.06em .35em;border-radius:4px;font-size:.86em;}
+  header{max-width:880px;margin:0 auto;padding:42px 28px 8px;}
+  header h1{margin:0;font-size:26px;font-weight:800;color:var(--accent);letter-spacing:-.02em;}
+  header .sub{color:var(--dim);font-size:13px;margin:.3em 0 0;}
+  main{max-width:880px;margin:0 auto;padding:18px 28px 60px;display:flex;flex-direction:column;gap:14px;}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 18px;
+    border-left:3px solid var(--accent);}
+  .head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;}
+  .ts{font-family:'JetBrains Mono',monospace;color:var(--cyan);font-size:13px;}
+  .who{color:var(--dim);font-size:12.5px;text-transform:uppercase;letter-spacing:.5px;}
+  .goal{font-size:16px;font-weight:600;margin:.5em 0 .8em;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px;}
+  @media(max-width:620px){.grid{grid-template-columns:1fr;}}
+  .lbl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);
+    font-weight:700;margin-bottom:2px;}
+  .grid ul{margin:.2em 0;padding-left:1.1em;} .grid li{margin:.15em 0;}
+  .grid p{margin:.2em 0;}
+  .notes{margin:.9em 0 0;padding-top:.7em;border-top:1px dashed var(--border);font-size:14px;}
+  .notes .lbl{display:inline;margin-right:.4em;}
+  .dim{color:var(--dim);} .empty{color:var(--dim);text-align:center;padding:40px;}
+</style></head>
+<body>
+<header><h1>Session log</h1><p class="sub">3 session(s) · newest first · generated 2026-06-30 19:54 UTC</p></header>
+<main>
+    <article class="card">
+      <div class="head"><span class="ts">2026-06-30T19:54Z</span><span class="who">codex · gpt-5</span></div>
+      <p class="goal">Prototype library-backed backtest audit plots from cached model signals without rerunning full models</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>scripts/run_model_comparison_demo.py (exports model_backtest_frames.csv.gz)</code></li><li><code>scripts/run_library_backtest_audit.py (new optional vectorbt/quantstats/backtesting/plotly audit)</code></li><li><code>reports/quick/library_audit/* (quick audit HTML + metrics)</code></li><li><code>reports/quick/tables/model_backtest_frames.csv.gz (quick cache)</code></li><li><code>.agent/session-log.jsonl + session-log.html (handoff)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>quick model cache: 13.13s; quick library audit: 12.86s; Playwright opened trade_equity_IVE_fixed_jm.html and screenshot nonblank; pytest: 90 passed; ruff check src scripts tests: passed; pip check: passed</p></div>
+        <div><span class="lbl">Commit</span><p><code>uncommitted on branch fix/backtest-trade-audit</code></p></div>
+        <div><span class="lbl">Next step</span><p>Do not rerun all-symbol full yet. If approved, run one-symbol full cache first, e.g. IVE, then run library audit on reports/full for that symbol and inspect runtime/file size.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Installed pyfolio-reloaded, empyrical-reloaded, backtesting, bt into /tmp/adaptive_jump_model_venv only; requirements.txt unchanged. backtesting.py uses FractionalBacktest and now matches round-trip counts on quick. vectorbt/quantstats are the cleaner audit paths; backtesting.py remains convention-sensitive.</p>
+    </article>
+    <article class="card">
+      <div class="head"><span class="ts">2026-06-30T19:33Z</span><span class="who">codex · gpt-5</span></div>
+      <p class="goal">Backtest audit patch: mode-isolated outputs, trade/round-trip logs, optional library checks, Sharpe annualization reconciliation</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/experiments.py (trade/round-trip helpers, signal_state, optional audit imports)</code></li><li><code>scripts/run_model_comparison_demo.py (reports/{mode}, trade CSVs, library check table)</code></li><li><code>scripts/run_all_demos.py (mode output root)</code></li><li><code>scripts/run_synthetic_separation_demo.py (--output-root)</code></li><li><code>tests/test_experiments.py (trade log, optional deps, delay tests)</code></li><li><code>reports/quick/* (quick verification artifacts generated)</code></li><li><code>.agent/session-log.jsonl + session-log.html (handoff)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>pytest: 90 passed; ruff check src scripts tests: passed; pip check: passed; quick demo generated reports/quick including model_trade_events.csv and model_round_trips.csv</p></div>
+        <div><span class="lbl">Commit</span><p><code>uncommitted on branch fix/backtest-trade-audit</code></p></div>
+        <div><span class="lbl">Next step</span><p>Review patch; do selective staging only. Before any commit intended to preserve report artifacts, regenerate full outputs under reports/full or explicitly exclude quick/local report artifacts. Consider approved split for oversized experiments.py and run_model_comparison_demo.py.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Custom backtest remains source of truth. quantstats/vectorbt are optional audit checks with status columns and shared periods_per_year=98280. Top-level reports remain dirty from earlier quick IVE overwrite; this patch writes new model outputs to reports/quick and reports/full to prevent future clobbering.</p>
+    </article>
+    <article class="card">
+      <div class="head"><span class="ts">2026-06-30T19:06Z</span><span class="who">claude · opus-4.8</span></div>
+      <p class="goal">Review dự án + workflow đa-agent; chẩn đoán nghi vấn &#x27;full run chỉ 10 ngày&#x27;; tra prior-art adaptive jump penalty; dựng .agent handoff</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>.agent/render_log.py + handoff.sh (new)</code></li><li><code>.agent/session-log.jsonl + session-log.html (new)</code></li><li><code>AGENTS.md (+ mục Session Handoff)</code></li><li><code>không đụng src/scripts/reports (Codex đang sửa, uncommitted)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>Read-only audit. Full run xác nhận THẬT: n_obs test 0.5M–1M/symbol, trải nhiều năm. &#x27;10 ngày&#x27; = chart chỉ vẽ tail(2000). DP verify vs brute-force oracle (200 ca PASS) phiên trước; ~0.38M t/s. Không chạy pytest phiên này.</p></div>
+        <div><span class="lbl">Commit</span><p><code>uncommitted (phiên này không commit; HEAD=6712c2d của Codex; working tree còn thay đổi chưa commit)</code></p></div>
+        <div><span class="lbl">Next step</span><p>1) Sửa backtest (total_return −100%, 20k–56k lệnh minute-bar → mis-specified; Codex có vẻ đang sửa). 2) Adaptive λ cần dynamic range thật (median≈fixed 3.37 → Fixed vs Adaptive ~98–99% giống cả ở full scale). 3) Sửa chart tail(2000)→toàn range + in date-range &amp; n_obs. 4) Dựng baseline CV-optimal λ + đo noise floor trước khi tin delta adaptive-vs-fixed.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Env: dùng /tmp/adaptive_jump_model_venv (Codex tạo: numpy/pandas/scipy/sklearn/hmmlearn/matplotlib); không interpreter nào khác chạy đủ test suite. Prior-art: SOTA (Shu/Kolm/Mulvey) 1 λ toàn cục chọn bằng CV-Sharpe, daily; time-varying λ intraday/microstructure chưa thấy ai làm → baseline phải đánh bại = CV-optimal λ. Đã push GitHub VincentTLe/adaptive_jump_model (kể cả backtest −100%).</p>
+    </article>
+</main>
+</body></html>
