@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-
 import numpy as np
 import pandas as pd
 
@@ -217,105 +216,6 @@ def make_leakage_safe_feature_frame(
         for column in out.columns:
             out[column] = expanding_zscore_series(out[column], min_periods=min_periods)
     return out.replace([np.inf, -np.inf], np.nan).dropna()
-
-
-def positions_from_states(
-    states: np.ndarray | pd.Series,
-    delay_bars: int = 1,
-    invested_state: int = 0,
-) -> np.ndarray | pd.Series:
-    """Convert states to 0/1 positions with one close-to-next-bar lag.
-
-    ``delay_bars=0`` means the state estimated after bar ``t`` first affects
-    the position for bar ``t+1``. Larger delays add more bars of waiting.
-    """
-    if delay_bars < 1:
-        raise ValueError("delay_bars must be at least 1 for leakage-safe backtests")
-    is_series = isinstance(states, pd.Series)
-    index = states.index if is_series else None
-    state_array = _validate_states(states)
-    signal = (state_array == invested_state).astype(float)
-    lag = delay_bars
-    position = np.zeros(len(signal), dtype=float)
-    if lag < len(signal):
-        position[lag:] = signal[:-lag]
-    if is_series:
-        return pd.Series(position, index=index, name="position")
-    return position
-
-
-def backtest_regime_01(
-    returns: np.ndarray | pd.Series,
-    states: np.ndarray | pd.Series,
-    delay_bars: int = 1,
-    transaction_cost: float = 0.0,
-    periods_per_year: int = 252 * 390,
-) -> tuple[pd.DataFrame, dict[str, float]]:
-    """Vectorized 0/1 regime backtest with delay and one-way costs."""
-    if transaction_cost < 0.0 or not np.isfinite(transaction_cost):
-        raise ValueError("transaction_cost must be finite and nonnegative")
-    if periods_per_year <= 0:
-        raise ValueError("periods_per_year must be positive")
-    r = _as_series(returns, "return")
-    state_series = _as_series(states, "state", index=r.index)
-    position = positions_from_states(state_series, delay_bars=delay_bars)
-    turnover = position.diff().abs().fillna(position.abs())
-    gross = position * r
-    costs = transaction_cost * turnover
-    net = gross - costs
-    equity = (1.0 + net).cumprod()
-    result = pd.DataFrame(
-        {
-            "return": r,
-            "state": state_series.astype(int),
-            "position": position,
-            "gross_return": gross,
-            "turnover": turnover,
-            "cost": costs,
-            "net_return": net,
-            "equity": equity,
-        },
-        index=r.index,
-    )
-    return result, backtest_metrics(result["net_return"], result["position"], periods_per_year=periods_per_year)
-
-
-def backtest_metrics(
-    strategy_returns: np.ndarray | pd.Series,
-    positions: np.ndarray | pd.Series,
-    periods_per_year: int = 252 * 390,
-) -> dict[str, float]:
-    """Compute standard vectorized backtest metrics."""
-    r = _as_series(strategy_returns, "strategy_returns").dropna()
-    p = _as_series(positions, "positions").reindex(r.index).fillna(0.0)
-    if len(r) == 0:
-        raise ValueError("strategy_returns must contain at least one finite row")
-    equity = (1.0 + r).cumprod()
-    total_return = float(equity.iloc[-1] - 1.0)
-    if total_return <= -1.0:
-        annualized_return = -1.0
-    else:
-        annualized_return = float((1.0 + total_return) ** (periods_per_year / len(r)) - 1.0)
-    volatility = float(r.std(ddof=1) * np.sqrt(periods_per_year)) if len(r) > 1 else 0.0
-    sharpe = float(r.mean() / r.std(ddof=1) * np.sqrt(periods_per_year)) if len(r) > 1 and r.std(ddof=1) > 0 else np.nan
-    drawdown = equity / equity.cummax() - 1.0
-    max_drawdown = float(-drawdown.min())
-    calmar = float(annualized_return / max_drawdown) if max_drawdown > 0.0 else np.nan
-    cutoff = r.quantile(0.05)
-    expected_shortfall = float(r[r <= cutoff].mean())
-    turnover = float(p.diff().abs().fillna(p.abs()).sum())
-    return {
-        "total_return": total_return,
-        "annualized_return": annualized_return,
-        "annualized_volatility": volatility,
-        "sharpe": sharpe,
-        "max_drawdown": max_drawdown,
-        "calmar": calmar,
-        "expected_shortfall_5pct": expected_shortfall,
-        "turnover": turnover,
-        "n_trades": int((p.diff().abs().fillna(p.abs()) > 0).sum()),
-        "exposure": float(p.mean()),
-    }
 
 
 def path_diagnostics(states: np.ndarray | pd.Series) -> dict[str, float]:

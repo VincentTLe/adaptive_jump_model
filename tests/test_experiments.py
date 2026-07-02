@@ -2,23 +2,29 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import adaptive_jump.library_checks as library_checks
 from adaptive_jump.dp import solve_regime_path
+from adaptive_jump.backtesting import (
+    backtest_regime_01,
+    positions_from_states,
+    round_trips_from_backtest_frame,
+    trade_events_from_backtest_frame,
+)
 from adaptive_jump.experiments import (
     apply_feature_stats,
-    backtest_regime_01,
     compare_state_paths,
     fit_feature_stats,
     make_time_splits,
     make_train_only_adaptive_scores,
     make_train_only_feature_frame,
     path_diagnostics,
-    positions_from_states,
     predict_causal_states,
     relabel_states_by_realized_volatility,
     apply_state_mapping,
     state_mapping_by_realized_volatility,
     summarize_regime_path,
 )
+from adaptive_jump.library_checks import quantstats_metric_check, vectorbt_signal_check
 
 
 def test_time_splits_are_ordered_and_non_overlapping():
@@ -94,6 +100,8 @@ def test_backtest_delay_uses_prior_signal_without_extra_shift():
     frame, metrics = backtest_regime_01(returns, states, delay_bars=1, transaction_cost=0.0, periods_per_year=3)
 
     assert frame["position"].tolist() == [0.0, 1.0, 0.0]
+    assert np.isnan(frame["signal_state"].iloc[0])
+    assert frame["signal_state"].iloc[1:].tolist() == [0.0, 1.0]
     assert frame["net_return"].tolist() == pytest.approx([0.0, 0.20, 0.0])
     assert metrics["total_return"] == pytest.approx(0.20)
 
@@ -113,6 +121,72 @@ def test_transaction_cost_is_one_way_turnover_cost():
     assert frame["turnover"].sum() == pytest.approx(3.0)
     assert frame["cost"].sum() == pytest.approx(0.003)
     assert metrics["n_trades"] == 3
+
+
+def test_trade_event_log_records_delayed_source_state():
+    index = pd.date_range("2026-01-01 09:30", periods=4, freq="min")
+    returns = pd.Series([0.0, 0.01, -0.02, 0.03], index=index)
+    states = pd.Series([0, 1, 0, 1], index=index)
+    frame, _ = backtest_regime_01(returns, states, delay_bars=1, transaction_cost=0.001, periods_per_year=4)
+
+    events = trade_events_from_backtest_frame(frame, "TST", "Fixed JM", delay_bars=1, transaction_cost=0.001)
+
+    assert events["timestamp"].tolist() == index[1:].tolist()
+    assert events["source_state_timestamp"].tolist() == index[:-1].tolist()
+    assert events["source_state"].tolist() == [0.0, 1.0, 0.0]
+    assert events["side"].tolist() == ["buy", "sell", "buy"]
+    assert events["position_timing"].unique().tolist() == ["delayed_by_1_bars"]
+
+
+def test_round_trip_log_pairs_closed_and_open_trades():
+    index = pd.date_range("2026-01-01 09:30", periods=4, freq="min")
+    returns = pd.Series([0.0, 0.01, -0.02, 0.03], index=index)
+    states = pd.Series([0, 1, 0, 1], index=index)
+    frame, _ = backtest_regime_01(returns, states, delay_bars=1, transaction_cost=0.001, periods_per_year=4)
+
+    trips = round_trips_from_backtest_frame(frame, "TST", "Adaptive JM", delay_bars=1, transaction_cost=0.001)
+
+    assert trips["status"].tolist() == ["closed", "open"]
+    assert trips.loc[0, "entry_timestamp"] == index[1]
+    assert trips.loc[0, "exit_timestamp"] == index[2]
+    assert trips.loc[0, "holding_bars"] == 1
+    assert trips.loc[1, "entry_timestamp"] == index[3]
+    assert pd.isna(trips.loc[1, "exit_timestamp"])
+
+
+def test_library_backtest_checks_return_finite_metrics():
+    returns = pd.Series(np.linspace(-0.02, 0.02, 100))
+    positions = pd.Series(([0.0] * 10 + [1.0] * 60 + [0.0] * 30))
+    price = (1.0 + returns).cumprod()
+
+    qs_metrics = quantstats_metric_check(returns, periods_per_year=4)
+    vbt_metrics = vectorbt_signal_check(price, positions, transaction_cost=0.001, periods_per_year=4)
+
+    assert qs_metrics["quantstats_status"] in {"ok", "missing"}
+    assert vbt_metrics["vectorbt_status"] in {"ok", "missing"}
+    if qs_metrics["quantstats_status"] == "ok":
+        assert np.isfinite(qs_metrics["quantstats_sharpe"])
+    if vbt_metrics["vectorbt_status"] == "ok":
+        assert vbt_metrics["vectorbt_trades"] == 1
+        assert np.isfinite(vbt_metrics["vectorbt_total_return"])
+
+
+def test_library_backtest_checks_are_optional(monkeypatch):
+    def missing_package(name):
+        raise ModuleNotFoundError(name=name)
+
+    monkeypatch.setattr(library_checks, "import_module", missing_package)
+    returns = pd.Series(np.linspace(-0.01, 0.01, 20))
+    positions = pd.Series(([0.0] * 5 + [1.0] * 10 + [0.0] * 5))
+    price = (1.0 + returns).cumprod()
+
+    qs_metrics = quantstats_metric_check(returns, periods_per_year=4)
+    vbt_metrics = vectorbt_signal_check(price, positions, transaction_cost=0.001, periods_per_year=4)
+
+    assert qs_metrics["quantstats_status"] == "missing"
+    assert vbt_metrics["vectorbt_status"] == "missing"
+    assert np.isnan(qs_metrics["quantstats_sharpe"])
+    assert np.isnan(vbt_metrics["vectorbt_total_return"])
 
 
 def test_path_diagnostics_and_summary_are_correct():
