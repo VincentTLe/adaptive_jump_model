@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -64,10 +66,12 @@ def main() -> None:
     parser.add_argument("--train-fraction", type=float, default=0.60)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--force", action="store_true")
+    parser.add_argument("--log-file", default=None)
     args = parser.parse_args()
     cost_grid = _parse_cost_grid(args.cost_grid, args.transaction_cost)
 
     reports = Path("reports") / args.mode
+    log_file = Path(args.log_file) if args.log_file else reports / "run.log"
     tables = reports / "tables"
     figures = reports / "figures"
     tables.mkdir(parents=True, exist_ok=True)
@@ -86,20 +90,25 @@ def main() -> None:
     all_backtest_frames = []
     summary_rows = []
     plotted = False
+    run_start = time.perf_counter()
+    _log(log_file, f"START mode={args.mode} symbols={symbols} cost_grid={cost_grid}")
 
     for symbol in symbols:
+        symbol_start = time.perf_counter()
         symbol_tables = reports / "symbols" / symbol / "tables"
         if args.resume and not args.force and (symbol_tables / "model_run_summary.csv").exists():
-            print(f"RESUME {symbol} from {symbol_tables}")
+            _log(log_file, f"RESUME symbol={symbol} from={symbol_tables}")
             result = _load_symbol_outputs(symbol_tables)
         else:
             row = inventory.loc[inventory["symbol"] == symbol].iloc[0]
+            _log(log_file, f"LOAD symbol={symbol} path={row['output_path']}")
             df = _load_processed(Path(row["output_path"]))
             if mode_config["max_rows"] is not None:
                 df = df.tail(mode_config["max_rows"])
             result = _run_symbol(
                 df,
                 symbol,
+                log_file,
                 args.train_fraction,
                 args.delay_bars,
                 args.transaction_cost,
@@ -113,6 +122,7 @@ def main() -> None:
                 mode_config,
             )
             _write_symbol_outputs(symbol_tables, result)
+            _log(log_file, f"CHECKPOINT symbol={symbol} path={symbol_tables}")
         all_diagnostics.append(result["diagnostics"])
         all_summaries.append(result["summary"])
         all_agreements.append(result["agreement"])
@@ -131,6 +141,7 @@ def main() -> None:
             plot_backtest_comparison(result["backtest_frames"], figures / f"model_backtest_equity_{symbol}.png", symbol)
             for model, frame in result["backtest_frames"].items():
                 plot_trade_equity(frame, figures / f"trade_equity_{symbol}_{figure_slug(model)}.png", symbol, model)
+        _log(log_file, f"DONE symbol={symbol} elapsed_seconds={time.perf_counter() - symbol_start:.2f}")
 
     diagnostics = pd.concat(all_diagnostics, ignore_index=True)
     regime_summary = pd.concat(all_summaries, ignore_index=True)
@@ -174,6 +185,7 @@ def main() -> None:
     print(f"SAVED {tables / 'model_backtest_frames.csv.gz'}")
     print(f"SAVED {reports / 'dashboard.html'}")
     print(summary[["symbol", "n_obs", "hmm_n_switches", "fixed_jm_n_switches", "adaptive_jm_n_switches"]].to_string(index=False))
+    _log(log_file, f"DONE mode={args.mode} elapsed_seconds={time.perf_counter() - run_start:.2f}")
 
 
 def _mode_config(mode: str) -> dict[str, int | None]:
@@ -198,6 +210,14 @@ def _load_processed(path: Path) -> pd.DataFrame:
     df = pd.read_csv(path, parse_dates=["timestamp"])
     df = df.set_index("timestamp").sort_index(kind="mergesort")
     return df.replace([np.inf, -np.inf], np.nan)
+
+
+def _log(path: Path, message: str) -> None:
+    line = f"{datetime.now().isoformat(timespec='seconds')} {message}"
+    print(line, flush=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(line + "\n")
 
 
 def _write_symbol_outputs(tables: Path, result: dict[str, object]) -> None:
@@ -231,6 +251,7 @@ def _load_symbol_outputs(tables: Path) -> dict[str, object]:
 def _run_symbol(
     df: pd.DataFrame,
     symbol: str,
+    log_file: Path,
     train_fraction: float,
     delay_bars: int,
     transaction_cost: float,
@@ -243,6 +264,7 @@ def _run_symbol(
     adaptive_max_duration: float,
     mode_config: dict[str, int | None],
 ) -> dict[str, object]:
+    start = time.perf_counter()
     df = df.loc[np.isfinite(df["return"].to_numpy(dtype=float))].copy()
     if len(df) < 200:
         raise ValueError(f"{symbol} needs at least 200 finite-return rows")
@@ -265,8 +287,14 @@ def _run_symbol(
     returns_test = returns.loc[x_test.index]
     if len(x_train) < 100 or len(x_test) < 50:
         raise ValueError(f"{symbol} has too few finite feature rows after warmup")
+    _log(
+        log_file,
+        f"SPLIT symbol={symbol} raw_rows={len(df)} feature_rows={len(features)} train_rows={len(x_train)} test_rows={len(x_test)}",
+    )
 
     base_lambda = lambda_from_expected_duration(base_duration)
+    stage = time.perf_counter()
+    _log(log_file, f"FIT_START symbol={symbol} model=HMM")
     hmm = fit_gaussian_hmm(
         returns_train.to_numpy(),
         n_states=2,
@@ -274,9 +302,12 @@ def _run_symbol(
         max_iter=int(mode_config["hmm_max_iter"]),
         random_state=17,
     )
+    _log(log_file, f"FIT_DONE symbol={symbol} model=HMM elapsed_seconds={time.perf_counter() - stage:.2f}")
     hmm_mapping = _mapping_or_identity("HMM", symbol, hmm.states, returns_train)
     hmm_test = apply_state_mapping(_hmm_filter_states(returns_test.to_numpy(), hmm), hmm_mapping)
 
+    stage = time.perf_counter()
+    _log(log_file, f"FIT_START symbol={symbol} model=Fixed_JM")
     fixed = fit_jump_model(
         x_train.to_numpy(),
         base_lambda,
@@ -286,6 +317,7 @@ def _run_symbol(
         random_state=23,
         standardize=False,
     )
+    _log(log_file, f"FIT_DONE symbol={symbol} model=Fixed_JM elapsed_seconds={time.perf_counter() - stage:.2f}")
     fixed_mapping = _mapping_or_identity("Fixed JM", symbol, fixed.states, returns_train)
     fixed_test_raw = predict_causal_states(_squared_distances(x_test.to_numpy(), fixed.centers), base_lambda)
     fixed_test = apply_state_mapping(fixed_test_raw, fixed_mapping)
@@ -301,6 +333,8 @@ def _run_symbol(
         max_duration=adaptive_max_duration,
         form=adaptive_form,
     )
+    stage = time.perf_counter()
+    _log(log_file, f"FIT_START symbol={symbol} model=Adaptive_JM")
     adaptive = fit_jump_model(
         x_train.to_numpy(),
         lambda_train.to_numpy(),
@@ -310,6 +344,7 @@ def _run_symbol(
         random_state=29,
         standardize=False,
     )
+    _log(log_file, f"FIT_DONE symbol={symbol} model=Adaptive_JM elapsed_seconds={time.perf_counter() - stage:.2f}")
     adaptive_mapping = _mapping_or_identity("Adaptive JM", symbol, adaptive.states, returns_train)
     lambda_test = make_adaptive_lambda(
         test_scores,
@@ -328,6 +363,8 @@ def _run_symbol(
     summary = _summary_table(symbol, returns_test, paths)
     agreement = compare_state_paths(paths)
     agreement.insert(0, "symbol", symbol)
+    stage = time.perf_counter()
+    _log(log_file, f"BACKTEST_START symbol={symbol}")
     backtest_frames, backtest, trade_events, round_trips = make_backtest_outputs(
         symbol,
         returns_test,
@@ -338,6 +375,7 @@ def _run_symbol(
     )
     library_check = library_check_table(symbol, backtest_frames, transaction_cost)
     frame_table = backtest_frame_table(symbol, backtest_frames)
+    _log(log_file, f"BACKTEST_DONE symbol={symbol} elapsed_seconds={time.perf_counter() - stage:.2f}")
     plot_frame = pd.DataFrame(
         {
             "price": aligned.loc[x_test.index, "price"],
@@ -368,6 +406,7 @@ def _run_symbol(
         "fixed_jm_n_switches": int(path_diagnostics(fixed_test)["n_switches"]),
         "adaptive_jm_n_switches": int(path_diagnostics(adaptive_test)["n_switches"]),
     }
+    _log(log_file, f"SYMBOL_DONE symbol={symbol} elapsed_seconds={time.perf_counter() - start:.2f}")
     return {
         "diagnostics": diagnostics,
         "summary": summary,
