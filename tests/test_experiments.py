@@ -5,7 +5,12 @@ import pytest
 import adaptive_jump.library_checks as library_checks
 from adaptive_jump.dp import solve_regime_path
 from adaptive_jump.backtesting import (
+    HIGH_VOL_INVESTED,
+    LOW_VOL_INVESTED,
+    TRAIN_RETURN_SELECTED,
     backtest_regime_01,
+    invested_state_by_mean_return,
+    make_backtest_outputs,
     positions_from_states,
     round_trips_from_backtest_frame,
     trade_events_from_backtest_frame,
@@ -106,6 +111,32 @@ def test_backtest_delay_uses_prior_signal_without_extra_shift():
     assert metrics["total_return"] == pytest.approx(0.20)
 
 
+def test_backtest_can_invest_in_high_vol_state_after_delay():
+    returns = pd.Series([0.10, 0.20, 0.30])
+    states = pd.Series([0, 1, 0])
+
+    frame, metrics = backtest_regime_01(
+        returns,
+        states,
+        delay_bars=1,
+        transaction_cost=0.0,
+        periods_per_year=3,
+        invested_state=1,
+    )
+
+    assert frame["position"].tolist() == [0.0, 0.0, 1.0]
+    assert frame["invested_state"].tolist() == [1, 1, 1]
+    assert frame["net_return"].tolist() == pytest.approx([0.0, 0.0, 0.30])
+    assert metrics["total_return"] == pytest.approx(0.30)
+
+
+def test_invested_state_by_mean_return_uses_supplied_train_sample_only():
+    train_returns = pd.Series([0.01, 0.02, -0.10, -0.20])
+    train_states = pd.Series([0, 0, 1, 1])
+
+    assert invested_state_by_mean_return(train_states, train_returns) == 0
+
+
 def test_positions_require_positive_delay_for_backtest_safety():
     with pytest.raises(ValueError, match="at least 1"):
         positions_from_states(np.array([0, 1, 0]), delay_bars=0)
@@ -132,6 +163,8 @@ def test_trade_event_log_records_delayed_source_state():
     events = trade_events_from_backtest_frame(frame, "TST", "Fixed JM", delay_bars=1, transaction_cost=0.001)
 
     assert events["timestamp"].tolist() == index[1:].tolist()
+    assert events["backtest_policy"].unique().tolist() == ["legacy"]
+    assert events["invested_state"].unique().tolist() == [0.0]
     assert events["source_state_timestamp"].tolist() == index[:-1].tolist()
     assert events["source_state"].tolist() == [0.0, 1.0, 0.0]
     assert events["side"].tolist() == ["buy", "sell", "buy"]
@@ -152,6 +185,35 @@ def test_round_trip_log_pairs_closed_and_open_trades():
     assert trips.loc[0, "holding_bars"] == 1
     assert trips.loc[1, "entry_timestamp"] == index[3]
     assert pd.isna(trips.loc[1, "exit_timestamp"])
+
+
+def test_make_backtest_outputs_records_backtest_policies():
+    returns = pd.Series([0.01, 0.02, -0.01, -0.02])
+    paths = {"Fixed JM": np.array([0, 1, 0, 1])}
+    train_returns = pd.Series([-0.03, -0.02, 0.04, 0.05])
+    train_paths = {"Fixed JM": np.array([0, 0, 1, 1])}
+
+    frames, metrics, events, trips = make_backtest_outputs(
+        "TST",
+        returns,
+        paths,
+        delay_bars=1,
+        transaction_cost=0.0,
+        cost_grid=[0.0],
+        train_returns=train_returns,
+        train_paths=train_paths,
+    )
+
+    policies = set(metrics.loc[metrics["model"] == "Fixed JM", "backtest_policy"])
+    assert policies == {LOW_VOL_INVESTED, HIGH_VOL_INVESTED, TRAIN_RETURN_SELECTED}
+    selected = metrics.loc[
+        (metrics["model"] == "Fixed JM") & (metrics["backtest_policy"] == TRAIN_RETURN_SELECTED),
+        "invested_state",
+    ].iloc[0]
+    assert selected == 1
+    assert all(frame.attrs["backtest_policy"] for frame in frames.values())
+    assert set(events["backtest_policy"]) >= {LOW_VOL_INVESTED, HIGH_VOL_INVESTED, TRAIN_RETURN_SELECTED}
+    assert set(trips["backtest_policy"]) >= {LOW_VOL_INVESTED, HIGH_VOL_INVESTED, TRAIN_RETURN_SELECTED}
 
 
 def test_library_backtest_checks_return_finite_metrics():

@@ -46,18 +46,23 @@ def main() -> None:
         frames = frames[frames["symbol"].isin(args.symbols)]
     if args.models:
         frames = frames[frames["model"].isin(args.models)]
+    if "backtest_policy" not in frames.columns:
+        frames["backtest_policy"] = "legacy"
+    if "invested_state" not in frames.columns:
+        frames["invested_state"] = np.nan
     if frames.empty:
         raise ValueError("no rows match requested symbols/models")
 
     benchmark_returns = _benchmark_returns(frames)
     rows = []
     start = time.perf_counter()
-    for (symbol, model), group in frames.groupby(["symbol", "model"], sort=True):
+    for (symbol, model, policy), group in frames.groupby(["symbol", "model", "backtest_policy"], sort=True):
         group_start = time.perf_counter()
         group = group.sort_values("timestamp").set_index("timestamp")
         row = _audit_group(
             symbol=symbol,
             model=model,
+            backtest_policy=policy,
             frame=group,
             benchmark_returns=benchmark_returns.get(symbol),
             out_dir=out_dir,
@@ -72,6 +77,7 @@ def main() -> None:
             "AUDITED",
             symbol,
             model,
+            policy,
             f"rows={row['n_rows']}",
             f"events={row['n_trade_events']}",
             f"elapsed={row['elapsed_seconds']:.2f}s",
@@ -87,6 +93,7 @@ def main() -> None:
 def _audit_group(
     symbol: str,
     model: str,
+    backtest_policy: str,
     frame: pd.DataFrame,
     benchmark_returns: pd.Series | None,
     out_dir: Path,
@@ -100,7 +107,8 @@ def _audit_group(
     close = (1.0 + returns).cumprod()
     position = frame["position"].astype(float).fillna(0.0)
     entries, exits = _entries_exits(position)
-    slug = f"{symbol}_{_slug(model)}"
+    invested_state = frame["invested_state"].iloc[0] if "invested_state" in frame else np.nan
+    slug = f"{symbol}_{_slug(model)}_{_slug(backtest_policy)}"
     custom_equity = frame["equity"].astype(float)
 
     vectorbt_result = _run_vectorbt(
@@ -129,7 +137,7 @@ def _audit_group(
         returns=vectorbt_result["returns"],
         benchmark_returns=benchmark_returns,
         output=None if skip_quantstats else out_dir / f"quantstats_{slug}.html",
-        title=f"{symbol} {model} vectorbt-return tear sheet",
+        title=f"{symbol} {model} {backtest_policy} vectorbt-return tear sheet",
     )
     quantstats_custom = _run_quantstats_metrics(custom_returns)
     backtesting_result = _run_backtesting_py(
@@ -142,6 +150,8 @@ def _audit_group(
     return {
         "symbol": symbol,
         "model": model,
+        "backtest_policy": backtest_policy,
+        "invested_state": invested_state,
         "n_rows": int(len(frame)),
         "n_trade_events": int(entries.sum() + exits.sum()),
         "custom_total_return": float(custom_equity.iloc[-1] - 1.0),
@@ -225,7 +235,10 @@ def _run_quantstats_metrics(returns: pd.Series) -> dict[str, object]:
         qs = import_module("quantstats")
     except ModuleNotFoundError as exc:
         return {"status": f"missing:{exc.name}", "sharpe": np.nan}
-    return {"status": "ok", "sharpe": float(qs.stats.sharpe(returns.dropna(), periods=PERIODS_PER_YEAR))}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        sharpe = float(qs.stats.sharpe(returns.dropna(), periods=PERIODS_PER_YEAR))
+    return {"status": "ok", "sharpe": sharpe}
 
 
 def _run_backtesting_py(
@@ -378,7 +391,7 @@ def _benchmark_returns(frames: pd.DataFrame) -> dict[str, pd.Series]:
 
 
 def _slug(value: str) -> str:
-    return value.lower().replace(" ", "_").replace("/", "_")
+    return value.lower().replace(" ", "_").replace("/", "_").replace("[", "").replace("]", "")
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from importlib import import_module
 
 import numpy as np
@@ -29,13 +30,15 @@ def quantstats_metric_check(
             "quantstats_max_drawdown": np.nan,
             "quantstats_expected_shortfall": np.nan,
         }
-    return {
-        "quantstats_status": "ok",
-        "quantstats_periods_per_year": periods_per_year,
-        "quantstats_sharpe": float(qs.stats.sharpe(r, periods=periods_per_year)),
-        "quantstats_max_drawdown": float(abs(qs.stats.max_drawdown(r))),
-        "quantstats_expected_shortfall": float(qs.stats.expected_shortfall(r)),
-    }
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return {
+            "quantstats_status": "ok",
+            "quantstats_periods_per_year": periods_per_year,
+            "quantstats_sharpe": float(qs.stats.sharpe(r, periods=periods_per_year)),
+            "quantstats_max_drawdown": float(abs(qs.stats.max_drawdown(r))),
+            "quantstats_expected_shortfall": float(qs.stats.expected_shortfall(r)),
+        }
 
 
 def vectorbt_signal_check(
@@ -91,12 +94,17 @@ def vectorbt_signal_check(
 
 def library_check_table(symbol: str, frames: dict[str, pd.DataFrame], transaction_cost: float) -> pd.DataFrame:
     rows = []
-    for model, frame in frames.items():
+    for key, frame in frames.items():
+        model = frame.attrs.get("model", key)
+        policy = frame.attrs.get("backtest_policy", "legacy")
+        invested_state = frame.attrs.get("invested_state", np.nan)
         price = (1.0 + frame["return"].fillna(0.0)).cumprod()
         local_metrics = backtest_metrics(frame["net_return"], frame["position"])
         row = {
             "symbol": symbol,
             "model": model,
+            "backtest_policy": policy,
+            "invested_state": invested_state,
             "local_total_return": float(frame["equity"].iloc[-1] - 1.0),
             "local_sharpe": local_metrics["sharpe"],
             "periods_per_year": 252 * 390,

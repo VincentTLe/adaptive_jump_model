@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 
 from adaptive_jump.backtesting import (
+    PRIMARY_BACKTEST_POLICY,
     backtest_frame_table,
     make_backtest_outputs,
 )
@@ -133,14 +134,23 @@ def main() -> None:
         all_backtest_frames.append(result["backtest_frame_table"])
         summary_rows.append(result["summary_row"])
         if "plot_frame" in result:
+            primary_frames = _primary_policy_frames(result["backtest_frames"])
             if not plotted:
                 plot_model_comparison(result["plot_frame"], figures / "model_comparison_states.png", symbol)
-                plot_backtest_comparison(result["backtest_frames"], figures / "model_backtest_equity.png", symbol)
+                plot_backtest_comparison(primary_frames, figures / "model_backtest_equity.png", symbol)
                 plotted = True
             plot_model_comparison(result["plot_frame"], figures / f"model_comparison_states_{symbol}.png", symbol)
-            plot_backtest_comparison(result["backtest_frames"], figures / f"model_backtest_equity_{symbol}.png", symbol)
-            for model, frame in result["backtest_frames"].items():
-                plot_trade_equity(frame, figures / f"trade_equity_{symbol}_{figure_slug(model)}.png", symbol, model)
+            plot_backtest_comparison(primary_frames, figures / f"model_backtest_equity_{symbol}.png", symbol)
+            for key, frame in result["backtest_frames"].items():
+                model = frame.attrs.get("model", key)
+                policy = frame.attrs.get("backtest_policy", "legacy")
+                label = model if policy == "buy_and_hold" else f"{model} ({policy})"
+                plot_trade_equity(
+                    frame,
+                    figures / f"trade_equity_{symbol}_{figure_slug(model)}_{figure_slug(policy)}.png",
+                    symbol,
+                    label,
+                )
         _log(log_file, f"DONE symbol={symbol} elapsed_seconds={time.perf_counter() - symbol_start:.2f}")
 
     diagnostics = pd.concat(all_diagnostics, ignore_index=True)
@@ -304,6 +314,7 @@ def _run_symbol(
     )
     _log(log_file, f"FIT_DONE symbol={symbol} model=HMM elapsed_seconds={time.perf_counter() - stage:.2f}")
     hmm_mapping = _mapping_or_identity("HMM", symbol, hmm.states, returns_train)
+    hmm_train = apply_state_mapping(hmm.states, hmm_mapping)
     hmm_test = apply_state_mapping(_hmm_filter_states(returns_test.to_numpy(), hmm), hmm_mapping)
 
     stage = time.perf_counter()
@@ -319,6 +330,7 @@ def _run_symbol(
     )
     _log(log_file, f"FIT_DONE symbol={symbol} model=Fixed_JM elapsed_seconds={time.perf_counter() - stage:.2f}")
     fixed_mapping = _mapping_or_identity("Fixed JM", symbol, fixed.states, returns_train)
+    fixed_train = apply_state_mapping(fixed.states, fixed_mapping)
     fixed_test_raw = predict_causal_states(_squared_distances(x_test.to_numpy(), fixed.centers), base_lambda)
     fixed_test = apply_state_mapping(fixed_test_raw, fixed_mapping)
 
@@ -346,6 +358,7 @@ def _run_symbol(
     )
     _log(log_file, f"FIT_DONE symbol={symbol} model=Adaptive_JM elapsed_seconds={time.perf_counter() - stage:.2f}")
     adaptive_mapping = _mapping_or_identity("Adaptive JM", symbol, adaptive.states, returns_train)
+    adaptive_train = apply_state_mapping(adaptive.states, adaptive_mapping)
     lambda_test = make_adaptive_lambda(
         test_scores,
         base_lambda=base_lambda,
@@ -372,6 +385,8 @@ def _run_symbol(
         delay_bars,
         transaction_cost,
         cost_grid,
+        train_returns=returns_train,
+        train_paths={"HMM": hmm_train, "Fixed JM": fixed_train, "Adaptive JM": adaptive_train},
     )
     library_check = library_check_table(symbol, backtest_frames, transaction_cost)
     frame_table = backtest_frame_table(symbol, backtest_frames)
@@ -488,6 +503,15 @@ def _summary_table(symbol: str, returns: pd.Series, paths: dict[str, np.ndarray]
         frame.insert(0, "symbol", symbol)
         frames.append(frame)
     return pd.concat(frames, ignore_index=True)
+
+
+def _primary_policy_frames(frames: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    selected = {}
+    for key, frame in frames.items():
+        policy = frame.attrs.get("backtest_policy", "legacy")
+        if key == "Buy and Hold" or policy == PRIMARY_BACKTEST_POLICY:
+            selected[frame.attrs.get("model", key)] = frame
+    return selected or frames
 
 
 if __name__ == "__main__":

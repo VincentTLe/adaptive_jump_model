@@ -135,6 +135,9 @@ This is a sanity-check backtest on available local data, not an alpha claim.
 Signals use train-only normalization, causal state filtering, one-bar delay,
 and transaction costs. `is_primary_cost=True` rows are the cost setting used
 for saved per-bar frames and trade logs; other cost rows are sensitivity checks.
+Backtest policy is explicit: `low_vol_invested` keeps the old state-0 rule,
+`high_vol_invested` tests the inverse, and `train_return_selected` chooses the
+invested state by train-sample mean return before evaluating the test sample.
 
 Model-comparison outputs are mode-isolated under `{path.parent}` so quick runs
 do not overwrite full-run artifacts.
