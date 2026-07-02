@@ -31,6 +31,28 @@ This is a serious research project, not a toy demo project.
   dismissed as unnecessary.
 - Be honest about limitations and results, but do not under-test.
 
+## No Hand-Set Model Coefficients
+
+No coefficient that affects results may be an invented constant treated as truth.
+This includes the jump penalty / `base_lambda` (and `base-duration`), adaptive
+`noise_scale` / `shock_scale`, min/max duration bounds, and every
+transition-cost parameter.
+
+Each such coefficient MUST be one of:
+1. selected by walk-forward / cross-validation against a stated out-of-sample
+   objective (e.g. validation Sharpe penalised for turnover/drawdown), or
+2. estimated by likelihood (e.g. TVTP / EM), or
+3. derived from theory, with the derivation written in the spec/report.
+
+- The fixed-λ baseline must itself be CV-selected (CV-optimal λ). Never compare
+  adaptive against a hand-picked fixed λ or a hand-picked `base-duration`.
+- A hard-coded value is allowed ONLY as an explicit smoke-test placeholder,
+  never as the basis for any conclusion. Label any still-uncalibrated
+  coefficient `UNCALIBRATED` in the output, and rest no claim on it.
+- Record each result-affecting coefficient's provenance (how it was chosen) in
+  the output tables/report.
+- Measure the eval noise floor before trusting any adaptive-vs-baseline delta.
+
 ## Allowed Default Dependencies
 
 - numpy
