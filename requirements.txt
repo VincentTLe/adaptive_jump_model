@@ -6,3 +6,5 @@ matplotlib==3.11.0
 hmmlearn==0.3.3
 pytest==9.1.1
 ruff==0.15.20
+jumpmodels==0.1.1
+yfinance==1.5.1
