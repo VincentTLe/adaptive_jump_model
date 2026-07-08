@@ -69,17 +69,32 @@ def _score_candidate(Xf, rfit, Xv, rval, zf_std, zv_std, b0, b1, seed):
     return score, b0, b1
 
 
-def pick_best(results: list[tuple[float, float, float]]) -> tuple[float, float, float]:
-    """Max Sharpe; ties -> smaller |b1| (parsimony), then larger b0."""
-    best = max(r[0] for r in results)
-    tied = [r for r in results if r[0] >= best - 1e-12]
-    tied.sort(key=lambda r: (abs(r[2]), -r[1]))
-    s, b0, b1 = tied[0]
-    return s, b0, b1
+def pick_best(results: list[tuple[float, float, float]],
+              b1_margin: float = 0.0) -> tuple[float, float, float]:
+    """Max Sharpe; ties -> smaller |b1| (parsimony), then larger b0.
+
+    With ``b1_margin`` > 0, a b1 != 0 candidate is accepted only if it beats
+    the best b1 == 0 candidate by at least the margin on validation Sharpe
+    (an explicit complexity rent, in the spirit of information criteria);
+    otherwise the selection falls back to the fixed-penalty model.
+    """
+    zero = [r for r in results if r[2] == 0.0]
+    if not zero:
+        raise ValueError("candidate grid must include b1 = 0")
+    best_zero = max(zero, key=lambda r: (r[0], r[1]))
+    nonzero = [r for r in results if r[2] != 0.0]
+    if nonzero:
+        best_nz_score = max(r[0] for r in nonzero)
+        if best_nz_score >= best_zero[0] + b1_margin:
+            tied = [r for r in nonzero if r[0] >= best_nz_score - 1e-12]
+            tied.sort(key=lambda r: (abs(r[2]), -r[1]))
+            if tied[0][0] > best_zero[0]:
+                return tied[0]
+    return best_zero
 
 
 def run_market(tk: str, seed: int, max_blocks: int | None, n_jobs: int,
-               b0_grid, b1_grid, tag: str) -> dict:
+               b0_grid, b1_grid, tag: str, b1_margin: float = 0.0) -> dict:
     ret = p0.load_returns(tk)
     X = p0.make_features(ret, ver="paper")
     z_raw = X["DD_10"].to_numpy()          # conditioning signal (pre-standardization)
@@ -109,7 +124,7 @@ def run_market(tk: str, seed: int, max_blocks: int | None, n_jobs: int,
         results = Parallel(n_jobs=n_jobs)(
             delayed(_score_candidate)(Xf, rfit, Xv, rval, zf, zv, b0, b1, seed)
             for b0, b1 in combos)
-        val_sharpe, b0_star, b1_star = pick_best(results)
+        val_sharpe, b0_star, b1_star = pick_best(results, b1_margin=b1_margin)
         # final refit on [s-FIT_W, s), online-infer the OOS block
         cl2, sc2 = p0.DataClipperStd(mul=3.0), p0.StandardScalerPD()
         Xf2 = sc2.fit_transform(cl2.fit_transform(X.iloc[s - FIT_W:s]))
@@ -220,6 +235,8 @@ def main() -> None:
     ap.add_argument("--tickers", nargs="+", default=["GSPC", "GDAXI", "N225"])
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--n-jobs", type=int, default=8)
+    ap.add_argument("--b1-margin", type=float, default=0.0,
+                    help="validation-Sharpe rent a b1!=0 candidate must pay over the best b1=0")
     ap.add_argument("--tag", type=str, default="p1a")
     ap.add_argument("--smoke", action="store_true")
     args = ap.parse_args()
@@ -231,7 +248,8 @@ def main() -> None:
     t0, rows = time.time(), []
     for tk in tickers:
         print(f"=== {tk} (P1a adaptive lambda, tag={args.tag}) ===", flush=True)
-        out = run_market(tk, args.seed, max_blocks, args.n_jobs, b0_grid, b1_grid, args.tag)
+        out = run_market(tk, args.seed, max_blocks, args.n_jobs, b0_grid, b1_grid,
+                         args.tag, b1_margin=args.b1_margin)
         rows.append(dict(Market=p0.NAMES.get(tk, tk), Model="JM adaptive", **out["res_tv"]))
         plot_market(tk, out, args.tag)
         b1s = out["beta"]["b1"]

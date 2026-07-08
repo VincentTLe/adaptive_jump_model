@@ -1,0 +1,4 @@
+Market,Model,CAGR,Vol,Sharpe,MDD,Calmar,Turn_yr,Trades,Expo
+S&P 500,JM adaptive,8.9,13.7,0.69,-33.9,0.26,76.1,15,79.5
+DAX,JM adaptive,6.8,16.9,0.48,-40.7,0.17,75.4,15,86.6
+Nikkei 225,JM adaptive,6.4,17.2,0.45,-50.7,0.13,125.2,24,73.5
