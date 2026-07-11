@@ -29,8 +29,19 @@
   .dim{color:var(--dim);} .empty{color:var(--dim);text-align:center;padding:40px;}
 </style></head>
 <body>
-<header><h1>Session log</h1><p class="sub">9 session(s) · newest first · generated 2026-07-11 07:29 UTC</p></header>
+<header><h1>Session log</h1><p class="sub">10 session(s) · newest first · generated 2026-07-11 07:35 UTC</p></header>
 <main>
+    <article class="card">
+      <div class="head"><span class="ts">2026-07-11T07:35Z</span><span class="who">codex</span></div>
+      <p class="goal">Implement step 2a of the approved cleanup: remove runnable legacy minute/Kibot entrypoints from the active tree in one small archive commit.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>archive/legacy-minute/README.md</code></li><li><code>archive/legacy-minute/scripts/prepare_processed_data.py</code></li><li><code>archive/legacy-minute/scripts/run_all_demos.py</code></li><li><code>archive/legacy-minute/scripts/run_library_backtest_audit.py</code></li><li><code>archive/legacy-minute/scripts/run_model_comparison_demo.py</code></li><li><code>archive/legacy-minute/scripts/run_synthetic_separation_demo.py</code></li><li><code>archive/legacy-minute/tests/prepare_processed_data_checks.py</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>[&#x27;PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 102 passed&#x27;, &#x27;/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed&#x27;, &#x27;git diff --cached --check passed before commit&#x27;, &#x27;post-commit status clean except intentionally untracked paper PDF&#x27;]</p></div>
+        <div><span class="lbl">Commit</span><p><code>4c903a9 chore: archive legacy research entrypoints</code></p></div>
+        <div><span class="lbl">Next step</span><p><span class="dim">—</span></p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Five legacy integration tests moved with prepare_processed_data and renamed prepare_processed_data_checks.py so pytest does not collect frozen archive content. A system pytest invocation failed only because the system environment lacks PYTHONPATH and jumpmodels; the verified project venv passed.</p>
+    </article>
     <article class="card">
       <div class="head"><span class="ts">2026-07-11T07:29Z</span><span class="who">codex</span></div>
       <p class="goal">Implement approved cleanup plan step 1 only: preserve the existing repository state before tracked archive/cleanup work.</p>
