@@ -61,6 +61,49 @@ def split_lam(lam_bar: float, r: float) -> tuple[float, float]:
     return lam_bar / np.sqrt(r), lam_bar * np.sqrt(r)   # (lam_out, lam_in)
 
 
+def mean_run_lengths(labels: np.ndarray) -> tuple[float, float, int, int]:
+    """Mean run length and run count per state for a 0/1 label path."""
+    labels = np.asarray(labels)
+    change = np.flatnonzero(np.diff(labels) != 0)
+    starts = np.r_[0, change + 1]
+    ends = np.r_[change, len(labels) - 1]
+    lens = (ends - starts + 1).astype(float)
+    states = labels[starts]
+    n0, n1 = int((states == 0).sum()), int((states == 1).sum())
+    d0 = float(lens[states == 0].mean()) if n0 else float("nan")
+    d1 = float(lens[states == 1].mean()) if n1 else float("nan")
+    return d0, d1, n0, n1
+
+
+def duration_delta(labels: np.ndarray, min_runs: int = 2) -> tuple[float, float, float]:
+    """Theory-derived asymmetry from the fitted path, via lambda = ln(d - 1):
+
+        delta = ln(d_bull - 1) - ln(d_bear - 1),
+
+    the log-odds gap implied by the measured mean regime durations. Each
+    state needs >= min_runs runs and duration > 2 to contribute; otherwise
+    the asymmetry is 0 (documented data-sufficiency rule, not a tuned knob).
+    Returns (delta, d_bull, d_bear).
+    """
+    d0, d1, n0, n1 = mean_run_lengths(labels)
+    if n0 < min_runs or n1 < min_runs or not np.isfinite(d0) or not np.isfinite(d1):
+        return 0.0, d0, d1
+    return float(np.log(max(d0, 2.0) - 1.0) - np.log(max(d1, 2.0) - 1.0)), d0, d1
+
+
+def _score_lambar_duration(Xf, rfit, Xv, rval, lam_bar, seed):
+    """Fit at lam_bar; derive the asymmetry from the fitted path's durations;
+    score the validation window. One candidate = one (score, lam_bar, delta)."""
+    m = TVJumpModel(n_components=2, n_init=N_INIT_CV, random_state=seed)
+    m.fit_tv(Xf, rfit, lam_seq=np.full(len(Xf), lam_bar), sort_by="cumret")
+    delta, d0, d1 = duration_delta(np.asarray(m.labels_))
+    lam_out, lam_in = lam_bar * np.exp(delta / 2), lam_bar * np.exp(-delta / 2)
+    lab = np.asarray(m.predict_online_tv(Xv, penalty_seq=asym_penalty_seq(lam_out, lam_in, len(Xv))))
+    inv = (lab == 0).astype(float)
+    score = p0.sharpe(p0.strategy_returns(p0.positions_from_signal(inv), rval))
+    return score, lam_bar, delta, d0, d1
+
+
 def _score_lambar(Xf, rfit, Xv, rval, lam_bar, ratios, seed):
     """One fit at lam_bar (symmetric), then score every ratio at decode time."""
     m = TVJumpModel(n_components=2, n_init=N_INIT_CV, random_state=seed)
@@ -96,7 +139,8 @@ def pick_best(results: list[tuple[float, float, float]],
 
 
 def run_market(tk: str, seed: int, max_blocks: int | None, n_jobs: int,
-               lam_grid, ratios, tag: str, r_margin: float = 0.0) -> dict:
+               lam_grid, ratios, tag: str, r_margin: float = 0.0,
+               asym: str = "cv") -> dict:
     ret = p0.load_returns(tk)
     X = p0.make_features(ret, ver="paper")
     r_ser = ret.loc[X.index]
@@ -118,25 +162,42 @@ def run_market(tk: str, seed: int, max_blocks: int | None, n_jobs: int,
         Xf = sc.fit_transform(cl.fit_transform(X.iloc[f0:f1]))
         Xv = sc.transform(cl.transform(X.iloc[f1:s]))
         rfit, rval = r_ser.iloc[f0:f1], rv[f1:s]
-        nested = Parallel(n_jobs=n_jobs)(
-            delayed(_score_lambar)(Xf, rfit, Xv, rval, lb, ratios, seed) for lb in lam_grid)
-        results = [x for grp in nested for x in grp]
-        val_sharpe, lam_bar, r_star = pick_best(results, r_margin=r_margin)
-        lam_out, lam_in = split_lam(lam_bar, r_star)
+        if asym == "cv":
+            nested = Parallel(n_jobs=n_jobs)(
+                delayed(_score_lambar)(Xf, rfit, Xv, rval, lb, ratios, seed) for lb in lam_grid)
+            results = [x for grp in nested for x in grp]
+            val_sharpe, lam_bar, r_star = pick_best(results, r_margin=r_margin)
+        else:  # duration-calibrated: asymmetry derived, only lam_bar is CV'd
+            results = Parallel(n_jobs=n_jobs)(
+                delayed(_score_lambar_duration)(Xf, rfit, Xv, rval, lb, seed) for lb in lam_grid)
+            best = max(x[0] for x in results)
+            tied = [x for x in results if x[0] >= best - 1e-12]
+            tied.sort(key=lambda x: -x[1])                # ties -> larger lam_bar
+            val_sharpe, lam_bar = tied[0][0], tied[0][1]
+            r_star = None                                  # derived on the final window below
         # final refit (symmetric lam_bar) on [s-FIT_W, s); asymmetric decode OOS
         cl2, sc2 = p0.DataClipperStd(mul=3.0), p0.StandardScalerPD()
         Xf2 = sc2.fit_transform(cl2.fit_transform(X.iloc[s - FIT_W:s]))
         Xo = sc2.transform(cl2.transform(X.iloc[s:e]))
         m = TVJumpModel(n_components=2, n_init=N_INIT_FINAL, random_state=seed)
         m.fit_tv(Xf2, r_ser.iloc[s - FIT_W:s], lam_seq=np.full(FIT_W, lam_bar), sort_by="cumret")
+        if asym == "cv":
+            lam_out, lam_in = split_lam(lam_bar, r_star)
+            delta = d0 = d1 = float("nan")
+        else:
+            delta, d0, d1 = duration_delta(np.asarray(m.labels_))
+            lam_out, lam_in = lam_bar * np.exp(delta / 2), lam_bar * np.exp(-delta / 2)
+            r_star = float(np.exp(-delta))
         lab = np.asarray(m.predict_online_tv(Xo, penalty_seq=asym_penalty_seq(lam_out, lam_in, len(Xo))))
         inv_a.append((lab == 0).astype(float))
         oos_idx.append(np.arange(s, e))
         path.append(dict(block=bi, date=str(dates[s]), lam_bar=lam_bar, ratio=r_star,
-                         lam_out=lam_out, lam_in=lam_in, val_sharpe=val_sharpe))
+                         lam_out=lam_out, lam_in=lam_in, delta=delta, d_bull=d0, d_bear=d1,
+                         val_sharpe=val_sharpe))
         if bi % 5 == 0:
+            extra = f"r*={r_star:>5.2f}" if asym == "cv" else f"Δ={delta:+.2f} (d {d0:.0f}/{d1:.0f})"
             print(f"  block {bi + 1}/{len(starts)} @ {dates[s]}  lam_bar*={lam_bar:>6.0f}  "
-                  f"r*={r_star:>5.2f}  val={val_sharpe:+.2f}  ({time.time() - t0:.0f}s)", flush=True)
+                  f"{extra}  val={val_sharpe:+.2f}  ({time.time() - t0:.0f}s)", flush=True)
 
     idx = np.concatenate(oos_idx)
     inv_a = np.concatenate(inv_a)
@@ -230,6 +291,9 @@ def main() -> None:
     ap.add_argument("--n-jobs", type=int, default=8)
     ap.add_argument("--r-margin", type=float, default=0.0,
                     help="validation-Sharpe rent an r != 1 candidate must pay")
+    ap.add_argument("--asym", choices=["cv", "duration"], default="cv",
+                    help="cv: select r on validation; duration: derive the asymmetry "
+                         "from fitted regime durations (no extra CV parameter)")
     ap.add_argument("--tag", type=str, default="p2a")
     ap.add_argument("--smoke", action="store_true")
     args = ap.parse_args()
@@ -240,9 +304,10 @@ def main() -> None:
 
     t0, rows = time.time(), []
     for tk in tickers:
-        print(f"=== {tk} (P2 asymmetric, tag={args.tag}, r_margin={args.r_margin}) ===", flush=True)
+        print(f"=== {tk} (P2 asymmetric, tag={args.tag}, asym={args.asym}, "
+              f"r_margin={args.r_margin}) ===", flush=True)
         out = run_market(tk, args.seed, max_blocks, args.n_jobs, lam_grid, ratios,
-                         args.tag, r_margin=args.r_margin)
+                         args.tag, r_margin=args.r_margin, asym=args.asym)
         rows.append(dict(Market=p0.NAMES.get(tk, tk), Model="JM asym", **out["res"]))
         plot_market(tk, out, args.tag)
         rr = out["path"]["ratio"]
