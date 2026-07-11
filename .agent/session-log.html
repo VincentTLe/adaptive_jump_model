@@ -29,8 +29,30 @@
   .dim{color:var(--dim);} .empty{color:var(--dim);text-align:center;padding:40px;}
 </style></head>
 <body>
-<header><h1>Session log</h1><p class="sub">5 session(s) · newest first · generated 2026-07-02 20:07 UTC</p></header>
+<header><h1>Session log</h1><p class="sub">7 session(s) · newest first · generated 2026-07-11 05:34 UTC</p></header>
 <main>
+    <article class="card">
+      <div class="head"><span class="ts">2026-07-11T05:34Z</span><span class="who">claude · fable-5</span></div>
+      <p class="goal">Verify the 2026-07-11 external audit of PR #2, correct overclaims, hand implementation back to Codex</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>HANDOFF_NEW_CHAT.md (replaced stale 2026-06-30 version: verified audit findings, trustworthy-vs-legacy map, prioritized plan with acceptance criteria)</code></li><li><code>PR #2 title+body rewritten on GitHub (exploratory; P0 = approximate Yahoo replication; P2 withdrawn; review-response section)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>Audit checked claim-by-claim against repo: lam-cap counts 14/40, 20/40, 19/39 reproduced from committed lambda paths; OOS_START=2005-01-01; HMM fits GaussianHMM on 1-D returns (not feature-matched); P1 N_INIT_CV=3 vs P0 5; grids 77 vs 11 candidates; no yfinance import anywhere (cache-builder missing); P2b scale example lam_bar=50, delta=0.221 -&gt; costs 55.84/44.77 (gap 11.07) confirmed from committed CSV. Alternation identity confirmed from dp_tv semantics: zero-diagonal asym penalty = symmetric + endpoint bias.</p></div>
+        <div><span class="lbl">Commit</span><p><code>see this commit (handoff + session log); previous work at 2b5cbad</code></p></div>
+        <div><span class="lbl">Next step</span><p>Codex implements in order: (1) deterministic yahoo cache builder + manifest + README; (2) lambda-grid plateau check (cap binds ~half of blocks); (3) paired moving-block bootstrap + post-2024-07 untouched holdout; (4) P3 asymmetry redesign with nonzero-diagonal -log P(i,j) or semi-Markov (dp_tv already supports diagonals, no solver change) after checking Aydinhan 2024 novelty; (5) STATUS/TASK/root-reports legacy cleanup + CI.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Commit messages e058361/2b5cbad contain withdrawn interpretations; PR #2 body is the corrected account. 5-seed spread is init sensitivity only, not significance. P2a/P2b tested a threshold-shift model, not asymmetric persistence.</p>
+    </article>
+    <article class="card">
+      <div class="head"><span class="ts">2026-07-11T01:37Z</span><span class="who">claude · fable-5</span></div>
+      <p class="goal">Get all local P0-P2 work onto GitHub for the next Codex audit: validate + commit the pending P2b duration-calibrated asymmetry, push, open a review surface</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>scripts/p2_asymmetric.py (+75/-10: --asym duration mode, delta = ln(d_bull-1)-ln(d_bear-1) from fitted run lengths, zero extra CV params)</code></li><li><code>reports/p2/metrics_p2b.csv + {GSPC,GDAXI,N225}_ratio_path_p2b.csv + p2_*_p2b.png (new results)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>pytest 107 passed + ruff clean in freshly rebuilt /tmp/adaptive_jump_model_venv; regression check: cv-mode GSPC rerun reproduces committed p2a metrics row and ratio path exactly; full 3-market duration run 112s</p></div>
+        <div><span class="lbl">Commit</span><p><code>2b5cbad pushed to origin/p0-daily-baseline; draft PR #2 opened (p0-daily-baseline -&gt; main)</code></p></div>
+        <div><span class="lbl">Next step</span><p>Point ChatGPT/Codex at PR #2 (last audit only saw main @ c0aece6). P2b = fifth null: S&amp;P -0.07 / DAX -0.11 / Nikkei +0.07 vs fixed. Decide P3 direction or accept null + write-up. Owed: LEARN_P2.html.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>HANDOFF_NEW_CHAT.md stale (2026-06-30, pre-pivot) -- consider deleting. Intentionally untracked: reports/full/ (116MB legacy), 2402.05272v3.pdf, *_oos_*.csv, DONE_*.txt. STATUS.md/TASK.md/root reports/ still legacy (flagged in PR body).</p>
+    </article>
     <article class="card">
       <div class="head"><span class="ts">2026-07-02T20:07Z</span><span class="who">codex · gpt-5</span></div>
       <p class="goal">Fix backtest evaluation mapping after IBM full output showed state-0-only trading rule was not a valid conclusion basis</p>
