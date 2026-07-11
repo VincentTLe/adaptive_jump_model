@@ -12,10 +12,7 @@ venv/
 data/raw/*
 data/processed/*
 artifacts/
-reports/quick/
-reports/*/cache/
-reports/*/library_audit/
-reports/*/tables/model_backtest_frames.csv.gz
+reports/
 *.log
 *.pid
 *.sqlite*

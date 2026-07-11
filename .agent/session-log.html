@@ -29,8 +29,41 @@
   .dim{color:var(--dim);} .empty{color:var(--dim);text-align:center;padding:40px;}
 </style></head>
 <body>
-<header><h1>Session log</h1><p class="sub">13 session(s) · newest first · generated 2026-07-11 07:44 UTC</p></header>
+<header><h1>Session log</h1><p class="sub">16 session(s) · newest first · generated 2026-07-11 07:51 UTC</p></header>
 <main>
+    <article class="card">
+      <div class="head"><span class="ts">2026-07-11T07:51Z</span><span class="who">codex</span></div>
+      <p class="goal">Implement step 2g of the approved cleanup: retire all tracked P0 CSV result tables in one bounded commit.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>reports/p0/*_lambda_path*.csv (6 deleted)</code></li><li><code>reports/p0/metrics_walkforward*.csv (6 deleted)</code></li><li><code>reports/p0/noise_floor_paper-v2.csv (deleted)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>[&#x27;inventory confirmed exactly 13 tracked, unmodified CSVs&#x27;, &#x27;source line count before deletion: 314&#x27;, &#x27;PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed&#x27;, &#x27;/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed&#x27;, &#x27;git diff --cached --check passed&#x27;, &#x27;41 tracked files remain across P0/P1/P2 report trees&#x27;]</p></div>
+        <div><span class="lbl">Commit</span><p><code>38f7317 chore: remove pre-audit P0 tables</code></p></div>
+        <div><span class="lbl">Next step</span><p><span class="dim">—</span></p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>reports/dashboard.html remains tracked and deferred because deleting its 528 lines requires an explicit commit-size exception. No generated result was moved into archive; Git history and the local pre-cleanup snapshot provide provenance.</p>
+    </article>
+    <article class="card">
+      <div class="head"><span class="ts">2026-07-11T07:49Z</span><span class="who">codex</span></div>
+      <p class="goal">Implement step 2f of the approved cleanup: retire the tracked legacy root report artifacts while respecting commit-size limits.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>reports/demo_summary.md (deleted)</code></li><li><code>reports/figures/* legacy PNGs (6 deleted)</code></li><li><code>reports/research_design_notes.html (deleted)</code></li><li><code>reports/tables/* legacy CSVs (6 deleted)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>[&#x27;all 15 candidate files were tracked and unmodified before deletion&#x27;, &#x27;reports/dashboard.html was restored after diff review showed it alone has 528 lines&#x27;, &#x27;PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed&#x27;, &#x27;/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed&#x27;, &#x27;git diff --cached --check passed&#x27;, &#x27;committed diff: 14 files and 264 deleted text lines; 55 tracked report files remain&#x27;]</p></div>
+        <div><span class="lbl">Commit</span><p><code>bed6656 chore: remove legacy generated reports</code></p></div>
+        <div><span class="lbl">Next step</span><p><span class="dim">—</span></p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>The planned 15-file deletion was reduced to 14 because dashboard.html alone violates the ~400-line commit limit. Do not use a pointless intermediate rewrite; either obtain explicit one-file/528-line sign-off later or handle it with the broader stale-doc decision.</p>
+    </article>
+    <article class="card">
+      <div class="head"><span class="ts">2026-07-11T07:46Z</span><span class="who">codex</span></div>
+      <p class="goal">Implement step 2e of the approved cleanup: archive the three pre-audit daily P0/P1/P2 experiment runners with an explicit evidence warning.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>archive/pre-audit-daily/README.md</code></li><li><code>archive/pre-audit-daily/scripts/p0_daily_baseline.py</code></li><li><code>archive/pre-audit-daily/scripts/p1_adaptive_lambda.py</code></li><li><code>archive/pre-audit-daily/scripts/p2_asymmetric.py</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>[&#x27;active tree contains only src/adaptive_jump/__init__.py, tv_jump.py, and test_tv_jump.py&#x27;, &#x27;PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed&#x27;, &#x27;/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed&#x27;, &#x27;active scan found no runner or sys.path hack&#x27;, &#x27;git diff --cached --check passed&#x27;, &#x27;post-commit status clean except intentionally untracked paper PDF&#x27;]</p></div>
+        <div><span class="lbl">Commit</span><p><code>8b921e9 chore: archive pre-audit daily experiments</code></p></div>
+        <div><span class="lbl">Next step</span><p><span class="dim">—</span></p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>The archive README classifies P0 as approximate, P1 as exploratory null, and P2 as withdrawn. tv_jump.py intentionally remains active as the single custom time-varying DP required by the approved target architecture.</p>
+    </article>
     <article class="card">
       <div class="head"><span class="ts">2026-07-11T07:44Z</span><span class="who">codex</span></div>
       <p class="goal">Implement step 2d of the approved cleanup: archive the unused fixed-model DP/JM/HMM/penalty core and its matching unit tests.</p>
