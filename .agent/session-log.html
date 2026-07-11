@@ -29,8 +29,19 @@
   .dim{color:var(--dim);} .empty{color:var(--dim);text-align:center;padding:40px;}
 </style></head>
 <body>
-<header><h1>Session log</h1><p class="sub">12 session(s) · newest first · generated 2026-07-11 07:41 UTC</p></header>
+<header><h1>Session log</h1><p class="sub">13 session(s) · newest first · generated 2026-07-11 07:44 UTC</p></header>
 <main>
+    <article class="card">
+      <div class="head"><span class="ts">2026-07-11T07:44Z</span><span class="who">codex</span></div>
+      <p class="goal">Implement step 2d of the approved cleanup: archive the unused fixed-model DP/JM/HMM/penalty core and its matching unit tests.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>archive/legacy-minute/src/adaptive_jump/dp.py</code></li><li><code>archive/legacy-minute/src/adaptive_jump/hmm.py</code></li><li><code>archive/legacy-minute/src/adaptive_jump/jump_model.py</code></li><li><code>archive/legacy-minute/src/adaptive_jump/penalties.py</code></li><li><code>archive/legacy-minute/tests/dp_checks.py</code></li><li><code>archive/legacy-minute/tests/hmm_checks.py</code></li><li><code>archive/legacy-minute/tests/jump_model_checks.py</code></li><li><code>archive/legacy-minute/tests/penalties_checks.py</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>[&#x27;dependency scan confirmed P0/P1/P2 and tv_jump do not import the archived core&#x27;, &#x27;PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed&#x27;, &#x27;/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed&#x27;, &#x27;active import scan now contains only tv_jump references&#x27;, &#x27;git diff --cached --check passed&#x27;, &#x27;post-commit status clean except intentionally untracked paper PDF&#x27;]</p></div>
+        <div><span class="lbl">Commit</span><p><code>9dd8bb6 chore: archive legacy fixed-model core</code></p></div>
+        <div><span class="lbl">Next step</span><p><span class="dim">—</span></p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Fifty fixed-core tests moved out of active collection with their frozen source, reducing the active suite from 61 to 11 without failures. This corrects the prior broad wording: tv_jump should remain active because the approved target architecture explicitly retains one custom TV DP.</p>
+    </article>
     <article class="card">
       <div class="head"><span class="ts">2026-07-11T07:41Z</span><span class="who">codex</span></div>
       <p class="goal">Implement step 2c of the approved cleanup: archive the self-contained legacy backtest, experiment, library-audit, and reporting stack with its tests.</p>
