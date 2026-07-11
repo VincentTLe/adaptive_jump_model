@@ -29,8 +29,41 @@
   .dim{color:var(--dim);} .empty{color:var(--dim);text-align:center;padding:40px;}
 </style></head>
 <body>
-<header><h1>Session log</h1><p class="sub">16 session(s) · newest first · generated 2026-07-11 07:51 UTC</p></header>
+<header><h1>Session log</h1><p class="sub">19 session(s) · newest first · generated 2026-07-11 07:58 UTC</p></header>
 <main>
+    <article class="card">
+      <div class="head"><span class="ts">2026-07-11T07:57Z</span><span class="who">codex</span></div>
+      <p class="goal">Implement step 2j of the approved cleanup: retire all tracked P2 CSV result tables while staying below the commit-size limit.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>reports/p2/*_ratio_path_*.csv (9 deleted)</code></li><li><code>reports/p2/metrics_*.csv (3 deleted)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>[&#x27;inventory confirmed exactly 12 tracked, unmodified CSVs&#x27;, &#x27;source line count before deletion: 378&#x27;, &#x27;PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed&#x27;, &#x27;/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed&#x27;, &#x27;git diff --cached --check passed&#x27;, &#x27;tracked reports now consist of nine P2 PNGs plus dashboard.html&#x27;]</p></div>
+        <div><span class="lbl">Commit</span><p><code>f55b5c4 chore: remove withdrawn P2 tables</code></p></div>
+        <div><span class="lbl">Next step</span><p><span class="dim">—</span></p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>The 378-line deletion intentionally excluded .agent changes to preserve the approximately 400-line commit boundary. Deletion used the tracked CSV list, leaving ignored local logs and PNGs untouched.</p>
+    </article>
+    <article class="card">
+      <div class="head"><span class="ts">2026-07-11T07:55Z</span><span class="who">codex</span></div>
+      <p class="goal">Implement step 2i of the approved cleanup: retire the complete tracked P1 result tree in one bounded deletion-only commit.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>reports/p1/*_beta_path_*.csv (6 deleted)</code></li><li><code>reports/p1/metrics_*.csv (2 deleted)</code></li><li><code>reports/p1/*.png (6 deleted)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>[&#x27;inventory confirmed exactly 14 tracked, unmodified artifacts&#x27;, &#x27;eight CSVs totaled 252 lines before deletion&#x27;, &#x27;PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed&#x27;, &#x27;/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed&#x27;, &#x27;git diff --cached --check passed&#x27;, &#x27;22 tracked reports remain: 21 P2 artifacts plus dashboard.html&#x27;]</p></div>
+        <div><span class="lbl">Commit</span><p><code>13d2464 chore: remove pre-audit P1 artifacts</code></p></div>
+        <div><span class="lbl">Next step</span><p><span class="dim">—</span></p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>A first wildcard git rm attempt matched an ignored runtime log and failed atomically before changing the index. The successful deletion used git ls-files -z reports/p1 piped NUL-safely to git rm, so ignored local runtime files were untouched.</p>
+    </article>
+    <article class="card">
+      <div class="head"><span class="ts">2026-07-11T07:53Z</span><span class="who">codex</span></div>
+      <p class="goal">Implement step 2h of the approved cleanup: remove the remaining P0 plots and enforce a single generated-report ignore policy.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>reports/p0/strategy_*.png (6 deleted)</code></li><li><code>.gitignore</code></li><li><code>.agent/session-log.jsonl</code></li><li><code>.agent/session-log.html</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>[&#x27;P0 inventory contained exactly six tracked, unmodified PNGs&#x27;, &#x27;PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed&#x27;, &#x27;/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed&#x27;, &#x27;git check-ignore resolves reports/future-run/report.html to .gitignore reports/ rule&#x27;, &#x27;git ls-files reports/p0 returns no paths&#x27;, &#x27;git diff --cached --check passed&#x27;, &#x27;post-commit status clean except intentionally untracked paper PDF&#x27;]</p></div>
+        <div><span class="lbl">Commit</span><p><code>c71a0c7 chore: finish P0 artifact cleanup</code></p></div>
+        <div><span class="lbl">Next step</span><p><span class="dim">—</span></p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>The four partial reports ignore patterns were replaced by one reports/ rule. Existing tracked P1/P2/dashboard files remain visible to Git until explicitly removed.</p>
+    </article>
     <article class="card">
       <div class="head"><span class="ts">2026-07-11T07:51Z</span><span class="who">codex</span></div>
       <p class="goal">Implement step 2g of the approved cleanup: retire all tracked P0 CSV result tables in one bounded commit.</p>
