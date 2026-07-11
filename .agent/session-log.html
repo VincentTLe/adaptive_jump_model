@@ -29,8 +29,19 @@
   .dim{color:var(--dim);} .empty{color:var(--dim);text-align:center;padding:40px;}
 </style></head>
 <body>
-<header><h1>Session log</h1><p class="sub">20 session(s) · newest first · generated 2026-07-11 08:00 UTC</p></header>
+<header><h1>Session log</h1><p class="sub">21 session(s) · newest first · generated 2026-07-11 08:02 UTC</p></header>
 <main>
+    <article class="card">
+      <div class="head"><span class="ts">2026-07-11T08:02Z</span><span class="who">codex</span></div>
+      <p class="goal">Implement step 2l of the approved cleanup: remove the two stale generated P0/P1 root explainers that fit within the commit-size limit.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>LEARN_P1.html (deleted)</code></li><li><code>P0_PLOTS.html (deleted)</code></li><li><code>.agent/session-log.jsonl</code></li><li><code>.agent/session-log.html</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>[&#x27;both files were tracked and unmodified&#x27;, &#x27;only external reference was in stale LEARN_P0.html, itself pending deletion&#x27;, &#x27;PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed&#x27;, &#x27;/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed&#x27;, &#x27;committed diff: 4 files, 13 insertions, 333 deletions&#x27;, &#x27;git diff --cached --check passed&#x27;, &#x27;post-commit status clean except intentionally untracked paper PDF&#x27;]</p></div>
+        <div><span class="lbl">Commit</span><p><code>ff4292f chore: remove stale P0 P1 explainers</code></p></div>
+        <div><span class="lbl">Next step</span><p><span class="dim">—</span></p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Generated LEARN_P0.html (458 lines) and reports/dashboard.html (528 lines) still require explicit commit-size exceptions for deletion. Provenance/source docs should be archived via pure renames, avoiding line churn.</p>
+    </article>
     <article class="card">
       <div class="head"><span class="ts">2026-07-11T08:00Z</span><span class="who">codex</span></div>
       <p class="goal">Implement step 2k of the approved cleanup: remove all remaining tracked P2 plot binaries and bring pending handoff history into Git.</p>
