@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools==70.2.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adaptive-jump-model"
+version = "0.1.0"
+description = "Reproducible research tools for adaptive statistical jump models"
+readme = "README.md"
+requires-python = "==3.12.*"
+dependencies = [
+    "hmmlearn==0.3.3",
+    "jumpmodels==0.1.1",
+    "matplotlib==3.11.0",
+    "numpy==2.4.6",
+    "pandas==2.3.3",
+    "scikit-learn==1.9.0",
+    "scipy==1.18.0",
+    "threadpoolctl==3.6.0",
+]
+
+[project.optional-dependencies]
+data = [
+    "requests==2.34.2",
+    "yfinance==1.5.1",
+]
+
+[project.scripts]
+adaptive-jump = "adaptive_jump.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.20",
+]
+
+[tool.pytest.ini_options]
+addopts = ["--strict-config", "--strict-markers", "-ra"]
+testpaths = ["tests"]
+
+[tool.ruff]
+exclude = ["archive"]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["adaptive_jump*"]

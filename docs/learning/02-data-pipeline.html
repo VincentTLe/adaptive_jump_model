@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Từ nguồn dữ liệu tới bằng chứng có hash</title>
+  <style>
+    :root {
+      --bg: #101311; --surface: #181d1a; --surface2: #202722;
+      --line: #364139; --text: #edf2ee; --muted: #aab5ad;
+      --green: #67d49a; --yellow: #f0c45e; --red: #ee8585;
+      --cyan: #69c8d0; --max: 1040px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+    header { padding: 52px 22px 40px; border-bottom: 1px solid var(--line); }
+    header > div, main, footer { width: min(var(--max), 100%); margin: 0 auto; }
+    main { padding: 0 22px 70px; }
+    section { padding: 44px 0; border-bottom: 1px solid var(--line); }
+    h1, h2, h3 { line-height: 1.22; letter-spacing: 0; }
+    h1 { max-width: 780px; margin: 10px 0 14px; font-size: clamp(34px, 6vw, 56px); }
+    h2 { margin: 0 0 18px; font-size: 27px; }
+    h3 { margin: 0 0 8px; font-size: 18px; }
+    p { margin: 0 0 14px; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    code { color: #d7f5f7; }
+    a { color: var(--cyan); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 800; text-transform: uppercase; }
+    .lede { max-width: 760px; color: var(--muted); font-size: 19px; }
+    .boundary { margin-top: 20px; color: var(--yellow); font-weight: 750; }
+    .two, .three { display: grid; gap: 16px; }
+    .two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .panel {
+      min-width: 0; padding: 19px; background: var(--surface);
+      border: 1px solid var(--line); border-radius: 6px;
+    }
+    .tag { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    .green { color: var(--green); } .yellow { color: var(--yellow); } .red { color: var(--red); }
+    .example { padding: 18px; background: var(--surface); border: 1px dashed #6a786e; }
+    .example strong { color: var(--yellow); }
+    pre {
+      overflow-x: auto; margin: 12px 0 0; padding: 15px;
+      background: #0a0d0b; border-left: 4px solid var(--cyan); color: #dcefe2;
+    }
+    .flow { display: grid; gap: 8px; margin-top: 22px; }
+    .flow-row {
+      display: grid; grid-template-columns: 42px minmax(150px, 230px) 1fr;
+      gap: 14px; align-items: center; padding: 14px 16px;
+      background: var(--surface); border-left: 3px solid var(--green);
+    }
+    .flow-row b { color: var(--green); }
+    .flow-row span { color: var(--muted); }
+    .formula {
+      margin: 18px 0; padding: 16px 18px; overflow-wrap: anywhere;
+      background: #0a0d0b; border-left: 4px solid var(--cyan);
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+    .callout { margin-top: 18px; padding: 18px; background: #252216; border: 1px solid #5e512d; color: #f4e8bd; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-size: 13px; }
+    ul { padding-left: 22px; } li { margin: 7px 0; }
+    details { padding: 13px 0; border-bottom: 1px solid var(--line); }
+    summary { cursor: pointer; font-weight: 750; }
+    details p { margin-top: 9px; color: var(--muted); }
+    footer { padding: 28px 22px 50px; color: var(--muted); font-size: 14px; }
+    @media (max-width: 740px) {
+      header { padding-top: 36px; }
+      .two, .three { grid-template-columns: 1fr; }
+      .flow-row { grid-template-columns: 34px 1fr; gap: 7px; }
+      .flow-row span { grid-column: 2; }
+      .table-wrap { overflow-x: auto; }
+      table { min-width: 660px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="eyebrow">Adaptive Jump Model · Bài 02</div>
+      <h1>Từ nguồn dữ liệu tới bằng chứng có hash</h1>
+      <p class="lede">Downloader nghiên cứu không chỉ tải một bảng số. Nó phải chứng minh đã dùng đúng contract, đúng nguồn, đúng thời gian và không âm thầm sửa dữ liệu.</p>
+      <div class="boundary">Phạm vi: acquisition engineering, chưa có return, feature, state hay backtest.</div>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>1. Hãy nghĩ như nhận một phong bì niêm phong</h2>
+      <div class="two">
+        <div class="panel">
+          <span class="tag yellow">Raw payload</span>
+          <h3>Thứ nguồn gửi về</h3>
+          <p>HTTP response của FRED/BOJ, hoặc bảng chưa biến đổi do yfinance trả về. Đây là bằng chứng gần nguồn nhất.</p>
+        </div>
+        <div class="panel">
+          <span class="tag green">Canonical observations</span>
+          <h3>Thẻ mục lục tối giản</h3>
+          <p>Chỉ còn hai cột <code>date,value</code> để code sau đọc nhất quán. Không fill, không tính return, không sửa outlier.</p>
+        </div>
+      </div>
+      <div class="example">
+        <strong>Ví dụ giả lập, không phải dữ liệu dự án</strong>
+        <pre>Raw source                    Canonical
+observation_date,RATE         date,value
+2020-01-02,1.50        →      2020-01-02,1.50
+2020-01-03,.            →      2020-01-03,</pre>
+        <p>Dấu chấm nghĩa là thiếu. Canonical giữ ô trống; nó không đoán lãi suất ngày đó bằng ngày hôm trước.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Contract đi trước network</h2>
+      <p><code>research.toml</code> quyết định source, cutoff và chính sách. Downloader không được chứa một danh sách ticker bí mật khác.</p>
+      <div class="flow">
+        <div class="flow-row"><b>01</b><strong>Load contract</strong><span><code>config.py::load_config</code> kiểm proxy label, path và policy.</span></div>
+        <div class="flow-row"><b>02</b><strong>Check provenance</strong><span>Từ chối nếu config, dependency, source hoặc test đang dirty/untracked.</span></div>
+        <div class="flow-row"><b>03</b><strong>Bound request</strong><span>Start/end được lấy từ config; không có request “max history”.</span></div>
+        <div class="flow-row"><b>04</b><strong>Validate payload</strong><span><code>data.py::fetch_source</code> kiểm ID, date, duplicate và numeric token.</span></div>
+        <div class="flow-row"><b>05</b><strong>Write evidence</strong><span><code>data.py::acquire</code> ghi raw, canonical và manifest cuối cùng.</span></div>
+        <div class="flow-row"><b>06</b><strong>Independent check</strong><span>Mở lại file từ disk, tính lại hash và so toàn bộ quality facts.</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. Cutoff là hàng rào, không phải nhãn trang trí</h2>
+      <div class="three">
+        <div class="panel"><span class="tag green">Yahoo</span><h3>End-exclusive</h3><p>Muốn lấy hết ngày cuối năm, request dùng ngày kế tiếp làm <code>end</code>.</p></div>
+        <div class="panel"><span class="tag green">FRED</span><h3>Hai biên ISO</h3><p><code>cosd</code> và <code>coed</code> khóa trực tiếp ngày đầu/ngày cuối.</p></div>
+        <div class="panel"><span class="tag green">BOJ</span><h3>Hai biên tháng</h3><p><code>startDate</code> và <code>endDate</code> dùng dạng <code>YYYYMM</code>.</p></div>
+      </div>
+      <div class="formula">mọi date trong canonical ≤ replication_cutoff</div>
+      <p>Nếu provider vẫn gửi một observation vượt cutoff, validator reject toàn run. Nó không cắt âm thầm rồi tiếp tục.</p>
+    </section>
+
+    <section>
+      <h2>4. SHA-256 trả lời câu hỏi nào?</h2>
+      <div class="formula">hash = SHA256(chính xác các bytes trong file)</div>
+      <p>Hai file giống từng byte cho cùng hash. Chỉ một ký tự đổi sẽ tạo hash khác. Manifest lưu hash raw và canonical để lần sau biết dữ liệu có thật sự giống không.</p>
+      <div class="callout"><strong>Hash không chứng minh dữ liệu đúng về kinh tế.</strong> Nó chỉ chứng minh file đang kiểm tra đúng là file đã được ghi nhận. Định nghĩa source và proxy vẫn phải audit riêng.</div>
+    </section>
+
+    <section>
+      <h2>5. Manifest là biên lai của một run</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nhóm</th><th>Manifest giữ gì?</th><th>Tại sao cần?</th></tr></thead>
+          <tbody>
+            <tr><td>Contract</td><td>Config ID và config hash</td><td>Biết run dùng đúng quyết định đã freeze.</td></tr>
+            <tr><td>Code</td><td>Git SHA và package versions</td><td>Không gắn output của code dirty vào một commit sạch.</td></tr>
+            <tr><td>Retrieval</td><td>URL/arguments, timestamp, payload type</td><td>Phân biệt provider response với adapter output.</td></tr>
+            <tr><td>Quality</td><td>Rows, missing, duplicate, first/last valid date</td><td>Phát hiện coverage hoặc schema bất thường.</td></tr>
+            <tr><td>Files</td><td>Path, byte count, SHA-256</td><td>Kiểm tra lại bằng file thực trên disk.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Artifact được tạo tại <code>data/raw/&lt;run_id&gt;/manifest.json</code>. Receipt độc lập nằm tại <code>artifacts/data-acquisition/&lt;run_id&gt;/validation.json</code>. Cả hai đều ignored, không commit raw market data.</p>
+    </section>
+
+    <section>
+      <h2>6. Sáu source, một runner</h2>
+      <div class="three">
+        <div class="panel"><span class="tag green">United States</span><h3>^SP500TR + DTB3</h3><p>Total-return candidate và Treasury bill daily.</p></div>
+        <div class="panel"><span class="tag yellow">Germany</span><h3>^GDAXI + interbank</h3><p>Performance-index candidate và rate proxy monthly.</p></div>
+        <div class="panel"><span class="tag red">Japan</span><h3>^N225 + call rate</h3><p>Price-index proxy và call-rate proxy monthly.</p></div>
+      </div>
+      <p>Cùng runner không có nghĩa cùng định nghĩa. Proxy deviations vẫn đi theo từng market trong manifest và mọi báo cáo sau.</p>
+    </section>
+
+    <section>
+      <h2>7. Bước này chứng minh và không chứng minh gì?</h2>
+      <div class="two">
+        <div class="panel"><span class="tag green">Đã chứng minh</span><ul><li>CLI đọc đúng contract.</li><li>Sáu source đi qua validation chung.</li><li>Files, hashes, quality facts và cutoff khớp.</li><li>Run gắn với code SHA sạch.</li></ul></div>
+        <div class="panel"><span class="tag red">Chưa chứng minh</span><ul><li>Proxy giống dữ liệu Bloomberg/GFD.</li><li>Monthly rate được căn ngày đúng.</li><li>Feature hay model đúng paper.</li><li>Chiến lược có Sharpe tốt hơn.</li></ul></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Tự kiểm tra</h2>
+      <details><summary>Tại sao không forward-fill lãi suất ngay ở downloader?</summary><p>Forward-fill cần một giả định về ngày thông tin trở nên biết được. Đó là protocol causal, không phải acquisition.</p></details>
+      <details><summary>Run có raw files nhưng không có manifest có hợp lệ không?</summary><p>Không. Manifest chỉ được ghi cuối cùng; thiếu nó nghĩa là run đã dừng giữa chừng hoặc chưa qua đủ sáu source.</p></details>
+      <details><summary>Git SHA có đủ khi source code đang dirty không?</summary><p>Không. Vì output sẽ đến từ code khác với commit đó. Runner phải reject trước network.</p></details>
+      <details><summary>Acquisition pass có phải replication pass không?</summary><p>Không. Đây chỉ là ENGINEERING / SMOKE. Replication cần features, walk-forward models, backtest và gate riêng.</p></details>
+    </section>
+  </main>
+
+  <footer>Bài học khái niệm · Không chứa kết quả model, trading signal hay claim đầu tư.</footer>
+</body>
+</html>

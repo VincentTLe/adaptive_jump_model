@@ -1,237 +1,144 @@
-import math
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from adaptive_jump.features import aggregate_tick_to_minutes, make_minute_features_from_minute_bidask, zscore_series
+from adaptive_jump.config import load_config
+from adaptive_jump.features import (
+    FeatureError,
+    align_cash_returns,
+    effective_oos_start,
+    equity_returns,
+    make_features,
+    prepare_market,
+)
+
+CONFIG = load_config(Path(__file__).resolve().parents[1] / "research.toml")
 
 
-def test_aggregate_tick_to_minutes_computes_minute_bars_and_standard_rv():
-    df_tick = pd.DataFrame(
-        {
-            "price": [100.0, 101.0, 99.0, 102.0],
-            "bid": [99.9, 100.9, 98.8, 101.8],
-            "ask": [100.1, 101.1, 99.2, 102.2],
-            "size": [10, 20, 30, 40],
-            "mid": [100.0, 101.0, 99.0, 102.0],
-            "spread": [0.2, 0.2, 0.4, 0.4],
-            "rel_spread": [0.002, 0.001980198, 0.004040404, 0.003921569],
-        },
-        index=pd.to_datetime(
-            [
-                "2024-01-02 09:30:00",
-                "2024-01-02 09:30:15",
-                "2024-01-02 09:30:45",
-                "2024-01-02 09:31:05",
-            ]
-        ),
+def canonical(dates, values) -> pd.DataFrame:
+    return pd.DataFrame({"date": dates, "value": values})
+
+
+def test_equity_returns_drop_missing_level_and_record_gap() -> None:
+    levels = canonical(
+        ["2023-01-02", "2023-01-03", "2023-01-05", "2023-01-06"],
+        [100.0, None, 110.0, 121.0],
     )
 
-    result = aggregate_tick_to_minutes(df_tick)
+    result = equity_returns(levels)
 
-    first = result.loc[pd.Timestamp("2024-01-02 09:30:00")]
-    assert first["open"] == pytest.approx(100.0)
-    assert first["high"] == pytest.approx(101.0)
-    assert first["low"] == pytest.approx(99.0)
-    assert first["close"] == pytest.approx(99.0)
-    assert first["volume"] == pytest.approx(60)
-    assert first["trade_count"] == 3
-    assert first["bid_close"] == pytest.approx(98.8)
-    assert first["ask_close"] == pytest.approx(99.2)
-    assert first["mid_close"] == pytest.approx(99.0)
-    assert first["spread_close"] == pytest.approx(0.4)
-    assert first["rel_spread_close"] == pytest.approx(0.004040404)
-
-    first_rv = math.log(101.0 / 100.0) ** 2 + math.log(99.0 / 101.0) ** 2
-    assert first["realized_var"] == pytest.approx(first_rv)
-
-    second = result.loc[pd.Timestamp("2024-01-02 09:31:00")]
-    assert second["trade_count"] == 1
-    assert second["realized_var"] == pytest.approx(math.log(102.0 / 99.0) ** 2)
-
-
-def test_aggregate_tick_to_minutes_resets_rv_across_dates():
-    df_tick = _tick_frame(
-        prices=[100.0, 110.0, 121.0],
-        index=[
-            "2024-01-02 16:00:00",
-            "2024-01-03 09:30:00",
-            "2024-01-03 09:30:30",
-        ],
-    )
-
-    result = aggregate_tick_to_minutes(df_tick)
-
-    assert result.loc[pd.Timestamp("2024-01-02 16:00:00"), "realized_var"] == pytest.approx(0.0)
-    assert result.loc[pd.Timestamp("2024-01-03 09:30:00"), "realized_var"] == pytest.approx(
-        math.log(121.0 / 110.0) ** 2
-    )
-
-
-def test_aggregate_tick_to_minutes_preserves_equal_timestamp_order():
-    df_tick = _tick_frame(
-        prices=[100.0, 101.0, 99.0],
-        index=[
-            "2024-01-02 09:30:00",
-            "2024-01-02 09:30:00",
-            "2024-01-02 09:30:30",
-        ],
-    )
-
-    result = aggregate_tick_to_minutes(df_tick)
-
-    row = result.loc[pd.Timestamp("2024-01-02 09:30:00")]
-    assert row["open"] == pytest.approx(100.0)
-    assert row["close"] == pytest.approx(99.0)
-    expected_rv = math.log(101.0 / 100.0) ** 2 + math.log(99.0 / 101.0) ** 2
-    assert row["realized_var"] == pytest.approx(expected_rv)
-
-
-def test_aggregate_tick_to_minutes_requires_expected_columns():
-    df_tick = pd.DataFrame({"price": [100.0]}, index=pd.to_datetime(["2024-01-02 09:30:00"]))
-
-    with pytest.raises(ValueError, match="missing required columns"):
-        aggregate_tick_to_minutes(df_tick)
-
-
-def test_aggregate_tick_to_minutes_requires_valid_numeric_inputs():
-    df_tick = _tick_frame(prices=[100.0, 0.0], index=["2024-01-02 09:30:00", "2024-01-02 09:30:10"])
-
-    with pytest.raises(ValueError, match="must be positive"):
-        aggregate_tick_to_minutes(df_tick)
-
-
-def test_aggregate_tick_to_minutes_requires_datetime_index():
-    df_tick = _tick_frame(prices=[100.0], index=["2024-01-02 09:30:00"])
-    df_tick.index = [0]
-
-    with pytest.raises(TypeError, match="DatetimeIndex"):
-        aggregate_tick_to_minutes(df_tick)
-
-
-def test_zscore_series_standardizes_values():
-    result = zscore_series(pd.Series([1.0, 2.0, 3.0]))
-
-    assert result.mean() == pytest.approx(0.0)
-    assert result.std() == pytest.approx(1.0)
-
-
-def test_zscore_series_handles_flat_values_and_preserves_nan():
-    result = zscore_series(pd.Series([np.nan, 5.0, 5.0]))
-
-    assert pd.isna(result.iloc[0])
-    assert list(result.iloc[1:]) == [0.0, 0.0]
-
-
-def test_zscore_series_preserves_nan_with_nonflat_values():
-    result = zscore_series(pd.Series([np.nan, 1.0, 2.0, 3.0]))
-
-    assert pd.isna(result.iloc[0])
-    assert result.dropna().mean() == pytest.approx(0.0)
-    assert result.dropna().std() == pytest.approx(1.0)
-
-
-def test_make_minute_features_from_minute_bidask_computes_core_formulas():
-    index = pd.date_range("2024-01-02 09:30", periods=25, freq="min")
-    df = pd.DataFrame(
-        {
-            "mid_close": [100.0 + i + (i % 3) * 0.1 for i in range(25)],
-            "volume": [10 + i for i in range(25)],
-            "spread_close": [0.1 + i * 0.01 for i in range(25)],
-            "rel_spread_close": [0.001 + i * 0.0001 for i in range(25)],
-        },
-        index=index,
-    )
-
-    result = make_minute_features_from_minute_bidask(df)
-    expected_mid_return = np.log(df["mid_close"] / df["mid_close"].shift(1))
-    expected_log_volume = np.log1p(df["volume"])
-    expected_rolling_vol_5 = expected_mid_return.rolling(5).std()
-    expected_rolling_vol_20 = expected_mid_return.rolling(20).std()
-    expected_noise = _manual_zscore(df["rel_spread_close"]) - _manual_zscore(expected_log_volume)
-    expected_shock = _manual_zscore(expected_mid_return).abs() + _manual_zscore(expected_rolling_vol_20)
-
-    assert list(result.columns) == [
-        "mid_return",
-        "abs_mid_return",
-        "volume",
-        "log_volume",
-        "spread_close",
-        "rel_spread_close",
-        "rolling_vol_5",
-        "rolling_vol_20",
-        "noise_score_raw",
-        "shock_score_raw",
+    assert result["date"].dt.strftime("%Y-%m-%d").tolist() == [
+        "2023-01-05",
+        "2023-01-06",
     ]
-    pd.testing.assert_series_equal(result["mid_return"], expected_mid_return, check_names=False)
-    pd.testing.assert_series_equal(result["rolling_vol_5"], expected_rolling_vol_5, check_names=False)
-    pd.testing.assert_series_equal(result["rolling_vol_20"], expected_rolling_vol_20, check_names=False)
-    pd.testing.assert_series_equal(result["noise_score_raw"], expected_noise, check_names=False)
-    pd.testing.assert_series_equal(result["shock_score_raw"], expected_shock, check_names=False)
+    np.testing.assert_allclose(result["equity_simple"], [0.1, 0.1])
+    np.testing.assert_allclose(result["equity_log"], np.log([1.1, 1.1]))
+    assert result["gap_calendar_days"].tolist() == [3.0, 1.0]
 
 
-def test_make_minute_features_from_minute_bidask_resets_returns_across_dates():
-    df = pd.DataFrame(
-        {
-            "mid_close": [100.0, 110.0, 121.0],
-            "volume": [10, 20, 30],
-            "spread_close": [0.1, 0.1, 0.2],
-            "rel_spread_close": [0.001, 0.001, 0.002],
-        },
-        index=pd.to_datetime(["2024-01-02 16:00", "2024-01-03 09:30", "2024-01-03 09:31"]),
+def test_equity_returns_reject_nonpositive_level() -> None:
+    levels = canonical(["2023-01-02", "2023-01-03"], [100.0, 0.0])
+
+    with pytest.raises(FeatureError, match="positive observations"):
+        equity_returns(levels)
+
+
+def test_daily_cash_alignment_is_lagged_and_staleness_bounded() -> None:
+    source = CONFIG.markets[0].cash
+    cash = canonical(["2023-01-01"], [2.52])
+    dates = pd.Series(
+        pd.to_datetime(["2023-01-01", "2023-01-02", "2023-01-12", "2023-01-13"])
     )
 
-    result = make_minute_features_from_minute_bidask(df)
+    result = align_cash_returns(dates, cash, source, 252)
 
-    assert pd.isna(result.iloc[0]["mid_return"])
-    assert pd.isna(result.iloc[1]["mid_return"])
-    assert result.iloc[2]["mid_return"] == pytest.approx(math.log(121.0 / 110.0))
-
-
-def test_make_minute_features_from_minute_bidask_requires_columns():
-    df = pd.DataFrame({"mid_close": [100.0]})
-
-    with pytest.raises(ValueError, match="missing required columns"):
-        make_minute_features_from_minute_bidask(df)
+    assert pd.isna(result.loc[0, "cash_return"])
+    assert result.loc[1, "cash_return"] == pytest.approx(0.0001)
+    assert result.loc[2, "cash_age_days"] == 10
+    assert result.loc[2, "cash_return"] == pytest.approx(0.0001)
+    assert pd.isna(result.loc[3, "cash_return"])
 
 
-def test_make_minute_features_from_minute_bidask_requires_valid_inputs():
-    df = pd.DataFrame(
-        {
-            "mid_close": [100.0, 0.0],
-            "volume": [10, 20],
-            "spread_close": [0.1, 0.2],
-            "rel_spread_close": [0.001, 0.002],
-        },
-        index=pd.date_range("2024-01-02 09:30", periods=2, freq="min"),
+def test_monthly_cash_alignment_uses_second_following_month() -> None:
+    source = CONFIG.markets[1].cash
+    cash = canonical(["2023-01-01"], [-2.52])
+    dates = pd.Series(
+        pd.to_datetime(["2023-02-28", "2023-03-01", "2023-06-29", "2023-06-30"])
     )
 
-    with pytest.raises(ValueError, match="mid_close must be positive"):
-        make_minute_features_from_minute_bidask(df)
+    result = align_cash_returns(dates, cash, source, 252)
+
+    assert pd.isna(result.loc[0, "cash_return"])
+    assert result.loc[1, "cash_return"] == pytest.approx(-0.0001)
+    assert result.loc[2, "cash_age_days"] == 120
+    assert result.loc[2, "cash_return"] == pytest.approx(-0.0001)
+    assert pd.isna(result.loc[3, "cash_return"])
 
 
-def _tick_frame(prices: list[float], index: list[str]) -> pd.DataFrame:
-    return pd.DataFrame(
-        {
-            "price": prices,
-            "bid": [price - 0.1 for price in prices],
-            "ask": [price + 0.1 for price in prices],
-            "size": [10] * len(prices),
-            "mid": prices,
-            "spread": [0.2] * len(prices),
-            "rel_spread": [0.002] * len(prices),
-        },
-        index=pd.to_datetime(index),
+def test_features_match_frozen_pandas_ewm_formulas() -> None:
+    excess = pd.Series([-0.02, 0.01, -0.01, 0.03])
+
+    actual = make_features(excess)
+    negative_squared = excess.clip(upper=0).pow(2)
+    expected_dd = np.sqrt(
+        negative_squared.ewm(halflife=10, adjust=True, ignore_na=False).mean()
+    )
+    expected_dd20 = np.sqrt(
+        negative_squared.ewm(halflife=20, adjust=True, ignore_na=False).mean()
+    )
+    expected_dd60 = np.sqrt(
+        negative_squared.ewm(halflife=60, adjust=True, ignore_na=False).mean()
+    )
+
+    np.testing.assert_allclose(actual["dd_10"], expected_dd)
+    np.testing.assert_allclose(
+        actual["sortino_20"],
+        excess.ewm(halflife=20, adjust=True, ignore_na=False).mean() / expected_dd20,
+    )
+    np.testing.assert_allclose(
+        actual["sortino_60"],
+        excess.ewm(halflife=60, adjust=True, ignore_na=False).mean() / expected_dd60,
     )
 
 
-def _manual_zscore(s: pd.Series) -> pd.Series:
-    result = pd.Series(np.nan, index=s.index, dtype=float)
-    valid = s.dropna()
-    std = valid.std()
-    if pd.isna(std) or std < 1e-12:
-        result.loc[valid.index] = 0.0
-    else:
-        result.loc[valid.index] = (valid - valid.mean()) / std
-    return result
+def test_zero_downside_and_missing_excess_never_create_infinity() -> None:
+    result = make_features(pd.Series([0.01, 0.02, None]))
+
+    assert result["dd_10"].iloc[:2].eq(0).all()
+    assert result[["sortino_20", "sortino_60"]].isna().all().all()
+    assert result.iloc[2].isna().all()
+
+
+def test_future_changes_do_not_alter_past_market_features() -> None:
+    dates = pd.date_range("2023-01-01", periods=12, freq="D")
+    equity = canonical(dates.strftime("%Y-%m-%d"), np.linspace(100, 111, 12))
+    cash = canonical(dates.strftime("%Y-%m-%d"), np.linspace(1, 2, 12))
+    market = CONFIG.markets[0]
+    baseline = prepare_market(equity, cash, market, CONFIG)
+
+    changed_equity = equity.copy()
+    changed_cash = cash.copy()
+    changed_equity.loc[changed_equity.index[-1], "value"] = 999.0
+    changed_cash.loc[changed_cash.index[-1], "value"] = 99.0
+    changed = prepare_market(changed_equity, changed_cash, market, CONFIG)
+
+    pd.testing.assert_frame_equal(baseline.iloc[:-1], changed.iloc[:-1])
+
+
+def test_effective_oos_start_uses_3000_rows_plus_eight_years() -> None:
+    dates = pd.bdate_range("1990-01-01", periods=9000)
+    frame = pd.DataFrame(
+        {
+            "date": dates,
+            "dd_10": 1.0,
+            "sortino_20": 1.0,
+            "sortino_60": 1.0,
+        }
+    )
+    target = dates[2999] + pd.DateOffset(years=8)
+    expected = dates[dates >= target][0].date()
+
+    assert effective_oos_start(frame) == expected
+    assert effective_oos_start(frame.iloc[:2000]) is None

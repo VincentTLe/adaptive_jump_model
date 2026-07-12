@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session log — adaptive_jump_model</title>
+<style>
+  :root{--bg:#0f1117;--bg2:#161922;--bg3:#1f2330;--fg:#e7ecef;
+    --dim:#9aa5b1;--accent:#7bdcb5;--cyan:#7bf0ff;--border:#2a3040;}
+  *{box-sizing:border-box;} body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;
+    line-height:1.6;font-size:15px;}
+  code{font-family:'JetBrains Mono',ui-monospace,monospace;
+    background:var(--bg3);color:var(--cyan);
+    padding:.06em .35em;border-radius:4px;font-size:.86em;}
+  header{max-width:880px;margin:0 auto;padding:42px 28px 8px;}
+  header h1{margin:0;font-size:26px;font-weight:800;color:var(--accent);
+    letter-spacing:-.02em;}
+  header .sub{color:var(--dim);font-size:13px;margin:.3em 0 0;}
+  main{max-width:880px;margin:0 auto;padding:18px 28px 60px;display:flex;
+    flex-direction:column;gap:14px;}
+  .card{background:var(--bg2);border:1px solid var(--border);
+    border-radius:12px;padding:16px 18px;
+    border-left:3px solid var(--accent);}
+  .head{display:flex;justify-content:space-between;align-items:baseline;
+    gap:12px;flex-wrap:wrap;}
+  .ts{font-family:'JetBrains Mono',monospace;color:var(--cyan);font-size:13px;}
+  .who{color:var(--dim);font-size:12.5px;text-transform:uppercase;letter-spacing:.5px;}
+  .goal{font-size:16px;font-weight:600;margin:.5em 0 .8em;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px;}
+  @media(max-width:620px){.grid{grid-template-columns:1fr;}}
+  .lbl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);
+    font-weight:700;margin-bottom:2px;}
+  .grid ul{margin:.2em 0;padding-left:1.1em;} .grid li{margin:.15em 0;}
+  .grid p{margin:.2em 0;}
+  .notes{margin:.9em 0 0;padding-top:.7em;
+    border-top:1px dashed var(--border);font-size:14px;}
+  .notes .lbl{display:inline;margin-right:.4em;}
+  .dim{color:var(--dim);} .empty{color:var(--dim);text-align:center;padding:40px;}
+</style></head>
+<body>
+<header>
+  <h1>Session log</h1>
+  <p class="sub">28 session(s) · newest first · 2026-07-12 06:30 UTC</p>
+</header>
+<main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-12T06:30Z</span><span class="who">codex · GPT-5</span>
+      </div>
+      <p class="goal">Freeze the owner-approved six-source proxy data contract before acquisition code.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>TASK.md (proxy-data-contract-001)</code></li><li><code>research.toml (new canonical proxy source contract)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>Python 3.12 tomllib parsed research.toml and all source/classification/cutoff/policy invariants passed</li><li>research.toml SHA-256: 8f96774b01d3751fc4556b6e6f5876873f8c7457fbbf4c870c6829cc4b39570b</li><li>uv run pytest -q: 15 passed</li><li>uv run ruff check .: passed</li><li>uv run ruff format --check .: passed</li><li>no network request, data download, generated artifact, model fit, or experiment occurred</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>6f9b3b8e68d3c798c842a60c7677ac7416466c34</code></p></div>
+        <div><span class="lbl">Next step</span><p>Create an approved acquisition task: validate/load research.toml, implement Yahoo/FRED/BOJ raw adapters with deterministic manifests and mocked tests, then run a three-market real-data smoke capped at 2023-12-31.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>The contract forbids extension downloads, definition splicing, imputation, forward-fill, and outlier removal. Rate daily alignment remains explicitly blocked for a later protocol task. Existing handoff changes and untracked paper PDF remain preserved.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-12T05:41Z</span><span class="who">codex · GPT-5</span>
+      </div>
+      <p class="goal">Record the proxy-replication decision and make default Ruff verification ignore only the frozen archive.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>TASK.md (setup-lint-001 contract and evidence)</code></li><li><code>pyproject.toml (Ruff archive exclusion)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>uv run ruff check .: passed</li><li>uv run ruff format --check .: 5 files already formatted</li><li>uv sync --locked --extra data: passed</li><li>adaptive_jump, jumpmodels, hmmlearn, and yfinance import check: passed</li><li>.venv/bin/python -m pytest -q: 15 passed</li><li>scoped README Ruff check and format check: passed</li><li>uv pip check: all 47 installed packages compatible</li><li>uv lock --check: passed</li><li>git diff --exit-code -- archive: archive unchanged</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>4f1bb3ac2fe3de1feafdfb40ad6bbead90895ee6</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner review of the exact proxy source bundle, then create a frozen proxy-data/downloader task before any acquisition code.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Recommended definition-first bundle: Yahoo ^SP500TR, Yahoo ^GDAXI, Yahoo ^N225 price proxy, FRED DTB3, OECD/FRED German 3-month interbank proxy, and BOJ 3-month call-rate proxy; shift each market OOS to causal data sufficiency. Existing procedural handoff changes and the untracked paper PDF remain preserved.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-12T01:41Z</span><span class="who">codex · GPT-5</span>
+      </div>
+      <p class="goal">Complete the free-data parity audit for all six Shu paper series and produce a beginner data-parity lesson.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>TASK.md (task completion evidence)</code></li><li><code>docs/learning/01-data-parity.html (new)</code></li><li><code>artifacts/data-source-audit/20260712T012740Z/ (generated, ignored)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>audit.py completed: 19 candidates parsed across 6 required series</li><li>audit hash validator passed: all 19 raw-response hashes and 6 overlaps valid</li><li>uv run pytest -q: 15 passed</li><li>uv run ruff check src tests .agent/render_log.py: passed</li><li>uv run ruff format --check src tests .agent/render_log.py: passed</li><li>Chromium 1440x900 and 390x844 full-page renders inspected successfully</li><li>uv run ruff check .: failed with 333 pre-existing findings under frozen archive</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>b14359b20012dc39d628ba4ebf5e4ade812437bd</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner must choose licensed/author data versus a clearly labeled proxy route; then approve a small setup task to exclude frozen archive from default Ruff scope before downloader work.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Exact credential-free parity is unavailable for all six series. Generated raw data and audit artifacts remain ignored. Pre-existing handoff edits and untracked paper PDF were preserved.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-12T01:11Z</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">Finish generated-report cleanup and establish a verified Python package foundation.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>reports/dashboard.html (deleted)</code></li><li><code>pyproject.toml</code></li><li><code>.python-version</code></li><li><code>requirements.txt (deleted)</code></li><li><code>src/adaptive_jump/tv_jump.py (formatted)</code></li><li><code>tests/test_tv_jump.py (formatted)</code></li><li><code>.gitignore</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>uv sync --locked --extra data: installed project plus 47 packages from a fresh .venv</li><li>package and all direct research/data dependencies imported without PYTHONPATH</li><li>.venv/bin/python -m pytest -q: 11 passed</li><li>Ruff check and format check passed</li><li>uv pip check: all 47 installed packages compatible</li><li>uv lock --check passed</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>545b1e05d539f3c2ed42f3c8a7f53c1fcf0ab232</code></p></div>
+        <div><span class="lbl">Next step</span><p>Obtain explicit approval for a generated-file size exception, then commit the verified 718-line uv.lock alone; next harden handoff validation.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>branch cleanup/research-protocol; starting HEAD bde81bf; ending HEAD 545b1e05d539f3c2ed42f3c8a7f53c1fcf0ab232; commits this session: 3381499, 634e55d, 545b1e0. uv.lock is untracked pending the approximately 400-line exception. The paper PDF remains intentionally untracked. Existing procedural handoff changes were preserved.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-12T00:45Z</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">Review and repair the updated project research-governance policy before continuing foundation setup.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>AGENTS.md</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>reviewed all 24 sections against account-level AGENTS and current repo state</li><li>rg found no mojibake or non-ASCII bytes after repair</li><li>artifact path is ignored while research/experiment_registry.jsonl is not ignored</li><li>git diff --cached --check passed</li><li>documentation-only change; no unit tests required by Section 19</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>bde81bf docs: strengthen research governance</code></p></div>
+        <div><span class="lbl">Next step</span><p>Stop for owner review. Next commit deletes reports/dashboard.html under the approved 528-line exception, then foundation setup starts with handoff validation and pyproject/uv planning.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>branch cleanup/research-protocol; starting HEAD 0407dd8; ending HEAD bde81bf; pending dirty files after handoff are the two procedural .agent files and the intentionally untracked paper PDF. The current helper still lacks schema validation and is the next setup defect to fix.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T08:08Z</span><span class="who">codex</span>
+      </div>
+      <p class="goal">Execute the approved deletion-only commit-size exception for stale generated LEARN_P0.html.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>LEARN_P0.html (deleted)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>file was tracked, unmodified, generated, and had no remaining active references</li><li>PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed</li><li>/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed</li><li>root tracked inventory now contains only .gitignore, AGENTS.md, CLAUDE.md, and requirements.txt</li><li>git diff --cached --check passed</li><li>commit was intentionally one file with 458 deletions under the approved exception</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>0407dd8 chore: remove stale P0 explainer</code></p></div>
+        <div><span class="lbl">Next step</span><p>Stop for owner review. Execute the second approved deletion-only exception for reports/dashboard.html (528 lines) in its own commit, then verify no tracked reports remain and Step 2 cleanup is complete.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>No intermediate compaction or archive copy was used. Git history preserves the removed generated explainer. Pending .agent changes remain unstaged so the exception commit contained only LEARN_P0.html.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T08:05Z</span><span class="who">codex</span>
+      </div>
+      <p class="goal">Implement step 2m of the approved cleanup: archive six superseded provenance/source documents through pure renames without content churn.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>archive/legacy-minute/docs/MATH_REFERENCE.html</code></li><li><code>archive/legacy-minute/docs/STATUS.md</code></li><li><code>archive/legacy-minute/docs/TASK.md</code></li><li><code>archive/pre-audit-daily/docs/HANDOFF_NEW_CHAT.md</code></li><li><code>archive/pre-audit-daily/docs/PROJECT_MAP.html</code></li><li><code>archive/pre-audit-daily/docs/2026-07-07-B-adaptive-lambda-design.md</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>all six source files were tracked and unmodified</li><li>Git detected all six moves as 100% renames</li><li>PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed</li><li>/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed</li><li>root tracked inventory now contains only .gitignore, AGENTS.md, CLAUDE.md, LEARN_P0.html, and requirements.txt</li><li>git diff --cached --check passed</li><li>post-commit status clean except intentionally untracked paper PDF</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>a59a8e9 chore: archive superseded project documentation</code></p></div>
+        <div><span class="lbl">Next step</span><p>Obtain explicit owner sign-off for two deletion-only commit-size exceptions: LEARN_P0.html (458 lines) and reports/dashboard.html (528 lines). Delete each in its own commit after approval, verifying tests/lint after each.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Do not archive these two generated HTML outputs and do not perform an intermediate line-compaction rewrite to evade the approximately 400-line limit. After their deletion, Step 2 generated/stale cleanup is complete and work can proceed to the clean package foundation.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T08:02Z</span><span class="who">codex</span>
+      </div>
+      <p class="goal">Implement step 2l of the approved cleanup: remove the two stale generated P0/P1 root explainers that fit within the commit-size limit.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>LEARN_P1.html (deleted)</code></li><li><code>P0_PLOTS.html (deleted)</code></li><li><code>.agent/session-log.jsonl</code></li><li><code>.agent/session-log.html</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>both files were tracked and unmodified</li><li>only external reference was in stale LEARN_P0.html, itself pending deletion</li><li>PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed</li><li>/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed</li><li>committed diff: 4 files, 13 insertions, 333 deletions</li><li>git diff --cached --check passed</li><li>post-commit status clean except intentionally untracked paper PDF</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>ff4292f chore: remove stale P0 P1 explainers</code></p></div>
+        <div><span class="lbl">Next step</span><p>Stop for owner review. Next slice is rename-only: move MATH_REFERENCE.html, STATUS.md, TASK.md into archive/legacy-minute/docs and HANDOFF_NEW_CHAT.md, PROJECT_MAP.html, docs/specs/2026-07-07-B-adaptive-lambda-design.md into archive/pre-audit-daily/docs. Do not alter content.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Generated LEARN_P0.html (458 lines) and reports/dashboard.html (528 lines) still require explicit commit-size exceptions for deletion. Provenance/source docs should be archived via pure renames, avoiding line churn.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T08:00Z</span><span class="who">codex</span>
+      </div>
+      <p class="goal">Implement step 2k of the approved cleanup: remove all remaining tracked P2 plot binaries and bring pending handoff history into Git.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>reports/p2/*.png (9 deleted)</code></li><li><code>.agent/session-log.jsonl</code></li><li><code>.agent/session-log.html</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>inventory confirmed exactly nine tracked, unmodified P2 PNGs</li><li>PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed</li><li>/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed</li><li>git ls-files reports returns only reports/dashboard.html</li><li>git diff --cached --check passed</li><li>post-commit status clean except intentionally untracked paper PDF</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>a6b1ce4 chore: finish P2 artifact cleanup</code></p></div>
+        <div><span class="lbl">Next step</span><p>Stop for owner review. Next bounded slice deletes generated LEARN_P1.html (274 lines) and P0_PLOTS.html (57 lines), for 331 deleted lines; include this handoff only if total remains below 400. Dashboard.html (528) and LEARN_P0.html (458) require explicit line-limit exceptions later.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Line audit: HANDOFF_NEW_CHAT 99, LEARN_P0 458, LEARN_P1 274, MATH_REFERENCE 488, P0_PLOTS 57, PROJECT_MAP 579, STATUS 64, TASK 131, design spec 84, dashboard 528. Source/provenance docs can be moved via rename-only archive commits; generated HTML should be deleted, not archived.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T07:57Z</span><span class="who">codex</span>
+      </div>
+      <p class="goal">Implement step 2j of the approved cleanup: retire all tracked P2 CSV result tables while staying below the commit-size limit.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>reports/p2/*_ratio_path_*.csv (9 deleted)</code></li><li><code>reports/p2/metrics_*.csv (3 deleted)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>inventory confirmed exactly 12 tracked, unmodified CSVs</li><li>source line count before deletion: 378</li><li>PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed</li><li>/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed</li><li>git diff --cached --check passed</li><li>tracked reports now consist of nine P2 PNGs plus dashboard.html</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>f55b5c4 chore: remove withdrawn P2 tables</code></p></div>
+        <div><span class="lbl">Next step</span><p>Stop for owner review. Next slice deletes the nine tracked P2 PNGs and includes pending .agent handoff changes; after that dashboard.html is the only tracked path under reports/.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>The 378-line deletion intentionally excluded .agent changes to preserve the approximately 400-line commit boundary. Deletion used the tracked CSV list, leaving ignored local logs and PNGs untouched.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T07:55Z</span><span class="who">codex</span>
+      </div>
+      <p class="goal">Implement step 2i of the approved cleanup: retire the complete tracked P1 result tree in one bounded deletion-only commit.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>reports/p1/*_beta_path_*.csv (6 deleted)</code></li><li><code>reports/p1/metrics_*.csv (2 deleted)</code></li><li><code>reports/p1/*.png (6 deleted)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>inventory confirmed exactly 14 tracked, unmodified artifacts</li><li>eight CSVs totaled 252 lines before deletion</li><li>PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed</li><li>/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed</li><li>git diff --cached --check passed</li><li>22 tracked reports remain: 21 P2 artifacts plus dashboard.html</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>13d2464 chore: remove pre-audit P1 artifacts</code></p></div>
+        <div><span class="lbl">Next step</span><p>Stop for owner review. Next slice deletes the 12 tracked P2 CSV artifacts (nine ratio paths and three metrics files), expected 378 lines; do not stage .agent so the commit remains below 400 changed lines. Delete nine P2 PNGs later.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>A first wildcard git rm attempt matched an ignored runtime log and failed atomically before changing the index. The successful deletion used git ls-files -z reports/p1 piped NUL-safely to git rm, so ignored local runtime files were untouched.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T07:53Z</span><span class="who">codex</span>
+      </div>
+      <p class="goal">Implement step 2h of the approved cleanup: remove the remaining P0 plots and enforce a single generated-report ignore policy.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>reports/p0/strategy_*.png (6 deleted)</code></li><li><code>.gitignore</code></li><li><code>.agent/session-log.jsonl</code></li><li><code>.agent/session-log.html</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>P0 inventory contained exactly six tracked, unmodified PNGs</li><li>PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed</li><li>/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed</li><li>git check-ignore resolves reports/future-run/report.html to .gitignore reports/ rule</li><li>git ls-files reports/p0 returns no paths</li><li>git diff --cached --check passed</li><li>post-commit status clean except intentionally untracked paper PDF</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>c71a0c7 chore: finish P0 artifact cleanup</code></p></div>
+        <div><span class="lbl">Next step</span><p>Stop for owner review. Next slice deletes all 14 tracked P1 artifacts in one deletion-only commit: six beta-path CSVs, two metrics CSVs, and six PNGs. Do not stage .agent in that commit so it remains within the 15-file limit.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>The four partial reports ignore patterns were replaced by one reports/ rule. Existing tracked P1/P2/dashboard files remain visible to Git until explicitly removed.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T07:51Z</span><span class="who">codex</span>
+      </div>
+      <p class="goal">Implement step 2g of the approved cleanup: retire all tracked P0 CSV result tables in one bounded commit.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>reports/p0/*_lambda_path*.csv (6 deleted)</code></li><li><code>reports/p0/metrics_walkforward*.csv (6 deleted)</code></li><li><code>reports/p0/noise_floor_paper-v2.csv (deleted)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>inventory confirmed exactly 13 tracked, unmodified CSVs</li><li>source line count before deletion: 314</li><li>PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed</li><li>/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed</li><li>git diff --cached --check passed</li><li>41 tracked files remain across P0/P1/P2 report trees</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>38f7317 chore: remove pre-audit P0 tables</code></p></div>
+        <div><span class="lbl">Next step</span><p>Stop for owner review. Next slice removes the six tracked P0 PNGs, adds a top-level reports/ ignore rule, and includes pending .agent handoff updates; P1/P2 tracked artifacts remain for their own bounded commits.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>reports/dashboard.html remains tracked and deferred because deleting its 528 lines requires an explicit commit-size exception. No generated result was moved into archive; Git history and the local pre-cleanup snapshot provide provenance.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T07:49Z</span><span class="who">codex</span>
+      </div>
+      <p class="goal">Implement step 2f of the approved cleanup: retire the tracked legacy root report artifacts while respecting commit-size limits.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>reports/demo_summary.md (deleted)</code></li><li><code>reports/figures/* legacy PNGs (6 deleted)</code></li><li><code>reports/research_design_notes.html (deleted)</code></li><li><code>reports/tables/* legacy CSVs (6 deleted)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>all 15 candidate files were tracked and unmodified before deletion</li><li>reports/dashboard.html was restored after diff review showed it alone has 528 lines</li><li>PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed</li><li>/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed</li><li>git diff --cached --check passed</li><li>committed diff: 14 files and 264 deleted text lines; 55 tracked report files remain</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>bed6656 chore: remove legacy generated reports</code></p></div>
+        <div><span class="lbl">Next step</span><p>Stop for owner review. Next bounded slice deletes the 13 tracked P0 CSV artifacts (six lambda paths, six metric tables, one noise-floor table); keep six P0 PNGs and all P1/P2 artifacts for later commits.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>The planned 15-file deletion was reduced to 14 because dashboard.html alone violates the ~400-line commit limit. Do not use a pointless intermediate rewrite; either obtain explicit one-file/528-line sign-off later or handle it with the broader stale-doc decision.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T07:46Z</span><span class="who">codex</span>
+      </div>
+      <p class="goal">Implement step 2e of the approved cleanup: archive the three pre-audit daily P0/P1/P2 experiment runners with an explicit evidence warning.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>archive/pre-audit-daily/README.md</code></li><li><code>archive/pre-audit-daily/scripts/p0_daily_baseline.py</code></li><li><code>archive/pre-audit-daily/scripts/p1_adaptive_lambda.py</code></li><li><code>archive/pre-audit-daily/scripts/p2_asymmetric.py</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>active tree contains only src/adaptive_jump/__init__.py, tv_jump.py, and test_tv_jump.py</li><li>PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed</li><li>/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed</li><li>active scan found no runner or sys.path hack</li><li>git diff --cached --check passed</li><li>post-commit status clean except intentionally untracked paper PDF</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>8b921e9 chore: archive pre-audit daily experiments</code></p></div>
+        <div><span class="lbl">Next step</span><p>Stop for owner review. Next cleanup slice removes exactly 15 tracked legacy root report artifacts (dashboard, demo summary, six figures, research notes, six tables). Handle P0/P1/P2 report trees and .gitignore in later bounded commits.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>The archive README classifies P0 as approximate, P1 as exploratory null, and P2 as withdrawn. tv_jump.py intentionally remains active as the single custom time-varying DP required by the approved target architecture.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T07:44Z</span><span class="who">codex</span>
+      </div>
+      <p class="goal">Implement step 2d of the approved cleanup: archive the unused fixed-model DP/JM/HMM/penalty core and its matching unit tests.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>archive/legacy-minute/src/adaptive_jump/dp.py</code></li><li><code>archive/legacy-minute/src/adaptive_jump/hmm.py</code></li><li><code>archive/legacy-minute/src/adaptive_jump/jump_model.py</code></li><li><code>archive/legacy-minute/src/adaptive_jump/penalties.py</code></li><li><code>archive/legacy-minute/tests/dp_checks.py</code></li><li><code>archive/legacy-minute/tests/hmm_checks.py</code></li><li><code>archive/legacy-minute/tests/jump_model_checks.py</code></li><li><code>archive/legacy-minute/tests/penalties_checks.py</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>dependency scan confirmed P0/P1/P2 and tv_jump do not import the archived core</li><li>PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 11 passed</li><li>/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed</li><li>active import scan now contains only tv_jump references</li><li>git diff --cached --check passed</li><li>post-commit status clean except intentionally untracked paper PDF</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>9dd8bb6 chore: archive legacy fixed-model core</code></p></div>
+        <div><span class="lbl">Next step</span><p>Stop for owner review. Next slice archives scripts/p0_daily_baseline.py, p1_adaptive_lambda.py, and p2_asymmetric.py under a pre-audit-daily README. Keep src/adaptive_jump/tv_jump.py and test_tv_jump.py active as the one target time-varying DP, then harden its validation in step 3.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Fifty fixed-core tests moved out of active collection with their frozen source, reducing the active suite from 61 to 11 without failures. This corrects the prior broad wording: tv_jump should remain active because the approved target architecture explicitly retains one custom TV DP.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T07:41Z</span><span class="who">codex</span>
+      </div>
+      <p class="goal">Implement step 2c of the approved cleanup: archive the self-contained legacy backtest, experiment, library-audit, and reporting stack with its tests.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>archive/legacy-minute/src/adaptive_jump/backtesting.py</code></li><li><code>archive/legacy-minute/src/adaptive_jump/experiments.py</code></li><li><code>archive/legacy-minute/src/adaptive_jump/library_checks.py</code></li><li><code>archive/legacy-minute/src/adaptive_jump/reporting.py</code></li><li><code>archive/legacy-minute/tests/experiments_checks.py</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>active import scan found no remaining references</li><li>PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 61 passed</li><li>/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed</li><li>git diff --cached --check passed</li><li>post-commit status clean except intentionally untracked paper PDF</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>8927eee chore: archive legacy backtest stack</code></p></div>
+        <div><span class="lbl">Next step</span><p>Stop for owner review. Next slice verifies and archives dp.py, jump_model.py, hmm.py, penalties.py and their four unit-test files; tv_jump and P0/P1/P2 remain active until the pre-audit-daily slice.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Nineteen legacy backtest/experiment tests moved out of active collection with their frozen source, reducing the active suite from 80 to 61 without failures.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T07:39Z</span><span class="who">codex</span>
+      </div>
+      <p class="goal">Implement step 2b of the approved cleanup: archive the legacy Kibot data loader and minute feature code with their tests.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>archive/legacy-minute/src/adaptive_jump/data_kibot.py</code></li><li><code>archive/legacy-minute/src/adaptive_jump/features.py</code></li><li><code>archive/legacy-minute/tests/data_kibot_checks.py</code></li><li><code>archive/legacy-minute/tests/minute_features_checks.py</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>dependency scan found no remaining imports in active src/scripts/tests</li><li>PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 80 passed</li><li>/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed</li><li>git diff --cached --check passed</li><li>post-commit status clean except intentionally untracked paper PDF</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>3fb171a chore: archive legacy market data code</code></p></div>
+        <div><span class="lbl">Next step</span><p>Stop for owner review. Next slice archives backtesting.py, experiments.py, library_checks.py, reporting.py, and test_experiments.py; DP/JM/HMM/TV code remains active until its own reviewed slice.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Twenty-two minute/data tests moved out of active collection with their frozen source, reducing the active suite from 102 to 80 without failures.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T07:35Z</span><span class="who">codex</span>
+      </div>
+      <p class="goal">Implement step 2a of the approved cleanup: remove runnable legacy minute/Kibot entrypoints from the active tree in one small archive commit.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>archive/legacy-minute/README.md</code></li><li><code>archive/legacy-minute/scripts/prepare_processed_data.py</code></li><li><code>archive/legacy-minute/scripts/run_all_demos.py</code></li><li><code>archive/legacy-minute/scripts/run_library_backtest_audit.py</code></li><li><code>archive/legacy-minute/scripts/run_model_comparison_demo.py</code></li><li><code>archive/legacy-minute/scripts/run_synthetic_separation_demo.py</code></li><li><code>archive/legacy-minute/tests/prepare_processed_data_checks.py</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>PYTHONPATH=src /tmp/adaptive_jump_model_venv/bin/pytest -q: 102 passed</li><li>/tmp/adaptive_jump_model_venv/bin/ruff check .: all checks passed</li><li>git diff --cached --check passed before commit</li><li>post-commit status clean except intentionally untracked paper PDF</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>4c903a9 chore: archive legacy research entrypoints</code></p></div>
+        <div><span class="lbl">Next step</span><p>Stop for owner review. Next small slice archives src/adaptive_jump/data_kibot.py and features.py with their active unit tests, then reruns the reduced active suite.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Five legacy integration tests moved with prepare_processed_data and renamed prepare_processed_data_checks.py so pytest does not collect frozen archive content. A system pytest invocation failed only because the system environment lacks PYTHONPATH and jumpmodels; the verified project venv passed.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T07:29Z</span><span class="who">codex</span>
+      </div>
+      <p class="goal">Implement approved cleanup plan step 1 only: preserve the existing repository state before tracked archive/cleanup work.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>artifacts/pre-cleanup-20260711/snapshot.txt (ignored local)</code></li><li><code>artifacts/pre-cleanup-20260711/data-sha256.txt (ignored local)</code></li><li><code>artifacts/pre-cleanup-20260711/untracked-sha256.txt (ignored local)</code></li><li><code>artifacts/pre-cleanup-20260711/generated/reports/ (98 ignored local files)</code></li><li><code>.agent/session-log.jsonl</code></li><li><code>.agent/session-log.html</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>created branch cleanup/research-protocol at 310b923fdd21b26ed6c43482970ca99b9970dc08</li><li>all 17 data files passed sha256sum -c</li><li>paper PDF passed sha256sum -c</li><li>98 archived generated reports match original paths and hashes exactly</li><li>git diff --check passed</li><li>git diff contains no tracked source changes</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>none by design; preservation step must not create a snapshot/WIP commit</code></p></div>
+        <div><span class="lbl">Next step</span><p>Stop for owner review. After approval, execute step 2 in small commit-bounded slices: archive frozen source, retire tracked generated artifacts/stale docs, and expand ignore rules.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Pre-existing .agent handoff changes remain. The only remaining untracked path is 2402.05272v3.pdf. An initial mv --parents attempt was unsupported and changed nothing; copy-hash-verify-delete was then used successfully with no data loss.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T06:41Z</span><span class="who">codex</span>
+      </div>
+      <p class="goal">Audit toàn bộ adaptive_jump_model để xác định mục tiêu nghiên cứu và liệt kê các vấn đề về phương pháp, code, dữ liệu, artifacts, reproducibility và tài liệu.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>.agent/session-log.jsonl</code></li><li><code>.agent/session-log.html</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>pytest: 107 passed</li><li>ruff: all checks passed</li><li>pip check: no broken requirements</li><li>P0/P1/P2 one-block smoke passed using temporary outputs</li><li>Chromium desktop/mobile rendered PROJECT_MAP.html, P0_PLOTS.html, and reports/dashboard.html</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>uncommitted audit-only handoff; source HEAD 310b923</code></p></div>
+        <div><span class="lbl">Next step</span><p>Do not start P3 yet. First repair reproducibility and exact run commands, preserve an untouched holdout, implement the paper-consistent rolling decoder, extend and persist lambda CV surfaces, add pipeline tests, and correct stale claims; only then redesign asymmetric persistence with nonzero diagonal or semi-Markov costs.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>No source code changed. Main findings: P0 resets decoding every 126-day block instead of the paper 3000-day rolling history; local Yahoo caches end 2024-09-27 so the claimed post-2024-07 untouched holdout is false; clean requirements miss tabulate and optional audit packages; P0 did not meet the documented 3-market ordering gate; P1 is an uncalibrated null; P2 is mathematically degenerate and already withdrawn; tests do not exercise daily pipelines; 99 pre-existing untracked paths remain.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T05:34Z</span><span class="who">claude · fable-5</span>
+      </div>
+      <p class="goal">Verify the 2026-07-11 external audit of PR #2, correct overclaims, hand implementation back to Codex</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>HANDOFF_NEW_CHAT.md (replaced stale 2026-06-30 version: verified audit findings, trustworthy-vs-legacy map, prioritized plan with acceptance criteria)</code></li><li><code>PR #2 title+body rewritten on GitHub (exploratory; P0 = approximate Yahoo replication; P2 withdrawn; review-response section)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>Audit checked claim-by-claim against repo: lam-cap counts 14/40, 20/40, 19/39 reproduced from committed lambda paths; OOS_START=2005-01-01; HMM fits GaussianHMM on 1-D returns (not feature-matched); P1 N_INIT_CV=3 vs P0 5; grids 77 vs 11 candidates; no yfinance import anywhere (cache-builder missing); P2b scale example lam_bar=50, delta=0.221 -&gt; costs 55.84/44.77 (gap 11.07) confirmed from committed CSV. Alternation identity confirmed from dp_tv semantics: zero-diagonal asym penalty = symmetric + endpoint bias.</p></div>
+        <div><span class="lbl">Commit</span><p><code>see this commit (handoff + session log); previous work at 2b5cbad</code></p></div>
+        <div><span class="lbl">Next step</span><p>Codex implements in order: (1) deterministic yahoo cache builder + manifest + README; (2) lambda-grid plateau check (cap binds ~half of blocks); (3) paired moving-block bootstrap + post-2024-07 untouched holdout; (4) P3 asymmetry redesign with nonzero-diagonal -log P(i,j) or semi-Markov (dp_tv already supports diagonals, no solver change) after checking Aydinhan 2024 novelty; (5) STATUS/TASK/root-reports legacy cleanup + CI.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Commit messages e058361/2b5cbad contain withdrawn interpretations; PR #2 body is the corrected account. 5-seed spread is init sensitivity only, not significance. P2a/P2b tested a threshold-shift model, not asymmetric persistence.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-11T01:37Z</span><span class="who">claude · fable-5</span>
+      </div>
+      <p class="goal">Get all local P0-P2 work onto GitHub for the next Codex audit: validate + commit the pending P2b duration-calibrated asymmetry, push, open a review surface</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>scripts/p2_asymmetric.py (+75/-10: --asym duration mode, delta = ln(d_bull-1)-ln(d_bear-1) from fitted run lengths, zero extra CV params)</code></li><li><code>reports/p2/metrics_p2b.csv + {GSPC,GDAXI,N225}_ratio_path_p2b.csv + p2_*_p2b.png (new results)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>pytest 107 passed + ruff clean in freshly rebuilt /tmp/adaptive_jump_model_venv; regression check: cv-mode GSPC rerun reproduces committed p2a metrics row and ratio path exactly; full 3-market duration run 112s</p></div>
+        <div><span class="lbl">Commit</span><p><code>2b5cbad pushed to origin/p0-daily-baseline; draft PR #2 opened (p0-daily-baseline -&gt; main)</code></p></div>
+        <div><span class="lbl">Next step</span><p>Point ChatGPT/Codex at PR #2 (last audit only saw main @ c0aece6). P2b = fifth null: S&amp;P -0.07 / DAX -0.11 / Nikkei +0.07 vs fixed. Decide P3 direction or accept null + write-up. Owed: LEARN_P2.html.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>HANDOFF_NEW_CHAT.md stale (2026-06-30, pre-pivot) -- consider deleting. Intentionally untracked: reports/full/ (116MB legacy), 2402.05272v3.pdf, *_oos_*.csv, DONE_*.txt. STATUS.md/TASK.md/root reports/ still legacy (flagged in PR body).</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-02T20:07Z</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">Fix backtest evaluation mapping after IBM full output showed state-0-only trading rule was not a valid conclusion basis</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/backtesting.py (explicit low/high/train-selected policies, policy metadata in frames/trades/round trips)</code></li><li><code>scripts/run_model_comparison_demo.py (passes train paths/returns and plots primary train-selected policy)</code></li><li><code>src/adaptive_jump/library_checks.py + scripts/run_library_backtest_audit.py (policy-aware independent audit)</code></li><li><code>src/adaptive_jump/reporting.py (documents policy semantics)</code></li><li><code>tests/test_experiments.py (policy/delay/train-selection coverage)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>pytest: 96 passed; ruff check src scripts tests: passed; quick demo --mode quick --force completed; cached library audit grouped by policy completed</p></div>
+        <div><span class="lbl">Commit</span><p><code>c880371 pushed to origin/fix/backtest-trade-audit</code></p></div>
+        <div><span class="lbl">Next step</span><p>Regenerate IBM/full outputs under the new backtest_policy schema before interpreting backtest results. Then compare low_vol_invested vs high_vol_invested vs train_return_selected; do not reuse old reports/full IBM metrics for the trading-rule conclusion. Consider a structural split because backtesting.py and run_model_comparison_demo.py are now just over 500 lines.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Local dirty state intentionally remains: reports/full/ old IBM generated artifacts and HANDOFF_NEW_CHAT.md untracked. Full all-symbol validation remains incomplete; adaptive claim still unproven.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-02T19:55Z</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">Clean/refactor backtest/reporting patch, fix adaptive-lambda evaluation design, push source branch, and start full validation</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>.gitignore (ignore quick/cache/generated heavy outputs)</code></li><li><code>src/adaptive_jump/backtesting.py, library_checks.py, reporting.py (new modules)</code></li><li><code>src/adaptive_jump/penalties.py (multiplicative adaptive lambda + duration bounds)</code></li><li><code>scripts/run_model_comparison_demo.py (cost grid, trade/equity plots, per-symbol resume, run.log progress)</code></li><li><code>scripts/run_synthetic_separation_demo.py (seeded synthetic oracle-fixed benchmark)</code></li><li><code>scripts/run_library_backtest_audit.py (cached optional library audit)</code></li><li><code>tests/test_experiments.py, tests/test_penalties.py</code></li><li><code>reports/full/symbols/IBM/* (local generated IBM full checkpoint, uncommitted)</code></li><li><code>reports/full/run.log (local generated, ignored)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>pytest: 93 passed; ruff check src scripts tests: passed; quick demo/resume passed earlier; synthetic full seeded benchmark passed; IBM full checkpoint produced and analyzed. Full all-symbol run was intentionally stopped at OIH after IBM per owner request.</p></div>
+        <div><span class="lbl">Commit</span><p><code>9ffddaf pushed to origin/fix/backtest-trade-audit</code></p></div>
+        <div><span class="lbl">Next step</span><p>Do not claim adaptive wins. IBM shows Fixed vs Adaptive agreement 98.75% and Adaptive underperforms Fixed/BuyHold at cost=0. Next: implement/run IBM oracle fixed/adaptive grid or add model-level checkpoints before any more all-symbol full runs.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Dirty local state intentionally remains: reports/full/ generated IBM artifacts and HANDOFF_NEW_CHAT.md. Full OIH rerun with logging showed it reached OIH HMM before being stopped; older interrupted run also showed OIH JM DP bottleneck. Source branch is pushed; generated full reports are not committed.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-06-30T19:54Z</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">Prototype library-backed backtest audit plots from cached model signals without rerunning full models</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>scripts/run_model_comparison_demo.py (exports model_backtest_frames.csv.gz)</code></li><li><code>scripts/run_library_backtest_audit.py (new optional vectorbt/quantstats/backtesting/plotly audit)</code></li><li><code>reports/quick/library_audit/* (quick audit HTML + metrics)</code></li><li><code>reports/quick/tables/model_backtest_frames.csv.gz (quick cache)</code></li><li><code>.agent/session-log.jsonl + session-log.html (handoff)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>quick model cache: 13.13s; quick library audit: 12.86s; Playwright opened trade_equity_IVE_fixed_jm.html and screenshot nonblank; pytest: 90 passed; ruff check src scripts tests: passed; pip check: passed</p></div>
+        <div><span class="lbl">Commit</span><p><code>uncommitted on branch fix/backtest-trade-audit</code></p></div>
+        <div><span class="lbl">Next step</span><p>Do not rerun all-symbol full yet. If approved, run one-symbol full cache first, e.g. IVE, then run library audit on reports/full for that symbol and inspect runtime/file size.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Installed pyfolio-reloaded, empyrical-reloaded, backtesting, bt into /tmp/adaptive_jump_model_venv only; requirements.txt unchanged. backtesting.py uses FractionalBacktest and now matches round-trip counts on quick. vectorbt/quantstats are the cleaner audit paths; backtesting.py remains convention-sensitive.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-06-30T19:33Z</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">Backtest audit patch: mode-isolated outputs, trade/round-trip logs, optional library checks, Sharpe annualization reconciliation</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/experiments.py (trade/round-trip helpers, signal_state, optional audit imports)</code></li><li><code>scripts/run_model_comparison_demo.py (reports/{mode}, trade CSVs, library check table)</code></li><li><code>scripts/run_all_demos.py (mode output root)</code></li><li><code>scripts/run_synthetic_separation_demo.py (--output-root)</code></li><li><code>tests/test_experiments.py (trade log, optional deps, delay tests)</code></li><li><code>reports/quick/* (quick verification artifacts generated)</code></li><li><code>.agent/session-log.jsonl + session-log.html (handoff)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>pytest: 90 passed; ruff check src scripts tests: passed; pip check: passed; quick demo generated reports/quick including model_trade_events.csv and model_round_trips.csv</p></div>
+        <div><span class="lbl">Commit</span><p><code>uncommitted on branch fix/backtest-trade-audit</code></p></div>
+        <div><span class="lbl">Next step</span><p>Review patch; do selective staging only. Before any commit intended to preserve report artifacts, regenerate full outputs under reports/full or explicitly exclude quick/local report artifacts. Consider approved split for oversized experiments.py and run_model_comparison_demo.py.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Custom backtest remains source of truth. quantstats/vectorbt are optional audit checks with status columns and shared periods_per_year=98280. Top-level reports remain dirty from earlier quick IVE overwrite; this patch writes new model outputs to reports/quick and reports/full to prevent future clobbering.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-06-30T19:06Z</span><span class="who">claude · opus-4.8</span>
+      </div>
+      <p class="goal">Review dự án + workflow đa-agent; chẩn đoán nghi vấn &#x27;full run chỉ 10 ngày&#x27;; tra prior-art adaptive jump penalty; dựng .agent handoff</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>.agent/render_log.py + handoff.sh (new)</code></li><li><code>.agent/session-log.jsonl + session-log.html (new)</code></li><li><code>AGENTS.md (+ mục Session Handoff)</code></li><li><code>không đụng src/scripts/reports (Codex đang sửa, uncommitted)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><p>Read-only audit. Full run xác nhận THẬT: n_obs test 0.5M–1M/symbol, trải nhiều năm. &#x27;10 ngày&#x27; = chart chỉ vẽ tail(2000). DP verify vs brute-force oracle (200 ca PASS) phiên trước; ~0.38M t/s. Không chạy pytest phiên này.</p></div>
+        <div><span class="lbl">Commit</span><p><code>uncommitted (phiên này không commit; HEAD=6712c2d của Codex; working tree còn thay đổi chưa commit)</code></p></div>
+        <div><span class="lbl">Next step</span><p>1) Sửa backtest (total_return −100%, 20k–56k lệnh minute-bar → mis-specified; Codex có vẻ đang sửa). 2) Adaptive λ cần dynamic range thật (median≈fixed 3.37 → Fixed vs Adaptive ~98–99% giống cả ở full scale). 3) Sửa chart tail(2000)→toàn range + in date-range &amp; n_obs. 4) Dựng baseline CV-optimal λ + đo noise floor trước khi tin delta adaptive-vs-fixed.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Env: dùng /tmp/adaptive_jump_model_venv (Codex tạo: numpy/pandas/scipy/sklearn/hmmlearn/matplotlib); không interpreter nào khác chạy đủ test suite. Prior-art: SOTA (Shu/Kolm/Mulvey) 1 λ toàn cục chọn bằng CV-Sharpe, daily; time-varying λ intraday/microstructure chưa thấy ai làm → baseline phải đánh bại = CV-optimal λ. Đã push GitHub VincentTLe/adaptive_jump_model (kể cả backtest −100%).</p>
+    </article>
+</main>
+</body></html>
