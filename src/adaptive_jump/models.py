@@ -4,14 +4,18 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Callable
+from concurrent.futures import ProcessPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
+from multiprocessing import get_context
 
 import numpy as np
 import pandas as pd
 from hmmlearn.hmm import GaussianHMM
 from jumpmodels.jump import JumpModel
 from sklearn.preprocessing import StandardScaler
+from threadpoolctl import threadpool_limits
 
 from adaptive_jump.config import HMMProtocol, JMProtocol, ModelProtocol
 
@@ -118,32 +122,105 @@ def hmm_states(
     frame: pd.DataFrame,
     model_protocol: ModelProtocol,
     hmm_protocol: HMMProtocol,
+    *,
+    initial: HMMResult | None = None,
+    n_jobs: int = 1,
+    checkpoint_every: int = 50,
+    progress: Callable[[HMMResult], None] | None = None,
 ) -> HMMResult:
     """Fit the frozen HMM daily and retain each Viterbi terminal state."""
+    if n_jobs < 1 or checkpoint_every < 1:
+        raise ModelError("HMM workers and checkpoint interval must be positive")
     complete, all_dates = _complete_model_frame(frame, ("equity_log",))
     fit_window = model_protocol.fit_window
     states = pd.Series(np.nan, index=all_dates, name="hmm_state")
     records: list[dict[str, object]] = []
-    for terminal in range(fit_window - 1, len(complete)):
-        window = complete.iloc[terminal - fit_window + 1 : terminal + 1]
-        fit = best_hmm_terminal_fit(window["equity_log"], model_protocol, hmm_protocol)
-        fit_date = pd.Timestamp(window.iloc[-1]["date"])
-        states.loc[fit_date] = fit.terminal_state
-        records.append(
-            {
-                "fit_date": fit_date,
-                "training_start": pd.Timestamp(window.iloc[0]["date"]),
-                "training_end": fit_date,
-                "observations": len(window),
-                "seed": fit.seed,
-                "log_likelihood": fit.log_likelihood,
-                "low_variance": fit.variances[0],
-                "high_variance": fit.variances[1],
-                "accepted_starts": fit.accepted_starts,
-                "failed_starts": list(fit.failed_starts),
-            }
-        )
+    first_terminal = fit_window - 1
+    if initial is not None:
+        _validate_hmm_initial(initial, complete, all_dates, first_terminal)
+        states = initial.states.copy()
+        records = initial.fits.to_dict("records")
+        first_terminal += len(records)
+
+    executor = (
+        ProcessPoolExecutor(max_workers=n_jobs, mp_context=get_context("forkserver"))
+        if n_jobs > 1
+        else None
+    )
+    try:
+        for batch_start in range(first_terminal, len(complete), checkpoint_every):
+            terminals = range(
+                batch_start, min(batch_start + checkpoint_every, len(complete))
+            )
+            tasks = [
+                (
+                    complete.iloc[terminal - fit_window + 1 : terminal + 1][
+                        "equity_log"
+                    ].to_numpy(),
+                    model_protocol,
+                    hmm_protocol,
+                )
+                for terminal in terminals
+            ]
+            fits = (
+                list(executor.map(_fit_hmm_task, tasks))
+                if executor is not None
+                else [_fit_hmm_task(task) for task in tasks]
+            )
+            for terminal, fit in zip(terminals, fits, strict=True):
+                window = complete.iloc[terminal - fit_window + 1 : terminal + 1]
+                fit_date = pd.Timestamp(window.iloc[-1]["date"])
+                states.loc[fit_date] = fit.terminal_state
+                records.append(_hmm_fit_record(window, fit, fit_date))
+            if progress is not None:
+                progress(HMMResult(states.copy(), pd.DataFrame.from_records(records)))
+    finally:
+        if executor is not None:
+            executor.shutdown(cancel_futures=True)
     return HMMResult(states=states, fits=pd.DataFrame.from_records(records))
+
+
+def _fit_hmm_task(
+    task: tuple[np.ndarray, ModelProtocol, HMMProtocol],
+) -> HMMFit:
+    values, model_protocol, hmm_protocol = task
+    with threadpool_limits(limits=1):
+        return best_hmm_terminal_fit(pd.Series(values), model_protocol, hmm_protocol)
+
+
+def _hmm_fit_record(
+    window: pd.DataFrame, fit: HMMFit, fit_date: pd.Timestamp
+) -> dict[str, object]:
+    return {
+        "fit_date": fit_date,
+        "training_start": pd.Timestamp(window.iloc[0]["date"]),
+        "training_end": fit_date,
+        "observations": len(window),
+        "seed": fit.seed,
+        "log_likelihood": fit.log_likelihood,
+        "low_variance": fit.variances[0],
+        "high_variance": fit.variances[1],
+        "accepted_starts": fit.accepted_starts,
+        "failed_starts": list(fit.failed_starts),
+    }
+
+
+def _validate_hmm_initial(
+    initial: HMMResult,
+    complete: pd.DataFrame,
+    all_dates: pd.DatetimeIndex,
+    first_terminal: int,
+) -> None:
+    if not initial.states.index.equals(all_dates):
+        raise ModelError("HMM checkpoint dates do not match inputs")
+    if initial.fits.empty:
+        return
+    fit_dates = pd.DatetimeIndex(pd.to_datetime(initial.fits["fit_date"]))
+    expected = pd.DatetimeIndex(
+        complete.iloc[first_terminal : first_terminal + len(fit_dates)]["date"]
+    )
+    if not fit_dates.equals(expected) or initial.states.loc[fit_dates].isna().any():
+        raise ModelError("HMM checkpoint is not a contiguous causal prefix")
 
 
 def best_hmm_terminal_fit(

@@ -5,6 +5,7 @@ from jumpmodels.jump import JumpModel
 
 from adaptive_jump.config import HMMProtocol, JMProtocol, ModelProtocol
 from adaptive_jump.models import (
+    HMMResult,
     ModelError,
     best_hmm_terminal_fit,
     fixed_jm_states,
@@ -180,6 +181,52 @@ def test_hmm_daily_fit_is_causal(monkeypatch: pytest.MonkeyPatch) -> None:
     after = hmm_states(changed, model, _hmm_protocol()).states
 
     pd.testing.assert_series_equal(before.iloc[:-1], after.iloc[:-1])
+
+
+def test_hmm_resumes_from_contiguous_checkpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("adaptive_jump.models.GaussianHMM", _FakeHMM)
+    model = ModelProtocol(2, 4, 0, 1)
+    frame = _frame(10).rename(columns={"excess_return": "equity_log"})
+    captured = {}
+
+    def stop_after_first(result: HMMResult) -> None:
+        captured["result"] = result
+        raise RuntimeError("simulated interruption")
+
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        hmm_states(
+            frame,
+            model,
+            _hmm_protocol(),
+            checkpoint_every=2,
+            progress=stop_after_first,
+        )
+    resumed = hmm_states(frame, model, _hmm_protocol(), initial=captured["result"])
+    complete = hmm_states(frame, model, _hmm_protocol())
+
+    pd.testing.assert_series_equal(resumed.states, complete.states)
+    pd.testing.assert_frame_equal(resumed.fits, complete.fits)
+
+
+def test_parallel_hmm_matches_sequential_results() -> None:
+    rng = np.random.default_rng(11)
+    returns = np.r_[rng.normal(0, 0.005, 120), rng.normal(0, 0.03, 122)]
+    frame = pd.DataFrame(
+        {
+            "date": pd.bdate_range("2020-01-02", periods=len(returns)),
+            "equity_log": returns,
+        }
+    )
+    model = ModelProtocol(2, 240, 0, 1)
+    protocol = HMMProtocol((0, 2), (0, 1), 0.001, 500, 1e-6)
+
+    sequential = hmm_states(frame, model, protocol, n_jobs=1)
+    parallel = hmm_states(frame, model, protocol, n_jobs=2)
+
+    pd.testing.assert_series_equal(sequential.states, parallel.states)
+    pd.testing.assert_frame_equal(sequential.fits, parallel.fits)
 
 
 def test_hmm_majority_filter_uses_strict_half_threshold() -> None:
