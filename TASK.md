@@ -3,7 +3,7 @@
 ## Identity
 
 - `task_id`: `proxy-acquisition-001`
-- `status`: `active`
+- `status`: `complete`
 - `target_branch`: `cleanup/research-protocol`
 - `starting_ref`: `6f9b3b8e68d3c798c842a60c7677ac7416466c34`
 - `primary_class`: `ENGINEERING / SMOKE`
@@ -106,6 +106,26 @@ implementation is allowed in this task.
 
 ## Completion
 
-Commit implementation in reviewable substeps. At completion record the real
-run path/hash and verification, then continue to a separately frozen causal
-normalization/features task under the owner's continuous-execution approval.
+- Real run:
+  `data/raw/shu-proxy-replication-v1-20260712T071245Z/manifest.json`
+- Manifest SHA-256:
+  `438c28426fffcbd1b57cb2c2439d4efd319e650cac977d98c339b1e362596634`
+- Independent receipt:
+  `artifacts/data-acquisition/shu-proxy-replication-v1-20260712T071245Z/validation.json`
+- Receipt SHA-256:
+  `bf0bdb355039094028632e72f770c32dff1f71f203adef13b92270ed556869e3`
+- The accepted run used clean Git SHA
+  `18f3a94f95f7d67b1f5e80aa73882cd742a69a75` and the frozen config hash.
+- All six sources, 12 persisted file hashes, quality facts, source IDs, and
+  the 2023 cutoff passed independent validation.
+- A real BOJ `null` missing token produced a regression test. The runner now
+  rejects dirty/untracked result-affecting code before making network calls.
+- Thirty-four tests, Ruff check/format, dependency compatibility, lock check,
+  and the installed CLI passed.
+- `docs/learning/02-data-pipeline.html` was inspected in Chromium at desktop
+  and mobile widths.
+- No return, rate alignment, feature, model, signal, or post-2023 observation
+  was produced.
+
+Continue to a separately frozen causal normalization/features task under the
+owner's continuous-execution approval.
