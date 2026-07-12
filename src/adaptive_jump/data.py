@@ -3,16 +3,22 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
+import json
 import math
+import platform
+import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
+from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
-from adaptive_jump.config import SourceConfig
+from adaptive_jump.config import ResearchConfig, SourceConfig
 
 
 class AcquisitionError(RuntimeError):
@@ -77,6 +83,89 @@ def quality(frame: pd.DataFrame) -> dict[str, Any]:
         "first_valid_date": valid["date"].min() if not valid.empty else None,
         "last_valid_date": valid["date"].max() if not valid.empty else None,
     }
+
+
+def acquire(
+    config: ResearchConfig,
+    *,
+    repo_root: str | Path | None = None,
+    run_id: str | None = None,
+    created_at: datetime | None = None,
+    git_sha: str | None = None,
+    yahoo_loader: YahooLoader | None = None,
+    http_get: HttpGetter | None = None,
+) -> Path:
+    """Acquire all configured sources and write a complete manifest last."""
+    root = Path(repo_root or config.path.parent).resolve()
+    timestamp = created_at or datetime.now(UTC)
+    if timestamp.tzinfo is None:
+        raise AcquisitionError("created_at must be timezone-aware")
+    identifier = run_id or f"{config.config_id}-{timestamp:%Y%m%dT%H%M%SZ}"
+    raw_dir = root / config.raw_root / identifier
+    canonical_dir = root / config.processed_root / identifier
+    if raw_dir.exists() or canonical_dir.exists():
+        raise AcquisitionError(f"Acquisition run already exists: {identifier}")
+    raw_dir.mkdir(parents=True)
+    canonical_dir.mkdir(parents=True)
+
+    records: list[dict[str, Any]] = []
+    for market in config.markets:
+        for kind, source in (("equity", market.equity), ("cash", market.cash)):
+            payload = fetch_source(
+                source,
+                config.sample_start,
+                config.replication_cutoff,
+                yahoo_loader=yahoo_loader,
+                http_get=http_get,
+            )
+            stem = f"{market.id}_{kind}"
+            raw_path = raw_dir / f"{stem}.csv"
+            canonical_path = canonical_dir / f"{stem}.csv"
+            canonical_payload = canonical_bytes(payload.canonical)
+            raw_path.write_bytes(payload.raw)
+            canonical_path.write_bytes(canonical_payload)
+            records.append(
+                {
+                    "market": market.id,
+                    "kind": kind,
+                    "currency": market.currency,
+                    "market_classification": market.classification,
+                    "deviations": list(market.deviations),
+                    "provider": source.provider,
+                    "source_id": source.source_id,
+                    "source_classification": source.classification,
+                    "frequency": source.frequency,
+                    "value_field": source.value_field,
+                    "payload_type": payload.payload_type,
+                    "retrieval": payload.retrieval,
+                    "raw": _file_record(root, raw_path, payload.raw),
+                    "canonical": _file_record(root, canonical_path, canonical_payload),
+                    "quality": quality(payload.canonical),
+                }
+            )
+
+    manifest = {
+        "schema_version": 1,
+        "run_id": identifier,
+        "claim_class": "ENGINEERING / SMOKE",
+        "scientific_claim_allowed": False,
+        "config_id": config.config_id,
+        "config_path": str(config.path),
+        "config_sha256": config.sha256,
+        "git_sha": git_sha or _git_sha(root),
+        "created_at_utc": timestamp.astimezone(UTC).isoformat(),
+        "sample_start": config.sample_start.isoformat(),
+        "replication_cutoff": config.replication_cutoff.isoformat(),
+        "python": platform.python_version(),
+        "packages": _package_versions(),
+        "sources": records,
+    }
+    manifest_path = raw_dir / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False) + "\n",
+        encoding="utf-8",
+    )
+    return manifest_path
 
 
 def _fetch_yahoo(
@@ -261,3 +350,32 @@ def _setting(source: SourceConfig, key: str) -> str:
     if not isinstance(value, str) or not value:
         raise AcquisitionError(f"{source.source_id}: missing setting {key}")
     return value
+
+
+def _file_record(root: Path, path: Path, payload: bytes) -> dict[str, Any]:
+    return {
+        "path": str(path.relative_to(root)),
+        "bytes": len(payload),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+    }
+
+
+def _git_sha(root: Path) -> str:
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
+
+
+def _package_versions() -> dict[str, str]:
+    versions: dict[str, str] = {}
+    for package in ("adaptive-jump-model", "pandas", "requests", "yfinance"):
+        try:
+            versions[package] = version(package)
+        except PackageNotFoundError:
+            versions[package] = "not-installed"
+    return versions

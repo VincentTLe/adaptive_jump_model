@@ -1,4 +1,6 @@
-from datetime import date
+import hashlib
+import json
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -8,6 +10,7 @@ from adaptive_jump.config import load_config
 from adaptive_jump.data import (
     AcquisitionError,
     HttpResult,
+    acquire,
     canonical_bytes,
     fetch_source,
     quality,
@@ -106,3 +109,84 @@ def test_canonical_serialization_is_deterministic() -> None:
     frame = pd.DataFrame({"date": ["2023-01-02", "2023-01-03"], "value": [1.0, None]})
 
     assert canonical_bytes(frame) == b"date,value\n2023-01-02,1.0\n2023-01-03,\n"
+
+
+def test_acquire_writes_six_hashed_sources_and_manifest_last(tmp_path: Path) -> None:
+    manifest_path = _fixture_run(tmp_path)
+    manifest = json.loads(manifest_path.read_text())
+
+    assert manifest_path == (tmp_path / "data/raw/fixture-run/manifest.json")
+    assert manifest["config_sha256"] == CONFIG.sha256
+    assert manifest["git_sha"] == "abc123"
+    assert manifest["replication_cutoff"] == "2023-12-31"
+    assert len(manifest["sources"]) == 6
+    assert [row["payload_type"] for row in manifest["sources"]].count(
+        "adapter_output"
+    ) == 3
+    for source in manifest["sources"]:
+        for key in ("raw", "canonical"):
+            record = source[key]
+            payload = (tmp_path / record["path"]).read_bytes()
+            assert len(payload) == record["bytes"]
+            assert hashlib.sha256(payload).hexdigest() == record["sha256"]
+        canonical = pd.read_csv(tmp_path / source["canonical"]["path"])
+        assert canonical.columns.tolist() == ["date", "value"]
+        assert canonical["date"].max() <= "2023-12-31"
+
+
+def test_fixture_runs_have_identical_canonical_hashes(tmp_path: Path) -> None:
+    first = json.loads(_fixture_run(tmp_path / "first").read_text())
+    second = json.loads(_fixture_run(tmp_path / "second").read_text())
+
+    assert [row["canonical"]["sha256"] for row in first["sources"]] == [
+        row["canonical"]["sha256"] for row in second["sources"]
+    ]
+
+
+def test_acquire_rejects_existing_run(tmp_path: Path) -> None:
+    _fixture_run(tmp_path)
+
+    with pytest.raises(AcquisitionError, match="already exists"):
+        _fixture_run(tmp_path)
+
+
+def _fixture_run(root: Path) -> Path:
+    def yahoo_loader(_source, start, end):
+        assert start == START
+        assert end == date(2024, 1, 1)
+        return pd.DataFrame(
+            {"Close": [100.0, 101.0]},
+            index=pd.to_datetime(["2023-01-03", "2023-12-29"]),
+        ), {"adapter": "fixture"}
+
+    def http_get(url, params):
+        if "fredgraph" in url:
+            source_id = "DTB3" if "DTB3" in url else "IR3TIB01DEM156N"
+            frequency_dates = (
+                ["1970-01-02", "2023-12-29"]
+                if source_id == "DTB3"
+                else ["1970-01-01", "2023-12-01"]
+            )
+            content = (
+                f"observation_date,{source_id}\n"
+                f"{frequency_dates[0]},1.0\n{frequency_dates[1]},2.0\n"
+            ).encode()
+        else:
+            content = (
+                b"STATUS,200\nNEXTPOSITION,\n"
+                b"SERIES_CODE,NAME_OF_TIME_SERIES,UNIT,FREQUENCY,CATEGORY,"
+                b"LAST_UPDATE,SURVEY_DATES,VALUES\n"
+                b"STRACLUC3M,Call,percent,MONTHLY,Call,20240101,198901,1.0\n"
+                b"STRACLUC3M,Call,percent,MONTHLY,Call,20240101,202312,2.0\n"
+            )
+        return HttpResult(content, url, 200, "text/csv")
+
+    return acquire(
+        CONFIG,
+        repo_root=root,
+        run_id="fixture-run",
+        created_at=datetime(2024, 1, 2, tzinfo=UTC),
+        git_sha="abc123",
+        yahoo_loader=yahoo_loader,
+        http_get=http_get,
+    )
