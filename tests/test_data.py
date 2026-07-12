@@ -1,5 +1,6 @@
 import hashlib
 import json
+import subprocess
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from adaptive_jump.config import load_config
 from adaptive_jump.data import (
     AcquisitionError,
     HttpResult,
+    _git_sha,
     acquire,
     canonical_bytes,
     fetch_source,
@@ -72,6 +74,7 @@ def test_boj_adapter_checks_series_and_month_bounds() -> None:
         b"SERIES_CODE,NAME_OF_TIME_SERIES,UNIT,FREQUENCY,CATEGORY,LAST_UPDATE,"
         b"SURVEY_DATES,VALUES\n"
         b"STRACLUC3M,Call Rate,percent per annum,MONTHLY,Call,20240101,198901,4.5\n"
+        b"STRACLUC3M,Call Rate,percent per annum,MONTHLY,Call,20240101,200001,null\n"
         b"STRACLUC3M,Call Rate,percent per annum,MONTHLY,Call,20240101,202312,0.1\n"
     )
 
@@ -81,8 +84,14 @@ def test_boj_adapter_checks_series_and_month_bounds() -> None:
 
     payload = fetch_source(source, START, CUTOFF, http_get=getter)
 
-    assert payload.canonical["date"].tolist() == ["1989-01-01", "2023-12-01"]
-    assert payload.canonical["value"].tolist() == [4.5, 0.1]
+    assert payload.canonical["date"].tolist() == [
+        "1989-01-01",
+        "2000-01-01",
+        "2023-12-01",
+    ]
+    assert payload.canonical["value"].iloc[0] == 4.5
+    assert pd.isna(payload.canonical["value"].iloc[1])
+    assert payload.canonical["value"].iloc[2] == 0.1
 
 
 @pytest.mark.parametrize(
@@ -148,6 +157,52 @@ def test_acquire_rejects_existing_run(tmp_path: Path) -> None:
 
     with pytest.raises(AcquisitionError, match="already exists"):
         _fixture_run(tmp_path)
+
+
+def test_git_provenance_rejects_result_affecting_diff(tmp_path: Path) -> None:
+    source = tmp_path / "src/example.py"
+    source.parent.mkdir()
+    source.write_text("VALUE = 1\n")
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.com",
+            "add",
+            ".",
+        ],
+        cwd=tmp_path,
+        check=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.com",
+            "commit",
+            "-qm",
+            "fixture",
+        ],
+        cwd=tmp_path,
+        check=True,
+    )
+    assert len(_git_sha(tmp_path)) == 40
+
+    source.write_text("VALUE = 2\n")
+    with pytest.raises(AcquisitionError, match="tracked files are dirty"):
+        _git_sha(tmp_path)
+
+    source.write_text("VALUE = 1\n")
+    untracked = tmp_path / "tests/new_test.py"
+    untracked.parent.mkdir()
+    untracked.write_text("assert True\n")
+    with pytest.raises(AcquisitionError, match="untracked files exist"):
+        _git_sha(tmp_path)
 
 
 def _fixture_run(root: Path) -> Path:

@@ -101,6 +101,7 @@ def acquire(
     if timestamp.tzinfo is None:
         raise AcquisitionError("created_at must be timezone-aware")
     identifier = run_id or f"{config.config_id}-{timestamp:%Y%m%dT%H%M%SZ}"
+    revision = git_sha or _git_sha(root)
     raw_dir = root / config.raw_root / identifier
     canonical_dir = root / config.processed_root / identifier
     if raw_dir.exists() or canonical_dir.exists():
@@ -152,7 +153,7 @@ def acquire(
         "config_id": config.config_id,
         "config_path": str(config.path),
         "config_sha256": config.sha256,
-        "git_sha": git_sha or _git_sha(root),
+        "git_sha": revision,
         "created_at_utc": timestamp.astimezone(UTC).isoformat(),
         "sample_start": config.sample_start.isoformat(),
         "replication_cutoff": config.replication_cutoff.isoformat(),
@@ -291,7 +292,9 @@ def _canonical(
     cutoff: date,
 ) -> pd.DataFrame:
     date_values = pd.to_datetime(pd.Series(dates), errors="raise").dt.date
-    raw_values = pd.Series(values).replace({"": None, ".": None, "NA": None})
+    raw_values = pd.Series(values).replace(
+        {"": None, ".": None, "NA": None, "null": None}
+    )
     numeric = pd.to_numeric(raw_values, errors="coerce")
     invalid = raw_values.notna() & numeric.isna()
     if invalid.any():
@@ -361,6 +364,23 @@ def _file_record(root: Path, path: Path, payload: bytes) -> dict[str, Any]:
 
 
 def _git_sha(root: Path) -> str:
+    scope = ["research.toml", "pyproject.toml", "uv.lock", "src", "tests"]
+    tracked = subprocess.run(
+        ["git", "diff", "--quiet", "HEAD", "--", *scope], cwd=root, check=False
+    )
+    if tracked.returncode == 1:
+        raise AcquisitionError("result-affecting tracked files are dirty")
+    if tracked.returncode != 0:
+        raise AcquisitionError("could not inspect tracked research files")
+    untracked = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard", "--", *scope],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    if untracked.stdout.strip():
+        raise AcquisitionError("result-affecting untracked files exist")
     result = subprocess.run(
         ["git", "rev-parse", "HEAD"],
         cwd=root,
