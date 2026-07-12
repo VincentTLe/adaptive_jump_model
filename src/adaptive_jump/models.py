@@ -7,10 +7,11 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+from hmmlearn.hmm import GaussianHMM
 from jumpmodels.jump import JumpModel
 from sklearn.preprocessing import StandardScaler
 
-from adaptive_jump.config import JMProtocol, ModelProtocol
+from adaptive_jump.config import HMMProtocol, JMProtocol, ModelProtocol
 
 FEATURE_COLUMNS = ("dd_10", "sortino_20", "sortino_60")
 
@@ -25,6 +26,26 @@ class FixedJMResult:
 
     states: pd.DataFrame
     refits: pd.DataFrame
+
+
+@dataclass(frozen=True)
+class HMMFit:
+    """Accepted best daily HMM fit reduced to its auditable terminal output."""
+
+    terminal_state: int
+    seed: int
+    log_likelihood: float
+    variances: tuple[float, float]
+    accepted_starts: int
+    failed_starts: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class HMMResult:
+    """Daily volatility states and restart diagnostics."""
+
+    states: pd.Series
+    fits: pd.DataFrame
 
 
 @dataclass
@@ -89,6 +110,116 @@ def terminal_online_state(model: JumpModel, scaled_window: np.ndarray) -> int:
     if terminal not in (0, 1):
         raise ModelError("upstream JM state must be 0 or 1")
     return terminal
+
+
+def hmm_states(
+    frame: pd.DataFrame,
+    model_protocol: ModelProtocol,
+    hmm_protocol: HMMProtocol,
+) -> HMMResult:
+    """Fit the frozen HMM daily and retain each Viterbi terminal state."""
+    complete, all_dates = _complete_model_frame(frame, ("equity_log",))
+    fit_window = model_protocol.fit_window
+    states = pd.Series(np.nan, index=all_dates, name="hmm_state")
+    records: list[dict[str, object]] = []
+    for terminal in range(fit_window - 1, len(complete)):
+        window = complete.iloc[terminal - fit_window + 1 : terminal + 1]
+        fit = best_hmm_terminal_fit(window["equity_log"], model_protocol, hmm_protocol)
+        fit_date = pd.Timestamp(window.iloc[-1]["date"])
+        states.loc[fit_date] = fit.terminal_state
+        records.append(
+            {
+                "fit_date": fit_date,
+                "training_start": pd.Timestamp(window.iloc[0]["date"]),
+                "training_end": fit_date,
+                "observations": len(window),
+                "seed": fit.seed,
+                "log_likelihood": fit.log_likelihood,
+                "low_variance": fit.variances[0],
+                "high_variance": fit.variances[1],
+                "accepted_starts": fit.accepted_starts,
+                "failed_starts": list(fit.failed_starts),
+            }
+        )
+    return HMMResult(states=states, fits=pd.DataFrame.from_records(records))
+
+
+def best_hmm_terminal_fit(
+    log_returns: pd.Series,
+    model_protocol: ModelProtocol,
+    hmm_protocol: HMMProtocol,
+) -> HMMFit:
+    """Select the best accepted deterministic HMM restart."""
+    values = np.asarray(log_returns, dtype=float).reshape(-1, 1)
+    if len(values) != model_protocol.fit_window or not np.isfinite(values).all():
+        raise ModelError("HMM window must contain the frozen number of finite returns")
+
+    accepted: list[tuple[float, int, int, tuple[float, float]]] = []
+    failures: list[str] = []
+    for seed in hmm_protocol.seeds:
+        try:
+            model = GaussianHMM(
+                n_components=model_protocol.n_states,
+                covariance_type="diag",
+                min_covar=hmm_protocol.min_covar,
+                n_iter=hmm_protocol.n_iter,
+                tol=hmm_protocol.tol,
+                algorithm="viterbi",
+                random_state=seed,
+            ).fit(values)
+            if not model.monitor_.converged:
+                raise ModelError("not converged")
+            score = float(model.score(values))
+            variances = np.asarray(model.covars_, dtype=float).reshape(2, -1).mean(1)
+            if not math.isfinite(score) or not np.isfinite(variances).all():
+                raise ModelError("non-finite score or variance")
+            order = np.argsort(variances, kind="stable")
+            if variances[order[0]] == variances[order[1]]:
+                raise ModelError("conditional variances are tied")
+            raw_terminal = int(np.asarray(model.predict(values))[-1])
+            label_by_raw = {int(order[0]): 0, int(order[1]): 1}
+            terminal = label_by_raw[raw_terminal]
+            ordered_variances = (float(variances[order[0]]), float(variances[order[1]]))
+            accepted.append((score, seed, terminal, ordered_variances))
+        except (ArithmeticError, KeyError, ValueError, np.linalg.LinAlgError) as exc:
+            failures.append(f"seed={seed}: {type(exc).__name__}: {exc}")
+
+    if not accepted:
+        detail = "; ".join(failures)
+        raise ModelError(f"all HMM restarts failed: {detail}")
+    score, seed, terminal, variances = max(accepted, key=lambda item: item[0])
+    return HMMFit(
+        terminal_state=terminal,
+        seed=seed,
+        log_likelihood=score,
+        variances=variances,
+        accepted_starts=len(accepted),
+        failed_starts=tuple(failures),
+    )
+
+
+def smoothed_hmm_states(
+    states: pd.Series,
+    smoothing_grid: tuple[int, ...],
+    *,
+    threshold: float = 0.5,
+    min_periods: int = 1,
+) -> pd.DataFrame:
+    """Apply the preregistered causal majority filter to HMM states."""
+    values = pd.Series(states, dtype=float)
+    if not values.dropna().isin([0.0, 1.0]).all():
+        raise ModelError("HMM states must be 0, 1, or missing")
+    if not smoothing_grid or any(k < 0 for k in smoothing_grid):
+        raise ModelError("HMM smoothing windows must be non-negative")
+    candidates = pd.DataFrame(index=values.index)
+    for window in smoothing_grid:
+        if window == 0:
+            candidates[window] = values
+            continue
+        mean = values.rolling(window=window, min_periods=min_periods).mean()
+        candidates[window] = (mean > threshold).astype(float).where(mean.notna())
+    candidates.columns.name = "k"
+    return candidates
 
 
 def _fit_fixed_jm(

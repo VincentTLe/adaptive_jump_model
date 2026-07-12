@@ -3,14 +3,46 @@ import pandas as pd
 import pytest
 from jumpmodels.jump import JumpModel
 
-from adaptive_jump.config import JMProtocol, ModelProtocol
-from adaptive_jump.models import ModelError, fixed_jm_states, terminal_online_state
+from adaptive_jump.config import HMMProtocol, JMProtocol, ModelProtocol
+from adaptive_jump.models import (
+    ModelError,
+    best_hmm_terminal_fit,
+    fixed_jm_states,
+    hmm_states,
+    smoothed_hmm_states,
+    terminal_online_state,
+)
 
 
 def _protocols(fit_window: int = 6) -> tuple[ModelProtocol, JMProtocol]:
     model = ModelProtocol(2, fit_window, 0, 1)
     jm = JMProtocol((5.0,), 4, 0, 100, 1e-8, (1, 7))
     return model, jm
+
+
+def _hmm_protocol(seeds: tuple[int, ...] = (0, 1, 2)) -> HMMProtocol:
+    return HMMProtocol((0, 2), seeds, 0.001, 100, 1e-6)
+
+
+class _Monitor:
+    def __init__(self, converged: bool) -> None:
+        self.converged = converged
+
+
+class _FakeHMM:
+    def __init__(self, *, random_state: int, **_: object) -> None:
+        self.seed = random_state
+        self.monitor_ = _Monitor(random_state != 0)
+        self.covars_ = np.array([[[9.0]], [[1.0]]])
+
+    def fit(self, _: np.ndarray) -> "_FakeHMM":
+        return self
+
+    def score(self, _: np.ndarray) -> float:
+        return float(self.seed)
+
+    def predict(self, values: np.ndarray) -> np.ndarray:
+        return np.zeros(len(values), dtype=int)
 
 
 def _frame(periods: int = 14) -> pd.DataFrame:
@@ -82,3 +114,72 @@ def test_rejects_nonfinite_or_malformed_model_inputs() -> None:
     nonfinite.loc[3, "dd_10"] = np.inf
     with pytest.raises(ModelError, match="must be finite"):
         fixed_jm_states(nonfinite, model, jm)
+
+
+def test_hmm_rejects_bad_restart_and_selects_highest_likelihood(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("adaptive_jump.models.GaussianHMM", _FakeHMM)
+    model = ModelProtocol(2, 4, 0, 1)
+
+    fit = best_hmm_terminal_fit(
+        pd.Series([0.1, -0.1, 0.2, -0.2]), model, _hmm_protocol()
+    )
+
+    assert fit.seed == 2
+    assert fit.log_likelihood == 2.0
+    assert fit.terminal_state == 1
+    assert fit.variances == (1.0, 9.0)
+    assert fit.accepted_starts == 2
+    assert fit.failed_starts[0].startswith("seed=0: ModelError: not converged")
+
+
+def test_real_hmm_labels_low_and_high_conditional_variance() -> None:
+    rng = np.random.default_rng(7)
+    returns = np.r_[rng.normal(0, 0.005, 120), rng.normal(0, 0.03, 120)]
+    model = ModelProtocol(2, len(returns), 0, 1)
+    protocol = HMMProtocol((0, 2), (0, 1, 2), 0.001, 500, 1e-6)
+
+    fit = best_hmm_terminal_fit(pd.Series(returns), model, protocol)
+
+    assert fit.terminal_state == 1
+    assert fit.variances[0] < fit.variances[1]
+    assert fit.accepted_starts == 3
+
+
+def test_hmm_daily_fit_is_causal(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("adaptive_jump.models.GaussianHMM", _FakeHMM)
+    model = ModelProtocol(2, 4, 0, 1)
+    frame = _frame(9).rename(columns={"excess_return": "equity_log"})
+    changed = frame.copy()
+    changed.loc[changed.index[-1], "equity_log"] = -99.0
+
+    before = hmm_states(frame, model, _hmm_protocol()).states
+    after = hmm_states(changed, model, _hmm_protocol()).states
+
+    pd.testing.assert_series_equal(before.iloc[:-1], after.iloc[:-1])
+
+
+def test_hmm_majority_filter_uses_strict_half_threshold() -> None:
+    states = pd.Series([np.nan, 0.0, 1.0, 1.0, 0.0])
+
+    candidates = smoothed_hmm_states(states, (0, 2, 4))
+
+    assert np.isnan(candidates[0].iloc[0])
+    assert candidates[0].iloc[1] == 0.0
+    assert candidates[2].iloc[2] == 0.0
+    assert candidates[2].iloc[3] == 1.0
+    assert candidates[4].iloc[4] == 0.0
+
+
+def test_hmm_raises_when_every_restart_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    class NeverConverges(_FakeHMM):
+        def __init__(self, **kwargs: object) -> None:
+            super().__init__(**kwargs)
+            self.monitor_ = _Monitor(False)
+
+    monkeypatch.setattr("adaptive_jump.models.GaussianHMM", NeverConverges)
+    model = ModelProtocol(2, 4, 0, 1)
+
+    with pytest.raises(ModelError, match="all HMM restarts failed"):
+        best_hmm_terminal_fit(pd.Series([0.1, -0.1, 0.2, -0.2]), model, _hmm_protocol())
