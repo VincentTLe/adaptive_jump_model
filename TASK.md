@@ -64,6 +64,9 @@ reproduction or the adaptive-model claim.
   `abs(final delta) < tol`; max-iteration alone is not convergence. This
   symmetric tolerance was frozen after v4's monotonicity rule rejected all ten
   starts for a US pre-metric fit on numerically negligible negative deltas.
+- Install that symmetric monitor before EM so a negative delta larger than the
+  tolerance does not make upstream stop early; the restart continues until the
+  symmetric criterion is met or all 1,000 iterations are exhausted.
 - Label lower conditional volatility `0` and higher volatility `1` every day.
 - Median-filter grid: `[0, 2, 4, 6, 8, 10, 20]`. For `k>0`, use trailing
   rolling mean with `min_periods=1`; high-volatility signal is `mean > 0.5`.

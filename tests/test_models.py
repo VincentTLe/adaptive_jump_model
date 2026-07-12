@@ -25,22 +25,15 @@ def _hmm_protocol(seeds: tuple[int, ...] = (0, 1, 2)) -> HMMProtocol:
     return HMMProtocol((0, 2), seeds, 0.001, 100, 1e-6)
 
 
-class _Monitor:
-    def __init__(
-        self, converged: bool, *, delta: float = 5e-7, iteration: int = 2
-    ) -> None:
-        self.converged = converged
-        self.history = [0.0, delta]
-        self.iter = iteration
-
-
 class _FakeHMM:
     def __init__(self, *, random_state: int, **_: object) -> None:
         self.seed = random_state
-        self.monitor_ = _Monitor(random_state != 0)
+        self.delta = 1e-3 if random_state == 0 else 5e-7
         self.covars_ = np.array([[[9.0]], [[1.0]]])
 
     def fit(self, _: np.ndarray) -> "_FakeHMM":
+        self.monitor_.report(0.0)
+        self.monitor_.report(self.delta)
         return self
 
     def score(self, _: np.ndarray) -> float:
@@ -154,14 +147,14 @@ def test_real_hmm_labels_low_and_high_conditional_variance() -> None:
     assert 1 <= fit.accepted_starts <= 3
 
 
-@pytest.mark.parametrize(("delta", "iteration"), [(-0.1, 2), (0.1, 100)])
+@pytest.mark.parametrize("delta", [-0.1, 0.1])
 def test_hmm_rejects_monitor_false_positive_convergence(
-    monkeypatch: pytest.MonkeyPatch, delta: float, iteration: int
+    monkeypatch: pytest.MonkeyPatch, delta: float
 ) -> None:
     class MisreportedConvergence(_FakeHMM):
         def __init__(self, **kwargs: object) -> None:
             super().__init__(**kwargs)
-            self.monitor_ = _Monitor(True, delta=delta, iteration=iteration)
+            self.delta = delta
 
     monkeypatch.setattr("adaptive_jump.models.GaussianHMM", MisreportedConvergence)
     model = ModelProtocol(2, 4, 0, 1)
@@ -176,7 +169,7 @@ def test_hmm_accepts_small_negative_delta_within_tolerance(
     class NumericalOscillation(_FakeHMM):
         def __init__(self, **kwargs: object) -> None:
             super().__init__(**kwargs)
-            self.monitor_ = _Monitor(True, delta=-5e-7)
+            self.delta = -5e-7
 
     monkeypatch.setattr("adaptive_jump.models.GaussianHMM", NumericalOscillation)
     model = ModelProtocol(2, 4, 0, 1)
@@ -186,6 +179,22 @@ def test_hmm_accepts_small_negative_delta_within_tolerance(
     )
 
     assert fit.accepted_starts == 3
+
+
+def test_hmm_rejects_max_iteration_without_tolerance_convergence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class HitsIterationLimit(_FakeHMM):
+        def fit(self, _: np.ndarray) -> "HitsIterationLimit":
+            for iteration in range(self.monitor_.n_iter):
+                self.monitor_.report(float(iteration))
+            return self
+
+    monkeypatch.setattr("adaptive_jump.models.GaussianHMM", HitsIterationLimit)
+    model = ModelProtocol(2, 4, 0, 1)
+
+    with pytest.raises(ModelError, match="all HMM restarts failed"):
+        best_hmm_terminal_fit(pd.Series([0.1, -0.1, 0.2, -0.2]), model, _hmm_protocol())
 
 
 def test_hmm_daily_fit_is_causal(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -263,7 +272,7 @@ def test_hmm_raises_when_every_restart_fails(monkeypatch: pytest.MonkeyPatch) ->
     class NeverConverges(_FakeHMM):
         def __init__(self, **kwargs: object) -> None:
             super().__init__(**kwargs)
-            self.monitor_ = _Monitor(False)
+            self.delta = 1.0
 
     monkeypatch.setattr("adaptive_jump.models.GaussianHMM", NeverConverges)
     model = ModelProtocol(2, 4, 0, 1)

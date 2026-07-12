@@ -12,6 +12,7 @@ from multiprocessing import get_context
 
 import numpy as np
 import pandas as pd
+from hmmlearn.base import ConvergenceMonitor
 from hmmlearn.hmm import GaussianHMM
 from jumpmodels.jump import JumpModel
 from sklearn.preprocessing import StandardScaler
@@ -24,6 +25,14 @@ FEATURE_COLUMNS = ("dd_10", "sortino_20", "sortino_60")
 
 class ModelError(ValueError):
     """Raised when model inputs or fitted outputs violate the protocol."""
+
+
+class _SymmetricConvergenceMonitor(ConvergenceMonitor):
+    @property
+    def converged(self) -> bool:
+        if len(self.history) < 2:
+            return False
+        return abs(self.history[-1] - self.history[-2]) < self.tol
 
 
 @dataclass(frozen=True)
@@ -246,7 +255,11 @@ def best_hmm_terminal_fit(
                     tol=hmm_protocol.tol,
                     algorithm="viterbi",
                     random_state=seed,
-                ).fit(values)
+                )
+                model.monitor_ = _SymmetricConvergenceMonitor(
+                    hmm_protocol.tol, hmm_protocol.n_iter, False
+                )
+                model.fit(values)
             _require_strict_hmm_convergence(model, hmm_protocol)
             score = float(model.score(values))
             variances = np.asarray(model.covars_, dtype=float).reshape(2, -1).mean(1)
