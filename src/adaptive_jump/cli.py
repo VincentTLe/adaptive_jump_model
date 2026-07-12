@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import math
 import pickle
 import sys
@@ -30,6 +31,9 @@ from adaptive_jump.artifacts import (
 )
 from adaptive_jump.artifacts import (
     verify_inventory as _verify_inventory,
+)
+from adaptive_jump.artifacts import (
+    verify_run,
 )
 from adaptive_jump.artifacts import (
     write_inventory as _write_inventory,
@@ -406,6 +410,8 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--study", required=True, choices=["replication"])
     run.add_argument("--config", required=True, help="path to research.toml")
     run.add_argument("--manifest", help="exact acquisition manifest path")
+    verify = commands.add_parser("verify", help="verify a sealed research run")
+    verify.add_argument("--run", required=True, help="path to one run directory")
     return parser
 
 
@@ -423,6 +429,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 config, load_frozen_data(config, arguments.manifest)
             )
             print(artifact)
+            return 0
+        if arguments.command == "verify":
+            print(json.dumps(verify_run(arguments.run), sort_keys=True))
             return 0
     except (
         AcquisitionError,

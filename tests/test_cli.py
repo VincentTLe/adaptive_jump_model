@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from adaptive_jump import data
+from adaptive_jump.artifacts import ArtifactError, verify_run, write_inventory
 from adaptive_jump.cli import RunError, load_frozen_data, main, run_replication
 from adaptive_jump.config import load_config
 from adaptive_jump.data import HttpResult
@@ -156,9 +157,23 @@ def _runner_fixture(config, *, boundary_passed: bool = True):
         }
         for model in ("fixed_jm", "hmm")
     }
+    boundary_fraction = 0.0 if boundary_passed else 0.06
     boundaries = pd.DataFrame(
         [
-            {"model": model, "delay": delay, "passed": boundary_passed}
+            {
+                "model": model,
+                "delay": delay,
+                "upper_candidate": max(
+                    config.jm_protocol.lambda_grid
+                    if model == "fixed_jm"
+                    else config.hmm_protocol.smoothing_grid
+                ),
+                "selected_months": int(boundary_fraction * 100),
+                "total_months": 100,
+                "fraction": boundary_fraction,
+                "limit": config.selection_protocol.boundary_fraction_limit,
+                "passed": boundary_passed,
+            }
             for model in selections
             for delay in config.backtest_protocol.robustness_delays
         ]
@@ -176,7 +191,7 @@ def _runner_fixture(config, *, boundary_passed: bool = True):
 
 
 def test_replication_runner_writes_and_verifies_complete_artifact(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
     config_path, manifest_path = _manifest_fixture(tmp_path)
     config = load_config(config_path)
@@ -200,8 +215,23 @@ def test_replication_runner_writes_and_verifies_complete_artifact(
     assert json.loads((run_dir / "claim.json").read_text())["passed"] is False
     assert (run_dir / "us/trades/fixed_jm-delay-1.csv").is_file()
     assert run_replication(config, frozen) == run_dir
+    assert main(["verify", "--run", str(run_dir)]) == 0
+    receipt = json.loads(capsys.readouterr().out)
+    assert receipt["boundary_rows"] == 18
+    assert receipt["metric_rows"] == 27
 
-    (run_dir / "metrics.csv").write_text("tampered\n", encoding="utf-8")
+    metrics_path = run_dir / "metrics.csv"
+    original_metrics = metrics_path.read_bytes()
+    metrics = pd.read_csv(metrics_path)
+    metrics.loc[0, "sharpe"] += 1.0
+    metrics.to_csv(metrics_path, index=False)
+    write_inventory(run_dir)
+    with pytest.raises(ArtifactError, match="metric mismatch"):
+        verify_run(run_dir)
+    metrics_path.write_bytes(original_metrics)
+    write_inventory(run_dir)
+
+    metrics_path.write_text("tampered\n", encoding="utf-8")
     with pytest.raises(RunError, match="inventory mismatch"):
         run_replication(config, frozen)
 
@@ -228,6 +258,7 @@ def test_replication_runner_does_not_open_metrics_after_boundary_failure(
     assert metadata["status"] == "boundary_failed"
     assert metadata["metrics_opened"] is False
     assert not (run_dir / "metrics.csv").exists()
+    assert verify_run(run_dir)["metric_rows"] == 0
 
 
 def test_replication_runner_resumes_hmm_progress_after_interruption(
