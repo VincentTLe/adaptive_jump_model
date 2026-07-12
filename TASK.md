@@ -3,7 +3,7 @@
 ## Identity
 
 - `task_id`: `causal-features-001`
-- `status`: `active`
+- `status`: `complete`
 - `target_branch`: `cleanup/research-protocol`
 - `starting_ref`: `279208e`
 - `primary_class`: `ENGINEERING / SMOKE`
@@ -149,5 +149,26 @@ dashboard, or scientific claim is allowed.
 
 ## Completion
 
-Record artifact hashes and verification, then continue to a separately frozen
-fixed-JM/HMM walk-forward protocol under continuous-execution approval.
+- Accepted v2 acquisition manifest:
+  `data/raw/shu-proxy-replication-v2-20260712T072243Z/manifest.json`, SHA-256
+  `bf9763931952d2bdb7ea7831e1b1fb90ab2b84d5dba09f8488678ef5eb1ad2fe`.
+- Feature summary:
+  `artifacts/causal-features/shu-proxy-replication-v2-features-20260712T072953Z/summary.json`,
+  SHA-256
+  `57c70c2128ec0942d341d1f58f0c0b61432ebaeeb8ed49ab67553dde6144b375`.
+- Independent receipt in the same artifact directory has SHA-256
+  `8519dcd69cd368e5179fee5f61971f1697a776b12020eba06d9302ea2988d621`.
+- The smoke used clean Git SHA
+  `af82cbc2397f4ede8472b26f6eda65ec667c301b` and config v2 hash.
+- Descriptive effective-OOS eligibility is `2007-11-19` (US), `2007-12-20`
+  (Germany), and `2009-04-24` (Japan). These are coverage facts, not model or
+  performance results.
+- Unit and leakage tests cover the frozen return, cash-alignment, EWM feature,
+  delay, and transaction-cost contracts. All 54 tests and Ruff checks passed.
+- `docs/learning/03-returns-features.html` was inspected in Chromium desktop
+  and mobile layouts.
+- No JM/HMM fit, state, strategy metric, extension observation, or scientific
+  claim was produced.
+
+Continue to a separately frozen fixed-JM/HMM walk-forward protocol under
+continuous-execution approval.
