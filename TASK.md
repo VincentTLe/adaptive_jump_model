@@ -1,131 +1,153 @@
-# Task: Acquire The Frozen Proxy Dataset
+# Task: Freeze And Implement Causal Features
 
 ## Identity
 
-- `task_id`: `proxy-acquisition-001`
-- `status`: `complete`
+- `task_id`: `causal-features-001`
+- `status`: `active`
 - `target_branch`: `cleanup/research-protocol`
-- `starting_ref`: `6f9b3b8e68d3c798c842a60c7677ac7416466c34`
+- `starting_ref`: `279208e`
 - `primary_class`: `ENGINEERING / SMOKE`
 - `target_study_class`: `REPLICATION`
 - `claim_status`: no model-performance or investment claim allowed
 
-The owner approved continuous execution of the existing plan on 12 July 2026.
-Small verified commits remain mandatory, but no additional approval stop is
-required between the acquisition substeps in this task.
+The owner approved continuous execution of the existing plan. This task may
+proceed through small verified commits without another approval stop.
 
-## Frozen Input
+## Inputs
 
-- Config: `research.toml`
-- Config SHA-256:
-  `8f96774b01d3751fc4556b6e6f5876873f8c7457fbbf4c870c6829cc4b39570b`
-- Interval: `1970-01-01..2023-12-31`, inclusive
-- Sources: Yahoo `^SP500TR`, Yahoo `^GDAXI`, Yahoo `^N225`, FRED `DTB3`,
-  FRED/OECD `IR3TIB01DEM156N`, BOJ `FM02/STRACLUC3M`
-
-Any source, date, proxy label, or data-policy change creates a new config ID
-and requires a committed contract update before acquisition.
-
-## Objective
-
-Implement the real path:
-
-```text
-adaptive-jump fetch --config research.toml
-  -> validated config
-  -> bounded provider retrieval
-  -> ignored raw payloads
-  -> canonical date/value observations without imputation
-  -> machine-readable manifest and validation summary
-```
-
-Yahoo retrieval may persist the unmodified `yfinance` adapter table rather
-than claiming access to an unavailable raw HTTP response. FRED and BOJ MUST
-persist their exact HTTP response bytes. The manifest MUST identify each
-payload as `adapter_output` or `provider_response`.
-
-## Output Contract
-
-For one acquisition run under ignored storage:
-
-- raw payload per source, with SHA-256 and byte count;
-- canonical CSV per source with exactly `date,value`;
-- `manifest.json` containing config hash, Git SHA, Python/package versions,
-  retrieval arguments/URL, source definitions, download timestamp, payload
-  type, row count, valid/missing/duplicate/non-finite counts, first/last valid
-  dates, and raw/canonical hashes;
-- no data or generated manifest committed to Git.
-
-Canonical observations preserve source dates and missing values. They MUST NOT
-perform rate conversion, calendar expansion, timezone joining, clipping,
-imputation, forward-fill, outlier removal, return calculation, or index
-splicing.
-
-## Retrieval Boundaries
-
-- Yahoo uses start-inclusive `1970-01-01` and end-exclusive `2024-01-01`.
-- FRED requests `cosd=1970-01-01` and `coed=2023-12-31`.
-- BOJ requests monthly bounds `197001..202312`.
-- A response containing an observation after 2023 is rejected before output is
-  accepted.
-- HTTP failures, empty series, duplicate dates, non-numeric valid fields,
-  config-hash mismatch, and source-ID mismatch fail loudly.
-- Checkpoint or existing-run reuse is not implemented in this task.
-
-## Write Boundary
-
-- `TASK.md`, `README.md`, `pyproject.toml`, `uv.lock`
-- `src/adaptive_jump/config.py`, `src/adaptive_jump/data.py`,
-  `src/adaptive_jump/cli.py`
-- focused tests under `tests/`
-- `docs/learning/02-data-pipeline.html`
-- ignored `data/**` and `artifacts/**`
-- procedural `.agent/session-log.jsonl` and `.agent/session-log.html`
-
-No feature, model, backtest, risk-free conversion, dashboard, or experiment
-implementation is allowed in this task.
-
-## Verification Order
-
-1. Config and adapter unit tests use local fixtures/fakes only.
-2. CLI integration test runs fetch end-to-end without network.
-3. Existing tests, Ruff check/format, `uv pip check`, and lock check pass.
-4. Real network smoke fetches all six bounded series.
-5. Independently validate raw hashes, canonical hashes, coverage, duplicates,
-   missing values, upper cutoff, and config/Git provenance.
-6. Render and inspect the beginner HTML in Chromium desktop and mobile.
-
-## Acceptance Criteria
-
-- clean install exposes `adaptive-jump fetch --config research.toml`;
-- all six configured sources are acquired through one canonical runner;
-- manifest facts agree with files on disk and no date exceeds 2023;
-- repeated fixture runs produce the same canonical hashes;
-- all automated and real-data smoke checks pass;
-- no scientific result, strategy signal, or post-2023 observation is produced.
-
-## Completion
-
-- Real run:
+- Frozen six-source bundle in `research.toml`
+- Protocol config ID/hash: `shu-proxy-replication-v2` /
+  `1963d093164b7b6bd52d31ea9f5744d1d1628905f19f5ac71b107557c29ba497`
+- Accepted acquisition manifest:
   `data/raw/shu-proxy-replication-v1-20260712T071245Z/manifest.json`
 - Manifest SHA-256:
   `438c28426fffcbd1b57cb2c2439d4efd319e650cac977d98c339b1e362596634`
-- Independent receipt:
-  `artifacts/data-acquisition/shu-proxy-replication-v1-20260712T071245Z/validation.json`
-- Receipt SHA-256:
-  `bf0bdb355039094028632e72f770c32dff1f71f203adef13b92270ed556869e3`
-- The accepted run used clean Git SHA
-  `18f3a94f95f7d67b1f5e80aa73882cd742a69a75` and the frozen config hash.
-- All six sources, 12 persisted file hashes, quality facts, source IDs, and
-  the 2023 cutoff passed independent validation.
-- A real BOJ `null` missing token produced a regression test. The runner now
-  rejects dirty/untracked result-affecting code before making network calls.
-- Thirty-four tests, Ruff check/format, dependency compatibility, lock check,
-  and the installed CLI passed.
-- `docs/learning/02-data-pipeline.html` was inspected in Chromium at desktop
-  and mobile widths.
-- No return, rate alignment, feature, model, signal, or post-2023 observation
-  was produced.
+- Replication cutoff: `2023-12-31`; extension remains disabled
 
-Continue to a separately frozen causal normalization/features task under the
-owner's continuous-execution approval.
+The prior acquisition proves source availability, but MUST be rerun after this
+contract commit so the accepted feature input carries the v2 config hash.
+
+Changing the return, timing, missing-data, feature, delay, or cost rules below
+requires a new config ID/hash before any model run.
+
+## Definitions
+
+For an equity index level `P_t` observed at the end of trading date `t`:
+
+```text
+equity_simple_t = P_t / P_(t-1) - 1
+equity_log_t    = log(P_t / P_(t-1))
+```
+
+An annualized cash yield `y_s` is quoted in percent. After its causal
+availability date is reached, its daily simple cash return is:
+
+```text
+cash_t   = (y_s / 100) / 252
+excess_t = equity_simple_t - cash_t
+```
+
+This conversion treats all three heterogeneous source quotes as annualized
+simple-yield proxies. It is an explicit paper deviation: the paper does not
+publish quote-basis conversion, day count, or release alignment.
+
+## Causal Cash Alignment
+
+- US daily `DTB3`: observation `s` becomes usable on `s + 1 calendar day`.
+- German/Japanese monthly averages: month `s` becomes usable at the start of
+  the second following month. Example: January is first usable on 1 March.
+- Alignment is backward-as-of only; a later source value can never affect an
+  earlier equity date.
+- US observations may be carried at most 10 calendar days.
+- Monthly observations may be carried at most 120 calendar days.
+- Beyond the staleness limit, cash and excess returns are missing.
+- Negative yields are retained. No interpolation, averaging, clipping, or
+  zero substitution is allowed.
+
+This as-of carry is a protocol-authorized transformation, not acquisition
+forward-fill. Raw and canonical source observations remain unchanged.
+
+## Equity Missing Data
+
+- Non-positive index levels fail.
+- Missing index levels are removed before return calculation; no price is
+  imputed.
+- A return is measured between consecutive valid source observations and is
+  dated at the later observation.
+- The elapsed calendar-day gap is recorded so compressed multi-day returns are
+  visible in validation artifacts.
+
+## Paper Features
+
+For excess return `R_t`, pandas EWM uses `adjust=True`, `ignore_na=False`,
+observation-based halflife, and no custom burn-in:
+
+```text
+negative_t = min(R_t, 0)
+DD_h(t)    = sqrt(EWM_h(negative_t^2))
+Sortino_h  = EWM_h(R_t) / DD_h(t)
+```
+
+- Features: `DD_10`, `Sortino_20`, `Sortino_60`.
+- Each Sortino numerator and denominator uses its own stated halflife.
+- A zero denominator yields missing, never infinity or an epsilon-adjusted
+  value.
+- No clipping, winsorization, outlier removal, annualization, or feature
+  scaling occurs here.
+- Trailing-3,000 standardization belongs to the model protocol, not this task.
+
+## Effective OOS Eligibility
+
+The model cannot train before complete excess-return features exist. For each
+market:
+
+1. find the 3,000th complete feature row;
+2. add eight complete calendar years for online validation;
+3. choose the first later complete feature date not before `1990-01-01`.
+
+The computed date is descriptive eligibility, not an experiment result. It
+must not be moved earlier or harmonized across markets by backfill/splicing.
+
+## Backtest Accounting Contract
+
+- Signal convention: `1 = risky equity`, `0 = cash`.
+- A signal identified at end of date `t` with delay `d` is first applied to
+  return observation `t + d + 1`; primary `d = 1`, hence `t + 2`.
+- Strategy simple return is
+  `w_t * equity_simple_t + (1 - w_t) * cash_t - cost_t`.
+- One-way cost is `0.001 * abs(w_t - w_(t-1))` for 10 bps.
+- Establishing the first executable allocation is cost-free, matching the
+  paper's zero-turnover buy-and-hold convention.
+- Missing signal/return/cash produces no strategy observation; no default
+  position is invented.
+- Delay sensitivities 5 and 10 reuse the same timeline formula later.
+
+## Write Boundary
+
+- `TASK.md`, `research.toml`
+- `src/adaptive_jump/config.py`, `src/adaptive_jump/features.py`,
+  `src/adaptive_jump/backtest.py`
+- focused tests under `tests/`
+- `docs/learning/03-returns-features.html`
+- ignored `artifacts/causal-features/**`
+- procedural `.agent/session-log.jsonl` and `.agent/session-log.html`
+
+No JM/HMM fit, hyperparameter selection, strategy metric, extension data,
+dashboard, or scientific claim is allowed.
+
+## Acceptance Criteria
+
+- config v2 freezes every rule above and loader rejects unsafe changes;
+- unit tests cover yield conversion, causal availability, staleness, negative
+  yields, missing prices, return dating, exact EWM formulas, zero DD, delay,
+  cost, and first-trade handling;
+- leakage tests show future rate/equity changes cannot alter past outputs;
+- real-data smoke emits per-market coverage and effective OOS eligibility with
+  source/config/code hashes but no performance metric;
+- all tests and Ruff checks pass;
+- beginner HTML renders correctly in Chromium desktop/mobile.
+
+## Completion
+
+Record artifact hashes and verification, then continue to a separately frozen
+fixed-JM/HMM walk-forward protocol under continuous-execution approval.

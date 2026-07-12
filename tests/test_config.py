@@ -13,9 +13,9 @@ def test_load_frozen_proxy_contract() -> None:
 
     assert (
         config.sha256
-        == "8f96774b01d3751fc4556b6e6f5876873f8c7457fbbf4c870c6829cc4b39570b"
+        == "1963d093164b7b6bd52d31ea9f5744d1d1628905f19f5ac71b107557c29ba497"
     )
-    assert config.config_id == "shu-proxy-replication-v1"
+    assert config.config_id == "shu-proxy-replication-v2"
     assert config.replication_cutoff.isoformat() == "2023-12-31"
     assert [market.id for market in config.markets] == ["us", "de", "jp"]
     assert [market.equity.source_id for market in config.markets] == [

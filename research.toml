@@ -1,6 +1,6 @@
 schema_version = 1
-config_id = "shu-proxy-replication-v1"
-frozen_at_utc = "2026-07-12T00:00:00Z"
+config_id = "shu-proxy-replication-v2"
+frozen_at_utc = "2026-07-12T07:20:00Z"
 
 [source_audit]
 run_id = "20260712T012740Z"
@@ -32,8 +32,38 @@ hash_algorithm = "sha256"
 requested = "1990-01-01"
 fit_window_observations = 3000
 online_validation_calendar_years = 8
-rule = "max(requested, first_online_equity_date + 8 calendar years, cash_coverage_start)"
+rule = "first complete feature date on or after max(requested, 3000th complete feature date + 8 calendar years)"
 compute_from_downloaded_coverage = true
+
+[returns]
+equity_simple = "P_t / P_prev_valid - 1"
+equity_log = "log(P_t / P_prev_valid)"
+cash_daily = "annual_percent / 100 / 252"
+excess = "equity_simple - cash_daily"
+trading_days_per_year = 252
+allow_negative_yields = true
+
+[cash_alignment]
+method = "backward_asof_after_causal_availability"
+reject_beyond_staleness = true
+
+[features]
+downside_halflife = 10
+sortino_halflives = [20, 60]
+ewm_adjust = true
+ewm_ignore_na = false
+burn_in_observations = 0
+zero_downside_deviation = "missing"
+allow_clipping = false
+allow_annualization = false
+
+[backtest]
+signal_risky_value = 1
+signal_cash_value = 0
+primary_delay_trading_days = 1
+signal_to_return_offset = 2
+one_way_cost_bps = 10
+charge_initial_allocation = false
 
 [storage]
 raw_root = "data/raw"
@@ -74,7 +104,8 @@ unit = "percent_per_annum"
 instrument = "3_month_us_treasury_bill_secondary_market_discount_basis"
 classification = "definition_parity_candidate"
 source_start_observed = "1954-01-04"
-daily_alignment = "blocked_until_protocol_task"
+availability_lag_calendar_days = 1
+max_staleness_calendar_days = 10
 
 [[markets]]
 id = "de"
@@ -110,7 +141,8 @@ unit = "percent_per_annum"
 instrument = "3_month_interbank_rate"
 classification = "documented_proxy_candidate"
 source_start_observed = "1960-01-01"
-daily_alignment = "blocked_until_protocol_task"
+availability_lag_month_starts = 2
+max_staleness_calendar_days = 120
 
 [[markets]]
 id = "jp"
@@ -147,4 +179,5 @@ unit = "percent_per_annum"
 instrument = "3_month_uncollateralized_call_rate_monthly_average"
 classification = "documented_proxy_candidate"
 source_start_observed = "1989-01-01"
-daily_alignment = "blocked_until_protocol_task"
+availability_lag_month_starts = 2
+max_staleness_calendar_days = 120
