@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import math
 import pickle
 import sys
@@ -17,6 +16,27 @@ from typing import Any
 
 import pandas as pd
 
+from adaptive_jump.artifacts import (
+    ArtifactError as RunError,
+)
+from adaptive_jump.artifacts import (
+    directional_gate as _directional_gate,
+)
+from adaptive_jump.artifacts import (
+    read_json as _read_json,
+)
+from adaptive_jump.artifacts import (
+    sha256_file as _sha256,
+)
+from adaptive_jump.artifacts import (
+    verify_inventory as _verify_inventory,
+)
+from adaptive_jump.artifacts import (
+    write_inventory as _write_inventory,
+)
+from adaptive_jump.artifacts import (
+    write_json as _write_json,
+)
 from adaptive_jump.config import ConfigError, ResearchConfig, load_config
 from adaptive_jump.data import AcquisitionError, acquire, research_git_sha
 from adaptive_jump.features import effective_oos_start, prepare_market
@@ -27,10 +47,6 @@ from adaptive_jump.walkforward import (
     build_baseline_study,
     open_baseline_metrics,
 )
-
-
-class RunError(RuntimeError):
-    """Raised when frozen study inputs or run artifacts are invalid."""
 
 
 @dataclass(frozen=True)
@@ -150,20 +166,6 @@ def _verify_manifest(
         finite = numeric.dropna().map(math.isfinite)
         if invalid.any() or not finite.all():
             raise RunError(f"invalid canonical values: {path}")
-
-
-def _read_json(path: Path) -> dict[str, Any]:
-    try:
-        document = json.loads(path.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError, OSError) as exc:
-        raise RunError(f"cannot read JSON {path}: {exc}") from exc
-    if not isinstance(document, dict):
-        raise RunError(f"manifest must contain an object: {path}")
-    return document
-
-
-def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
@@ -374,74 +376,11 @@ def _clear_cache(stem: Path) -> None:
     stem.with_suffix(".pkl").unlink(missing_ok=True)
 
 
-def _directional_gate(metrics: pd.DataFrame, primary_delay: int) -> dict[str, Any]:
-    rows = []
-    primary = metrics.loc[metrics["delay"] == primary_delay]
-    for market, values in primary.groupby("market"):
-        indexed = values.set_index("model")
-        required = {"fixed_jm", "hmm", "buy_and_hold"}
-        if set(indexed.index) != required:
-            raise RunError(f"{market}: incomplete primary metrics")
-        jm = indexed.loc["fixed_jm"]
-        hmm = indexed.loc["hmm"]
-        hold = indexed.loc["buy_and_hold"]
-        checks = {
-            "sharpe_above_hmm": bool(jm["sharpe"] > hmm["sharpe"]),
-            "sharpe_above_buy_and_hold": bool(jm["sharpe"] > hold["sharpe"]),
-            "mdd_below_buy_and_hold": bool(
-                abs(jm["maximum_drawdown"]) < abs(hold["maximum_drawdown"])
-            ),
-        }
-        rows.append({"market": market, **checks, "passed": all(checks.values())})
-    passed = len(rows) == 3 and all(row["passed"] for row in rows)
-    return {
-        "claim_label": "proxy replication",
-        "primary_delay": primary_delay,
-        "markets": rows,
-        "passed": passed,
-        "conclusion": (
-            "directional proxy replication"
-            if passed
-            else "non-replication; adaptive work remains blocked"
-        ),
-    }
-
-
 def _finish_run(metadata_path: Path, **updates: Any) -> None:
     metadata = _read_json(metadata_path)
     metadata.update(updates)
     metadata["finished_at_utc"] = datetime.now(UTC).isoformat()
     _write_json(metadata_path, metadata)
-
-
-def _write_json(path: Path, document: dict[str, Any]) -> None:
-    path.write_text(
-        json.dumps(document, indent=2, sort_keys=True, allow_nan=False) + "\n",
-        encoding="utf-8",
-    )
-
-
-def _write_inventory(run_dir: Path) -> None:
-    files = {
-        str(path.relative_to(run_dir)): _sha256(path)
-        for path in sorted(run_dir.rglob("*"))
-        if path.is_file() and path.name not in {"inventory.json", "run.json"}
-    }
-    _write_json(run_dir / "inventory.json", {"schema_version": 1, "files": files})
-
-
-def _verify_inventory(run_dir: Path) -> None:
-    inventory = _read_json(run_dir / "inventory.json")
-    expected = inventory.get("files")
-    if not isinstance(expected, dict):
-        raise RunError("invalid artifact inventory")
-    actual = {
-        str(path.relative_to(run_dir)): _sha256(path)
-        for path in sorted(run_dir.rglob("*"))
-        if path.is_file() and path.name not in {"inventory.json", "run.json"}
-    }
-    if actual != expected:
-        raise RunError("artifact inventory mismatch")
 
 
 def _package_versions() -> dict[str, str]:
