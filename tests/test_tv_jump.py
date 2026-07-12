@@ -30,6 +30,7 @@ def path_cost_tv(loss_mx, penalty_seq, path) -> float:
 
 # ---------- dp_tv correctness ----------
 
+
 @pytest.mark.parametrize("n_s,n_c", [(5, 2), (7, 2), (6, 3)])
 def test_dp_tv_matches_brute_force(n_s, n_c):
     for _ in range(20):
@@ -47,7 +48,7 @@ def test_dp_tv_asymmetric_matrix_matches_brute_force():
     for _ in range(20):
         loss = RNG.uniform(0, 5, size=(n_s, n_c))
         pen = RNG.uniform(0, 3, size=(n_s, n_c, n_c))
-        pen[:, np.arange(n_c), np.arange(n_c)] = 0.0     # zero diagonal
+        pen[:, np.arange(n_c), np.arange(n_c)] = 0.0  # zero diagonal
         assign, val = dp_tv(loss, pen)
         assert val == pytest.approx(brute_force_tv(loss, pen))
         assert path_cost_tv(loss, pen, assign) == pytest.approx(val)
@@ -64,8 +65,9 @@ def test_dp_tv_constant_lambda_equals_reference_dp():
         assert np.array_equal(tv_assign, ref_assign)
         # online value matrices agree too
         ref_vals = dp(loss, pen_mx, return_value_mx=True)
-        tv_vals = dp_tv(loss, lam_to_penalty_seq(np.full(40, lam), 2),
-                        return_value_mx=True)
+        tv_vals = dp_tv(
+            loss, lam_to_penalty_seq(np.full(40, lam), 2), return_value_mx=True
+        )
         assert np.allclose(ref_vals, tv_vals)
 
 
@@ -84,28 +86,31 @@ def test_dp_tv_huge_lambda_forbids_switching():
 
 # ---------- input validation ----------
 
+
 def test_lam_to_penalty_seq_rejects_bad_input():
     with pytest.raises(ValueError):
-        lam_to_penalty_seq(np.array([[1.0]]), 2)          # not 1-d
+        lam_to_penalty_seq(np.array([[1.0]]), 2)  # not 1-d
     with pytest.raises(ValueError):
-        lam_to_penalty_seq(np.array([1.0, -0.1]), 2)      # negative
+        lam_to_penalty_seq(np.array([1.0, -0.1]), 2)  # negative
     with pytest.raises(ValueError):
-        lam_to_penalty_seq(np.array([1.0, np.inf]), 2)    # non-finite
+        lam_to_penalty_seq(np.array([1.0, np.inf]), 2)  # non-finite
 
 
 def test_tv_model_rejects_wrong_length_and_double_spec():
     X = RNG.normal(size=(50, 3))
     m = TVJumpModel(n_init=2)
     with pytest.raises(ValueError):
-        m.fit_tv(X, lam_seq=np.ones(49))                  # length mismatch
+        m.fit_tv(X, lam_seq=np.ones(49))  # length mismatch
     with pytest.raises(ValueError):
-        m.fit_tv(X)                                       # neither given
+        m.fit_tv(X)  # neither given
     with pytest.raises(ValueError):
-        m.fit_tv(X, lam_seq=np.ones(50),
-                 penalty_seq=lam_to_penalty_seq(np.ones(50), 2))  # both given
+        m.fit_tv(
+            X, lam_seq=np.ones(50), penalty_seq=lam_to_penalty_seq(np.ones(50), 2)
+        )  # both given
 
 
 # ---------- TVJumpModel nests JumpModel ----------
+
 
 def _regime_data(n=400, seed=0):
     """Two-state synthetic features + returns with persistent blocks."""
@@ -122,8 +127,9 @@ def _regime_data(n=400, seed=0):
 def test_tv_model_with_constant_lambda_equals_jump_model():
     X, ret = _regime_data()
     for lam in [5.0, 50.0]:
-        ref = JumpModel(n_components=2, jump_penalty=lam, cont=False,
-                        n_init=4, random_state=3).fit(X, ret, sort_by="cumret")
+        ref = JumpModel(
+            n_components=2, jump_penalty=lam, cont=False, n_init=4, random_state=3
+        ).fit(X, ret, sort_by="cumret")
         tv = TVJumpModel(n_components=2, n_init=4, random_state=3)
         tv.fit_tv(X, ret, lam_seq=np.full(len(X), lam), sort_by="cumret")
         assert np.array_equal(np.asarray(tv.labels_), np.asarray(ref.labels_))

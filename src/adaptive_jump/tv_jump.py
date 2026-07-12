@@ -47,8 +47,7 @@ def lam_to_penalty_seq(lam_seq: np.ndarray, n_c: int) -> np.ndarray:
     return lam[:, None, None] * off[None, :, :]
 
 
-def dp_tv(loss_mx: np.ndarray, penalty_seq: np.ndarray,
-          return_value_mx: bool = False):
+def dp_tv(loss_mx: np.ndarray, penalty_seq: np.ndarray, return_value_mx: bool = False):
     """Exact DP for a time-varying penalty.
 
     Minimizes ``sum_t L(t, s_t) + sum_{t>=1} penalty_seq[t][s_{t-1}, s_t]``.
@@ -58,8 +57,7 @@ def dp_tv(loss_mx: np.ndarray, penalty_seq: np.ndarray,
     """
     n_s, n_c = loss_mx.shape
     if penalty_seq.shape != (n_s, n_c, n_c):
-        raise ValueError(
-            f"penalty_seq shape {penalty_seq.shape} != {(n_s, n_c, n_c)}")
+        raise ValueError(f"penalty_seq shape {penalty_seq.shape} != {(n_s, n_c, n_c)}")
     loss_mx = replace_nan_by_inf(loss_mx)
     values = np.empty((n_s, n_c))
     values[0] = loss_mx[0]
@@ -75,8 +73,12 @@ def dp_tv(loss_mx: np.ndarray, penalty_seq: np.ndarray,
     return assign, value_opt
 
 
-def _do_E_step_tv(X: np.ndarray, centers_: np.ndarray, penalty_seq: np.ndarray,
-                  return_value_mx: bool = False):
+def _do_E_step_tv(
+    X: np.ndarray,
+    centers_: np.ndarray,
+    penalty_seq: np.ndarray,
+    return_value_mx: bool = False,
+):
     """E-step (loss matrix + DP) for the discrete time-varying model."""
     loss_mx = 0.5 * cdist(X, centers_, "sqeuclidean")
     if return_value_mx:
@@ -94,11 +96,23 @@ class TVJumpModel(JumpModel):
     matrices) or ``penalty_seq`` (full (T, K, K), for asymmetric costs later).
     """
 
-    def __init__(self, n_components: int = 2, random_state=0,
-                 max_iter: int = 1000, tol: float = 1e-8, n_init: int = 10):
-        super().__init__(n_components=n_components, jump_penalty=0.0,
-                         cont=False, random_state=random_state,
-                         max_iter=max_iter, tol=tol, n_init=n_init)
+    def __init__(
+        self,
+        n_components: int = 2,
+        random_state=0,
+        max_iter: int = 1000,
+        tol: float = 1e-8,
+        n_init: int = 10,
+    ):
+        super().__init__(
+            n_components=n_components,
+            jump_penalty=0.0,
+            cont=False,
+            random_state=random_state,
+            max_iter=max_iter,
+            tol=tol,
+            n_init=n_init,
+        )
 
     # ---- helpers -------------------------------------------------------
 
@@ -110,13 +124,15 @@ class TVJumpModel(JumpModel):
         penalty_seq = np.asarray(penalty_seq, dtype=float)
         if penalty_seq.shape != (n_s, self.n_components, self.n_components):
             raise ValueError(
-                f"penalty length {penalty_seq.shape} does not match n_samples {n_s}")
+                f"penalty length {penalty_seq.shape} does not match n_samples {n_s}"
+            )
         return penalty_seq
 
     # ---- estimation ----------------------------------------------------
 
-    def fit_tv(self, X, ret_ser=None, lam_seq=None, penalty_seq=None,
-               sort_by: str = "cumret"):
+    def fit_tv(
+        self, X, ret_ser=None, lam_seq=None, penalty_seq=None, sort_by: str = "cumret"
+    ):
         """Coordinate-descent fit with a time-varying penalty.
 
         Mirrors ``JumpModel.fit`` (same inits, convergence rule, state
@@ -127,7 +143,7 @@ class TVJumpModel(JumpModel):
         if X_arr.ndim != 2:
             raise ValueError("X must be 2-d")
         penalty_seq = self._resolve_penalty_seq(len(X_arr), lam_seq, penalty_seq)
-        self.prob_vecs = None                       # discrete model only
+        self.prob_vecs = None  # discrete model only
         self.feat_weights = None
         init_centers_values = self.init_centers(X_arr)
         best_val, best_res = np.inf, {"labels_": None}
@@ -135,9 +151,11 @@ class TVJumpModel(JumpModel):
             labels_pre, val_pre = None, np.inf
             proba_, labels_, val_ = _do_E_step_tv(X_arr, centers_, penalty_seq)
             num_iter = 0
-            while (num_iter < self.max_iter
-                   and not is_same_clustering(labels_, labels_pre)
-                   and val_pre - val_ > self.tol):
+            while (
+                num_iter < self.max_iter
+                and not is_same_clustering(labels_, labels_pre)
+                and val_pre - val_ > self.tol
+            ):
                 num_iter += 1
                 labels_pre, val_pre = labels_, val_
                 centers_ = weighted_mean_cluster(X_arr, proba_)
@@ -153,7 +171,9 @@ class TVJumpModel(JumpModel):
         self.centers_ = best_res["centers_"]
         self.proba_ = raise_JM_proba_to_df(best_res["proba_"], X)
         self.labels_ = reduce_proba_to_labels(self.proba_)
-        self.transmat_ = empirical_trans_mx(self.labels_, n_components=self.n_components)
+        self.transmat_ = empirical_trans_mx(
+            self.labels_, n_components=self.n_components
+        )
         return self
 
     # ---- inference -----------------------------------------------------
@@ -162,7 +182,9 @@ class TVJumpModel(JumpModel):
         """Online state labels: row t uses data up to t only."""
         X_arr = self.check_X_predict_func(X)
         penalty_seq = self._resolve_penalty_seq(len(X_arr), lam_seq, penalty_seq)
-        value_mx = _do_E_step_tv(X_arr, self.centers_, penalty_seq, return_value_mx=True)
+        value_mx = _do_E_step_tv(
+            X_arr, self.centers_, penalty_seq, return_value_mx=True
+        )
         labels_ = value_mx.argmin(axis=1)
         proba_ = raise_JM_labels_to_proba(labels_, self.n_components, None)
         return reduce_proba_to_labels(raise_JM_proba_to_df(proba_, X))
