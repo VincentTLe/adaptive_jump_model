@@ -13,9 +13,9 @@ def test_load_frozen_proxy_contract() -> None:
 
     assert (
         config.sha256
-        == "be896875fd6936077a93fa4c42e4acee3dcbc7d7ec11235f8af96debc6f72ac8"
+        == "553ff3fc0969eb9515fba546f135ad207c0578f0b2d2f812affc41c872101337"
     )
-    assert config.config_id == "shu-proxy-replication-v4"
+    assert config.config_id == "shu-proxy-replication-v5"
     assert config.replication_cutoff.isoformat() == "2023-12-31"
     assert [market.id for market in config.markets] == ["us", "de", "jp"]
     assert [market.equity.source_id for market in config.markets] == [
@@ -98,7 +98,7 @@ def test_load_frozen_proxy_contract() -> None:
             "HMM seeds must be 0 through 9",
         ),
         (
-            'convergence_rule = "final_delta_ge_-sqrt_eps_and_lt_tol"',
+            'convergence_rule = "abs_final_delta_lt_tol"',
             'convergence_rule = "monitor_property_only"',
             "convergence_rule violates the frozen protocol",
         ),

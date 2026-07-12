@@ -1,6 +1,6 @@
 schema_version = 1
-config_id = "shu-proxy-replication-v4"
-frozen_at_utc = "2026-07-12T08:05:00Z"
+config_id = "shu-proxy-replication-v5"
+frozen_at_utc = "2026-07-12T08:25:00Z"
 
 [source_audit]
 run_id = "20260712T012740Z"
@@ -95,7 +95,7 @@ n_iter = 1000
 tol = 1e-6
 algorithm = "viterbi"
 require_converged = true
-convergence_rule = "final_delta_ge_-sqrt_eps_and_lt_tol"
+convergence_rule = "abs_final_delta_lt_tol"
 state_label_rule = "lower_vol_0_higher_vol_1"
 median_threshold = 0.5
 median_min_periods = 1
