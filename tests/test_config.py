@@ -13,9 +13,9 @@ def test_load_frozen_proxy_contract() -> None:
 
     assert (
         config.sha256
-        == "553ff3fc0969eb9515fba546f135ad207c0578f0b2d2f812affc41c872101337"
+        == "6bc105c7e23f58cb7d88e15ff594b6f1bd01dc142ef4143ab951a4e38b5b249f"
     )
-    assert config.config_id == "shu-proxy-replication-v5"
+    assert config.config_id == "shu-proxy-replication-v6"
     assert config.replication_cutoff.isoformat() == "2023-12-31"
     assert [market.id for market in config.markets] == ["us", "de", "jp"]
     assert [market.equity.source_id for market in config.markets] == [
@@ -35,6 +35,7 @@ def test_load_frozen_proxy_contract() -> None:
     assert config.selection_protocol.validation_years == 8
     assert config.jm_protocol.lambda_grid[-1] == 1200
     assert config.hmm_protocol.seeds == tuple(range(10))
+    assert config.hmm_protocol.smoothing_grid[-1] == 2560
     assert config.metrics_protocol.expected_shortfall_quantile == 0.05
 
 
@@ -96,6 +97,12 @@ def test_load_frozen_proxy_contract() -> None:
             "seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]",
             "seeds = [0, 1, 2]",
             "HMM seeds must be 0 through 9",
+        ),
+        (
+            "smoothing_grid = [0, 2, 4, 6, 8, 10, 20, 40, 80, 160, 320, "
+            "640, 1280, 2560]",
+            "smoothing_grid = [0, 2, 4, 6, 8, 10, 20]",
+            "invalid HMM smoothing grid",
         ),
         (
             'convergence_rule = "abs_final_delta_lt_tol"',

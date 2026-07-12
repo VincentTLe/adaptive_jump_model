@@ -68,8 +68,14 @@ reproduction or the adaptive-model claim.
   tolerance does not make upstream stop early; the restart continues until the
   symmetric criterion is met or all 1,000 iterations are exhausted.
 - Label lower conditional volatility `0` and higher volatility `1` every day.
-- Median-filter grid: `[0, 2, 4, 6, 8, 10, 20]`. For `k>0`, use trailing
-  rolling mean with `min_periods=1`; high-volatility signal is `mean > 0.5`.
+- Median-filter grid: `[0, 2, 4, 6, 8, 10, 20, 40, 80, 160, 320, 640,
+  1280, 2560]`. For `k>0`, use trailing rolling mean with `min_periods=1`;
+  high-volatility signal is `mean > 0.5`.
+- This proxy-only grid expansion was frozen after the v5 boundary-only run:
+  `k=20` breached the 5% limit, `k=320` still breached it, and a doubling
+  attribution through 2,560 selected the upper value in zero OOS months for
+  all nine market-delay pairs. Stopping at 1,280 would still fail for Germany
+  delay 1 (`12/193` months). No OOS return metric was opened.
 
 ## Monthly Selection
 

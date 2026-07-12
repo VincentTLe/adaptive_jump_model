@@ -380,7 +380,8 @@ def _jm_protocol(row: dict[str, Any]) -> JMProtocol:
 def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
     grid = row.get("smoothing_grid")
     seeds = row.get("seeds")
-    _require(grid == [0, 2, 4, 6, 8, 10, 20], "invalid HMM smoothing grid")
+    expected_grid = [0, 2, 4, 6, 8, 10, 20, 40, 80, 160, 320, 640, 1280, 2560]
+    _require(grid == expected_grid, "invalid HMM smoothing grid")
     _require(seeds == list(range(10)), "HMM seeds must be 0 through 9")
     _require(_integer(row, "n_init") == len(seeds), "HMM n_init must match seeds")
     _fixed(row, "implementation", "hmmlearn.GaussianHMM")
