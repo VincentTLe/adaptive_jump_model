@@ -1,174 +1,126 @@
-# Task: Freeze And Implement Causal Features
+# Task: Fixed JM/HMM Walk-Forward Proxy Replication
 
 ## Identity
 
-- `task_id`: `causal-features-001`
-- `status`: `complete`
+- `task_id`: `fixed-baselines-001`
+- `status`: `active`
 - `target_branch`: `cleanup/research-protocol`
-- `starting_ref`: `279208e`
-- `primary_class`: `ENGINEERING / SMOKE`
-- `target_study_class`: `REPLICATION`
-- `claim_status`: no model-performance or investment claim allowed
+- `starting_ref`: `b6e5a3a`
+- `primary_class`: `REPLICATION`
+- `claim_label`: `proxy replication`
+- `extension_access`: forbidden
 
-The owner approved continuous execution of the existing plan. This task may
-proceed through small verified commits without another approval stop.
+The owner approved continuous execution through small verified commits.
 
-## Inputs
+## Inputs And Estimand
 
-- Frozen six-source bundle in `research.toml`
-- Protocol config ID/hash: `shu-proxy-replication-v2` /
-  `1963d093164b7b6bd52d31ea9f5744d1d1628905f19f5ac71b107557c29ba497`
-- Accepted acquisition manifest:
-  `data/raw/shu-proxy-replication-v1-20260712T071245Z/manifest.json`
-- Manifest SHA-256:
-  `438c28426fffcbd1b57cb2c2439d4efd319e650cac977d98c339b1e362596634`
-- Replication cutoff: `2023-12-31`; extension remains disabled
+- Six-source proxy bundle and causal features frozen by config v2
+- Replication cutoff: `2023-12-31`
+- Per-market OOS begins only at its verified effective eligibility date
+- Models: buy-and-hold, HMM, fixed statistical jump model (JM)
+- Directional gate: JM Sharpe above HMM and buy-and-hold, and JM maximum
+  drawdown below buy-and-hold, in all three markets
 
-The prior acquisition proves source availability, but MUST be rerun after this
-contract commit so the accepted feature input carries the v2 config hash.
+This task tests directional proxy replication only. It cannot establish
+reproduction or the adaptive-model claim.
 
-Changing the return, timing, missing-data, feature, delay, or cost rules below
-requires a new config ID/hash before any model run.
+## Common Timeline
 
-## Definitions
+- Every model decision uses only observations available by end of date `t`.
+- Signal `t` first applies to return `t+2` for primary delay 1.
+- Validation uses the same 10 bps one-way cost and delay as OOS.
+- Monthly hyperparameter decisions are made after the last complete date of
+  the prior month. A new choice enters the raw signal on that decision date,
+  so accounting naturally applies it from `t+2`.
+- Candidate signals are generated causally before selection. OOS metrics are
+  not read until all boundary checks pass.
 
-For an equity index level `P_t` observed at the end of trading date `t`:
+## Fixed JM
 
-```text
-equity_simple_t = P_t / P_(t-1) - 1
-equity_log_t    = log(P_t / P_(t-1))
-```
+- Use upstream `jumpmodels.JumpModel`, discrete two-state model.
+- Lambda grid: `[0, 5, 15, 35, 70, 150, 300, 600, 1200]`.
+- `n_init=10`, `random_state=0`, `max_iter=1000`, `tol=1e-8`.
+- Features are `DD_10`, `Sortino_20`, `Sortino_60` with no clipping.
+- On each refit, fit `StandardScaler` only on the trailing 3,000 complete
+  feature rows (`ddof=0`), then fit one model per lambda on those rows.
+- Refit on the first complete feature date in January and July. Before the
+  first such anchor, fit on the first date with 3,000 complete rows.
+- States are sorted by training-window cumulative excess return: bull/risky
+  `0`, bear/cash `1`.
+- For each date and lambda, transform the trailing 3,000 complete rows with
+  the most recent scaler, run upstream online DP with fixed centers, and keep
+  only the terminal state.
 
-An annualized cash yield `y_s` is quoted in percent. After its causal
-availability date is reached, its daily simple cash return is:
+## HMM
 
-```text
-cash_t   = (y_s / 100) / 252
-excess_t = equity_simple_t - cash_t
-```
+- Two-state `hmmlearn.GaussianHMM` on trailing 3,000 daily log index returns.
+- Refit daily; Viterbi terminal state is the online state.
+- `covariance_type="diag"`, `min_covar=0.001`, `n_iter=1000`, `tol=1e-6`.
+- Ten deterministic starts use seeds `0..9`; each uses hmmlearn's k-means
+  initialization. Reject non-converged/non-finite fits and retain the highest
+  log-likelihood accepted fit.
+- Label lower conditional volatility `0` and higher volatility `1` every day.
+- Median-filter grid: `[0, 2, 4, 6, 8, 10, 20]`. For `k>0`, use trailing
+  rolling mean with `min_periods=1`; high-volatility signal is `mean > 0.5`.
 
-This conversion treats all three heterogeneous source quotes as annualized
-simple-yield proxies. It is an explicit paper deviation: the paper does not
-publish quote-basis conversion, day count, or release alignment.
+## Monthly Selection
 
-## Causal Cash Alignment
+- At each month decision, score each candidate over the prior eight calendar
+  years of already generated online signals.
+- Candidate strategy excess return is `strategy_return - cash_return`.
+- Validation Sharpe is `sqrt(252) * mean(excess) / std(strategy_return, ddof=1)`.
+- A candidate with fewer than 252 valid validation returns or zero/non-finite
+  volatility is ineligible.
+- Numerical ties within `1e-12` select lower lambda or lower `k`.
+- If the largest lambda or largest `k` is selected in more than 5% of months,
+  fail before OOS metrics; expand the grid in a new config and rerun.
 
-- US daily `DTB3`: observation `s` becomes usable on `s + 1 calendar day`.
-- German/Japanese monthly averages: month `s` becomes usable at the start of
-  the second following month. Example: January is first usable on 1 March.
-- Alignment is backward-as-of only; a later source value can never affect an
-  earlier equity date.
-- US observations may be carried at most 10 calendar days.
-- Monthly observations may be carried at most 120 calendar days.
-- Beyond the staleness limit, cash and excess returns are missing.
-- Negative yields are retained. No interpolation, averaging, clipping, or
-  zero substitution is allowed.
+## Metrics And Robustness
 
-This as-of carry is a protocol-authorized transformation, not acquisition
-forward-fill. Raw and canonical source observations remain unchanged.
+- Delays: primary `1`, robustness `5` and `10`, with CV repeated per delay.
+- CAGR: compounded simple returns annualized by `252 / n`.
+- Volatility: sample standard deviation of strategy returns times `sqrt(252)`.
+- Sharpe: annualized mean strategy excess return divided by strategy-return
+  volatility.
+- MDD: minimum wealth drawdown from the running peak.
+- Calmar: annualized arithmetic mean excess return divided by absolute MDD.
+- ES 5%: arithmetic mean of returns at or below the empirical 5% quantile.
+- Turnover: mean one-way turnover times 252; leverage: mean risky weight.
+- Buy-and-hold is risky weight 1, with no initial or transaction cost.
 
-## Equity Missing Data
+## Artifacts And Checkpoints
 
-- Non-positive index levels fail.
-- Missing index levels are removed before return calculation; no price is
-  imputed.
-- A return is measured between consecutive valid source observations and is
-  dated at the later observation.
-- The elapsed calendar-day gap is recorded so compressed multi-day returns are
-  visible in validation artifacts.
-
-## Paper Features
-
-For excess return `R_t`, pandas EWM uses `adjust=True`, `ignore_na=False`,
-observation-based halflife, and no custom burn-in:
-
-```text
-negative_t = min(R_t, 0)
-DD_h(t)    = sqrt(EWM_h(negative_t^2))
-Sortino_h  = EWM_h(R_t) / DD_h(t)
-```
-
-- Features: `DD_10`, `Sortino_20`, `Sortino_60`.
-- Each Sortino numerator and denominator uses its own stated halflife.
-- A zero denominator yields missing, never infinity or an epsilon-adjusted
-  value.
-- No clipping, winsorization, outlier removal, annualization, or feature
-  scaling occurs here.
-- Trailing-3,000 standardization belongs to the model protocol, not this task.
-
-## Effective OOS Eligibility
-
-The model cannot train before complete excess-return features exist. For each
-market:
-
-1. find the 3,000th complete feature row;
-2. add eight complete calendar years for online validation;
-3. choose the first later complete feature date not before `1990-01-01`.
-
-The computed date is descriptive eligibility, not an experiment result. It
-must not be moved earlier or harmonized across markets by backfill/splicing.
-
-## Backtest Accounting Contract
-
-- Signal convention: `1 = risky equity`, `0 = cash`.
-- A signal identified at end of date `t` with delay `d` is first applied to
-  return observation `t + d + 1`; primary `d = 1`, hence `t + 2`.
-- Strategy simple return is
-  `w_t * equity_simple_t + (1 - w_t) * cash_t - cost_t`.
-- One-way cost is `0.001 * abs(w_t - w_(t-1))` for 10 bps.
-- Establishing the first executable allocation is cost-free, matching the
-  paper's zero-turnover buy-and-hold convention.
-- Missing signal/return/cash produces no strategy observation; no default
-  position is invented.
-- Delay sensitivities 5 and 10 reuse the same timeline formula later.
+Each run stores config/data/code hashes, package versions, fit/refit logs,
+candidate signals, CV surfaces, monthly choices, states, positions, returns,
+metrics, boundary diagnostics, and failure records under ignored `artifacts/`.
+Checkpoint reuse requires exact config hash, input hashes, and Git SHA.
 
 ## Write Boundary
 
 - `TASK.md`, `research.toml`
-- `src/adaptive_jump/config.py`, `src/adaptive_jump/features.py`,
-  `src/adaptive_jump/backtest.py`
+- `src/adaptive_jump/config.py`, `models.py`, `walkforward.py`, `backtest.py`,
+  `cli.py`
 - focused tests under `tests/`
-- `docs/learning/03-returns-features.html`
-- ignored `artifacts/causal-features/**`
-- procedural `.agent/session-log.jsonl` and `.agent/session-log.html`
+- `docs/learning/04-fixed-models.html`
+- ignored `artifacts/fixed-baselines/**`
+- procedural handoff files
 
-No JM/HMM fit, hyperparameter selection, strategy metric, extension data,
-dashboard, or scientific claim is allowed.
+No adaptive lambda, post-2023 data, dashboard, bootstrap claim, or model change
+after viewing OOS metrics is allowed.
 
 ## Acceptance Criteria
 
-- config v2 freezes every rule above and loader rejects unsafe changes;
-- unit tests cover yield conversion, causal availability, staleness, negative
-  yields, missing prices, return dating, exact EWM formulas, zero DD, delay,
-  cost, and first-trade handling;
-- leakage tests show future rate/equity changes cannot alter past outputs;
-- real-data smoke emits per-market coverage and effective OOS eligibility with
-  source/config/code hashes but no performance metric;
-- all tests and Ruff checks pass;
-- beginner HTML renders correctly in Chromium desktop/mobile.
+- Config v3 freezes every choice above before model output.
+- Unit/oracle tests cover scaler leakage, state labels, JM terminal online DP,
+  HMM convergence/restart selection, median filter, monthly CV, ties, boundary
+  gate, metrics, and delays.
+- Synthetic integration runs deterministically end to end.
+- Three-market real smoke completes before the full run.
+- Full proxy run emits reproducible artifacts and the directional gate result,
+  including negative or null outcomes without reinterpretation.
+- Tests/Ruff pass and the beginner HTML renders desktop/mobile.
 
 ## Completion
 
-- Accepted v2 acquisition manifest:
-  `data/raw/shu-proxy-replication-v2-20260712T072243Z/manifest.json`, SHA-256
-  `bf9763931952d2bdb7ea7831e1b1fb90ab2b84d5dba09f8488678ef5eb1ad2fe`.
-- Feature summary:
-  `artifacts/causal-features/shu-proxy-replication-v2-features-20260712T072953Z/summary.json`,
-  SHA-256
-  `57c70c2128ec0942d341d1f58f0c0b61432ebaeeb8ed49ab67553dde6144b375`.
-- Independent receipt in the same artifact directory has SHA-256
-  `8519dcd69cd368e5179fee5f61971f1697a776b12020eba06d9302ea2988d621`.
-- The smoke used clean Git SHA
-  `af82cbc2397f4ede8472b26f6eda65ec667c301b` and config v2 hash.
-- Descriptive effective-OOS eligibility is `2007-11-19` (US), `2007-12-20`
-  (Germany), and `2009-04-24` (Japan). These are coverage facts, not model or
-  performance results.
-- Unit and leakage tests cover the frozen return, cash-alignment, EWM feature,
-  delay, and transaction-cost contracts. All 54 tests and Ruff checks passed.
-- `docs/learning/03-returns-features.html` was inspected in Chromium desktop
-  and mobile layouts.
-- No JM/HMM fit, state, strategy metric, extension observation, or scientific
-  claim was produced.
-
-Continue to a separately frozen fixed-JM/HMM walk-forward protocol under
-continuous-execution approval.
+If the directional gate fails, stop adaptive work and perform attribution.
+If it passes, freeze the adaptive scalar-lambda task before implementation.
