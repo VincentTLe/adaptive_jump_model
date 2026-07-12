@@ -1,6 +1,6 @@
 schema_version = 1
-config_id = "shu-proxy-replication-v2"
-frozen_at_utc = "2026-07-12T07:20:00Z"
+config_id = "shu-proxy-replication-v3"
+frozen_at_utc = "2026-07-12T07:45:00Z"
 
 [source_audit]
 run_id = "20260712T012740Z"
@@ -62,8 +62,62 @@ signal_risky_value = 1
 signal_cash_value = 0
 primary_delay_trading_days = 1
 signal_to_return_offset = 2
+robustness_delays = [1, 5, 10]
 one_way_cost_bps = 10
 charge_initial_allocation = false
+
+[model]
+n_states = 2
+fit_window_observations = 3000
+standardizer = "sklearn_standard_scaler_ddof0"
+state_risky_label = 0
+state_cash_label = 1
+
+[jm]
+implementation = "jumpmodels.JumpModel"
+lambda_grid = [0, 5, 15, 35, 70, 150, 300, 600, 1200]
+n_init = 10
+random_state = 0
+max_iter = 1000
+tol = 1e-8
+sort_by = "cumret"
+refit_months = [1, 7]
+online_terminal_only = true
+
+[hmm]
+implementation = "hmmlearn.GaussianHMM"
+smoothing_grid = [0, 2, 4, 6, 8, 10, 20]
+n_init = 10
+seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+covariance_type = "diag"
+min_covar = 0.001
+n_iter = 1000
+tol = 1e-6
+algorithm = "viterbi"
+require_converged = true
+state_label_rule = "lower_vol_0_higher_vol_1"
+median_threshold = 0.5
+median_min_periods = 1
+
+[selection]
+cadence = "monthly_prior_month_last_complete_date"
+validation_calendar_years = 8
+minimum_valid_returns = 252
+objective = "annualized_strategy_excess_sharpe"
+tie_tolerance = 1e-12
+tie_rule = "lower_smoothing"
+upper_boundary_month_fraction_limit = 0.05
+
+[metrics]
+periods_per_year = 252
+volatility_ddof = 1
+sharpe_numerator = "mean_strategy_minus_cash"
+sharpe_denominator = "strategy_return_volatility"
+cagr = "compound_252_over_n"
+calmar_numerator = "annualized_arithmetic_mean_excess"
+expected_shortfall_quantile = 0.05
+turnover = "mean_one_way_turnover_times_252"
+leverage = "mean_risky_weight"
 
 [storage]
 raw_root = "data/raw"

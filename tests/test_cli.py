@@ -47,7 +47,7 @@ def test_fetch_cli_runs_complete_fixture_pipeline(
     manifest_path = Path(capsys.readouterr().out.strip())
     manifest = json.loads(manifest_path.read_text())
     assert manifest["config_sha256"] == (
-        "1963d093164b7b6bd52d31ea9f5744d1d1628905f19f5ac71b107557c29ba497"
+        "77b60e4e57bc2356ee2b4bb5d177f22295b1cb0b58a5e047670ecdead80cad61"
     )
     assert len(manifest["sources"]) == 6
     assert manifest_path.parent.parent == tmp_path / "data/raw"
