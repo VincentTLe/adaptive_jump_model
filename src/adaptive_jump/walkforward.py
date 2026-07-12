@@ -64,11 +64,17 @@ class BaselineStudy:
 
 
 def build_baseline_study(
-    frame: pd.DataFrame, config: ResearchConfig, *, oos_start: date
+    frame: pd.DataFrame,
+    config: ResearchConfig,
+    *,
+    oos_start: date,
+    precomputed_hmm: HMMResult | None = None,
 ) -> BaselineStudy:
     """Build all baseline choices and boundary checks without OOS metrics."""
     jm = fixed_jm_states(frame, config.model_protocol, config.jm_protocol)
-    hmm = hmm_states(frame, config.model_protocol, config.hmm_protocol)
+    hmm = precomputed_hmm or hmm_states(
+        frame, config.model_protocol, config.hmm_protocol
+    )
     hmm_candidates = smoothed_hmm_states(hmm.states, config.hmm_protocol.smoothing_grid)
     returns = frame[["date", "equity_simple", "cash_return"]]
     selections: dict[str, dict[int, SelectionResult]] = {"fixed_jm": {}, "hmm": {}}

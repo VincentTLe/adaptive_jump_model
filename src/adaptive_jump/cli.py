@@ -20,6 +20,7 @@ import pandas as pd
 from adaptive_jump.config import ConfigError, ResearchConfig, load_config
 from adaptive_jump.data import AcquisitionError, acquire, research_git_sha
 from adaptive_jump.features import effective_oos_start, prepare_market
+from adaptive_jump.models import HMMResult, hmm_states
 from adaptive_jump.walkforward import (
     BaselineStudy,
     baseline_paths,
@@ -43,6 +44,9 @@ class FrozenData:
 class MarketInput:
     frame: pd.DataFrame
     oos_start: date
+
+
+HMM_WORKERS, HMM_CHECKPOINT_DAYS = 8, 50
 
 
 def load_frozen_data(
@@ -215,12 +219,46 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
         market_dir = run_dir / market.id
         checkpoint = _load_checkpoint(market_dir, identity)
         if checkpoint is None:
+            initial_hmm = _load_hmm_progress(market_dir, identity)
+            total_hmm_days = max(
+                0,
+                market_input.frame["equity_log"].notna().sum()
+                - config.model_protocol.fit_window
+                + 1,
+            )
+
+            def save_hmm_progress(
+                result: HMMResult,
+                target: Path = market_dir / "hmm-progress",
+                market_id: str = market.id,
+                total: int = total_hmm_days,
+            ) -> None:
+                _write_cache(target, result, identity)
+                print(
+                    f"{market_id}: HMM {len(result.fits)}/{total}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+
+            fitted_hmm = hmm_states(
+                market_input.frame,
+                config.model_protocol,
+                config.hmm_protocol,
+                initial=initial_hmm,
+                n_jobs=HMM_WORKERS,
+                checkpoint_every=HMM_CHECKPOINT_DAYS,
+                progress=save_hmm_progress,
+            )
             checkpoint = build_baseline_study(
-                market_input.frame, config, oos_start=market_input.oos_start
+                market_input.frame,
+                config,
+                oos_start=market_input.oos_start,
+                precomputed_hmm=fitted_hmm,
             )
         elif checkpoint.oos_start != market_input.oos_start:
             raise RunError(f"{market.id}: checkpoint OOS start mismatch")
         _write_checkpoint(market_dir, market_input.frame, checkpoint, identity)
+        _clear_cache(market_dir / "hmm-progress")
         studies[market.id] = checkpoint
 
     boundaries = pd.concat(
@@ -287,38 +325,53 @@ def _write_checkpoint(
             selection.surface.to_csv(target / "cv-surface.csv", index=False)
             selection.candidate_returns.to_csv(target / "candidate-returns.csv")
             selection.signal.to_csv(target / "selected-signal.csv", header=True)
-    payload = pickle.dumps(study, protocol=5)
-    payload_path = market_dir / "checkpoint.pkl"
-    payload_path.write_bytes(payload)
-    _write_json(
-        market_dir / "checkpoint.json",
-        {
-            "schema_version": 1,
-            "oos_start": study.oos_start.isoformat(),
-            "payload_sha256": hashlib.sha256(payload).hexdigest(),
-            **identity,
-        },
-    )
+    _write_cache(market_dir / "checkpoint", study, identity)
 
 
 def _load_checkpoint(
     market_dir: Path, identity: dict[str, str]
 ) -> BaselineStudy | None:
-    metadata_path = market_dir / "checkpoint.json"
-    payload_path = market_dir / "checkpoint.pkl"
+    cached = _load_cache(market_dir / "checkpoint", identity)
+    if cached is not None and not isinstance(cached, BaselineStudy):
+        raise RunError(f"invalid checkpoint payload: {market_dir}")
+    return cached
+
+
+def _load_hmm_progress(market_dir: Path, identity: dict[str, str]) -> HMMResult | None:
+    cached = _load_cache(market_dir / "hmm-progress", identity)
+    if cached is not None and not isinstance(cached, HMMResult):
+        raise RunError(f"invalid HMM progress payload: {market_dir}")
+    return cached
+
+
+def _write_cache(stem: Path, value: Any, identity: dict[str, str]) -> None:
+    stem.parent.mkdir(parents=True, exist_ok=True)
+    payload = pickle.dumps(value, protocol=5)
+    stem.with_suffix(".pkl").write_bytes(payload)
+    _write_json(
+        stem.with_suffix(".json"),
+        {"payload_sha256": hashlib.sha256(payload).hexdigest(), **identity},
+    )
+
+
+def _load_cache(stem: Path, identity: dict[str, str]) -> Any:
+    metadata_path = stem.with_suffix(".json")
+    payload_path = stem.with_suffix(".pkl")
     if not metadata_path.exists() and not payload_path.exists():
         return None
     if not metadata_path.exists() or not payload_path.exists():
-        raise RunError(f"incomplete checkpoint: {market_dir}")
+        raise RunError(f"incomplete cache: {stem}")
     metadata = _read_json(metadata_path)
     if any(metadata.get(key) != value for key, value in identity.items()):
-        raise RunError(f"checkpoint identity mismatch: {market_dir}")
+        raise RunError(f"cache identity mismatch: {stem}")
     if _sha256(payload_path) != metadata.get("payload_sha256"):
-        raise RunError(f"checkpoint hash mismatch: {market_dir}")
-    study = pickle.loads(payload_path.read_bytes())  # noqa: S301 - local hashed cache
-    if not isinstance(study, BaselineStudy):
-        raise RunError(f"invalid checkpoint payload: {market_dir}")
-    return study
+        raise RunError(f"cache hash mismatch: {stem}")
+    return pickle.loads(payload_path.read_bytes())  # noqa: S301 - local hashed cache
+
+
+def _clear_cache(stem: Path) -> None:
+    stem.with_suffix(".json").unlink(missing_ok=True)
+    stem.with_suffix(".pkl").unlink(missing_ok=True)
 
 
 def _directional_gate(metrics: pd.DataFrame, primary_delay: int) -> dict[str, Any]:
@@ -393,15 +446,9 @@ def _verify_inventory(run_dir: Path) -> None:
 
 def _package_versions() -> dict[str, str]:
     packages = (
-        "adaptive-jump-model",
-        "numpy",
-        "pandas",
-        "scikit-learn",
-        "scipy",
-        "matplotlib",
-        "hmmlearn",
-        "jumpmodels",
-    )
+        "adaptive-jump-model numpy pandas scikit-learn scipy "
+        "matplotlib hmmlearn jumpmodels"
+    ).split()
     output = {}
     for package in packages:
         try:

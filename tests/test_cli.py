@@ -228,3 +228,43 @@ def test_replication_runner_does_not_open_metrics_after_boundary_failure(
     assert metadata["status"] == "boundary_failed"
     assert metadata["metrics_opened"] is False
     assert not (run_dir / "metrics.csv").exists()
+
+
+def test_replication_runner_resumes_hmm_progress_after_interruption(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path, manifest_path = _manifest_fixture(tmp_path)
+    config = load_config(config_path)
+    frozen = load_frozen_data(config, manifest_path)
+    frame, study = _runner_fixture(config)
+    monkeypatch.setattr(
+        "adaptive_jump.cli.prepare_manifest_market",
+        lambda *_: type("Input", (), {"frame": frame, "oos_start": study.oos_start})(),
+    )
+    monkeypatch.setattr(
+        "adaptive_jump.cli.build_baseline_study",
+        lambda *_args, **_kwargs: study,
+    )
+    monkeypatch.setattr("adaptive_jump.cli.research_git_sha", lambda _root: "c" * 40)
+
+    def interrupted(*_args, progress, **_kwargs):
+        progress(study.hmm)
+        raise RuntimeError("interrupted")
+
+    monkeypatch.setattr("adaptive_jump.cli.hmm_states", interrupted)
+    with pytest.raises(RuntimeError, match="interrupted"):
+        run_replication(config, frozen)
+
+    resumed_inputs = []
+
+    def resumed(*_args, initial, **_kwargs):
+        if initial is not None:
+            resumed_inputs.append(initial)
+        return initial or study.hmm
+
+    monkeypatch.setattr("adaptive_jump.cli.hmm_states", resumed)
+    run_dir = run_replication(config, frozen)
+
+    assert json.loads((run_dir / "run.json").read_text())["status"] == "complete"
+    assert isinstance(resumed_inputs[0], HMMResult)
+    assert not (run_dir / "us/hmm-progress.pkl").exists()
