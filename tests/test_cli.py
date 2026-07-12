@@ -52,7 +52,7 @@ def test_fetch_cli_runs_complete_fixture_pipeline(
     manifest_path = Path(capsys.readouterr().out.strip())
     manifest = json.loads(manifest_path.read_text())
     assert manifest["config_sha256"] == (
-        "77b60e4e57bc2356ee2b4bb5d177f22295b1cb0b58a5e047670ecdead80cad61"
+        "be896875fd6936077a93fa4c42e4acee3dcbc7d7ec11235f8af96debc6f72ac8"
     )
     assert len(manifest["sources"]) == 6
     assert manifest_path.parent.parent == tmp_path / "data/raw"
@@ -84,7 +84,7 @@ def _manifest_fixture(tmp_path: Path) -> tuple[Path, Path]:
                     },
                 }
             )
-    manifest = tmp_path / "data/raw/shu-proxy-replication-v3-run/manifest.json"
+    manifest = tmp_path / "data/raw/shu-proxy-replication-v4-run/manifest.json"
     manifest.parent.mkdir(parents=True)
     manifest.write_text(
         json.dumps(
@@ -118,7 +118,7 @@ def test_load_frozen_data_recomputes_every_canonical_hash(tmp_path: Path) -> Non
 def test_ambiguous_matching_manifests_require_explicit_path(tmp_path: Path) -> None:
     config_path, manifest_path = _manifest_fixture(tmp_path)
     duplicate = (
-        manifest_path.parent.parent / "shu-proxy-replication-v3-two/manifest.json"
+        manifest_path.parent.parent / "shu-proxy-replication-v4-two/manifest.json"
     )
     duplicate.parent.mkdir()
     duplicate.write_bytes(manifest_path.read_bytes())

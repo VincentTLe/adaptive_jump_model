@@ -59,6 +59,10 @@ reproduction or the adaptive-model claim.
 - Ten deterministic starts use seeds `0..9`; each uses hmmlearn's k-means
   initialization. Reject non-converged/non-finite fits and retain the highest
   log-likelihood accepted fit.
+- Because hmmlearn's `monitor_.converged` accepts a negative final likelihood
+  delta and max-iteration termination, an accepted fit additionally requires
+  final delta in `[-sqrt(machine epsilon), tol)`; max-iteration alone is not
+  convergence.
 - Label lower conditional volatility `0` and higher volatility `1` every day.
 - Median-filter grid: `[0, 2, 4, 6, 8, 10, 20]`. For `k>0`, use trailing
   rolling mean with `min_periods=1`; high-volatility signal is `mean > 0.5`.

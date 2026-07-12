@@ -387,6 +387,7 @@ def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
     _fixed(row, "covariance_type", "diag")
     _fixed(row, "algorithm", "viterbi")
     _fixed(row, "require_converged", True)
+    _fixed(row, "convergence_rule", "final_delta_ge_-sqrt_eps_and_lt_tol")
     _fixed(row, "state_label_rule", "lower_vol_0_higher_vol_1")
     _require(
         _number(row, "median_threshold") == 0.5, "HMM median threshold must be 0.5"
