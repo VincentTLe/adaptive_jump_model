@@ -3,18 +3,20 @@
 ## Identity
 
 - `task_id`: `fixed-baselines-001`
-- `status`: `active`
+- `status`: `complete`
 - `target_branch`: `cleanup/research-protocol`
 - `starting_ref`: `b6e5a3a`
 - `primary_class`: `REPLICATION`
 - `claim_label`: `proxy replication`
 - `extension_access`: forbidden
+- `outcome`: `proxy non-replication; adaptive work remains blocked`
+- `official_run`: `fixed-baselines-8adb330565d6-3636939b525d-e9614112b234`
 
 The owner approved continuous execution through small verified commits.
 
 ## Inputs And Estimand
 
-- Six-source proxy bundle and causal features frozen by config v2
+- Six-source proxy bundle and causal features frozen by config v7
 - Replication cutoff: `2023-12-31`
 - Per-market OOS begins only at its verified effective eligibility date
 - Models: buy-and-hold, HMM, fixed statistical jump model (JM)
@@ -117,9 +119,9 @@ Checkpoint reuse requires exact config hash, input hashes, and Git SHA.
 
 - `TASK.md`, `research.toml`
 - `src/adaptive_jump/config.py`, `models.py`, `walkforward.py`, `backtest.py`,
-  `cli.py`
+  `cli.py`, `artifacts.py`
 - focused tests under `tests/`
-- `docs/learning/04-fixed-models.html`
+- `docs/learning/04-fixed-baselines.html`
 - ignored `artifacts/fixed-baselines/**`
 - procedural handoff files
 
@@ -140,5 +142,16 @@ after viewing OOS metrics is allowed.
 
 ## Completion
 
-If the directional gate fails, stop adaptive work and perform attribution.
-If it passes, freeze the adaptive scalar-lambda task before implementation.
+- Official v7 run completed with 18/18 boundary checks passed.
+- The three model paths use identical dates within every market-delay group.
+- `adaptive-jump verify` independently matched all 27 metric rows; maximum
+  absolute CSV-roundtrip difference was `7.327471962526033e-15`, below the
+  frozen `1e-12` tolerance.
+- Directional gate result: 0/3 markets passed. US fixed JM Sharpe was below
+  HMM; Germany fixed JM Sharpe was below B&H; Japan failed both Sharpe
+  comparisons and the MDD comparison.
+- Attribution found a shifted 2007-2009 OOS window and unresolved Japanese
+  price-index/cash-definition differences. The result is not an exact
+  reproduction and does not refute Shu, Yu, and Mulvey.
+- Adaptive lambda and post-2023 extension remain unopened. Any continuation
+  requires a new frozen task rather than modifying this completed protocol.
