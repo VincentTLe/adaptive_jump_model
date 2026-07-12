@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 import math
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 import numpy as np
@@ -158,17 +160,17 @@ def best_hmm_terminal_fit(
     failures: list[str] = []
     for seed in hmm_protocol.seeds:
         try:
-            model = GaussianHMM(
-                n_components=model_protocol.n_states,
-                covariance_type="diag",
-                min_covar=hmm_protocol.min_covar,
-                n_iter=hmm_protocol.n_iter,
-                tol=hmm_protocol.tol,
-                algorithm="viterbi",
-                random_state=seed,
-            ).fit(values)
-            if not model.monitor_.converged:
-                raise ModelError("not converged")
+            with _quiet_hmmlearn():
+                model = GaussianHMM(
+                    n_components=model_protocol.n_states,
+                    covariance_type="diag",
+                    min_covar=hmm_protocol.min_covar,
+                    n_iter=hmm_protocol.n_iter,
+                    tol=hmm_protocol.tol,
+                    algorithm="viterbi",
+                    random_state=seed,
+                ).fit(values)
+            _require_strict_hmm_convergence(model, hmm_protocol)
             score = float(model.score(values))
             variances = np.asarray(model.covars_, dtype=float).reshape(2, -1).mean(1)
             if not math.isfinite(score) or not np.isfinite(variances).all():
@@ -196,6 +198,31 @@ def best_hmm_terminal_fit(
         accepted_starts=len(accepted),
         failed_starts=tuple(failures),
     )
+
+
+def _require_strict_hmm_convergence(model: GaussianHMM, protocol: HMMProtocol) -> None:
+    monitor = model.monitor_
+    history = tuple(monitor.history)
+    delta = history[-1] - history[-2] if len(history) >= 2 else math.nan
+    precision = math.sqrt(np.finfo(float).eps)
+    accepted = (
+        monitor.converged and len(history) >= 2 and -precision <= delta < protocol.tol
+    )
+    if not accepted:
+        raise ModelError(
+            f"strict convergence failed (iter={monitor.iter}, delta={delta})"
+        )
+
+
+@contextmanager
+def _quiet_hmmlearn():
+    logger = logging.getLogger("hmmlearn.base")
+    previous = logger.level
+    logger.setLevel(logging.ERROR)
+    try:
+        yield
+    finally:
+        logger.setLevel(previous)
 
 
 def smoothed_hmm_states(

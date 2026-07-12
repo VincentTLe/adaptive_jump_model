@@ -25,8 +25,12 @@ def _hmm_protocol(seeds: tuple[int, ...] = (0, 1, 2)) -> HMMProtocol:
 
 
 class _Monitor:
-    def __init__(self, converged: bool) -> None:
+    def __init__(
+        self, converged: bool, *, delta: float = 5e-7, iteration: int = 2
+    ) -> None:
         self.converged = converged
+        self.history = [0.0, delta]
+        self.iter = iteration
 
 
 class _FakeHMM:
@@ -131,7 +135,9 @@ def test_hmm_rejects_bad_restart_and_selects_highest_likelihood(
     assert fit.terminal_state == 1
     assert fit.variances == (1.0, 9.0)
     assert fit.accepted_starts == 2
-    assert fit.failed_starts[0].startswith("seed=0: ModelError: not converged")
+    assert fit.failed_starts[0].startswith(
+        "seed=0: ModelError: strict convergence failed"
+    )
 
 
 def test_real_hmm_labels_low_and_high_conditional_variance() -> None:
@@ -144,7 +150,23 @@ def test_real_hmm_labels_low_and_high_conditional_variance() -> None:
 
     assert fit.terminal_state == 1
     assert fit.variances[0] < fit.variances[1]
-    assert fit.accepted_starts == 3
+    assert 1 <= fit.accepted_starts <= 3
+
+
+@pytest.mark.parametrize(("delta", "iteration"), [(-0.1, 2), (0.1, 100)])
+def test_hmm_rejects_monitor_false_positive_convergence(
+    monkeypatch: pytest.MonkeyPatch, delta: float, iteration: int
+) -> None:
+    class MisreportedConvergence(_FakeHMM):
+        def __init__(self, **kwargs: object) -> None:
+            super().__init__(**kwargs)
+            self.monitor_ = _Monitor(True, delta=delta, iteration=iteration)
+
+    monkeypatch.setattr("adaptive_jump.models.GaussianHMM", MisreportedConvergence)
+    model = ModelProtocol(2, 4, 0, 1)
+
+    with pytest.raises(ModelError, match="all HMM restarts failed"):
+        best_hmm_terminal_fit(pd.Series([0.1, -0.1, 0.2, -0.2]), model, _hmm_protocol())
 
 
 def test_hmm_daily_fit_is_causal(monkeypatch: pytest.MonkeyPatch) -> None:
