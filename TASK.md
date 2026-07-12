@@ -1,96 +1,111 @@
-# Task: Freeze The Proxy Data Contract
+# Task: Acquire The Frozen Proxy Dataset
 
 ## Identity
 
-- `task_id`: `proxy-data-contract-001`
-- `status`: `complete`
+- `task_id`: `proxy-acquisition-001`
+- `status`: `active`
 - `target_branch`: `cleanup/research-protocol`
-- `starting_ref`: `4f1bb3ac2fe3de1feafdfb40ad6bbead90895ee6`
+- `starting_ref`: `6f9b3b8e68d3c798c842a60c7677ac7416466c34`
 - `primary_class`: `ENGINEERING / SMOKE`
 - `target_study_class`: `REPLICATION`
 - `claim_status`: no model-performance or investment claim allowed
 
-## Authorization
+The owner approved continuous execution of the existing plan on 12 July 2026.
+Small verified commits remain mandatory, but no additional approval stop is
+required between the acquisition substeps in this task.
 
-On 12 July 2026, the owner approved this exact free proxy bundle:
+## Frozen Input
 
-| Market | Equity | Cash rate |
-| --- | --- | --- |
-| United States | Yahoo `^SP500TR` | FRED `DTB3` |
-| Germany | Yahoo `^GDAXI` | FRED/OECD `IR3TIB01DEM156N` |
-| Japan | Yahoo `^N225` | BOJ `FM02/STRACLUC3M` |
+- Config: `research.toml`
+- Config SHA-256:
+  `8f96774b01d3751fc4556b6e6f5876873f8c7457fbbf4c870c6829cc4b39570b`
+- Interval: `1970-01-01..2023-12-31`, inclusive
+- Sources: Yahoo `^SP500TR`, Yahoo `^GDAXI`, Yahoo `^N225`, FRED `DTB3`,
+  FRED/OECD `IR3TIB01DEM156N`, BOJ `FM02/STRACLUC3M`
 
-The source audit is
-`artifacts/data-source-audit/20260712T012740Z/audit.json`, SHA-256
-`548c80cbe09f48d1070b5fc23181cb7065bc84fd4d3dbfe457a0318576388ec4`.
-
-## Scientific Label
-
-All future results from this bundle MUST be labeled **proxy replication**:
-
-- `^SP500TR` does not cover the paper's full 1970 history;
-- `^GDAXI` does not cover 1970 and has documented historical disagreement
-  against the official DAX series;
-- `^N225` is a price index and excludes dividends;
-- German interbank and Japanese call rates are not Treasury bills;
-- monthly proxy rates differ from the paper's undisclosed source frequency and
-  timing conventions.
-
-These deviations prohibit the labels `REPRODUCTION`, `exact replication`, and
-`numerical replication` regardless of how close later metrics appear.
+Any source, date, proxy label, or data-policy change creates a new config ID
+and requires a committed contract update before acquisition.
 
 ## Objective
 
-Create `research.toml` as the single machine-readable source of truth for:
+Implement the real path:
 
-- paper and acquisition cutoffs;
-- source identifiers and definitions;
-- proxy classifications and known deviations;
-- no-splicing, missing-data, and local-research-use rules;
-- the causal rule used later to derive each market's effective OOS start.
+```text
+adaptive-jump fetch --config research.toml
+  -> validated config
+  -> bounded provider retrieval
+  -> ignored raw payloads
+  -> canonical date/value observations without imputation
+  -> machine-readable manifest and validation summary
+```
 
-## Frozen Boundaries
+Yahoo retrieval may persist the unmodified `yfinance` adapter table rather
+than claiming access to an unavailable raw HTTP response. FRED and BOJ MUST
+persist their exact HTTP response bytes. The manifest MUST identify each
+payload as `adapter_output` or `provider_response`.
 
-- The acquisition interval is `1970-01-01` through `2023-12-31` inclusive.
-- Extension data after 2023 MUST NOT be downloaded in this task or the next
-  downloader task.
-- A source may naturally begin after 1970; no synthetic backfill is allowed.
-- Different index or rate definitions MUST NOT be joined to extend coverage.
-- Raw values and missing observations are preserved without clipping,
-  imputation, forward-fill, or outlier removal.
-- The effective OOS start is computed from observed coverage, 3,000 prior
-  equity observations, and eight complete calendar years of online validation.
-  It is never moved earlier to resemble the paper.
-- Rate-to-daily-return conversion and publication-lag alignment remain blocked
-  for a later protocol task; acquisition must preserve source observations.
+## Output Contract
+
+For one acquisition run under ignored storage:
+
+- raw payload per source, with SHA-256 and byte count;
+- canonical CSV per source with exactly `date,value`;
+- `manifest.json` containing config hash, Git SHA, Python/package versions,
+  retrieval arguments/URL, source definitions, download timestamp, payload
+  type, row count, valid/missing/duplicate/non-finite counts, first/last valid
+  dates, and raw/canonical hashes;
+- no data or generated manifest committed to Git.
+
+Canonical observations preserve source dates and missing values. They MUST NOT
+perform rate conversion, calendar expansion, timezone joining, clipping,
+imputation, forward-fill, outlier removal, return calculation, or index
+splicing.
+
+## Retrieval Boundaries
+
+- Yahoo uses start-inclusive `1970-01-01` and end-exclusive `2024-01-01`.
+- FRED requests `cosd=1970-01-01` and `coed=2023-12-31`.
+- BOJ requests monthly bounds `197001..202312`.
+- A response containing an observation after 2023 is rejected before output is
+  accepted.
+- HTTP failures, empty series, duplicate dates, non-numeric valid fields,
+  config-hash mismatch, and source-ID mismatch fail loudly.
+- Checkpoint or existing-run reuse is not implemented in this task.
 
 ## Write Boundary
 
-- `TASK.md`
-- `research.toml`
+- `TASK.md`, `README.md`, `pyproject.toml`, `uv.lock`
+- `src/adaptive_jump/config.py`, `src/adaptive_jump/data.py`,
+  `src/adaptive_jump/cli.py`
+- focused tests under `tests/`
+- `docs/learning/02-data-pipeline.html`
+- ignored `data/**` and `artifacts/**`
 - procedural `.agent/session-log.jsonl` and `.agent/session-log.html`
 
-No source code, test, dependency, README, data download, generated artifact, or
-experiment is allowed in this contract-only task.
+No feature, model, backtest, risk-free conversion, dashboard, or experiment
+implementation is allowed in this task.
+
+## Verification Order
+
+1. Config and adapter unit tests use local fixtures/fakes only.
+2. CLI integration test runs fetch end-to-end without network.
+3. Existing tests, Ruff check/format, `uv pip check`, and lock check pass.
+4. Real network smoke fetches all six bounded series.
+5. Independently validate raw hashes, canonical hashes, coverage, duplicates,
+   missing values, upper cutoff, and config/Git provenance.
+6. Render and inspect the beginner HTML in Chromium desktop and mobile.
 
 ## Acceptance Criteria
 
-- Python 3.12 `tomllib` parses `research.toml`;
-- the config contains exactly three markets and the six approved source IDs;
-- every market carries an explicit proxy classification and deviation list;
-- the replication cutoff is 2023 and extension acquisition is disabled;
-- no-splicing and no-imputation rules are machine-readable;
-- existing tests, default Ruff check, and Ruff format check pass;
-- the contract is committed before downloader implementation begins.
+- clean install exposes `adaptive-jump fetch --config research.toml`;
+- all six configured sources are acquired through one canonical runner;
+- manifest facts agree with files on disk and no date exceeds 2023;
+- repeated fixture runs produce the same canonical hashes;
+- all automated and real-data smoke checks pass;
+- no scientific result, strategy signal, or post-2023 observation is produced.
 
 ## Completion
 
-- `research.toml` SHA-256:
-  `8f96774b01d3751fc4556b6e6f5876873f8c7457fbbf4c870c6829cc4b39570b`.
-- Python 3.12 `tomllib` parsed the config and all source, classification,
-  cutoff, no-splicing, no-imputation, and blocked-alignment invariants passed.
-- Existing 15 tests, default Ruff check, and Ruff format check passed.
-- No network request, data download, generated artifact, model fit, or
-  experiment occurred.
-
-Stop for review before creating acquisition code.
+Commit implementation in reviewable substeps. At completion record the real
+run path/hash and verification, then continue to a separately frozen causal
+normalization/features task under the owner's continuous-execution approval.
