@@ -6,9 +6,11 @@ import pandas as pd
 import pytest
 
 from adaptive_jump import data
-from adaptive_jump.cli import RunError, load_frozen_data, main
+from adaptive_jump.cli import RunError, load_frozen_data, main, run_replication
 from adaptive_jump.config import load_config
 from adaptive_jump.data import HttpResult
+from adaptive_jump.models import FixedJMResult, HMMResult
+from adaptive_jump.walkforward import BaselineStudy, SelectionResult
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -123,3 +125,106 @@ def test_ambiguous_matching_manifests_require_explicit_path(tmp_path: Path) -> N
 
     with pytest.raises(RunError, match="found 2"):
         load_frozen_data(load_config(config_path))
+
+
+def _runner_fixture(config, *, boundary_passed: bool = True):
+    dates = pd.bdate_range("2021-01-04", periods=40)
+    equity = [0.01 if index % 3 else -0.005 for index in range(len(dates))]
+    frame = pd.DataFrame(
+        {
+            "date": dates,
+            "equity_simple": equity,
+            "equity_log": equity,
+            "cash_return": 0.0001,
+            "excess_return": pd.Series(equity) - 0.0001,
+            "dd_10": 1.0,
+            "sortino_20": 1.0,
+            "sortino_60": 1.0,
+        }
+    )
+    signal = pd.Series(1.0, index=dates, name="selected_signal")
+    choices = pd.DataFrame({"decision_date": [dates[0]], "selected": [0.0]})
+    selection = SelectionResult(
+        signal=signal,
+        choices=choices,
+        surface=pd.DataFrame(),
+        candidate_returns=pd.DataFrame(index=dates),
+    )
+    selections = {
+        model: {
+            delay: selection for delay in config.backtest_protocol.robustness_delays
+        }
+        for model in ("fixed_jm", "hmm")
+    }
+    boundaries = pd.DataFrame(
+        [
+            {"model": model, "delay": delay, "passed": boundary_passed}
+            for model in selections
+            for delay in config.backtest_protocol.robustness_delays
+        ]
+    )
+    empty_states = pd.DataFrame(index=dates)
+    study = BaselineStudy(
+        oos_start=dates[0].date(),
+        jm=FixedJMResult(empty_states, pd.DataFrame()),
+        hmm=HMMResult(pd.Series(index=dates, dtype=float), pd.DataFrame()),
+        hmm_candidates=empty_states,
+        selections=selections,
+        boundaries=boundaries,
+    )
+    return frame, study
+
+
+def test_replication_runner_writes_and_verifies_complete_artifact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path, manifest_path = _manifest_fixture(tmp_path)
+    config = load_config(config_path)
+    frozen = load_frozen_data(config, manifest_path)
+    frame, study = _runner_fixture(config)
+    monkeypatch.setattr(
+        "adaptive_jump.cli.prepare_manifest_market",
+        lambda *_: type("Input", (), {"frame": frame, "oos_start": study.oos_start})(),
+    )
+    monkeypatch.setattr(
+        "adaptive_jump.cli.build_baseline_study", lambda *_args, **_kwargs: study
+    )
+    monkeypatch.setattr("adaptive_jump.cli.research_git_sha", lambda _root: "a" * 40)
+
+    run_dir = run_replication(config, frozen)
+
+    metadata = json.loads((run_dir / "run.json").read_text())
+    assert metadata["status"] == "complete"
+    assert metadata["metrics_opened"] is True
+    assert len(pd.read_csv(run_dir / "metrics.csv")) == 27
+    assert json.loads((run_dir / "claim.json").read_text())["passed"] is False
+    assert (run_dir / "us/trades/fixed_jm-delay-1.csv").is_file()
+    assert run_replication(config, frozen) == run_dir
+
+    (run_dir / "metrics.csv").write_text("tampered\n", encoding="utf-8")
+    with pytest.raises(RunError, match="inventory mismatch"):
+        run_replication(config, frozen)
+
+
+def test_replication_runner_does_not_open_metrics_after_boundary_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path, manifest_path = _manifest_fixture(tmp_path)
+    config = load_config(config_path)
+    frozen = load_frozen_data(config, manifest_path)
+    frame, study = _runner_fixture(config, boundary_passed=False)
+    monkeypatch.setattr(
+        "adaptive_jump.cli.prepare_manifest_market",
+        lambda *_: type("Input", (), {"frame": frame, "oos_start": study.oos_start})(),
+    )
+    monkeypatch.setattr(
+        "adaptive_jump.cli.build_baseline_study", lambda *_args, **_kwargs: study
+    )
+    monkeypatch.setattr("adaptive_jump.cli.research_git_sha", lambda _root: "b" * 40)
+
+    run_dir = run_replication(config, frozen)
+
+    metadata = json.loads((run_dir / "run.json").read_text())
+    assert metadata["status"] == "boundary_failed"
+    assert metadata["metrics_opened"] is False
+    assert not (run_dir / "metrics.csv").exists()
