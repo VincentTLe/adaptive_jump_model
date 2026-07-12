@@ -2,7 +2,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from adaptive_jump.backtest import BacktestError, apply_signal
+from adaptive_jump.backtest import (
+    BacktestError,
+    annualized_excess_sharpe,
+    apply_signal,
+    buy_and_hold,
+    performance_metrics,
+)
 
 
 def return_frame(rows: int = 8) -> pd.DataFrame:
@@ -101,3 +107,66 @@ def test_future_signal_change_does_not_change_past_accounting() -> None:
 def test_invalid_signal_fails(signal, message) -> None:
     with pytest.raises(BacktestError, match=message):
         apply_signal(return_frame(3), signal)
+
+
+def test_buy_and_hold_is_fully_invested_without_cost() -> None:
+    returns = return_frame(4)
+
+    result = buy_and_hold(returns)
+
+    pd.testing.assert_series_equal(
+        result["strategy_return"], returns["equity_simple"], check_names=False
+    )
+    assert result["position"].eq(1.0).all()
+    assert result["transaction_cost"].eq(0.0).all()
+
+
+def test_frozen_performance_metric_definitions() -> None:
+    result = pd.DataFrame(
+        {
+            "date": pd.bdate_range("2023-01-02", periods=4),
+            "cash_return": 0.0,
+            "position": [1.0, 0.0, 0.0, 1.0],
+            "one_way_turnover": [0.0, 1.0, 0.0, 1.0],
+            "strategy_return": [0.10, -0.10, 0.05, 0.0],
+        }
+    )
+
+    metrics = performance_metrics(
+        result, periods_per_year=4, expected_shortfall_quantile=0.25
+    )
+
+    expected_cagr = np.prod(1.0 + result["strategy_return"]) - 1.0
+    expected_vol = result["strategy_return"].std(ddof=1) * 2
+    assert metrics["cagr"] == pytest.approx(expected_cagr)
+    assert metrics["volatility"] == pytest.approx(expected_vol)
+    assert metrics["sharpe"] == pytest.approx(2 * 0.0125 / (expected_vol / 2))
+    assert metrics["maximum_drawdown"] == pytest.approx(-0.10)
+    assert metrics["calmar"] == pytest.approx(0.5)
+    assert metrics["expected_shortfall_5pct"] == pytest.approx(-0.10)
+    assert metrics["turnover"] == pytest.approx(2.0)
+    assert metrics["leverage"] == pytest.approx(0.5)
+
+
+def test_sharpe_uses_strategy_volatility_not_excess_volatility() -> None:
+    strategy = pd.Series([0.01, 0.03, -0.01])
+    cash = pd.Series([0.00, 0.01, 0.00])
+
+    value = annualized_excess_sharpe(strategy, cash, periods_per_year=4)
+
+    expected = 2 * (strategy - cash).mean() / strategy.std(ddof=1)
+    assert value == pytest.approx(expected)
+
+
+def test_zero_strategy_volatility_has_no_sharpe() -> None:
+    value = annualized_excess_sharpe(pd.Series([0.01, 0.01]), pd.Series([0.0, 0.0]))
+
+    assert np.isnan(value)
+
+
+def test_metrics_reject_missing_position_on_a_return_date() -> None:
+    result = buy_and_hold(return_frame(3))
+    result.loc[1, "position"] = np.nan
+
+    with pytest.raises(BacktestError, match="metric inputs must be finite"):
+        performance_metrics(result)
