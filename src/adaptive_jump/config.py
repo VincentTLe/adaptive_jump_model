@@ -47,8 +47,51 @@ class FeatureProtocol:
 class BacktestProtocol:
     primary_delay: int
     return_offset: int
+    robustness_delays: tuple[int, ...]
     one_way_cost_bps: int
     charge_initial_allocation: bool
+
+
+@dataclass(frozen=True)
+class ModelProtocol:
+    n_states: int
+    fit_window: int
+    risky_label: int
+    cash_label: int
+
+
+@dataclass(frozen=True)
+class JMProtocol:
+    lambda_grid: tuple[float, ...]
+    n_init: int
+    random_state: int
+    max_iter: int
+    tol: float
+    refit_months: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class HMMProtocol:
+    smoothing_grid: tuple[int, ...]
+    seeds: tuple[int, ...]
+    min_covar: float
+    n_iter: int
+    tol: float
+
+
+@dataclass(frozen=True)
+class SelectionProtocol:
+    validation_years: int
+    minimum_valid_returns: int
+    tie_tolerance: float
+    boundary_fraction_limit: float
+
+
+@dataclass(frozen=True)
+class MetricsProtocol:
+    periods_per_year: int
+    volatility_ddof: int
+    expected_shortfall_quantile: float
 
 
 @dataclass(frozen=True)
@@ -65,8 +108,11 @@ class ResearchConfig:
     trading_days_per_year: int
     feature_protocol: FeatureProtocol
     backtest_protocol: BacktestProtocol
-    fit_window_observations: int
-    validation_years: int
+    model_protocol: ModelProtocol
+    jm_protocol: JMProtocol
+    hmm_protocol: HMMProtocol
+    selection_protocol: SelectionProtocol
+    metrics_protocol: MetricsProtocol
     document: dict[str, Any]
 
 
@@ -139,11 +185,21 @@ def load_config(path: str | Path) -> ResearchConfig:
     )
     features = _feature_protocol(_table(document, "features"))
     backtest = _backtest_protocol(_table(document, "backtest"))
+    model = _model_protocol(_table(document, "model"))
+    jm = _jm_protocol(_table(document, "jm"))
+    hmm = _hmm_protocol(_table(document, "hmm"))
+    selection = _selection_protocol(_table(document, "selection"))
+    metrics = _metrics_protocol(_table(document, "metrics"))
     oos = _table(document, "oos_start")
     fit_window = _integer(oos, "fit_window_observations")
     validation_years = _integer(oos, "online_validation_calendar_years")
     _require(fit_window == 3000, "fit_window_observations must be 3000")
     _require(validation_years == 8, "online validation must be 8 years")
+    _require(model.fit_window == fit_window, "model and OOS fit windows must match")
+    _require(
+        selection.validation_years == validation_years,
+        "selection and OOS validation years must match",
+    )
 
     config_id = document.get("config_id")
     _require(
@@ -162,8 +218,11 @@ def load_config(path: str | Path) -> ResearchConfig:
         trading_days_per_year=trading_days,
         feature_protocol=features,
         backtest_protocol=backtest,
-        fit_window_observations=fit_window,
-        validation_years=validation_years,
+        model_protocol=model,
+        jm_protocol=jm,
+        hmm_protocol=hmm,
+        selection_protocol=selection,
+        metrics_protocol=metrics,
         document=document,
     )
 
@@ -276,11 +335,115 @@ def _backtest_protocol(row: dict[str, Any]) -> BacktestProtocol:
     delay = _integer(row, "primary_delay_trading_days")
     offset = _integer(row, "signal_to_return_offset")
     cost = _integer(row, "one_way_cost_bps")
+    robustness = row.get("robustness_delays")
     initial = row.get("charge_initial_allocation")
     _require(delay == 1 and offset == delay + 1, "primary signal offset must be t+2")
+    _require(robustness == [1, 5, 10], "robustness delays must be [1, 5, 10]")
     _require(cost == 10, "one-way cost must be 10 bps")
     _require(initial is False, "initial allocation must be cost-free")
-    return BacktestProtocol(delay, offset, cost, False)
+    return BacktestProtocol(delay, offset, tuple(robustness), cost, False)
+
+
+def _model_protocol(row: dict[str, Any]) -> ModelProtocol:
+    _fixed(row, "standardizer", "sklearn_standard_scaler_ddof0")
+    n_states = _integer(row, "n_states")
+    fit_window = _integer(row, "fit_window_observations")
+    risky = _integer(row, "state_risky_label")
+    cash = _integer(row, "state_cash_label")
+    _require(n_states == 2, "model must have two states")
+    _require((risky, cash) == (0, 1), "state labels must be risky=0 and cash=1")
+    return ModelProtocol(n_states, fit_window, risky, cash)
+
+
+def _jm_protocol(row: dict[str, Any]) -> JMProtocol:
+    grid = _number_tuple(row, "lambda_grid")
+    _require(grid == (0, 5, 15, 35, 70, 150, 300, 600, 1200), "invalid JM lambda grid")
+    _fixed(row, "implementation", "jumpmodels.JumpModel")
+    _fixed(row, "sort_by", "cumret")
+    _fixed(row, "online_terminal_only", True)
+    refit = row.get("refit_months")
+    _require(refit == [1, 7], "JM refit months must be [1, 7]")
+    protocol = JMProtocol(
+        grid,
+        _positive_integer(row, "n_init"),
+        _integer(row, "random_state"),
+        _positive_integer(row, "max_iter"),
+        _positive_number(row, "tol"),
+        tuple(refit),
+    )
+    _require(
+        protocol == JMProtocol(grid, 10, 0, 1000, 1e-8, (1, 7)), "invalid JM settings"
+    )
+    return protocol
+
+
+def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
+    grid = row.get("smoothing_grid")
+    seeds = row.get("seeds")
+    _require(grid == [0, 2, 4, 6, 8, 10, 20], "invalid HMM smoothing grid")
+    _require(seeds == list(range(10)), "HMM seeds must be 0 through 9")
+    _require(_integer(row, "n_init") == len(seeds), "HMM n_init must match seeds")
+    _fixed(row, "implementation", "hmmlearn.GaussianHMM")
+    _fixed(row, "covariance_type", "diag")
+    _fixed(row, "algorithm", "viterbi")
+    _fixed(row, "require_converged", True)
+    _fixed(row, "state_label_rule", "lower_vol_0_higher_vol_1")
+    _require(
+        _number(row, "median_threshold") == 0.5, "HMM median threshold must be 0.5"
+    )
+    _require(
+        _integer(row, "median_min_periods") == 1, "HMM median min periods must be 1"
+    )
+    protocol = HMMProtocol(
+        tuple(grid),
+        tuple(seeds),
+        _positive_number(row, "min_covar"),
+        _positive_integer(row, "n_iter"),
+        _positive_number(row, "tol"),
+    )
+    expected = HMMProtocol(tuple(grid), tuple(seeds), 0.001, 1000, 1e-6)
+    _require(protocol == expected, "invalid HMM settings")
+    return protocol
+
+
+def _selection_protocol(row: dict[str, Any]) -> SelectionProtocol:
+    _fixed(row, "cadence", "monthly_prior_month_last_complete_date")
+    _fixed(row, "objective", "annualized_strategy_excess_sharpe")
+    _fixed(row, "tie_rule", "lower_smoothing")
+    protocol = SelectionProtocol(
+        _positive_integer(row, "validation_calendar_years"),
+        _positive_integer(row, "minimum_valid_returns"),
+        _positive_number(row, "tie_tolerance"),
+        _positive_number(row, "upper_boundary_month_fraction_limit"),
+    )
+    _require(
+        protocol == SelectionProtocol(8, 252, 1e-12, 0.05), "invalid selection settings"
+    )
+    return protocol
+
+
+def _metrics_protocol(row: dict[str, Any]) -> MetricsProtocol:
+    expected = {
+        "sharpe_numerator": "mean_strategy_minus_cash",
+        "sharpe_denominator": "strategy_return_volatility",
+        "cagr": "compound_252_over_n",
+        "calmar_numerator": "annualized_arithmetic_mean_excess",
+        "turnover": "mean_one_way_turnover_times_252",
+        "leverage": "mean_risky_weight",
+    }
+    _require(
+        all(row.get(key) == value for key, value in expected.items()),
+        "invalid metric definition",
+    )
+    periods = _positive_integer(row, "periods_per_year")
+    ddof = _integer(row, "volatility_ddof")
+    quantile = _positive_number(row, "expected_shortfall_quantile")
+    _require(
+        periods == 252 and ddof == 1,
+        "metrics must use 252 periods and sample volatility",
+    )
+    _require(quantile == 0.05, "expected shortfall quantile must be 0.05")
+    return MetricsProtocol(periods, ddof, quantile)
 
 
 def _integer(row: dict[str, Any], key: str) -> int:
@@ -290,6 +453,44 @@ def _integer(row: dict[str, Any], key: str) -> int:
         f"{key} must be an integer",
     )
     return value
+
+
+def _positive_integer(row: dict[str, Any], key: str) -> int:
+    value = _integer(row, key)
+    _require(value > 0, f"{key} must be positive")
+    return value
+
+
+def _number(row: dict[str, Any], key: str) -> float:
+    value = row.get(key)
+    _require(
+        isinstance(value, (int, float)) and not isinstance(value, bool),
+        f"{key} must be a number",
+    )
+    return float(value)
+
+
+def _positive_number(row: dict[str, Any], key: str) -> float:
+    value = _number(row, key)
+    _require(value > 0, f"{key} must be positive")
+    return value
+
+
+def _number_tuple(row: dict[str, Any], key: str) -> tuple[float, ...]:
+    values = row.get(key)
+    _require(isinstance(values, list) and values, f"{key} must be a non-empty list")
+    _require(
+        all(
+            isinstance(value, (int, float)) and not isinstance(value, bool)
+            for value in values
+        ),
+        f"{key} values must be numbers",
+    )
+    return tuple(float(value) for value in values)
+
+
+def _fixed(row: dict[str, Any], key: str, expected: Any) -> None:
+    _require(row.get(key) == expected, f"{key} violates the frozen protocol")
 
 
 def _require(condition: bool, message: str) -> None:

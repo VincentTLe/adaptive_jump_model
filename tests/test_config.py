@@ -31,8 +31,11 @@ def test_load_frozen_proxy_contract() -> None:
     assert config.trading_days_per_year == 252
     assert config.feature_protocol.sortino_halflives == (20, 60)
     assert config.backtest_protocol.return_offset == 2
-    assert config.fit_window_observations == 3000
-    assert config.validation_years == 8
+    assert config.model_protocol.fit_window == 3000
+    assert config.selection_protocol.validation_years == 8
+    assert config.jm_protocol.lambda_grid[-1] == 1200
+    assert config.hmm_protocol.seeds == tuple(range(10))
+    assert config.metrics_protocol.expected_shortfall_quantile == 0.05
 
 
 @pytest.mark.parametrize(
@@ -77,6 +80,32 @@ def test_load_frozen_proxy_contract() -> None:
             "signal_to_return_offset = 2",
             "signal_to_return_offset = 3",
             r"primary signal offset must be t\+2",
+        ),
+        (
+            "robustness_delays = [1, 5, 10]",
+            "robustness_delays = [1, 5]",
+            r"robustness delays must be \[1, 5, 10\]",
+        ),
+        ("n_states = 2", "n_states = 3", "model must have two states"),
+        (
+            "lambda_grid = [0, 5, 15, 35, 70, 150, 300, 600, 1200]",
+            "lambda_grid = [0, 5, 15, 35, 70, 150, 300, 600, 2400]",
+            "invalid JM lambda grid",
+        ),
+        (
+            "seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]",
+            "seeds = [0, 1, 2]",
+            "HMM seeds must be 0 through 9",
+        ),
+        (
+            "minimum_valid_returns = 252",
+            "minimum_valid_returns = 251",
+            "invalid selection settings",
+        ),
+        (
+            "volatility_ddof = 1",
+            "volatility_ddof = 0",
+            "metrics must use 252 periods and sample volatility",
         ),
     ],
 )
