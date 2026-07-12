@@ -1,10 +1,13 @@
+import hashlib
 import json
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from adaptive_jump import data
-from adaptive_jump.cli import main
+from adaptive_jump.cli import RunError, load_frozen_data, main
+from adaptive_jump.config import load_config
 from adaptive_jump.data import HttpResult
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,3 +59,67 @@ def test_fetch_cli_runs_complete_fixture_pipeline(
 def test_fetch_cli_reports_missing_config(capsys) -> None:
     assert main(["fetch", "--config", "missing.toml"]) == 2
     assert "missing.toml" in capsys.readouterr().err
+
+
+def _manifest_fixture(tmp_path: Path) -> tuple[Path, Path]:
+    config_path = tmp_path / "research.toml"
+    config_path.write_bytes((ROOT / "research.toml").read_bytes())
+    config = load_config(config_path)
+    sources = []
+    for market in config.markets:
+        for kind, source in (("equity", market.equity), ("cash", market.cash)):
+            path = tmp_path / "data/processed/run" / f"{market.id}_{kind}.csv"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("date,value\n2023-01-02,1.0\n", encoding="utf-8")
+            sources.append(
+                {
+                    "market": market.id,
+                    "kind": kind,
+                    "source_id": source.source_id,
+                    "canonical": {
+                        "path": str(path.relative_to(tmp_path)),
+                        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                    },
+                }
+            )
+    manifest = tmp_path / "data/raw/shu-proxy-replication-v3-run/manifest.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(
+        json.dumps(
+            {
+                "config_id": config.config_id,
+                "config_sha256": config.sha256,
+                "replication_cutoff": "2023-12-31",
+                "sources": sources,
+            }
+        ),
+        encoding="utf-8",
+    )
+    return config_path, manifest
+
+
+def test_load_frozen_data_recomputes_every_canonical_hash(tmp_path: Path) -> None:
+    config_path, manifest_path = _manifest_fixture(tmp_path)
+    config = load_config(config_path)
+
+    frozen = load_frozen_data(config)
+
+    assert frozen.path == manifest_path
+    assert frozen.sha256 == hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+
+    canonical = tmp_path / frozen.document["sources"][0]["canonical"]["path"]
+    canonical.write_text("date,value\n2023-01-02,2.0\n", encoding="utf-8")
+    with pytest.raises(RunError, match="canonical hash mismatch"):
+        load_frozen_data(config, manifest_path)
+
+
+def test_ambiguous_matching_manifests_require_explicit_path(tmp_path: Path) -> None:
+    config_path, manifest_path = _manifest_fixture(tmp_path)
+    duplicate = (
+        manifest_path.parent.parent / "shu-proxy-replication-v3-two/manifest.json"
+    )
+    duplicate.parent.mkdir()
+    duplicate.write_bytes(manifest_path.read_bytes())
+
+    with pytest.raises(RunError, match="found 2"):
+        load_frozen_data(load_config(config_path))
