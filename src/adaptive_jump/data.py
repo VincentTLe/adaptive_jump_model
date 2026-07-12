@@ -101,7 +101,7 @@ def acquire(
     if timestamp.tzinfo is None:
         raise AcquisitionError("created_at must be timezone-aware")
     identifier = run_id or f"{config.config_id}-{timestamp:%Y%m%dT%H%M%SZ}"
-    revision = git_sha or _git_sha(root)
+    revision = git_sha or research_git_sha(root)
     raw_dir = root / config.raw_root / identifier
     canonical_dir = root / config.processed_root / identifier
     if raw_dir.exists() or canonical_dir.exists():
@@ -363,7 +363,7 @@ def _file_record(root: Path, path: Path, payload: bytes) -> dict[str, Any]:
     }
 
 
-def _git_sha(root: Path) -> str:
+def research_git_sha(root: Path) -> str:
     scope = ["research.toml", "pyproject.toml", "uv.lock", "src", "tests"]
     tracked = subprocess.run(
         ["git", "diff", "--quiet", "HEAD", "--", *scope], cwd=root, check=False

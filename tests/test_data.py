@@ -11,11 +11,11 @@ from adaptive_jump.config import load_config
 from adaptive_jump.data import (
     AcquisitionError,
     HttpResult,
-    _git_sha,
     acquire,
     canonical_bytes,
     fetch_source,
     quality,
+    research_git_sha,
 )
 
 CONFIG = load_config(Path(__file__).resolve().parents[1] / "research.toml")
@@ -191,18 +191,18 @@ def test_git_provenance_rejects_result_affecting_diff(tmp_path: Path) -> None:
         cwd=tmp_path,
         check=True,
     )
-    assert len(_git_sha(tmp_path)) == 40
+    assert len(research_git_sha(tmp_path)) == 40
 
     source.write_text("VALUE = 2\n")
     with pytest.raises(AcquisitionError, match="tracked files are dirty"):
-        _git_sha(tmp_path)
+        research_git_sha(tmp_path)
 
     source.write_text("VALUE = 1\n")
     untracked = tmp_path / "tests/new_test.py"
     untracked.parent.mkdir()
     untracked.write_text("assert True\n")
     with pytest.raises(AcquisitionError, match="untracked files exist"):
-        _git_sha(tmp_path)
+        research_git_sha(tmp_path)
 
 
 def _fixture_run(root: Path) -> Path:

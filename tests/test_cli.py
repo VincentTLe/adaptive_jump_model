@@ -40,7 +40,7 @@ def test_fetch_cli_runs_complete_fixture_pipeline(
 
     monkeypatch.setattr(data, "_download_yahoo", yahoo_loader)
     monkeypatch.setattr(data, "_get_http", http_get)
-    monkeypatch.setattr(data, "_git_sha", lambda _root: "abc123")
+    monkeypatch.setattr(data, "research_git_sha", lambda _root: "abc123")
 
     assert main(["fetch", "--config", str(config)]) == 0
 
