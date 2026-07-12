@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">28 session(s) · newest first · 2026-07-12 06:30 UTC</p>
+  <p class="sub">29 session(s) · newest first · 2026-07-12 21:40 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-12T21:40Z</span><span class="who">codex · GPT-5 Codex</span>
+      </div>
+      <p class="goal">Complete the locked v7 fixed-baseline proxy replication, independently verify and report the result, teach the theory, and finish clean-clone setup acceptance without opening adaptive work after a failed gate.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>research.toml and TASK.md (v7 common-sample freeze and completed outcome)</code></li><li><code>src/adaptive_jump/walkforward.py and config.py (common comparison sample)</code></li><li><code>src/adaptive_jump/artifacts.py and cli.py (sealed-run verifier and verify CLI)</code></li><li><code>tests/test_cli.py and focused protocol tests</code></li><li><code>README.md and pyproject.toml (current workflow and robust Ruff setup)</code></li><li><code>docs/learning/04-fixed-baselines.html (new beginner lesson)</code></li><li><code>artifacts/fixed-baselines/fixed-baselines-8adb330565d6-3636939b525d-e9614112b234 and artifacts/reports/... (generated, ignored)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>official full v7 run completed through 2023; 18/18 boundary checks passed and all three market-delay model samples share dates</li><li>adaptive-jump verify on official run: 131 immutable files, 18 boundary rows, 27 metric rows, max absolute recomputation difference 7.327471962526033e-15</li><li>directional gate: 0/3 markets; conclusion non-replication and adaptive remains blocked</li><li>pytest -q: 97 passed; Ruff check and format check passed</li><li>uv sync --locked --extra data, uv pip check, and uv lock --check passed</li><li>clean git-archive acceptance built sdist/wheel, installed 47 packages, passed 97 tests, Ruff, pip check, and CLI help</li><li>portable report official verifier passed at 1440/390 with source dialog; desktop/narrow screenshots inspected</li><li>lesson 04 Chromium desktop/mobile renders inspected; document overflow checks passed</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>5532be8356efc1886fb599ca4016d2a47421da19</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner review. Do not implement adaptive or inspect post-2023 extension. A new frozen task must either obtain author/licensed 1970 definitions or explicitly change the research question to a temporal-parity proxy study.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Official result is shifted-window proxy non-replication, not an exact reproduction and not evidence that the Shu paper is false. Setup intentionally uses pyproject.toml plus uv.lock and no requirements.txt; dashboard/backtest dependencies remain deferred until exercised by an approved feature. Substantive commit range includes a8ac90a through 5532be8.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-12T06:30Z</span><span class="who">codex · GPT-5</span>
