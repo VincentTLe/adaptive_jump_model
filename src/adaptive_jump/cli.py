@@ -46,7 +46,7 @@ class MarketInput:
     oos_start: date
 
 
-HMM_WORKERS, HMM_CHECKPOINT_DAYS = 8, 50
+HMM_WORKERS, HMM_CHECKPOINT_DAYS = 16, 50
 
 
 def load_frozen_data(
