@@ -9,8 +9,20 @@ from datetime import date
 import numpy as np
 import pandas as pd
 
-from adaptive_jump.backtest import annualized_excess_sharpe, apply_signal
-from adaptive_jump.config import SelectionProtocol
+from adaptive_jump.backtest import (
+    annualized_excess_sharpe,
+    apply_signal,
+    buy_and_hold,
+    performance_metrics,
+)
+from adaptive_jump.config import ResearchConfig, SelectionProtocol
+from adaptive_jump.models import (
+    FixedJMResult,
+    HMMResult,
+    fixed_jm_states,
+    hmm_states,
+    smoothed_hmm_states,
+)
 
 
 class WalkForwardError(ValueError):
@@ -37,6 +49,104 @@ class BoundaryDiagnostic:
     fraction: float
     limit: float
     passed: bool
+
+
+@dataclass(frozen=True)
+class BaselineStudy:
+    """Sealed model outputs and selection evidence for one market."""
+
+    oos_start: date
+    jm: FixedJMResult
+    hmm: HMMResult
+    hmm_candidates: pd.DataFrame
+    selections: dict[str, dict[int, SelectionResult]]
+    boundaries: pd.DataFrame
+
+
+def build_baseline_study(
+    frame: pd.DataFrame, config: ResearchConfig, *, oos_start: date
+) -> BaselineStudy:
+    """Build all baseline choices and boundary checks without OOS metrics."""
+    jm = fixed_jm_states(frame, config.model_protocol, config.jm_protocol)
+    hmm = hmm_states(frame, config.model_protocol, config.hmm_protocol)
+    hmm_candidates = smoothed_hmm_states(hmm.states, config.hmm_protocol.smoothing_grid)
+    returns = frame[["date", "equity_simple", "cash_return"]]
+    selections: dict[str, dict[int, SelectionResult]] = {"fixed_jm": {}, "hmm": {}}
+    boundary_rows: list[dict[str, object]] = []
+    candidates = {"fixed_jm": jm.states, "hmm": hmm_candidates}
+    grids = {
+        "fixed_jm": config.jm_protocol.lambda_grid,
+        "hmm": tuple(float(value) for value in config.hmm_protocol.smoothing_grid),
+    }
+    backtest = config.backtest_protocol
+    metrics = config.metrics_protocol
+    for delay in backtest.robustness_delays:
+        for model_name, candidate_states in candidates.items():
+            selection = select_monthly_candidate(
+                returns,
+                candidate_states,
+                config.selection_protocol,
+                delay_trading_days=delay,
+                one_way_cost_bps=backtest.one_way_cost_bps,
+                periods_per_year=metrics.periods_per_year,
+                volatility_ddof=metrics.volatility_ddof,
+            )
+            selections[model_name][delay] = selection
+            diagnostic = boundary_diagnostic(
+                selection.choices,
+                grids[model_name],
+                oos_start=oos_start,
+                fraction_limit=config.selection_protocol.boundary_fraction_limit,
+            )
+            boundary_rows.append(
+                {
+                    "model": model_name,
+                    "delay": delay,
+                    **diagnostic.__dict__,
+                }
+            )
+    return BaselineStudy(
+        oos_start=oos_start,
+        jm=jm,
+        hmm=hmm,
+        hmm_candidates=hmm_candidates,
+        selections=selections,
+        boundaries=pd.DataFrame.from_records(boundary_rows),
+    )
+
+
+def open_baseline_metrics(
+    frame: pd.DataFrame, study: BaselineStudy, config: ResearchConfig
+) -> pd.DataFrame:
+    """Open OOS metrics only after every preregistered boundary check passes."""
+    if study.boundaries.empty or not study.boundaries["passed"].all():
+        raise WalkForwardError("OOS metrics are sealed until all boundary checks pass")
+    returns = frame[["date", "equity_simple", "cash_return"]]
+    dates = pd.to_datetime(returns["date"], errors="raise")
+    oos = dates >= pd.Timestamp(study.oos_start)
+    metrics_protocol = config.metrics_protocol
+    rows: list[dict[str, object]] = []
+    for delay in config.backtest_protocol.robustness_delays:
+        paths = {"buy_and_hold": buy_and_hold(returns)}
+        for model_name in ("hmm", "fixed_jm"):
+            selection = study.selections[model_name][delay]
+            paths[model_name] = apply_signal(
+                returns,
+                selection.signal.reset_index(drop=True),
+                delay_trading_days=delay,
+                one_way_cost_bps=config.backtest_protocol.one_way_cost_bps,
+            )
+        for model_name, path in paths.items():
+            values = performance_metrics(
+                path.loc[oos].reset_index(drop=True),
+                periods_per_year=metrics_protocol.periods_per_year,
+                volatility_ddof=metrics_protocol.volatility_ddof,
+                expected_shortfall_quantile=(
+                    metrics_protocol.expected_shortfall_quantile
+                ),
+            )
+            rows.append({"model": model_name, "delay": delay, **values})
+    return pd.DataFrame.from_records(rows)
 
 
 def select_monthly_candidate(

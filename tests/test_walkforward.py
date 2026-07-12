@@ -1,13 +1,25 @@
+from dataclasses import replace
 from datetime import date
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from adaptive_jump.config import SelectionProtocol
+from adaptive_jump.config import (
+    BacktestProtocol,
+    HMMProtocol,
+    JMProtocol,
+    ModelProtocol,
+    SelectionProtocol,
+    load_config,
+)
+from adaptive_jump.models import FixedJMResult, HMMResult
 from adaptive_jump.walkforward import (
     WalkForwardError,
     boundary_diagnostic,
+    build_baseline_study,
+    open_baseline_metrics,
     select_monthly_candidate,
 )
 
@@ -147,3 +159,46 @@ def test_boundary_check_rejects_missing_oos_choices() -> None:
         boundary_diagnostic(
             choices, (0.0, 10.0), oos_start=date(2021, 1, 1), fraction_limit=0.05
         )
+
+
+def test_baseline_integration_keeps_metrics_sealed_until_boundaries_pass(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    returns, _ = _inputs()
+    frame = returns.assign(
+        equity_log=np.log1p(returns["equity_simple"]),
+        excess_return=returns["equity_simple"] - returns["cash_return"],
+        dd_10=1.0,
+        sortino_20=1.0,
+        sortino_60=1.0,
+    )
+    dates = pd.DatetimeIndex(frame["date"])
+    jm_states = pd.DataFrame({0.0: 0.0, 5.0: 1.0}, index=dates)
+    hmm_state = pd.Series(np.arange(len(dates)) % 2, index=dates, dtype=float)
+    monkeypatch.setattr(
+        "adaptive_jump.walkforward.fixed_jm_states",
+        lambda *_: FixedJMResult(jm_states, pd.DataFrame()),
+    )
+    monkeypatch.setattr(
+        "adaptive_jump.walkforward.hmm_states",
+        lambda *_: HMMResult(hmm_state, pd.DataFrame()),
+    )
+    config = load_config(Path(__file__).resolve().parents[1] / "research.toml")
+    config = replace(
+        config,
+        model_protocol=ModelProtocol(2, 5, 0, 1),
+        jm_protocol=JMProtocol((0.0, 5.0), 1, 0, 10, 1e-8, (1, 7)),
+        hmm_protocol=HMMProtocol((0, 2), (0,), 0.001, 10, 1e-6),
+        selection_protocol=SelectionProtocol(1, 20, 1e-12, 1.0),
+        backtest_protocol=BacktestProtocol(1, 2, (1, 5), 10, False),
+    )
+
+    study = build_baseline_study(frame, config, oos_start=date(2021, 2, 1))
+    metrics = open_baseline_metrics(frame, study, config)
+
+    assert len(study.boundaries) == 4
+    assert study.boundaries["passed"].all()
+    assert len(metrics) == 6
+    sealed = replace(study, boundaries=study.boundaries.assign(passed=False))
+    with pytest.raises(WalkForwardError, match="metrics are sealed"):
+        open_baseline_metrics(frame, sealed, config)
