@@ -92,6 +92,10 @@ reproduction or the adaptive-model claim.
 ## Metrics And Robustness
 
 - Delays: primary `1`, robustness `5` and `10`, with CV repeated per delay.
+- Within each market and delay, B&H, HMM and JM are evaluated only on the
+  intersection of dates where all three have complete return, cash, position
+  and turnover rows. This v7 correction prevents model-specific start dates
+  from changing the comparison population; it does not change any model.
 - CAGR: compounded simple returns annualized by `252 / n`.
 - Volatility: sample standard deviation of strategy returns times `sqrt(252)`.
 - Sharpe: annualized mean strategy excess return divided by strategy-return
@@ -124,7 +128,7 @@ after viewing OOS metrics is allowed.
 
 ## Acceptance Criteria
 
-- Config v3 freezes every choice above before model output.
+- Config v7 freezes every choice above before model output.
 - Unit/oracle tests cover scaler leakage, state labels, JM terminal online DP,
   HMM convergence/restart selection, median filter, monthly CV, ties, boundary
   gate, metrics, and delays.
