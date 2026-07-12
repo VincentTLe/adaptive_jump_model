@@ -39,7 +39,7 @@ addopts = ["--strict-config", "--strict-markers", "-ra"]
 testpaths = ["tests"]
 
 [tool.ruff]
-exclude = ["archive"]
+extend-exclude = ["archive"]
 line-length = 88
 target-version = "py312"
 
