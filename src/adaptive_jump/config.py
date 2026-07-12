@@ -36,6 +36,22 @@ class MarketConfig:
 
 
 @dataclass(frozen=True)
+class FeatureProtocol:
+    downside_halflife: int
+    sortino_halflives: tuple[int, ...]
+    ewm_adjust: bool
+    ewm_ignore_na: bool
+
+
+@dataclass(frozen=True)
+class BacktestProtocol:
+    primary_delay: int
+    return_offset: int
+    one_way_cost_bps: int
+    charge_initial_allocation: bool
+
+
+@dataclass(frozen=True)
 class ResearchConfig:
     path: Path
     sha256: str
@@ -46,6 +62,11 @@ class ResearchConfig:
     processed_root: Path
     artifact_root: Path
     markets: tuple[MarketConfig, ...]
+    trading_days_per_year: int
+    feature_protocol: FeatureProtocol
+    backtest_protocol: BacktestProtocol
+    fit_window_observations: int
+    validation_years: int
     document: dict[str, Any]
 
 
@@ -106,6 +127,24 @@ def load_config(path: str | Path) -> ResearchConfig:
     market_ids = [market.id for market in markets]
     _require(len(set(market_ids)) == len(market_ids), "market IDs must be unique")
 
+    returns = _table(document, "returns")
+    _require(
+        returns.get("cash_daily") == "annual_percent / 100 / 252",
+        "cash_daily formula must remain frozen",
+    )
+    trading_days = _integer(returns, "trading_days_per_year")
+    _require(trading_days == 252, "trading_days_per_year must be 252")
+    _require(
+        returns.get("allow_negative_yields") is True, "negative yields must be allowed"
+    )
+    features = _feature_protocol(_table(document, "features"))
+    backtest = _backtest_protocol(_table(document, "backtest"))
+    oos = _table(document, "oos_start")
+    fit_window = _integer(oos, "fit_window_observations")
+    validation_years = _integer(oos, "online_validation_calendar_years")
+    _require(fit_window == 3000, "fit_window_observations must be 3000")
+    _require(validation_years == 8, "online validation must be 8 years")
+
     config_id = document.get("config_id")
     _require(
         isinstance(config_id, str) and config_id, "config_id must be a non-empty string"
@@ -120,6 +159,11 @@ def load_config(path: str | Path) -> ResearchConfig:
         processed_root=processed_root,
         artifact_root=artifact_root,
         markets=markets,
+        trading_days_per_year=trading_days,
+        feature_protocol=features,
+        backtest_protocol=backtest,
+        fit_window_observations=fit_window,
+        validation_years=validation_years,
         document=document,
     )
 
@@ -163,6 +207,20 @@ def _source(row: dict[str, Any], key: str, market_id: str) -> SourceConfig:
     )
     if key == "equity":
         _require(frequency == "daily", f"{market_id}.equity must be daily")
+    else:
+        staleness = _integer(source, "max_staleness_calendar_days")
+        if frequency == "daily":
+            _require(
+                _integer(source, "availability_lag_calendar_days") == 1,
+                f"{market_id}.cash daily lag must be 1",
+            )
+            _require(staleness == 10, f"{market_id}.cash staleness must be 10")
+        else:
+            _require(
+                _integer(source, "availability_lag_month_starts") == 2,
+                f"{market_id}.cash monthly lag must be 2",
+            )
+            _require(staleness == 120, f"{market_id}.cash staleness must be 120")
     return SourceConfig(
         provider=provider,
         source_id=_text(source, "source_id"),
@@ -200,6 +258,38 @@ def _safe_relative_path(row: dict[str, Any], key: str) -> Path:
         f"{key} must stay inside the repository",
     )
     return path
+
+
+def _feature_protocol(row: dict[str, Any]) -> FeatureProtocol:
+    downside = _integer(row, "downside_halflife")
+    sortino = row.get("sortino_halflives")
+    _require(downside == 10, "downside halflife must be 10")
+    _require(sortino == [20, 60], "Sortino halflives must be [20, 60]")
+    _require(row.get("ewm_adjust") is True, "EWM adjust must be true")
+    _require(row.get("ewm_ignore_na") is False, "EWM ignore_na must be false")
+    _require(row.get("burn_in_observations") == 0, "feature burn-in must be zero")
+    _require(row.get("allow_clipping") is False, "feature clipping must be disabled")
+    return FeatureProtocol(downside, tuple(sortino), True, False)
+
+
+def _backtest_protocol(row: dict[str, Any]) -> BacktestProtocol:
+    delay = _integer(row, "primary_delay_trading_days")
+    offset = _integer(row, "signal_to_return_offset")
+    cost = _integer(row, "one_way_cost_bps")
+    initial = row.get("charge_initial_allocation")
+    _require(delay == 1 and offset == delay + 1, "primary signal offset must be t+2")
+    _require(cost == 10, "one-way cost must be 10 bps")
+    _require(initial is False, "initial allocation must be cost-free")
+    return BacktestProtocol(delay, offset, cost, False)
+
+
+def _integer(row: dict[str, Any], key: str) -> int:
+    value = row.get(key)
+    _require(
+        isinstance(value, int) and not isinstance(value, bool),
+        f"{key} must be an integer",
+    )
+    return value
 
 
 def _require(condition: bool, message: str) -> None:

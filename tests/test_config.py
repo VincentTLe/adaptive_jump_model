@@ -28,6 +28,11 @@ def test_load_frozen_proxy_contract() -> None:
         "IR3TIB01DEM156N",
         "STRACLUC3M",
     ]
+    assert config.trading_days_per_year == 252
+    assert config.feature_protocol.sortino_halflives == (20, 60)
+    assert config.backtest_protocol.return_offset == 2
+    assert config.fit_window_observations == 3000
+    assert config.validation_years == 8
 
 
 @pytest.mark.parametrize(
@@ -52,6 +57,26 @@ def test_load_frozen_proxy_contract() -> None:
             'id = "de"',
             'id = "us"',
             "market IDs must be unique",
+        ),
+        (
+            "trading_days_per_year = 252",
+            "trading_days_per_year = 251",
+            "trading_days_per_year must be 252",
+        ),
+        (
+            "ewm_adjust = true",
+            "ewm_adjust = false",
+            "EWM adjust must be true",
+        ),
+        (
+            "availability_lag_month_starts = 2",
+            "availability_lag_month_starts = 1",
+            "de.cash monthly lag must be 2",
+        ),
+        (
+            "signal_to_return_offset = 2",
+            "signal_to_return_offset = 3",
+            r"primary signal offset must be t\+2",
         ),
     ],
 )
