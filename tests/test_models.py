@@ -170,6 +170,24 @@ def test_hmm_rejects_monitor_false_positive_convergence(
         best_hmm_terminal_fit(pd.Series([0.1, -0.1, 0.2, -0.2]), model, _hmm_protocol())
 
 
+def test_hmm_accepts_small_negative_delta_within_tolerance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class NumericalOscillation(_FakeHMM):
+        def __init__(self, **kwargs: object) -> None:
+            super().__init__(**kwargs)
+            self.monitor_ = _Monitor(True, delta=-5e-7)
+
+    monkeypatch.setattr("adaptive_jump.models.GaussianHMM", NumericalOscillation)
+    model = ModelProtocol(2, 4, 0, 1)
+
+    fit = best_hmm_terminal_fit(
+        pd.Series([0.1, -0.1, 0.2, -0.2]), model, _hmm_protocol()
+    )
+
+    assert fit.accepted_starts == 3
+
+
 def test_hmm_daily_fit_is_causal(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("adaptive_jump.models.GaussianHMM", _FakeHMM)
     model = ModelProtocol(2, 4, 0, 1)

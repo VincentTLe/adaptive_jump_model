@@ -281,9 +281,11 @@ def _require_strict_hmm_convergence(model: GaussianHMM, protocol: HMMProtocol) -
     monitor = model.monitor_
     history = tuple(monitor.history)
     delta = history[-1] - history[-2] if len(history) >= 2 else math.nan
-    precision = math.sqrt(np.finfo(float).eps)
     accepted = (
-        monitor.converged and len(history) >= 2 and -precision <= delta < protocol.tol
+        monitor.converged
+        and len(history) >= 2
+        and math.isfinite(delta)
+        and abs(delta) < protocol.tol
     )
     if not accepted:
         raise ModelError(
