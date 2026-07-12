@@ -17,6 +17,7 @@ from adaptive_jump.config import (
 from adaptive_jump.models import FixedJMResult, HMMResult
 from adaptive_jump.walkforward import (
     WalkForwardError,
+    baseline_paths,
     boundary_diagnostic,
     build_baseline_study,
     open_baseline_metrics,
@@ -202,3 +203,12 @@ def test_baseline_integration_keeps_metrics_sealed_until_boundaries_pass(
     sealed = replace(study, boundaries=study.boundaries.assign(passed=False))
     with pytest.raises(WalkForwardError, match="metrics are sealed"):
         open_baseline_metrics(frame, sealed, config)
+    paths = baseline_paths(frame, study, config)
+    jm_path = paths[1]["fixed_jm"]
+    assert (
+        jm_path.loc[jm_path["strategy_return"].notna(), "transaction_cost"]
+        .notna()
+        .all()
+    )
+    with pytest.raises(WalkForwardError, match="paths are sealed"):
+        baseline_paths(frame, sealed, config)

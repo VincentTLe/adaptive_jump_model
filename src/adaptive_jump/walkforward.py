@@ -121,11 +121,32 @@ def open_baseline_metrics(
     """Open OOS metrics only after every preregistered boundary check passes."""
     if study.boundaries.empty or not study.boundaries["passed"].all():
         raise WalkForwardError("OOS metrics are sealed until all boundary checks pass")
+    metrics_protocol = config.metrics_protocol
+    rows: list[dict[str, object]] = []
+    for delay, paths in baseline_paths(frame, study, config).items():
+        for model_name, path in paths.items():
+            values = performance_metrics(
+                path,
+                periods_per_year=metrics_protocol.periods_per_year,
+                volatility_ddof=metrics_protocol.volatility_ddof,
+                expected_shortfall_quantile=(
+                    metrics_protocol.expected_shortfall_quantile
+                ),
+            )
+            rows.append({"model": model_name, "delay": delay, **values})
+    return pd.DataFrame.from_records(rows)
+
+
+def baseline_paths(
+    frame: pd.DataFrame, study: BaselineStudy, config: ResearchConfig
+) -> dict[int, dict[str, pd.DataFrame]]:
+    """Return OOS accounting paths only after every boundary passes."""
+    if study.boundaries.empty or not study.boundaries["passed"].all():
+        raise WalkForwardError("OOS paths are sealed until all boundary checks pass")
     returns = frame[["date", "equity_simple", "cash_return"]]
     dates = pd.to_datetime(returns["date"], errors="raise")
     oos = dates >= pd.Timestamp(study.oos_start)
-    metrics_protocol = config.metrics_protocol
-    rows: list[dict[str, object]] = []
+    output: dict[int, dict[str, pd.DataFrame]] = {}
     for delay in config.backtest_protocol.robustness_delays:
         paths = {"buy_and_hold": buy_and_hold(returns)}
         for model_name in ("hmm", "fixed_jm"):
@@ -136,17 +157,11 @@ def open_baseline_metrics(
                 delay_trading_days=delay,
                 one_way_cost_bps=config.backtest_protocol.one_way_cost_bps,
             )
-        for model_name, path in paths.items():
-            values = performance_metrics(
-                path.loc[oos].reset_index(drop=True),
-                periods_per_year=metrics_protocol.periods_per_year,
-                volatility_ddof=metrics_protocol.volatility_ddof,
-                expected_shortfall_quantile=(
-                    metrics_protocol.expected_shortfall_quantile
-                ),
-            )
-            rows.append({"model": model_name, "delay": delay, **values})
-    return pd.DataFrame.from_records(rows)
+        output[delay] = {
+            model_name: path.loc[oos].reset_index(drop=True)
+            for model_name, path in paths.items()
+        }
+    return output
 
 
 def select_monthly_candidate(
