@@ -7,14 +7,14 @@ before evaluating any adaptive extension.
 
 ## Current Status
 
-The Python environment and the time-varying dynamic-programming core are under
-test. No paper result has been replicated yet, and this repository currently
-supports no scientific or investment claim.
+The Python environment, bounded proxy-data acquisition, and the time-varying
+dynamic-programming core are under test. No paper result has been replicated
+yet, and this repository currently supports no scientific or investment claim.
 
 Only `src/adaptive_jump/` is active source code. Everything under `archive/` is
 frozen provenance and must not be imported or used as a second research stack.
-The planned `adaptive-jump` CLI will be added only when its first real workflow
-exists; archived scripts are unsupported.
+The `adaptive-jump fetch` command is the only active CLI workflow; archived
+scripts are unsupported.
 
 ## Reproduce The Environment
 
@@ -36,12 +36,24 @@ All commands above must pass before research work begins. `--extra data`
 installs the approved Yahoo Finance acquisition client; it does not authorize
 silently substituting Yahoo data for the paper's Bloomberg/GFD series.
 
+## Acquire The Frozen Proxy Sources
+
+```bash
+adaptive-jump fetch --config research.toml
+```
+
+The command validates the committed proxy contract, fetches exactly its six
+sources through the end of 2023, and writes ignored raw payloads, canonical
+observations, hashes, quality facts, and a manifest under `data/`. It does not
+calculate returns, fill missing values, run a model, or download extension
+data.
+
 ## Dependency Roles
 
 | Role | Current contents | Policy |
 | --- | --- | --- |
 | Core | NumPy, pandas, SciPy, scikit-learn, hmmlearn, jumpmodels, Matplotlib | Canonical numerical research stack |
-| Data | yfinance | Optional free-data acquisition client |
+| Data | yfinance, Requests | Optional Yahoo and public-HTTP acquisition clients |
 | Dev | pytest, Ruff | Tests, formatting, and linting |
 | Dashboard | None | Add only with a tested UI calling the canonical runner |
 | Audit backtest | None | Add only for an aligned parity check |

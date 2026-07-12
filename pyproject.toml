@@ -24,6 +24,9 @@ data = [
     "yfinance==1.5.1",
 ]
 
+[project.scripts]
+adaptive-jump = "adaptive_jump.cli:main"
+
 [dependency-groups]
 dev = [
     "pytest==9.1.1",
