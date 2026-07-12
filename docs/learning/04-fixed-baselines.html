@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Hiểu B&amp;H, HMM và Fixed Jump Model từ con số 0</title>
+  <style>
+    :root {
+      --bg:#0f1211; --surface:#181d1a; --surface2:#202722; --line:#39443c;
+      --text:#eef3ef; --muted:#aab6ad; --green:#68d59b; --yellow:#f1c75b;
+      --red:#ef8b8b; --cyan:#70ccd3; --max:1060px;
+    }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:0; }
+    header { padding:48px 22px 38px; border-bottom:1px solid var(--line); }
+    header>div,nav,main,footer { width:min(var(--max),100%); margin:0 auto; }
+    nav { display:flex; flex-wrap:wrap; gap:8px; padding:16px 22px 0; }
+    nav a { color:var(--muted); text-decoration:none; border-bottom:1px solid transparent; }
+    nav a:hover,nav a[aria-current="page"] { color:var(--green); border-color:var(--green); }
+    main { padding:0 22px 72px; }
+    section { padding:42px 0; border-bottom:1px solid var(--line); }
+    h1,h2,h3 { line-height:1.22; letter-spacing:0; }
+    h1 { max-width:850px; margin:10px 0 14px; font-size:clamp(34px,6vw,54px); }
+    h2 { margin:0 0 17px; font-size:27px; }
+    h3 { margin:0 0 8px; font-size:18px; }
+    p { margin:0 0 14px; }
+    ul { margin:10px 0; padding-left:22px; }
+    li { margin:7px 0; }
+    code,.formula { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; }
+    code { color:#d7f6f7; overflow-wrap:anywhere; }
+    .eyebrow,.tag { font-size:12px; font-weight:800; text-transform:uppercase; }
+    .eyebrow { color:var(--green); }
+    .lede { max-width:800px; color:var(--muted); font-size:19px; }
+    .boundary { margin-top:19px; color:var(--yellow); font-weight:750; }
+    .two,.three { display:grid; gap:15px; }
+    .two { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .three { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .panel { min-width:0; padding:19px; background:var(--surface); border:1px solid var(--line); border-radius:6px; }
+    .panel .tag { display:block; margin-bottom:7px; }
+    .green { color:var(--green); } .yellow { color:var(--yellow); } .red { color:var(--red); } .cyan { color:var(--cyan); }
+    .formula { margin:16px 0; padding:15px 17px; overflow-wrap:anywhere; background:#090c0a; border-left:4px solid var(--cyan); color:#dcefe2; }
+    .example,.warning,.result { margin-top:17px; padding:18px; border:1px solid; }
+    .example { background:#171d1a; border-color:#536158; }
+    .warning { background:#272317; border-color:#66562d; color:#f5e9bd; }
+    .result { background:#24191a; border-color:#714143; color:#f6d7d7; }
+    .flow { display:grid; gap:8px; margin-top:19px; }
+    .flow-row { display:grid; grid-template-columns:42px minmax(170px,250px) 1fr; gap:14px; align-items:center; padding:14px 16px; background:var(--surface); border-left:3px solid var(--green); }
+    .flow-row b { color:var(--green); }
+    .flow-row span { color:var(--muted); }
+    .states { display:grid; grid-template-columns:1fr 80px 1fr; align-items:stretch; margin:20px 0; }
+    .state { padding:20px; background:var(--surface); border:1px solid var(--line); }
+    .state strong { display:block; margin-bottom:7px; font-size:20px; }
+    .arrow { display:grid; place-items:center; color:var(--yellow); font-size:25px; }
+    .timeline { display:grid; grid-template-columns:repeat(4,1fr); margin-top:20px; border:1px solid var(--line); }
+    .timeline>div { min-width:0; padding:15px; border-right:1px solid var(--line); }
+    .timeline>div:last-child { border-right:0; }
+    .timeline b { display:block; color:var(--cyan); }
+    .table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:6px; }
+    table { width:100%; min-width:720px; border-collapse:collapse; background:var(--surface); }
+    th,td { padding:11px 12px; text-align:left; vertical-align:top; border-bottom:1px solid var(--line); }
+    th { color:var(--muted); font-size:13px; }
+    tbody tr:last-child td { border-bottom:0; }
+    .num { text-align:right; font-variant-numeric:tabular-nums; }
+    .pass { color:var(--green); font-weight:700; }
+    .fail { color:var(--red); font-weight:700; }
+    details { padding:13px 0; border-bottom:1px solid var(--line); }
+    summary { cursor:pointer; font-weight:750; }
+    details p { margin-top:9px; color:var(--muted); }
+    footer { padding:28px 22px 52px; color:var(--muted); font-size:14px; }
+    @media(max-width:760px) {
+      header { padding-top:34px; }
+      .two,.three,.states { grid-template-columns:1fr; }
+      .arrow { min-height:52px; transform:rotate(90deg); }
+      .timeline { grid-template-columns:1fr; }
+      .timeline>div { border-right:0; border-bottom:1px solid var(--line); }
+      .timeline>div:last-child { border-bottom:0; }
+      .flow-row { grid-template-columns:34px 1fr; gap:7px; }
+      .flow-row span { grid-column:2; }
+    }
+  </style>
+</head>
+<body>
+  <header><div>
+    <div class="eyebrow">Adaptive Jump Model · Bài 04</div>
+    <h1>Hiểu B&amp;H, HMM và Fixed Jump Model từ con số 0</h1>
+    <p class="lede">Ba model cùng trả lời một câu hỏi đơn giản: hôm nay nên giữ equity hay cash? Sự khác nhau nằm ở cách chúng nhận biết “chế độ thị trường”.</p>
+    <div class="boundary">Phạm vi: fixed baselines và kết quả proxy v7 tới 2023. Adaptive lambda và extension sau 2023 chưa được mở.</div>
+  </div></header>
+
+  <nav aria-label="Chuỗi bài học">
+    <a href="01-data-parity.html">01 Data parity</a>
+    <a href="02-data-pipeline.html">02 Data pipeline</a>
+    <a href="03-returns-features.html">03 Returns &amp; features</a>
+    <a href="04-fixed-baselines.html" aria-current="page">04 Fixed baselines</a>
+  </nav>
+
+  <main>
+    <section>
+      <h2>1. Model không đoán chính xác giá ngày mai</h2>
+      <p>Ta giản lược thị trường thành hai state. State chỉ là nhãn toán học; nó không phải sự thật tuyệt đối về kinh tế.</p>
+      <div class="states">
+        <div class="state"><strong class="green">State 0 · equity</strong><p>Model xem đây là chế độ thuận lợi hơn. Strategy giữ index.</p></div>
+        <div class="arrow" aria-hidden="true">↔</div>
+        <div class="state"><strong class="red">State 1 · cash</strong><p>Model xem đây là chế độ rủi ro hơn. Strategy giữ local cash proxy.</p></div>
+      </div>
+      <div class="example"><strong>Ví dụ giả lập</strong><p>Nếu state là <code>0, 0, 1, 1, 0</code>, signal equity là <code>1, 1, 0, 0, 1</code>. Delay và cost được áp dụng sau đó, không nằm trong state model.</p></div>
+    </section>
+
+    <section>
+      <h2>2. B&amp;H là thước đo tối thiểu phải thắng</h2>
+      <div class="two">
+        <div class="panel"><span class="tag green">Quy tắc</span><h3>Luôn giữ equity</h3><div class="formula">position_t = 1</div><p>Không fit, không CV, không chuyển state và không chịu switching cost.</p></div>
+        <div class="panel"><span class="tag yellow">Vai trò</span><h3>Phản biện độ phức tạp</h3><p>Nếu model phức tạp có Sharpe thấp hơn B&amp;H, ta chưa được nói rằng timing mang lại lợi ích.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. HMM nhìn return như dấu vết của state ẩn</h2>
+      <p>Hidden Markov Model giả sử ta không nhìn thấy state trực tiếp. Ta chỉ nhìn log return; mỗi state tạo ra một phân phối return khác nhau và có xác suất chuyển state.</p>
+      <div class="formula">state ẩn → phân phối log return → observation ta nhìn thấy</div>
+      <div class="flow">
+        <div class="flow-row"><b>01</b><strong>Lấy 3.000 log returns</strong><span>Chỉ tới ngày đang xét.</span></div>
+        <div class="flow-row"><b>02</b><strong>Fit 10 lần</strong><span>10 seed cố định; chỉ nhận fit hội tụ.</span></div>
+        <div class="flow-row"><b>03</b><strong>Chọn likelihood cao nhất</strong><span>Không chọn bằng OOS performance.</span></div>
+        <div class="flow-row"><b>04</b><strong>Viterbi terminal state</strong><span>Chỉ lấy state cuối cửa sổ, rồi lọc causal median.</span></div>
+      </div>
+      <p>Project gắn HMM state <code>0</code> cho variance thấp và state <code>1</code> cho variance cao. Thứ tự này ngăn label tự đổi nghĩa giữa các lần fit.</p>
+    </section>
+
+    <section>
+      <h2>4. Jump Model gom feature nhưng phạt đổi state</h2>
+      <p>Mỗi ngày là một điểm có ba tọa độ: DD-10, Sortino-20 và Sortino-60 sau standardization trailing 3.000 rows.</p>
+      <div class="formula">min Σ distance(feature_t, center_state_t)² + λ · Σ 1[state_t ≠ state_(t-1)]</div>
+      <div class="three">
+        <div class="panel"><span class="tag cyan">Distance</span><h3>Ngày này giống center nào?</h3><p>Feature gần center nào hơn thì loss tại state đó nhỏ hơn.</p></div>
+        <div class="panel"><span class="tag yellow">Lambda</span><h3>Đổi state đắt bao nhiêu?</h3><p><code>λ=0</code> không phạt đổi. Lambda lớn làm path “dính” hơn.</p></div>
+        <div class="panel"><span class="tag green">Dynamic programming</span><h3>Chọn path loss thấp nhất</h3><p>Online DP chỉ dùng dữ liệu tới terminal day.</p></div>
+      </div>
+      <p>Upstream JM sắp state <code>0</code> theo cumulative return cao hơn. Model được refit vào tháng 1 và 7; terminal online state được tính mỗi ngày.</p>
+      <div class="warning">HMM state 0 và JM state 0 đều dẫn tới equity, nhưng tiêu chí gắn nhãn khác nhau: variance thấp so với cumulative return cao. Không nên diễn giải hai state là cùng một cấu trúc kinh tế.</div>
+    </section>
+
+    <section>
+      <h2>5. Hyperparameter phải được chọn mà không nhìn OOS</h2>
+      <p>HMM chọn độ dài median filter <code>k</code>; JM chọn <code>λ</code>. Mỗi cuối tháng, code chấm mọi candidate trên tám năm validation đã xảy ra.</p>
+      <div class="timeline">
+        <div><b>Quá khứ fit</b>3.000 observations</div>
+        <div><b>Validation</b>8 năm online paths</div>
+        <div><b>Cuối tháng</b>Chọn Sharpe cao nhất</div>
+        <div><b>Tháng tới</b>Dùng lựa chọn đã khóa</div>
+      </div>
+      <p>Nếu hai candidate hòa số học, protocol chọn smoothing nhỏ hơn. Nếu grid edge được chọn quá 5% số tháng, grid phải mở rộng trước khi mở OOS metrics.</p>
+      <div class="result">v7 pass đủ <strong>18/18 boundary checks</strong>. HMM phải mở grid tới <code>k=2560</code>; candidate biên sau đó không còn được chọn.</div>
+    </section>
+
+    <section>
+      <h2>6. State chỉ trở thành tiền sau delay và cost</h2>
+      <div class="timeline">
+        <div><b>Cuối ngày t</b>Nhận terminal state</div>
+        <div><b>Ngày t+1</b>Trading delay</div>
+        <div><b>Return t+2</b>Position mới có hiệu lực</div>
+        <div><b>Khi switch</b>Trừ 10 bps one-way</div>
+      </div>
+      <div class="formula">strategy_return = position·equity + (1-position)·cash - switching_cost</div>
+      <p>Ba model được đo trên cùng complete rows trong từng market × delay. Nhờ vậy Sharpe không còn bị so giữa hai population khác nhau.</p>
+    </section>
+
+    <section>
+      <h2>7. Đọc metric bằng lời thường</h2>
+      <div class="three">
+        <div class="panel"><span class="tag green">Sharpe</span><h3>Excess return trên độ rung</h3><div class="formula">√252 · mean(strategy-cash) / std(strategy)</div></div>
+        <div class="panel"><span class="tag red">MDD</span><h3>Cú rơi sâu nhất</h3><p><code>-54%</code> tệ hơn <code>-34%</code>. Ta so độ lớn của phần âm.</p></div>
+        <div class="panel"><span class="tag yellow">Turnover</span><h3>Số switch quy đổi năm</h3><p>Switch nhiều hơn kéo theo cost thực tế lớn hơn.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>8. Kết quả thật của proxy v7, delay 1</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Market</th><th>Model</th><th>Bắt đầu</th><th class="num">N</th><th class="num">Sharpe</th><th class="num">MDD</th></tr></thead>
+        <tbody>
+          <tr><td>Hoa Kỳ</td><td>B&amp;H</td><td>2007-12-04</td><td class="num">4.046</td><td class="num">0,513</td><td class="num">-54,0%</td></tr>
+          <tr><td>Hoa Kỳ</td><td>HMM</td><td>2007-12-04</td><td class="num">4.046</td><td class="num">0,654</td><td class="num">-19,4%</td></tr>
+          <tr><td>Hoa Kỳ</td><td>Fixed JM</td><td>2007-12-04</td><td class="num">4.046</td><td class="num">0,570</td><td class="num">-33,9%</td></tr>
+          <tr><td>Đức</td><td>B&amp;H</td><td>2008-01-03</td><td class="num">4.059</td><td class="num">0,290</td><td class="num">-53,9%</td></tr>
+          <tr><td>Đức</td><td>HMM</td><td>2008-01-03</td><td class="num">4.059</td><td class="num">0,008</td><td class="num">-54,6%</td></tr>
+          <tr><td>Đức</td><td>Fixed JM</td><td>2008-01-03</td><td class="num">4.059</td><td class="num">0,166</td><td class="num">-38,8%</td></tr>
+          <tr><td>Nhật Bản</td><td>B&amp;H</td><td>2009-05-07</td><td class="num">3.586</td><td class="num">0,545</td><td class="num">-31,8%</td></tr>
+          <tr><td>Nhật Bản</td><td>HMM</td><td>2009-05-07</td><td class="num">3.586</td><td class="num">0,399</td><td class="num">-34,7%</td></tr>
+          <tr><td>Nhật Bản</td><td>Fixed JM</td><td>2009-05-07</td><td class="num">3.586</td><td class="num">0,329</td><td class="num">-32,2%</td></tr>
+        </tbody>
+      </table></div>
+      <p>Đây là số thực từ locked artifact v7, không phải ví dụ. Dấu phẩy được dùng làm dấu thập phân trong bài học.</p>
+    </section>
+
+    <section>
+      <h2>9. Vì sao directional gate là 0/3?</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Market</th><th>JM Sharpe &gt; HMM</th><th>JM Sharpe &gt; B&amp;H</th><th>|JM MDD| &lt; |B&amp;H MDD|</th><th>Kết luận</th></tr></thead>
+        <tbody>
+          <tr><td>Hoa Kỳ</td><td class="fail">Không</td><td class="pass">Có</td><td class="pass">Có</td><td class="fail">Fail</td></tr>
+          <tr><td>Đức</td><td class="pass">Có</td><td class="fail">Không</td><td class="pass">Có</td><td class="fail">Fail</td></tr>
+          <tr><td>Nhật Bản</td><td class="fail">Không</td><td class="fail">Không</td><td class="fail">Không</td><td class="fail">Fail</td></tr>
+        </tbody>
+      </table></div>
+      <div class="warning">Delay 10 cho JM thắng Sharpe ở Hoa Kỳ và Đức, nhưng không ở Nhật. Primary delay đã khóa là 1; chuyển sang delay 10 sau khi xem số sẽ là cherry-picking.</div>
+    </section>
+
+    <section>
+      <h2>10. “Proxy non-replication” không có nghĩa paper sai</h2>
+      <div class="two">
+        <div class="panel"><span class="tag red">Điều v7 cho thấy</span><ul><li>Pipeline nội bộ reproducible.</li><li>Fixed JM không đạt gate trên proxy shifted OOS.</li><li>Adaptive work phải dừng.</li></ul></div>
+        <div class="panel"><span class="tag yellow">Điều v7 không cho thấy</span><ul><li>Exact Bloomberg/GFD data cho kết quả giống vậy.</li><li>Protocol 1990-2023 của paper thất bại.</li><li>Jump Model nói chung không có giá trị.</li></ul></div>
+      </div>
+      <p>Free total-return/rate definitions không phủ đủ warm-up từ 1970. Yêu cầu 3.000 rows cộng tám năm validation đẩy OOS tới 2007-2009.</p>
+      <div class="formula">Paper estimand: 1990–2023 · v7 estimand: khoảng 2007/2009–2023</div>
+      <p>Attribution quan trọng: B&amp;H trên chính proxy nhưng đo 1990-2023 gần paper ở Hoa Kỳ (Sharpe 0,483 so với 0,48) và Đức (0,282 so với 0,30). Nhật còn lệch vì price-index và cash definition.</p>
+    </section>
+
+    <section>
+      <h2>11. Muốn audit thì nhìn đâu?</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Câu hỏi</th><th>Code</th><th>Evidence generated</th></tr></thead>
+        <tbody>
+          <tr><td>State được fit thế nào?</td><td><code>src/adaptive_jump/models.py</code></td><td>Per-market states và fit diagnostics</td></tr>
+          <tr><td>Candidate được chọn thế nào?</td><td><code>src/adaptive_jump/walkforward.py</code></td><td>CV choices và surfaces</td></tr>
+          <tr><td>Delay, cost, metric là gì?</td><td><code>src/adaptive_jump/backtest.py</code></td><td>Trade paths và metrics</td></tr>
+          <tr><td>Claim cuối cùng là gì?</td><td><code>research.toml</code></td><td><code>claim.json</code> và <code>report.html</code></td></tr>
+        </tbody>
+      </table></div>
+      <p>Technical report của run hiện tại nằm trong <code>artifacts/reports/fixed-baselines-8adb330565d6-3636939b525d-e9614112b234/report.html</code>. Thư mục <code>artifacts/</code> là local evidence và không commit.</p>
+    </section>
+
+    <section>
+      <h2>Tự kiểm tra</h2>
+      <details><summary>Lambda lớn có luôn tốt hơn không?</summary><p>Không. Nó giảm switch nhưng có thể giữ sai state quá lâu. Lambda được chọn bằng trailing validation, không bằng cảm giác.</p></details>
+      <details><summary>Tại sao HMM phải fit 10 seed?</summary><p>Likelihood optimization có thể dừng ở nhiều nghiệm cục bộ. Seed cố định giúp thử nhiều điểm đầu mà run vẫn reproducible.</p></details>
+      <details><summary>JM MDD tốt hơn B&amp;H ở Hoa Kỳ có đủ pass không?</summary><p>Không. Gate còn yêu cầu JM Sharpe cao hơn cả HMM và B&amp;H ở cùng market.</p></details>
+      <details><summary>Có được làm adaptive để cứu kết quả không?</summary><p>Không trong protocol hiện tại. Làm vậy sau khi gate fail sẽ đổi model dựa trên OOS đã nhìn thấy.</p></details>
+    </section>
+  </main>
+
+  <footer>Bài 04 · Ví dụ giả lập được gắn nhãn; bảng v7 là kết quả locked tới 2023 · Cập nhật 2026-07-12.</footer>
+</body>
+</html>
