@@ -3,7 +3,7 @@
 ## Identity
 
 - `task_id`: `data-parity-001`
-- `status`: `active`
+- `status`: `complete — source decision pending owner review`
 - `target_branch`: `cleanup/research-protocol`
 - `starting_ref`: `9a985d8341e1396417228087870b6912f102b232`
 - `primary_class`: `ENGINEERING / SMOKE`
@@ -121,3 +121,23 @@ Stop and report rather than substituting silently when an exact series is
 paywalled, its definition cannot be verified, its terms prohibit the intended
 use, or free candidates conflict materially. Source selection requires owner
 review before `research.toml` is frozen or downloader code is written.
+
+## Completion Evidence
+
+- Audit run: `artifacts/data-source-audit/20260712T012740Z/`
+- Machine-readable result: `audit.json`; retrieval and parsing script:
+  `audit.py`; raw responses remain ignored under the run's `raw/` directory.
+- Nineteen candidates were downloaded and parsed across the six required paper
+  series. Every response hash was rechecked against its saved raw file; all
+  candidate date indexes had zero duplicates.
+- Six independent overlap checks were completed. The DAX official recent file
+  matched its official factsheet series, while Yahoo's longer DAX history had
+  material isolated return differences and remains a proxy candidate.
+- The beginner explainer is `docs/learning/01-data-parity.html`; Chromium
+  desktop `1440x900` and mobile `390x844` renders were inspected successfully.
+- No model fit, backtest, signal, Sharpe ratio, or scientific claim was created.
+
+The evidence does not support an exact, credential-free six-series
+replication. Downloader implementation and `research.toml` remain blocked until
+the owner chooses between obtaining licensed/author-provided data and running a
+clearly labeled proxy replication with shifted coverage.
