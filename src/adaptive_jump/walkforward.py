@@ -163,9 +163,25 @@ def baseline_paths(
                 delay_trading_days=delay,
                 one_way_cost_bps=config.backtest_protocol.one_way_cost_bps,
             )
-        output[delay] = {
+        oos_paths = {
             model_name: path.loc[oos].reset_index(drop=True)
             for model_name, path in paths.items()
+        }
+        metric_columns = [
+            "cash_return",
+            "position",
+            "one_way_turnover",
+            "strategy_return",
+        ]
+        complete = pd.concat(
+            [path[metric_columns].notna().all(axis=1) for path in oos_paths.values()],
+            axis=1,
+        ).all(axis=1)
+        if not complete.any():
+            raise WalkForwardError("no common OOS metric rows")
+        output[delay] = {
+            model_name: path.loc[complete].reset_index(drop=True)
+            for model_name, path in oos_paths.items()
         }
     return output
 

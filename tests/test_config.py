@@ -119,6 +119,12 @@ def test_load_frozen_proxy_contract() -> None:
             "volatility_ddof = 0",
             "metrics must use 252 periods and sample volatility",
         ),
+        (
+            'comparison_sample = "per_market_delay_intersection_'
+            'of_complete_metric_rows"',
+            'comparison_sample = "model_specific_available_rows"',
+            "invalid metric definition",
+        ),
     ],
 )
 def test_rejects_unsafe_contract_changes(

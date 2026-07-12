@@ -200,10 +200,17 @@ def test_baseline_integration_keeps_metrics_sealed_until_boundaries_pass(
     assert len(study.boundaries) == 4
     assert study.boundaries["passed"].all()
     assert len(metrics) == 6
+    for _, rows in metrics.groupby("delay"):
+        assert rows["start"].nunique() == 1
+        assert rows["end"].nunique() == 1
+        assert rows["observations"].nunique() == 1
     sealed = replace(study, boundaries=study.boundaries.assign(passed=False))
     with pytest.raises(WalkForwardError, match="metrics are sealed"):
         open_baseline_metrics(frame, sealed, config)
     paths = baseline_paths(frame, study, config)
+    for models in paths.values():
+        dates = [path["date"].reset_index(drop=True) for path in models.values()]
+        assert all(dates[0].equals(other) for other in dates[1:])
     jm_path = paths[1]["fixed_jm"]
     assert (
         jm_path.loc[jm_path["strategy_return"].notna(), "transaction_cost"]
