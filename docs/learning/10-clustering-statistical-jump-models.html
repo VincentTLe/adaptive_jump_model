@@ -34,6 +34,12 @@
     </div>
     <p>A statistical Jump Model, abbreviated JM, begins with clustering. It represents each state by a feature centroid and measures how far each day's standardized feature vector lies from each centroid. It then adds time: every change between consecutive state labels incurs a fixed nonnegative jump penalty.</p>
     <p>The penalty is not a brokerage fee and is not subtracted from portfolio wealth. It is regularization inside the model objective. Its purpose is to express a preference for persistent state sequences. Actual transaction costs enter later in validation and backtesting. Keeping these two costs separate prevents a common conceptual error.</p>
+    <figure class="teaching-figure" id="jm-objective-anatomy-figure" data-visual-type="static" aria-labelledby="jm-objective-anatomy-title">
+      <span class="teaching-label">Teaching example</span><h3 id="jm-objective-anatomy-title">The objective keeps model fit and persistence in separate accounts</h3>
+      <div class="visual-stage compact"><svg viewBox="0 0 440 330" role="img" aria-labelledby="jm-objective-svg-title jm-objective-svg-desc"><title id="jm-objective-svg-title">Jump Model objective anatomy</title><desc id="jm-objective-svg-desc">Feature-to-centroid distance loss and lambda times the number of state switches add to the total model objective.</desc><rect class="diagram-low" x="35" y="30" width="370" height="72" rx="10"/><text x="64" y="62" font-size="21" font-weight="700">Feature mismatch</text><text x="64" y="88" font-size="17">half squared distance to assigned centroid</text><text x="208" y="132" font-size="30">+</text><rect class="diagram-warning" x="35" y="148" width="370" height="72" rx="10"/><text x="64" y="180" font-size="21" font-weight="700">Persistence cost</text><text x="64" y="206" font-size="17">lambda x number of state changes</text><text x="208" y="250" font-size="30">=</text><rect class="diagram-verified" x="92" y="266" width="256" height="50" rx="10"/><text x="136" y="298" font-size="21" font-weight="700">Total objective</text></svg></div>
+      <figcaption class="visual-caption">The first account asks whether each row resembles its assigned state. The second asks how often the path changes. Transaction cost and portfolio return are not part of this equation.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> lambda can change state labels without changing any feature observation.</div>
+    </figure>
     <div class="remember"><strong>The idea to remember</strong>A Jump Model balances two debts. It pays feature-distance loss when a day is assigned to an ill-fitting centroid, and it pays <math><mi>&lambda;</mi></math> whenever the hidden state changes. The optimal path minimizes their sum, so a switch occurs only when better data fit is worth its persistence cost.</div>
   </section>
 
@@ -48,6 +54,7 @@
       <div class="panel"><h3>Jump penalty</h3><p>A fixed model-objective cost <math><mi>&lambda;</mi><mo>&ge;</mo><mn>0</mn></math> paid whenever consecutive state labels differ.</p></div>
       <div class="panel"><h3>Regularization</h3><p>A preference added to data fit to control model behavior. Here it discourages unnecessary state changes without forbidding them.</p></div>
     </div>
+    <details class="deep-explanation"><summary>Deep explanation: geometry, paths, optimization, and labels</summary>
     <p><span class="term">Euclidean distance</span> is ordinary straight-line distance. For three standardized coordinates, squared distance adds the squared coordinate differences. Squaring makes large mismatches matter more and removes signs. The factor one half simplifies some derivations but does not change which path is best if all other objective terms use the declared scale.</p>
     <p><span class="term">Standardized</span> matters because distance depends on units. If DD were numerically one hundred times larger than a Sortino coordinate, it could dominate clustering merely because of representation. Chapter 8 showed that each trailing training window centers and scales its three feature columns before JM fitting.</p>
     <p><span class="term">k-means</span> alternates between assigning each row to its nearest centroid and updating centroids from assigned rows. It ignores order. Shuffling dates leaves the pointwise clustering objective unchanged. The discrete JM becomes k-means when <math><mi>&lambda;</mi><mo>=</mo><mn>0</mn></math>, because changing states is free.</p>
@@ -55,6 +62,7 @@
     <p><span class="term">Coordinate descent</span> solves one block of variables while holding another block fixed, then alternates. With labels fixed, update centroids. With centroids fixed, find the best ordered labels. The second problem is solved exactly by dynamic programming; Chapter 11 opens that algorithm line by line.</p>
     <p>The complete joint problem is still <span class="term">non-convex</span>. Coordinate descent can settle at different local solutions from different initial centroids. The implementation uses multiple initializations and keeps the fit with lowest final objective. This reduces initialization sensitivity but does not prove the global minimum was found.</p>
     <p><span class="term">Anonymous labels</span> have no economic meaning. After fitting, the reference library orders states using training-period returns. With <code>sort_by="cumret"</code>, the state with higher cumulative excess return becomes state 0, interpreted as bull/risky, and the other becomes state 1, interpreted as bear/cash. The mapping uses training information, not later strategy results.</p>
+    </details>
   </section>
 
   <section class="chapter-section" id="worked-jm">
@@ -78,12 +86,22 @@
         <div><label for="jm-penalty">Jump penalty: <output id="jm-penalty-output" for="jm-penalty">0.50</output></label><input id="jm-penalty" type="range" min="0" max="3" step="0.25" value="0.5" data-output="jm-penalty-output" data-digits="2"></div>
         <div><label for="jm-day-four">Day 4 feature: <output id="jm-day-four-output" for="jm-day-four">-0.4</output></label><input id="jm-day-four" type="range" min="-1.5" max="1.5" step="0.1" value="-0.4" data-output="jm-day-four-output" data-digits="1"></div>
       </div></form>
+      <figure class="teaching-figure" id="jm-feature-space-figure" data-visual-type="interactive" aria-labelledby="jm-feature-space-title">
+        <span class="teaching-label">Teaching example</span><h3 id="jm-feature-space-title">Each observation sits between two fixed centroids</h3>
+        <div class="visual-stage compact"><svg id="jm-feature-space" viewBox="0 0 440 360" role="img" aria-label="Eight toy observations positioned between centroids minus one and plus one"><line class="diagram-link" x1="80" y1="36" x2="410" y2="36"/><line x1="142" y1="28" x2="142" y2="330" stroke="#75b8ff" stroke-width="3"/><line x1="348" y1="28" x2="348" y2="330" stroke="#ff8585" stroke-width="3"/><text x="103" y="22" font-size="16">state 0 center -1</text><text x="304" y="22" font-size="16">state 1 center +1</text><g font-size="16"><text x="24" y="68">D1</text><text x="24" y="103">D2</text><text x="24" y="138">D3</text><text x="24" y="173">D4</text><text x="24" y="208">D5</text><text x="24" y="243">D6</text><text x="24" y="278">D7</text><text x="24" y="313">D8</text></g><g id="jm-observation-points"><circle id="jm-point-0" cx="101" cy="62" r="9" fill="#75b8ff"/><circle id="jm-point-1" cx="132" cy="97" r="9" fill="#75b8ff"/><circle id="jm-point-2" cx="307" cy="132" r="9" fill="#ff8585"/><circle id="jm-point-3" cx="204" cy="167" r="11" fill="#ff8585" stroke="#f0bd64" stroke-width="4"/><circle id="jm-point-4" cx="328" cy="202" r="9" fill="#ff8585"/><circle id="jm-point-5" cx="369" cy="237" r="9" fill="#ff8585"/><circle id="jm-point-6" cx="224" cy="272" r="9" fill="#75b8ff"/><circle id="jm-point-7" cx="142" cy="307" r="9" fill="#75b8ff"/></g><text x="74" y="350" font-size="15">-1.6</text><text x="239" y="350" font-size="15">0</text><text x="398" y="350" font-size="15">+1.6</text></svg></div>
+        <figcaption class="visual-caption">Move Day 4. Horizontal position is feature value; color is the state chosen by the complete optimal path. Day 4 can remain red even while sitting left of zero because two surrounding switches may cost more.</figcaption>
+      </figure>
+      <figure class="teaching-figure" id="jm-objective-response-figure" data-visual-type="interactive" aria-labelledby="jm-objective-response-title">
+      <span class="teaching-label">Teaching example</span><h3 id="jm-objective-response-title">Distance and switching add to one visible total</h3>
+      <div class="visual-stage compact"><svg id="jm-objective-bars" viewBox="0 0 440 300" role="img" aria-label="Default objective contains distance loss 1.50 and penalty cost 1.00"><text x="30" y="55" font-size="19" font-weight="700">Objective composition</text><rect x="55" y="92" width="330" height="64" fill="#20242a"/><rect id="jm-distance-bar" x="55" y="92" width="198" height="64" fill="#75b8ff" data-animate/><rect id="jm-switch-bar" x="253" y="92" width="132" height="64" fill="#f0bd64" data-animate/><text id="jm-distance-bar-label" x="68" y="130" font-size="18">distance 1.50</text><text id="jm-switch-bar-label" x="264" y="130" font-size="18">switch 1.00</text><text id="jm-total-bar-label" x="134" y="207" font-size="24" font-weight="700">total = 2.50</text><text x="82" y="260" font-size="17">blue: fit the data</text><text x="258" y="260" font-size="17">amber: avoid jumps</text></svg></div>
       <div class="metric-grid three">
         <div class="panel"><span class="label">Distance loss</span><strong class="big-number" id="jm-data-loss">1.50</strong></div>
         <div class="panel"><span class="label">Penalty cost</span><strong class="big-number" id="jm-penalty-cost">1.00</strong></div>
         <div class="panel"><span class="label">Total objective</span><strong class="big-number" id="jm-objective">2.50</strong></div>
       </div>
       <div class="state-strip backtest-strip" id="jm-path" aria-label="Default state path: 0, 0, 1, 1, 1, 1, 0, 0"><span class="state-day low-state"><b>Day 1</b><small>state 0</small></span><span class="state-day low-state"><b>Day 2</b><small>state 0</small></span><span class="state-day high-state"><b>Day 3</b><small>state 1</small></span><span class="state-day high-state"><b>Day 4</b><small>state 1</small></span><span class="state-day high-state"><b>Day 5</b><small>state 1</small></span><span class="state-day high-state"><b>Day 6</b><small>state 1</small></span><span class="state-day low-state"><b>Day 7</b><small>state 0</small></span><span class="state-day low-state"><b>Day 8</b><small>state 0</small></span></div>
+      <figcaption class="visual-caption">Raise lambda. The amber cost per switch grows, but the number of switches can fall at discrete thresholds. The blue and amber widths always show their shares of the current total.</figcaption>
+      </figure>
       <div class="table-wrap fallback-table"><table class="data-table"><thead><tr><th>Setting</th><th>Optimal toy path</th><th>Switches</th><th>Lesson</th></tr></thead><tbody><tr><td><math><mi>&lambda;</mi><mo>=</mo><mn>0</mn></math></td><td>0 0 1 0 1 1 0 0</td><td>4</td><td>Pointwise nearest-centroid assignment</td></tr><tr><td><math><mi>&lambda;</mi><mo>=</mo><mn>0.5</mn></math></td><td>0 0 1 1 1 1 0 0</td><td>2</td><td>One-day detour is removed</td></tr><tr><td><math><mi>&lambda;</mi><mo>=</mo><mn>3</mn></math></td><td>0 0 0 0 0 0 0 0</td><td>0</td><td>Persistence overwhelms the second cluster</td></tr></tbody></table></div>
       <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The table preserves the three default comparisons. At <math><mi>&lambda;</mi><mo>=</mo><mn>0.5</mn></math>, distance 1.50 plus penalty 1.00 gives objective 2.50.</p></noscript>
     </div>
@@ -165,6 +183,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const penaltyInput = document.getElementById("jm-penalty");
   const dayFourInput = document.getElementById("jm-day-four");
   const strip = document.getElementById("jm-path");
+  const featureSpace = document.getElementById("jm-feature-space");
+  const objectiveBars = document.getElementById("jm-objective-bars");
   const centers = [-1, 1];
   function render() {
     const values = [-1.4, -1.1, 0.6, Number(dayFourInput.value), 0.8, 1.2, -0.2, -1.0];
@@ -195,11 +215,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const switches = path.slice(1).filter((value, index) => value !== path[index]).length;
     const dataLoss = path.reduce((total, value, index) => total + loss[index][value], 0);
     const penaltyCost = switches * penalty;
+    const objective = dataLoss + penaltyCost;
     document.getElementById("jm-data-loss").textContent = dataLoss.toFixed(2);
     document.getElementById("jm-penalty-cost").textContent = penaltyCost.toFixed(2);
-    document.getElementById("jm-objective").textContent = (dataLoss + penaltyCost).toFixed(2);
+    document.getElementById("jm-objective").textContent = objective.toFixed(2);
     strip.innerHTML = path.map((value, index) => `<span class="state-day ${value === 0 ? "low-state" : "high-state"}"><b>Day ${index + 1}</b><small>state ${value}</small></span>`).join("");
-    strip.setAttribute("aria-label", `Optimal state path: ${path.join(", ")}; ${switches} switches; objective ${(dataLoss + penaltyCost).toFixed(2)}`);
+    strip.setAttribute("aria-label", `Optimal state path: ${path.join(", ")}; ${switches} switches; objective ${objective.toFixed(2)}`);
+    values.forEach((value, index) => {
+      const point = document.getElementById(`jm-point-${index}`);
+      point.setAttribute("cx", String(80 + ((value + 1.6) / 3.2) * 330));
+      point.setAttribute("fill", path[index] === 0 ? Course.palette.low : Course.palette.high);
+    });
+    featureSpace.setAttribute("aria-label", `Eight toy feature values ${values.join(", ")}; optimal states ${path.join(", ")}`);
+    const distanceWidth = objective > 0 ? (dataLoss / objective) * 330 : 0;
+    const switchWidth = objective > 0 ? (penaltyCost / objective) * 330 : 0;
+    document.getElementById("jm-distance-bar").setAttribute("width", String(distanceWidth));
+    document.getElementById("jm-switch-bar").setAttribute("x", String(55 + distanceWidth));
+    document.getElementById("jm-switch-bar").setAttribute("width", String(switchWidth));
+    document.getElementById("jm-distance-bar-label").textContent = `distance ${dataLoss.toFixed(2)}`;
+    document.getElementById("jm-switch-bar-label").textContent = `switch ${penaltyCost.toFixed(2)}`;
+    document.getElementById("jm-total-bar-label").textContent = `total = ${objective.toFixed(2)}`;
+    objectiveBars.setAttribute("aria-label", `Distance loss ${dataLoss.toFixed(2)} plus penalty cost ${penaltyCost.toFixed(2)} equals total objective ${objective.toFixed(2)}`);
   }
   [penaltyInput, dayFourInput].forEach((input) => input.addEventListener("input", render));
   lab.addEventListener("course:reset", render);
