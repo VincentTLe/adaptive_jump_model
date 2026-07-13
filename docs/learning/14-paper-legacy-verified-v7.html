@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A beginner comparison of the Shu paper, the archived legacy Adaptive Jump Model project, and the verified v7 proxy non-replication.">
+  <title>Chapter 14: The Paper, The Legacy Project, And The Verified V7 Run</title>
+  <link rel="stylesheet" href="course.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/mml-chtml.js" integrity="sha384-GYAeDZjH9w23NyL4cfS+ZrgWmGvta6VNs4p+/vtuF+RWe30fQhmP8pHbzRmlwmAK" crossorigin="anonymous"></script>
+  <script defer src="course.js"></script>
+</head>
+<body>
+<main class="course-shell">
+  <nav class="course-nav" aria-label="Course navigation">
+    <a href="13-guided-reading-shu-yu-mulvey.html">Previous: guided paper reading</a>
+    <span>Part IV &middot; Chapter 14 of 14</span>
+    <a href="index.html">Course complete: course map</a>
+  </nav>
+
+  <header class="chapter-header">
+    <div class="part-label">Part IV &middot; The Paper And Our Evidence</div>
+    <h1>The Paper, The Legacy Project, And The Verified V7 Run</h1>
+    <p class="lead">What did each workflow actually test, what went wrong before the audit, and what can the current negative result honestly mean?</p>
+    <div class="chapter-meta"><span>Three complete workflows</span><span>Five-lens comparison laboratory</span><span>Frozen evidence through 2023</span></div>
+  </header>
+
+  <section class="chapter-section" id="question">
+    <div class="eyebrow">The opening question</div>
+    <h2>Can two honest $100 calculations answer different questions?</h2>
+    <p>Suppose an index price begins at 100, ends at 100, and distributes a $2 dividend. A $100 investor owns the same market throughout the period. A price-only series records <math><mo>(</mo><mn>100</mn><mo>/</mo><mn>100</mn><mo>)</mo><mo>&minus;</mo><mn>1</mn><mo>=</mo><mn>0</mn><mo>%</mo></math>. A gross total-return series that reinvests the dividend records <math><mo>(</mo><mn>100</mn><mo>+</mo><mn>2</mn><mo>)</mo><mo>/</mo><mn>100</mn><mo>&minus;</mo><mn>1</mn><mo>=</mo><mn>2</mn><mo>%</mo></math>, so wealth becomes $102. Neither arithmetic operation is dishonest. They measure different return definitions.</p>
+    <p>Now feed years of those different returns into downside deviation, Sortino features, centroids, state paths, monthly validation, and a delayed backtest. A small input-definition difference can change the entire strategy. That is why the paper's licensed total-return series, the legacy Yahoo price workflow, and current free proxies cannot be treated as three implementations of one byte-identical experiment.</p>
+    <div class="example-grid">
+      <article class="worked-example"><h3>Correct comparison</h3><span class="big-number">Same question first</span><p>Compare outcomes only after checking data definition, date eligibility, fitting windows, online timing, selection, cash, cost, delay, metrics, and claim label.</p></article>
+      <article class="worked-example failure"><h3>A common failure: negative means refuted</h3><span class="big-number">Proxy mismatch &ne; paper false</span><p>A later free-source proxy that misses the paper's ordering is evidence about that proxy experiment. It cannot identify whether data, sample, implementation, or model behavior caused the difference.</p></article>
+    </div>
+    <div class="remember"><strong>The idea to remember</strong>The paper, legacy repository, and v7 run are three evidence objects with different inputs and protocols. Compare their contracts before their conclusions. The strongest honest current statement is proxy non-replication, not exact non-reproduction and not refutation.</div>
+  </section>
+
+  <section class="chapter-section" id="vocabulary">
+    <div class="eyebrow">Words before notation</div>
+    <h2>Use labels that preserve what was and was not tested</h2>
+    <div class="concept-grid three">
+      <div class="panel"><h3>Exact reproduction</h3><p>Recompute the original result from the same data snapshot, code, environment, and protocol. We do not have those complete original materials.</p></div>
+      <div class="panel"><h3>Numerical replication</h3><p>Independently implement the published protocol and obtain sufficiently matching values on data with demonstrated parity.</p></div>
+      <div class="panel"><h3>Directional replication</h3><p>Recover a preregistered qualitative ordering, such as JM beating both benchmarks on Sharpe and buy-and-hold on drawdown.</p></div>
+      <div class="panel"><h3>Proxy replication</h3><p>Retest a paper-shaped question with documented substitute data. The proxy deviations must travel with every result.</p></div>
+      <div class="panel"><h3>Non-replication</h3><p>The preregistered replication criterion did not appear in the new experiment. It names an outcome, not automatically a cause.</p></div>
+      <div class="panel"><h3>Refutation</h3><p>Evidence strong enough to reject a claim after plausible data and protocol explanations are resolved. The current project has not reached that level.</p></div>
+    </div>
+    <p><span class="term">Provenance</span> is the history of where code, data, and claims came from. <span class="term">Archive</span> means frozen historical material retained for explanation, not supported active software. <span class="term">Active stack</span> means the one package and CLI allowed to produce current evidence. A historical file can be useful provenance while being invalid as a current runner.</p>
+    <p>A <span class="term">verified defect</span> is a problem demonstrated from code, mathematics, or a failed contract. An <span class="term">accepted approximation</span> is a deliberate deviation whose narrower meaning is labeled. An <span class="term">unresolved ambiguity</span> is a missing detail that may matter but whose effect has not been isolated. Keeping these categories separate prevents a list of uncertainties from becoming an accusation.</p>
+    <p><span class="term">Attribution</span> is a controlled experiment that changes one suspected difference while holding the rest fixed. Merely observing that v7 differs from the paper does not attribute the gap. <span class="term">Gate</span> is a frozen condition that determines whether later work may open. Here, failure of the fixed-baseline directional gate blocks adaptive-lambda testing.</p>
+    <p>A negative result can be scientifically useful and technically successful. The current run completed, passed integrity checks, and returned an unfavorable scientific outcome. Engineering failure would mean missing inputs, broken execution, unverifiable metrics, or a changed rule after seeing results.</p>
+  </section>
+
+  <section class="chapter-section" id="workflows">
+    <div class="eyebrow">Three complete workflows</div>
+    <h2>Draw each path from input to claim before comparing it</h2>
+    <h3>Workflow A: the paper's reported experiment</h3>
+    <div class="timeline">
+      <div><strong>Licensed inputs</strong><span>Bloomberg total-return indices</span><span>Local GFD three-month bills, 1970&ndash;2023</span></div>
+      <div><strong>Online models</strong><span>Daily HMM and terminal JM states</span><span>3,000-row windows; semiannual JM centroids</span></div>
+      <div><strong>Live-style selection</strong><span>Trailing eight-year strategy Sharpe</span><span>Monthly smoothing choice; signal at <math><mi>t</mi><mo>+</mo><mn>2</mn></math></span></div>
+      <div><strong>Reported evidence</strong><span>1990&ndash;2023, three markets</span><span>Tables 4&ndash;5 and Figures 5&ndash;6</span></div>
+    </div>
+    <p>The paper asks whether JM persistence improves a realistic 0/1 strategy relative to HMM and buy-and-hold. Its conclusion is positive on its stated data and period. The article is the protocol source, but unavailable exact series identifiers and implementation conventions prevent us from reconstructing an identical input and execution object.</p>
+    <h3>Workflow B: the archived legacy project</h3>
+    <div class="timeline">
+      <div><strong>Minute/tick stage</strong><span>Kibot stock and ETF samples</span><span>Microstructure features and model demos</span></div>
+      <div><strong>Daily pivot</strong><span>Yahoo price returns; cash return zero</span><span>Shorter windows and block schedule</span></div>
+      <div><strong>P0 / P1 / P2</strong><span>Approximate baseline and adaptive variants</span><span>Asymmetric P2 later withdrawn</span></div>
+      <div><strong>Audit outcome</strong><span>Not a paper replication</span><span>Generated claims frozen as provenance</span></div>
+    </div>
+    <p>The minute experiments answered a different research question and used different assets, frequency, features, costs, and annualization. The later daily scripts moved toward the paper but still used a 2,520-day fit, five-year validation, 126-day reselection blocks, zero cash return, a 2005&ndash;2024 testing span, and a decoder reset by block. Required Yahoo cache files had no committed builder, manifest, cutoff, or hashes. Those properties are verified from archived code and its corrective handoff.</p>
+    <h3>Workflow C: the current verified v7 pipeline</h3>
+    <div class="timeline">
+      <div><strong>Audit and freeze</strong><span>Six documented free sources</span><span>One <code>research.toml</code>, no hidden splicing</span></div>
+      <div><strong>Paper-shaped run</strong><span>Causal features, fixed JM, HMM, B&amp;H</span><span>3,000 rows, eight years, monthly CV</span></div>
+      <div><strong>Seal and verify</strong><span>Boundary checks before metrics</span><span>Inventory and trade-path recomputation</span></div>
+      <div><strong>Frozen outcome</strong><span>0 of 3 markets passed the gate</span><span>Proxy non-replication; adaptive blocked</span></div>
+    </div>
+    <p>V7 asks a narrower question: does the paper's directional fixed-JM ordering appear on the best documented no-cost proxy bundle under a frozen causal protocol? It does not ask whether the paper's licensed 1990&ndash;2023 result is false. Effective OOS eligibility shifts into 2007&ndash;2009 because available history cannot support both 3,000 complete training observations and eight calendar years of validation by 1990.</p>
+  </section>
+
+  <section class="chapter-section" id="comparison-lab-section">
+    <div class="eyebrow">Interactive teaching visual</div>
+    <h2>Change the lens, not the facts</h2>
+    <p>Move across five comparison lenses. The three columns keep their identity while the question changes. This prevents a good engineering property, such as hash verification, from being mistaken for a positive financial result.</p>
+    <div class="lab" id="comparison-lab">
+      <div class="lab-header"><div><h3>Paper &middot; legacy &middot; v7 lens inspector</h3><p>Use the slider or arrow keys. Reset returns to data identity.</p></div><button class="button" type="button" data-reset>Reset</button></div>
+      <form><label for="comparison-lens">Lens: <output id="comparison-lens-output" for="comparison-lens">1 of 5</output></label><input id="comparison-lens" type="range" min="1" max="5" value="1" data-output="comparison-lens-output" data-suffix=" of 5"></form>
+      <div class="lab-output" aria-live="polite"><span class="label" id="lens-title">Data identity</span><div class="concept-grid three"><div><h3>Paper</h3><p id="lens-paper">Licensed total-return indices and local Treasury-bill yields; exact IDs and transformations are not public.</p></div><div><h3>Legacy</h3><p id="lens-legacy">Kibot minute/tick files, then Yahoo price returns with zero cash in the daily pivot.</p></div><div><h3>Verified v7</h3><p id="lens-v7">Six hashed public-source series; documented total-return candidates and explicit price/cash proxies.</p></div></div><p><strong>Safe conclusion:</strong> <span id="lens-conclusion">Input parity is unresolved, so v7 is a proxy experiment.</span></p></div>
+      <div class="table-wrap fallback-table"><table class="data-table" aria-label="Complete three-workflow comparison fallback"><thead><tr><th>Lens</th><th>Paper</th><th>Archived legacy</th><th>Verified v7</th></tr></thead><tbody><tr><td>Data</td><td>Licensed total-return and local bills</td><td>Kibot, then Yahoo price and zero cash</td><td>Hashed free proxies with explicit deviations</td></tr><tr><td>Timeline</td><td>1970 input; 1990&ndash;2023 OOS</td><td>Minute samples; then 2005&ndash;2024</td><td>Through 2023; eligible OOS begins 2007&ndash;2009</td></tr><tr><td>Protocol</td><td>3,000 training rows; eight-year monthly CV</td><td>Different windows, blocks, and decoder reset</td><td>Paper-shaped causal fixed baselines</td></tr><tr><td>Reproducibility</td><td>Sources named; exact artifact unavailable</td><td>Missing cache builder and input locks</td><td>Config/data/code locks, inventory, verifier</td></tr><tr><td>Claim</td><td>Positive reported finding</td><td>Approximate P0; P2 withdrawn</td><td>Shifted-window proxy non-replication</td></tr></tbody></table></div>
+      <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The full five-lens comparison remains in the table. No JavaScript is required to recover the conclusion.</p></noscript>
+    </div>
+  </section>
+
+  <section class="chapter-section" id="legacy-audit">
+    <div class="eyebrow">What changed after the audit</div>
+    <h2>Separate useful work from claims that could not survive review</h2>
+    <p>The earliest active package mixed a minute-frequency research stack with a later daily paper-inspired stack. That created two runnable interpretations of the product. Root reports and teaching pages could describe stale experiments, while ignored generated inputs were required to rerun daily scripts. The cleanup froze both histories under <a href="../../archive/legacy-minute/README.md"><code>archive/legacy-minute/</code></a> and <a href="../../archive/pre-audit-daily/README.md"><code>archive/pre-audit-daily/</code></a>. Active code no longer imports either archive.</p>
+    <p>Daily P0 was an approximation, not a reproduction. Besides different data and cash, it omitted the paper's exact 3,000-day daily online decoder and monthly eight-year validation chain. Candidate penalties frequently selected the upper grid boundary, and ties favored larger smoothing. Opening performance while the optimum presses against a search boundary leaves the baseline under-specified.</p>
+    <p>P1 explored a time-varying scalar penalty but did not establish a robust improvement over fixed JM. That is a legitimate exploratory null, yet it could not answer the planned adaptive claim because the fixed baseline itself lacked paper parity and the validation surface was not fully closed. V7 therefore returned to fixed JM first.</p>
+    <p>P2 attempted different costs for entering and leaving one of two states. The external audit and archived handoff showed that the proposed zero-diagonal two-state transition objective collapsed into a symmetric recurring switch penalty plus an endpoint term. It could shift a boundary or threshold but could not encode distinct persistent durations in the claimed way. The P2 interpretation and older conclusion-bearing commit language were explicitly withdrawn.</p>
+    <p>Not everything was discarded. The legacy work contained tested data loaders, causal backtest ideas, train-only scaling, a <math><mi>t</mi><mo>+</mo><mn>2</mn></math> timeline in the daily pivot, and an exact time-varying dynamic program checked against a brute-force oracle. The DP remains active in <a href="../../src/adaptive_jump/tv_jump.py"><code>tv_jump.py</code></a>, while unsupported runners and claims remain frozen. This is surgical provenance: preserve what is valid, withdraw what is not, and stop parallel pipelines.</p>
+    <div class="limitation"><strong>Fair attribution</strong>The corrective handoff identifies the earlier daily work as produced by a Claude session and records its own withdrawals. This chapter describes properties verified in archived files and mathematics. It does not infer intent, competence, or blame from a research workflow that failed later audit gates.</div>
+  </section>
+
+  <section class="chapter-section" id="current-v7">
+    <div class="eyebrow">What v7 now establishes</div>
+    <h2>A verified run can still return an unfavorable answer</h2>
+    <p>The v7 source bundle uses Yahoo <code>^SP500TR</code> with FRED <code>DTB3</code> for the United States; Yahoo <code>^GDAXI</code> with the FRED/OECD German three-month interbank series for Germany; and Yahoo <code>^N225</code> with a Bank of Japan three-month call-rate series for Japan. The US index is a total-return candidate, DAX is a performance-index candidate with documented vendor uncertainty, and Nikkei is explicitly a price index excluding dividends. German and Japanese cash are proxies rather than local Treasury bills.</p>
+    <p>The downloader preserves raw responses and canonical observations, records source metadata and hashes, rejects definition splicing, and stops at 2023. The feature pipeline applies causal availability lags to cash, preserves missingness, uses the paper-shaped excess-return features, and computes eligibility from actual coverage. No synthetic 1970 history is invented to force a 1990 start.</p>
+    <p>The fixed JM uses upstream <code>jumpmodels.JumpModel</code>, trailing 3,000-row scaling and fitting, semiannual centroid refits, and daily terminal online states for every penalty. The HMM fits daily on trailing 3,000 log returns with ten deterministic starts and strict convergence acceptance. Monthly selection scores eight years of already generated candidate strategy returns under the same cost and delay used OOS. Grid boundaries must pass before metrics open, and all three models share complete comparison dates within each market-delay group.</p>
+    <p>The sealed run verifier has just rechecked 131 inventory files, 18 boundary rows, and 27 metric rows from trade paths. Its maximum reconstruction difference is only floating-point CSV round-trip noise within the frozen tolerance. Those facts establish internal integrity; they do not make substitute inputs identical to the paper.</p>
+    <p>The preregistered primary gate requires fixed JM Sharpe above both HMM and buy-and-hold and a smaller maximum-drawdown magnitude than buy-and-hold in every market. V7 passed all search-boundary checks but zero markets passed all three directional conditions. Germany missed the buy-and-hold Sharpe condition; Japan missed both Sharpe comparisons and the drawdown condition; the United States missed the HMM Sharpe condition.</p>
+    <p>The frozen conclusion is therefore <strong>proxy non-replication; adaptive work remains blocked</strong>. The generated report linked from the <a href="../../README.md">README</a> contains exact current metrics and source limitations. This authored chapter does not duplicate those values because regenerated verified evidence is the source of truth.</p>
+  </section>
+
+  <section class="chapter-section" id="paper-connection">
+    <div class="eyebrow">Connection to the named paper</div>
+    <h2>The result disagreement is real; its cause is not identified</h2>
+    <p><a href="../../2402.05272v3.pdf">Shu, Yu, and Mulvey, arXiv:2402.05272v3</a> reports the preferred JM directional ordering across the S&amp;P 500, DAX, and Nikkei 225 over 1990&ndash;2023. V7 does not recover that ordering across its later free-proxy samples. These two statements can both be true because the evidence objects differ.</p>
+    <p>Paper parity would require the exact Bloomberg total-return fields, GFD local bill identifiers, yield-to-daily-return conversion, data availability and missingness conventions, candidate grids, tie rules, initialization, convergence, labeling, review dates, and intermediate expected outputs. The ready-to-send request in <a href="../author-data-request.txt"><code>docs/author-data-request.txt</code></a> asks the authors for those items.</p>
+    <p>If original data and code reproduce the published tables, differential attribution should compare returns, features, states, monthly choices, trades, then metrics one stage at a time. If exact data remain unavailable, the exact-reproduction question remains unresolved; a transparent proxy study may continue only under its own estimand and label.</p>
+  </section>
+
+  <section class="chapter-section" id="project-connection">
+    <div class="eyebrow">Connection to this project</div>
+    <h2>Know which file has authority for each statement</h2>
+    <p>The evidence-based visual comparison is <a href="../research-workflow-comparison.html"><code>docs/research-workflow-comparison.html</code></a>. The completed scientific contract is <a href="../../archive/completed-tasks/fixed-baselines-001.md"><code>archive/completed-tasks/fixed-baselines-001.md</code></a>. The active environment and report workflow are in the <a href="../../README.md"><code>README</code></a>. The frozen machine-readable protocol is <a href="../../research.toml"><code>research.toml</code></a>.</p>
+    <p><a href="../../src/adaptive_jump/artifacts.py"><code>artifacts.py</code></a> reconstructs the gate and metrics rather than trusting stored summary values. <a href="../../src/adaptive_jump/reporting.py"><code>reporting.py</code></a> builds the English report only after verification. <a href="../../tests/test_cli.py"><code>test_cli.py</code></a> proves that tampering with a stored metric or inventory file is rejected and that metrics remain sealed after a boundary failure.</p>
+    <p>The current CLI has one active path: <code>fetch</code>, <code>run</code>, <code>verify</code>, and <code>report</code>. Data and generated artifacts remain ignored. Archived scripts are frozen and unsupported. Any future author-data reproduction or changed proxy estimand needs a new approved task; modifying completed v7 after reading its outcome would destroy the pre-result contract.</p>
+  </section>
+
+  <section class="chapter-section" id="mathematics">
+    <div class="eyebrow">Mathematical layer</div>
+    <h2>Formalize data parity, the gate, and the withdrawn asymmetry</h2>
+    <h3>One dividend changes every downstream object</h3>
+    <div class="formula"><math display="block"><msubsup><mi>r</mi><mi>t</mi><mi>price</mi></msubsup><mo>=</mo><mfrac><msub><mi>P</mi><mi>t</mi></msub><msub><mi>P</mi><mrow><mi>t</mi><mo>&minus;</mo><mn>1</mn></mrow></msub></mfrac><mo>&minus;</mo><mn>1</mn><mo>,</mo><mspace width="2em"/><msubsup><mi>r</mi><mi>t</mi><mi>total</mi></msubsup><mo>=</mo><mfrac><mrow><msub><mi>P</mi><mi>t</mi></msub><mo>+</mo><msub><mi>D</mi><mi>t</mi></msub></mrow><msub><mi>P</mi><mrow><mi>t</mi><mo>&minus;</mo><mn>1</mn></mrow></msub></mfrac><mo>&minus;</mo><mn>1</mn></math></div>
+    <p>The difference is <math><msub><mi>D</mi><mi>t</mi></msub><mo>/</mo><msub><mi>P</mi><mrow><mi>t</mi><mo>&minus;</mo><mn>1</mn></mrow></msub></math> before tax and reinvestment complications. That difference changes excess return, EWM features, standardized windows, JM distances, fitted states, validation Sharpe, selected smoothing, positions, and final metrics. Data parity is part of the model experiment.</p>
+    <h3>The directional gate is a conjunction, not an average</h3>
+    <div class="formula"><math display="block"><msub><mi>g</mi><mi>m</mi></msub><mo>=</mo><mn>1</mn><mo>{</mo><msubsup><mi>S</mi><mi>m</mi><mi>JM</mi></msubsup><mo>&gt;</mo><msubsup><mi>S</mi><mi>m</mi><mi>HMM</mi></msubsup><mo>}</mo><mn>1</mn><mo>{</mo><msubsup><mi>S</mi><mi>m</mi><mi>JM</mi></msubsup><mo>&gt;</mo><msubsup><mi>S</mi><mi>m</mi><mi>BH</mi></msubsup><mo>}</mo><mn>1</mn><mo>{</mo><mo>|</mo><msubsup><mi>MDD</mi><mi>m</mi><mi>JM</mi></msubsup><mo>|</mo><mo>&lt;</mo><mo>|</mo><msubsup><mi>MDD</mi><mi>m</mi><mi>BH</mi></msubsup><mo>|</mo><mo>}</mo><mo>,</mo><mspace width="2em"/><mi>G</mi><mo>=</mo><munder><mo>&prod;</mo><mrow><mi>m</mi><mo>&isin;</mo><mo>{</mo><mi>US</mi><mo>,</mo><mi>DE</mi><mo>,</mo><mi>JP</mi><mo>}</mo></mrow></munder><msub><mi>g</mi><mi>m</mi></msub></math></div>
+    <div class="table-wrap"><table class="symbol-table"><thead><tr><th>Symbol</th><th>Meaning</th><th>Interpretation</th></tr></thead><tbody><tr><td><math><mi>m</mi></math></td><td>Market</td><td>US, Germany, or Japan</td></tr><tr><td><math><msub><mi>g</mi><mi>m</mi></msub></math></td><td>Per-market gate</td><td>1 only if all three conditions pass</td></tr><tr><td><math><mi>S</mi></math></td><td>Primary-delay Sharpe ratio</td><td>Higher is preferred</td></tr><tr><td><math><mi>MDD</mi></math></td><td>Maximum drawdown</td><td>Its absolute magnitude is smaller when downside loss is milder</td></tr><tr><td><math><mi>G</mi></math></td><td>Overall directional gate</td><td>1 only if every market passes</td></tr></tbody></table></div>
+    <p>A strong result in one market cannot compensate for failure in another because multiplication implements the preregistered "all three" requirement. V7 has <math><msub><mi>g</mi><mi>m</mi></msub><mo>=</mo><mn>0</mn></math> for each market, hence <math><mi>G</mi><mo>=</mo><mn>0</mn></math>. Changing the gate to an average after seeing this outcome would be post-hoc claim selection.</p>
+    <h3>Why the old two-state P2 could not identify asymmetric persistence</h3>
+    <div class="formula"><math display="block"><mi>a</mi><msub><mi>N</mi><mn>01</mn></msub><mo>+</mo><mi>b</mi><msub><mi>N</mi><mn>10</mn></msub><mo>=</mo><mfrac><mrow><mi>a</mi><mo>+</mo><mi>b</mi></mrow><mn>2</mn></mfrac><msub><mi>N</mi><mi>switch</mi></msub><mo>+</mo><mfrac><mrow><mi>a</mi><mo>&minus;</mo><mi>b</mi></mrow><mn>2</mn></mfrac><mo>(</mo><msub><mi>s</mi><mi>T</mi></msub><mo>&minus;</mo><msub><mi>s</mi><mn>0</mn></msub><mo>)</mo></math></div>
+    <p>Here <math><msub><mi>N</mi><mn>01</mn></msub></math> counts 0&rarr;1 transitions, <math><msub><mi>N</mi><mn>10</mn></msub></math> counts 1&rarr;0 transitions, <math><msub><mi>N</mi><mi>switch</mi></msub></math> is their sum, and <math><mi>a</mi><mo>,</mo><mi>b</mi></math> are the proposed costs. In a binary path, transitions alternate, so <math><msub><mi>N</mi><mn>01</mn></msub><mo>&minus;</mo><msub><mi>N</mi><mn>10</mn></msub><mo>=</mo><msub><mi>s</mi><mi>T</mi></msub><mo>&minus;</mo><msub><mi>s</mi><mn>0</mn></msub></math>. Substituting sum and difference gives the identity.</p>
+    <p>The first term is one symmetric cost per switch. The second depends only on endpoints, not how long either state lasted. Repeated block resets turn that endpoint term into a repeated boundary effect, but still do not create separate duration hazards. A genuine persistence-asymmetry claim needs a parameterization with identifiable state-specific staying or duration behavior, then a new frozen experiment.</p>
+  </section>
+
+  <section class="chapter-section" id="evidence-limitations">
+    <div class="eyebrow">Evidence and boundaries</div>
+    <h2>What is verified, what is inferred, and what remains unopened</h2>
+    <div class="evidence"><strong>Verified now</strong>The paper PDF identity matches the locked hash. Archived code supports the documented legacy deviations and P2 identity. The official v7 run is complete through 2023, its inventory and accounting re-verify, all boundary checks pass, and its frozen directional gate fails in all three markets. The active package, tests, config, and report generator are one consistent stack.</div>
+    <p>It is reasonable to infer that data definition and shifted sample could contribute to disagreement because those differences are large and economically relevant. It is not verified that either one is the dominant cause. The v7 outcome could also reflect unresolved implementation conventions, interactions among differences, or genuine instability of the paper's reported ordering across periods and proxies.</p>
+    <div class="limitation"><strong>Do not overclaim the engineering result</strong>Hashes prove identity relative to recorded bytes, tests prove specified software behavior on covered cases, and recomputation proves internal accounting consistency. None proves that Yahoo equals Bloomberg, that a proxy cash rate equals a Treasury bill, or that a historical strategy will work in the future.</div>
+    <p>No post-2023 evidence has been opened for this course, and no adaptive experiment has been run after the fixed gate failed. The previously planned adaptive endpoint therefore has no result. Saying "adaptive failed" would be false; it was not tested under the frozen research order.</p>
+    <p>There are three defensible next scientific paths, each requiring a new task. Obtain author or licensed data and pursue numerical reproduction. Run controlled data/period attribution while preserving the proxy label. Or formally change the research question to performance on modern public proxies and preregister a fresh baseline before any extension. None authorizes changing completed v7.</p>
+    <p>If a future fixed baseline clears its gate, an adaptive model must contain fixed JM as a nested case, expose identifiable mathematics, use the same causal validation budget, and be tested on untouched evidence. A more complicated formula is not automatically a scientific contribution; it must answer a precise limitation and survive comparison against its simpler parent.</p>
+  </section>
+
+  <section class="chapter-section" id="practice">
+    <div class="eyebrow">Practice with feedback</div>
+    <h2>Choose the claim that the evidence actually permits</h2>
+    <div class="quiz" id="comparison-quiz">
+      <h3>V7 passes verification but fails the directional gate. What follows?</h3>
+      <div class="quiz-options"><button class="button" type="button" data-choice data-correct="false" data-feedback-incorrect="No. Internal verification cannot establish parity with unavailable licensed inputs.">The paper has been exactly reproduced and disproved.</button><button class="button" type="button" data-choice data-correct="true" data-feedback-correct="Correct. The proxy ordering failed, exact paper reproduction remains unresolved, and the frozen research order blocks adaptive testing.">The free-proxy experiment is a non-replication; exact reproduction remains unresolved; adaptive work stays blocked.</button><button class="button" type="button" data-choice data-correct="false" data-feedback-incorrect="No. A negative scientific outcome can complete successfully when the protocol and verification pass.">The software run is invalid because its result is negative.</button></div>
+      <span class="quiz-feedback" aria-live="polite">Choose an answer, then check the explanation.</span><button class="button" type="button" data-reset>Reset question</button>
+    </div>
+    <details><summary>Recall: why is Japan the clearest data proxy?</summary><p>The v7 Nikkei input is explicitly a price index and excludes dividends, while the paper states a Bloomberg total-return series. Its cash series is also a monthly call-rate proxy rather than the paper's local three-month Treasury bill.</p></details>
+    <details><summary>Calculation: price versus total return</summary><p>If price rises from 100 to 101 and pays a $2 distribution, price return is 1%. A simple gross total return is <math><mo>(</mo><mn>101</mn><mo>+</mo><mn>2</mn><mo>)</mo><mo>/</mo><mn>100</mn><mo>&minus;</mo><mn>1</mn><mo>=</mo><mn>3</mn><mo>%</mo></math>. A $100 investment differs by $2 before other conventions.</p></details>
+    <details><summary>Error diagnosis: average two passing conditions</summary><p>The gate is conjunctive. Passing drawdown and one Sharpe comparison does not make two-thirds of a market pass. Every specified condition must be true, and every market must pass.</p></details>
+    <details><summary>Error diagnosis: call P2 state-specific persistence</summary><p>For a zero-diagonal binary transition matrix, unequal entry and exit costs reduce to symmetric switching plus an endpoint term. Demonstrate an identifiable state-duration or staying mechanism before attaching a persistence interpretation.</p></details>
+    <details><summary>Cumulative recall from Chapters 1&ndash;13</summary><p>Money and data definitions determine returns; returns determine risk and features; features feed HMM and JM; dynamic programming creates online states; validation chooses a complete delayed strategy; artifacts preserve evidence; claim labels preserve scope. The final conclusion is only as strong as the weakest link.</p></details>
+    <details><summary>Advisor explanation</summary><p>"The legacy project contained useful components but did not implement the paper's experiment, and one asymmetric extension was mathematically non-identifiable. We rebuilt one causal, locked daily pipeline on documented free proxies. It verifies internally but does not recover the paper's three-market directional ordering. Because coverage and definitions differ, this is proxy non-replication rather than a contradiction; we stopped adaptive work at the preregistered gate."</p></details>
+  </section>
+
+  <section class="chapter-section" id="advisor">
+    <div class="eyebrow">How to explain this to your advisor</div>
+    <div class="advisor"><p><strong>Short version:</strong> "The paper reports a positive licensed-data result; the old repository was not a comparable replication; the rebuilt v7 protocol is reproducible but uses later public proxies and returns a 0-of-3 directional gate. We report exactly that boundary."</p><p><strong>Important qualification:</strong> "The disagreement motivates controlled attribution and an author-data request. It does not identify a cause, refute the paper, or permit us to tune an adaptive model against already inspected evidence."</p></div>
+  </section>
+
+  <footer class="chapter-footer">
+    <p><strong>Course complete:</strong> You can now trace one dollar from data identity through returns, risk, features, models, online decisions, strategy accounting, sealed evidence, paper claims, and replication boundaries.</p>
+    <p><a href="13-guided-reading-shu-yu-mulvey.html">Back to Chapter 13</a> &middot; <a href="index.html">Return to the full course map</a> &middot; <a href="../research-workflow-comparison.html">Open the advisor workflow comparison</a></p>
+  </footer>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const lab = document.getElementById("comparison-lab");
+  const input = document.getElementById("comparison-lens");
+  const lenses = [
+    ["Data identity", "Licensed total-return indices and local Treasury-bill yields; exact IDs and transformations are not public.", "Kibot minute/tick files, then Yahoo price returns with zero cash in the daily pivot.", "Six hashed public-source series; documented total-return candidates and explicit price/cash proxies.", "Input parity is unresolved, so v7 is a proxy experiment."],
+    ["Timeline", "1970 warm-up supports a stated 1990-2023 out-of-sample test.", "Minute sample periods, then a daily 2005-2024 test with shorter history requirements.", "Cut off at 2023; actual history shifts eligible OOS starts into 2007-2009.", "Performance rows cover different market histories and cannot be compared as matched samples."],
+    ["Model and protocol", "Paper-shaped 3,000-row online models, eight-year monthly selection, t+2 trading, and 10-bps cost.", "Different windows, reselection blocks, decoder reset, zero cash, and incomplete grid closure.", "Frozen 3,000-row fixed JM/HMM protocol, causal candidates, monthly CV, matching delays, common dates, and boundary gate.", "V7 improves protocol parity, but protocol parity cannot repair data parity."],
+    ["Reproducibility", "Providers and broad method are named; exact data/code artifact is unavailable.", "Required ignored cache lacked a builder, cutoff, manifest, and input hashes.", "Config, data manifest, Git SHA, packages, inventory, trade paths, metrics, claim, verifier, and generated report are linked.", "V7 is internally reproducible; that is distinct from reproducing the paper."],
+    ["Scientific claim", "Authors report JM's preferred risk-adjusted and downside ordering in all three markets.", "Daily P0 was approximate, P1 did not establish improvement, and P2's persistence interpretation was withdrawn.", "Zero of three markets passed the frozen directional proxy gate; adaptive work remains blocked.", "The correct headline is proxy non-replication, not paper refutation."],
+  ];
+  function render() {
+    const lens = lenses[Number(input.value) - 1];
+    document.getElementById("lens-title").textContent = lens[0];
+    document.getElementById("lens-paper").textContent = lens[1];
+    document.getElementById("lens-legacy").textContent = lens[2];
+    document.getElementById("lens-v7").textContent = lens[3];
+    document.getElementById("lens-conclusion").textContent = lens[4];
+  }
+  input.addEventListener("input", render);
+  lab.addEventListener("course:reset", render);
+  render();
+});
+</script>
+</body>
+</html>
