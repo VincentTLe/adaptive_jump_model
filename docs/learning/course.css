@@ -164,6 +164,21 @@ details { margin: 14px 0; padding: 14px 16px; border: 1px solid var(--line); bor
 summary { cursor: pointer; color: var(--amber); font-weight: 700; }
 .advisor { padding: 20px; border: 1px solid #705928; border-radius: 8px; background: #1e190f; }
 .chapter-footer { padding-top: 32px; color: var(--muted); }
+.course-cover { padding-top: 44px; }
+.course-progress { max-width: 520px; margin-top: 24px; }
+.course-progress label, .course-progress span { display: block; color: var(--muted); }
+.course-progress progress { margin: 8px 0 4px; }
+.learning-chain { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin: 24px 0; }
+.learning-chain span { padding: 11px 6px; border-top: 3px solid var(--blue); background: var(--surface); text-align: center; font-weight: 700; }
+.part-block > p { color: var(--muted); }
+.course-map { display: grid; gap: 10px; margin-top: 20px; }
+.chapter-card { display: grid; grid-template-columns: 52px 1fr auto; gap: 16px; align-items: center; min-height: 88px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); text-decoration: none; }
+.chapter-card.available:hover, .chapter-card.available:focus-visible { border-color: var(--blue); }
+.chapter-card.planned { color: var(--muted); }
+.chapter-number { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 50%; color: var(--green); font-weight: 800; }
+.chapter-card strong, .chapter-card small { display: block; }
+.chapter-card small { margin-top: 3px; color: var(--muted); }
+.chapter-card .status { color: var(--amber); white-space: nowrap; font-size: .86rem; }
 
 @media (max-width: 700px) {
   .course-shell { width: min(100% - 24px, var(--content)); padding-top: 12px; }
@@ -175,6 +190,9 @@ summary { cursor: pointer; color: var(--amber); font-weight: 700; }
   .lab-header { display: block; }
   .lab-header .button { margin-top: 12px; }
   .chart-wrap { min-height: 240px; }
+  .learning-chain { grid-template-columns: repeat(2, 1fr); }
+  .chapter-card { grid-template-columns: 44px 1fr; }
+  .chapter-card .status { grid-column: 2; }
 }
 
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
