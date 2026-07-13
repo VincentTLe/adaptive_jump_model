@@ -65,6 +65,7 @@ VISUAL_TARGETS = {
     "04-market-regimes-persistence.html": (2, 1),
     "05-data-parity-proxy-replication.html": (1, 1),
     "06-reproducibility-sealed-evidence.html": (1, 1),
+    "07-backtesting-without-future.html": (1, 2),
     "08-returns-to-model-features.html": (1, 2),
     "09-hidden-markov-models.html": (1, 2),
     "10-clustering-statistical-jump-models.html": (1, 2),
