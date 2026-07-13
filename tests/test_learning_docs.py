@@ -224,3 +224,11 @@ def test_learning_stack_contains_no_mermaid() -> None:
         "mermaid" not in path.read_text(encoding="utf-8").lower()
         for path in authored_files
     )
+
+
+def test_chapter_nine_contains_no_malformed_emission_subscript() -> None:
+    source = (LEARNING / "09-hidden-markov-models.html").read_text(encoding="utf-8")
+
+    assert "<msubsup><mi>b</mi>" not in source
+    assert '<mi mathvariant="normal">exp</mi>' in source
+    assert source.count('<mi mathvariant="normal">log</mi>') == 2
