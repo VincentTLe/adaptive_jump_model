@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A guided beginner reading of Shu, Yu, and Mulvey: research question, data, statistical Jump Model, online protocol, evidence, robustness, and limitations.">
+  <title>Chapter 13: A Guided Reading Of Shu, Yu, And Mulvey</title>
+  <link rel="stylesheet" href="course.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/mml-chtml.js" integrity="sha384-GYAeDZjH9w23NyL4cfS+ZrgWmGvta6VNs4p+/vtuF+RWe30fQhmP8pHbzRmlwmAK" crossorigin="anonymous"></script>
+  <script defer src="course.js"></script>
+</head>
+<body>
+<main class="course-shell">
+  <nav class="course-nav" aria-label="Course navigation">
+    <a href="12-walk-forward-selection-performance.html">Previous: walk-forward measurement</a>
+    <span>Part IV &middot; Chapter 13 of 14</span>
+    <a href="index.html">Part IV checkpoint: course map</a>
+  </nav>
+
+  <header class="chapter-header">
+    <div class="part-label">Part IV &middot; The Paper And Our Evidence</div>
+    <h1>A Guided Reading Of Shu, Yu, And Mulvey</h1>
+    <p class="lead">How do twenty-two pages turn a simple market-or-cash idea into a scientific argument?</p>
+    <div class="chapter-meta"><span>Integrated paper reading</span><span>Six-stage claim laboratory</span><span>Sections 1&ndash;5, Tables 1&ndash;5, Figures 1&ndash;6</span></div>
+  </header>
+
+  <section class="chapter-section" id="question">
+    <div class="eyebrow">The opening question</div>
+    <h2>Can a late but persistent warning protect your $100?</h2>
+    <p>Imagine that you hold $100 in an equity index. At the end of day <math><mi>t</mi></math>, a regime model identifies the current market as unfavorable. The model is not claiming to know tomorrow's return. It is saying that the pattern observed through today resembles a persistent adverse state. Under the paper's one-day operational delay, you still hold the index on day <math><mi>t</mi><mo>+</mo><mn>1</mn></math>, switch at that day's end, and first earn the cash return on day <math><mi>t</mi><mo>+</mo><mn>2</mn></math>.</p>
+    <p>Use invented teaching returns. If the index loses 4% on day <math><mi>t</mi><mo>+</mo><mn>1</mn></math>, your $100 becomes $96. A 10-basis-point one-way switch costs <math><mn>0.001</mn><mo>&times;</mo><mn>96</mn><mo>=</mo><mn>0.096</mn></math>, leaving $95.904. If cash then earns 0% while the index loses another 10%, your strategy remains $95.904 while uninterrupted buy-and-hold falls from $96 to $86.40. The warning was late, paid a cost, and still reduced the later loss. Those numbers are a toy, not paper evidence.</p>
+    <div class="example-grid">
+      <article class="worked-example"><h3>What the paper asks</h3><span class="big-number">Identify, delay, protect</span><p>Can online states support a realistic 0/1 strategy that reduces downside risk after costs and delay, and does a Jump Model produce more useful persistent states than an HMM?</p></article>
+      <article class="worked-example failure"><h3>A common failure: call it prediction</h3><span class="big-number">State today &ne; return tomorrow</span><p>A red bear label for day <math><mi>t</mi></math> identifies the prevailing state using data through <math><mi>t</mi></math>. The economic bet is persistence, not advance knowledge of the next return.</p></article>
+    </div>
+    <p>The paper is Shu, Yu, and Mulvey, <cite>Downside Risk Reduction Using Regime-Switching Signals: A Statistical Jump Model Approach</cite>, arXiv:2402.05272v3. Its argument is larger than one favorable metric table. It links an economic problem, a model mechanism, a causal testing protocol, three international datasets, comparisons against two benchmarks, and a delay robustness exercise.</p>
+    <div class="remember"><strong>The idea to remember</strong>Read a research paper as a chain: question &rarr; mechanism &rarr; protocol &rarr; evidence &rarr; robustness &rarr; limitations. A broken or changed link changes what the final result can mean.</div>
+  </section>
+
+  <section class="chapter-section" id="vocabulary">
+    <div class="eyebrow">Words before notation</div>
+    <h2>Name the parts of a scientific argument</h2>
+    <div class="concept-grid three">
+      <div class="panel"><h3>Research question</h3><p>The precise uncertainty the study tries to reduce. Here it concerns downside protection from online regime signals.</p></div>
+      <div class="panel"><h3>Mechanism</h3><p>The proposed reason an effect may occur. A jump penalty encourages persistent states that may survive trading delay and reduce turnover.</p></div>
+      <div class="panel"><h3>Protocol</h3><p>The complete rule for data, fitting, selection, timing, costs, and measurement. It determines the experiment being run.</p></div>
+      <div class="panel"><h3>Benchmark</h3><p>A comparison procedure. The paper uses buy-and-hold and a two-state Gaussian HMM beside the JM-guided strategy.</p></div>
+      <div class="panel"><h3>Empirical evidence</h3><p>Observed results from the stated sample and protocol. Evidence supports a claim within a scope; it is not a mathematical proof of future performance.</p></div>
+      <div class="panel"><h3>Robustness test</h3><p>A planned variation that asks whether the reported pattern survives a meaningful changed assumption, such as a longer trading delay.</p></div>
+    </div>
+    <p>An <span class="term">estimand</span> is the quantity the study wants to compare. In this paper, the practical objects include risk and risk-adjusted performance of complete market-or-cash strategies. A <span class="term">claim</span> is the sentence supported by evidence, such as the paper's reported ordering of JM, HMM, and buy-and-hold on selected metrics. The claim must inherit the sample, data definitions, model rules, and uncertainty of the experiment.</p>
+    <p>A <span class="term">regime identification model</span> assigns an unobserved state to the current observation. The paper deliberately distinguishes identification from forecasting. State <math><msub><mi>s</mi><mi>t</mi></msub><mo>=</mo><mn>0</mn></math> is favorable and state <math><msub><mi>s</mi><mi>t</mi></msub><mo>=</mo><mn>1</mn></math> is unfavorable. The 0/1 investment strategy uses 100% risky asset in the favorable state and 100% local risk-free asset in the unfavorable state.</p>
+    <p><span class="term">Persistence</span> means a state tends to continue. <span class="term">Identification latency</span> is the time required for observed returns to make a change recognizable. <span class="term">Trading delay</span> is separate: the operational wait after a signal exists. Figure 4 teaches latency; Table 5 changes trading delay. Mixing the two hides where performance is lost.</p>
+    <p>A <span class="term">reported finding</span> is what the authors state their experiment showed. An <span class="term">independent replication result</span> comes from a separate implementation and data reconstruction. This chapter reads the paper's reported evidence. It does not silently convert that evidence into our project's result.</p>
+  </section>
+
+  <section class="chapter-section" id="paper-map">
+    <div class="eyebrow">The paper at one glance</div>
+    <h2>Follow the argument in its published order</h2>
+    <div class="timeline">
+      <div><strong>Sections 1&ndash;2</strong><span>Why downside risk matters</span><span>What data define the test</span></div>
+      <div><strong>Section 3</strong><span>0/1 strategy, HMM, and JM</span><span>Online fitting and selection</span></div>
+      <div><strong>Section 4</strong><span>Primary comparisons</span><span>Regime and wealth figures</span></div>
+      <div><strong>Sections 4.1&ndash;5</strong><span>Delay robustness</span><span>Conclusions and future work</span></div>
+    </div>
+    <p><strong>Section 1, Introduction,</strong> starts from cyclical market behavior and downside losses. It motivates moving to a safer asset when an unfavorable regime is identified, defines the simple 0/1 strategy, chooses HMM as the parametric benchmark, and presents JM persistence as the central mechanism. It also introduces monthly time-series cross-validation that selects smoothing by the strategy's validation Sharpe rather than by an in-sample clustering score.</p>
+    <p><strong>Section 2, Data,</strong> names daily total-return series for the S&amp;P 500, DAX, and Nikkei 225 from Bloomberg, plus each country's three-month Treasury Bill Yield from Global Financial Data. All are stated to span 1970&ndash;2023 and equity indices remain in local currency. Figure 1 shows cumulative excess-return histories and major drawdowns. Table 1 reports long-run variance, covariance, and correlation summaries. These items establish diversity across the three independent market tests; they do not make the datasets interchangeable.</p>
+    <p><strong>Sections 3.1 and 3.2</strong> define the investment rule and model families. The paper isolates one risky asset and one risk-free asset so performance more directly reflects the regime signal rather than diversification. It explains why persistence matters when positions cannot react instantly. It then contrasts parametric Markov-switching models with non-parametric methods, fixes two states, and states that both HMM and JM generate daily identification signals from market returns rather than macroeconomic predictors.</p>
+    <p><strong>Section 3.3</strong> fits a two-state Gaussian HMM daily on trailing windows of 3,000 log total returns. Ten initializations address the non-convex likelihood, the highest-log-likelihood fit is retained, lower and higher conditional volatility label the two states, and Viterbi supplies the terminal online state. A trailing median-style filter with candidate length <math><mi>k</mi></math> smooths the online sequence. Figure 2 displays how conditional return and volatility estimates evolve in rolling S&amp;P 500 fits.</p>
+    <p><strong>Section 3.4</strong> introduces the statistical JM through Equation (1). Table 2 lists its three excess-return features: EWM downside deviation with half-life 10 and EWM Sortino ratios with half-lives 20 and 60. Centroids are updated every six months from a 3,000-day training window; Figure 3 shows their evolution. Section 3.4.2 uses dynamic programming on each trailing 3,000-feature window with fixed current centroids and keeps only the terminal state. Table 3 compares state-shift frequency as HMM filter length or JM penalty changes. Figure 4 contrasts retrospective in-sample regimes with genuinely online regimes during the 2020 crash and makes detection latency visible.</p>
+    <p><strong>Section 3.4.3</strong> selects the JM penalty monthly. For every candidate, the authors construct an eight-year history of online states, apply the same delayed and costed strategy used in testing, and choose the candidate with highest validation Sharpe for the next month. The same framework selects HMM filter length. Training history plus validation history explains why 1970 input supports a 1990 OOS start.</p>
+    <p><strong>Section 4</strong> reports the primary 1990&ndash;2023 comparison. Table 4 contains point estimates for return, volatility, Sharpe, maximum drawdown, Calmar, expected shortfall, turnover, and leverage for buy-and-hold, HMM, and JM strategies. Figure 5 aligns JM bear-state shading with cumulative strategy excess returns in all three markets. Figure 6 presents the HMM counterpart for the S&amp;P 500 and highlights less persistent online states. Read the table for measurement, the figures for timing and path behavior, and the prose for the authors' interpretation.</p>
+    <p><strong>Section 4.1 and Section 5</strong> ask whether operational delay changes the story. Table 5 repeats selected return and risk-adjusted metrics for 1-, 5-, and 10-day delays, with matching delay used during validation. The conclusion summarizes the reported downside and risk-adjusted benefits, then proposes broader features, feature selection, more asset classes, and more flexible distances as future research rather than completed evidence.</p>
+  </section>
+
+  <section class="chapter-section" id="reading-lab-section">
+    <div class="eyebrow">Interactive teaching visual</div>
+    <h2>Inspect one link of the claim chain at a time</h2>
+    <p>Move through six reading stages. Each stage asks a different question, points to the exact paper location, and names the mistake that would break the argument. This is a navigation aid; it calculates no market result.</p>
+    <div class="lab" id="reading-lab">
+      <div class="lab-header"><div><h3>Paper claim-chain inspector</h3><p>Use the slider or arrow keys. Reset returns to the research question.</p></div><button class="button" type="button" data-reset>Reset</button></div>
+      <form><label for="reading-stage">Stage: <output id="reading-stage-output" for="reading-stage">1 of 6</output></label><input id="reading-stage" type="range" min="1" max="6" value="1" data-output="reading-stage-output" data-suffix=" of 6"></form>
+      <div class="lab-output" aria-live="polite"><span class="label" id="stage-location">Section 1</span><h3 id="stage-title">Question: can persistent online states reduce downside risk?</h3><p id="stage-detail">Begin with the economic problem and the benchmark comparisons. Do not begin with the most attractive metric.</p><p><strong>Audit question:</strong> <span id="stage-audit">Is the claimed benefit about prediction, identification, risk reduction, or all three?</span></p></div>
+      <div class="table-wrap fallback-table"><table class="data-table" aria-label="Complete paper claim chain fallback"><thead><tr><th>Stage</th><th>Paper location</th><th>What to establish</th></tr></thead><tbody><tr><td>1. Question</td><td>Section 1</td><td>Economic problem, scope, and benchmarks</td></tr><tr><td>2. Data</td><td>Section 2; Figure 1; Table 1</td><td>Exact observations and market diversity</td></tr><tr><td>3. Mechanism</td><td>Sections 3.1&ndash;3.4; Equation (1)</td><td>How persistence enters identification and trading</td></tr><tr><td>4. Protocol</td><td>Sections 3.3&ndash;3.4.3; Tables 2&ndash;3; Figures 2&ndash;4</td><td>What was knowable at each decision date</td></tr><tr><td>5. Evidence</td><td>Section 4; Table 4; Figures 5&ndash;6</td><td>Reported comparative paths and point estimates</td></tr><tr><td>6. Limits</td><td>Sections 4.1&ndash;5; Table 5</td><td>Delay robustness, unresolved uncertainty, and future work</td></tr></tbody></table></div>
+      <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The full six-stage reading sequence remains in the visible table. Begin at the question and never skip directly to the result.</p></noscript>
+    </div>
+  </section>
+
+  <section class="chapter-section" id="paper-connection">
+    <div class="eyebrow">Connection to the named paper</div>
+    <h2>Equation (1) is the mechanism, not the whole experiment</h2>
+    <p>The locked source is <a href="../../2402.05272v3.pdf">arXiv:2402.05272v3</a>, dated 17 September 2024. Its SHA-256 is recorded by the course task so another PDF revision cannot silently replace the protocol source. Equation (1) supplies the JM objective; Sections 3.4.1&ndash;3.4.3 turn that objective into features, online states, and monthly model selection; Section 3.1 turns states into positions; Section 4 measures the positions.</p>
+    <p>This distinction matters because a correct implementation of Equation (1) can still fail to reproduce the paper if it uses price returns instead of total returns, no local cash return, a shorter fitting window, retrospective states, a different validation objective, a different delay, or unequal metric dates. Scientific replication concerns the connected procedure, not a recognizable model name.</p>
+    <p>The paper reports that the JM-guided strategy has the preferred risk and risk-adjusted ordering in its three markets, and that its persistence makes performance more robust to delay. Cite those statements as the authors' findings supported by Table 4, Figures 5&ndash;6, and Table 5. Do not present a copied row as universal truth, and do not infer causality merely because bear shading overlaps well-known crises.</p>
+  </section>
+
+  <section class="chapter-section" id="project-connection">
+    <div class="eyebrow">Connection to this project</div>
+    <h2>Map every paper link to one auditable project responsibility</h2>
+    <p><a href="../../research.toml"><code>research.toml</code></a> freezes source definitions, return rules, feature half-lives, windows, model settings, grids, monthly selection, delays, costs, metrics, and the proxy label. <a href="../../src/adaptive_jump/features.py"><code>features.py</code></a> constructs equity, cash, excess returns, and the three JM features. <a href="../../src/adaptive_jump/models.py"><code>models.py</code></a> owns fixed JM terminal online states and daily HMM fits. <a href="../../src/adaptive_jump/walkforward.py"><code>walkforward.py</code></a> creates candidate histories, monthly choices, and boundary diagnostics.</p>
+    <p><a href="../../src/adaptive_jump/backtest.py"><code>backtest.py</code></a> implements delayed market-or-cash accounting and metrics. <a href="../../src/adaptive_jump/artifacts.py"><code>artifacts.py</code></a> verifies identity locks, file inventory, boundary rows, trade accounting, metric reconstruction, and the directional gate. The generated verified report is linked from the <a href="../../README.md">README</a>; empirical values are intentionally not copied into this chapter.</p>
+    <p>The tests make claims executable. <a href="../../tests/test_features.py"><code>test_features.py</code></a> checks formula parity and prefix invariance. <a href="../../tests/test_models.py"><code>test_models.py</code></a> checks terminal JM inference and strict HMM fit behavior. <a href="../../tests/test_walkforward.py"><code>test_walkforward.py</code></a> checks candidate selection, ties, boundary sealing, and common dates. <a href="../../tests/test_backtest.py"><code>test_backtest.py</code></a> checks the <math><mi>t</mi><mo>+</mo><mn>2</mn></math> timeline, costs, and metrics.</p>
+    <p>The current implementation is paper-shaped but not data-identical. Its free sources begin too late for the paper's full 1970 warm-up, and some equity and cash definitions are documented proxies. Chapter 14 compares that verified v7 experiment with both the paper and the archived legacy work.</p>
+  </section>
+
+  <section class="chapter-section" id="mathematics">
+    <div class="eyebrow">Mathematical layer</div>
+    <h2>Read Equation (1) term by term, then reconnect it to money</h2>
+    <div class="formula"><math display="block"><munder><mo>min</mo><mrow><mi>&Theta;</mi><mo>,</mo><mi>S</mi></mrow></munder><mrow><munderover><mo>&sum;</mo><mrow><mi>t</mi><mo>=</mo><mn>0</mn></mrow><mrow><mi>T</mi><mo>&minus;</mo><mn>1</mn></mrow></munderover><mi>l</mi><mo>(</mo><msub><mi>x</mi><mi>t</mi></msub><mo>,</mo><msub><mi>&theta;</mi><msub><mi>s</mi><mi>t</mi></msub></msub><mo>)</mo><mo>+</mo><mi>&lambda;</mi><munderover><mo>&sum;</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>T</mi><mo>&minus;</mo><mn>1</mn></mrow></munderover><mn>1</mn><mo>{</mo><msub><mi>s</mi><mrow><mi>t</mi><mo>&minus;</mo><mn>1</mn></mrow></msub><mo>&ne;</mo><msub><mi>s</mi><mi>t</mi></msub><mo>}</mo></mrow></math></div>
+    <div class="table-wrap"><table class="symbol-table"><thead><tr><th>Symbol</th><th>Meaning</th><th>Unit or allowed values</th></tr></thead><tbody><tr><td><math><mi>t</mi></math>, <math><mi>T</mi></math></td><td>Time index and number of observations</td><td>Trading-row index; positive count</td></tr><tr><td><math><msub><mi>x</mi><mi>t</mi></msub></math></td><td>Standardized feature vector available at day <math><mi>t</mi></math></td><td>Three dimensionless feature coordinates</td></tr><tr><td><math><msub><mi>&theta;</mi><mi>k</mi></msub></math>, <math><mi>&Theta;</mi></math></td><td>Centroid for state <math><mi>k</mi></math>, and the centroid collection</td><td>Same standardized feature space</td></tr><tr><td><math><msub><mi>s</mi><mi>t</mi></msub></math>, <math><mi>S</mi></math></td><td>State at day <math><mi>t</mi></math>, and the full path</td><td>0 favorable, 1 unfavorable</td></tr><tr><td><math><mi>l</mi><mo>(</mo><mi>x</mi><mo>,</mo><mi>&theta;</mi><mo>)</mo></math></td><td>Scaled squared Euclidean mismatch</td><td><math><mfrac><mn>1</mn><mn>2</mn></mfrac><msup><mrow><mo>&Vert;</mo><mi>x</mi><mo>&minus;</mo><mi>&theta;</mi><mo>&Vert;</mo></mrow><mn>2</mn></msup></math></td></tr><tr><td><math><mi>&lambda;</mi></math></td><td>Cost added for each state change</td><td>Nonnegative objective units</td></tr><tr><td><math><mn>1</mn><mo>{</mo><mo>&middot;</mo><mo>}</mo></math></td><td>Indicator: one when the condition is true, zero otherwise</td><td>0 or 1</td></tr></tbody></table></div>
+    <h3>Derivation from ordinary clustering</h3>
+    <p>With <math><mi>&lambda;</mi><mo>=</mo><mn>0</mn></math>, each date can choose the nearest centroid independently. That is the k-means assignment idea. A positive penalty couples adjacent decisions: changing state must reduce feature mismatch enough to pay <math><mi>&lambda;</mi></math>. For fixed centroids, dynamic programming records the cheapest partial path ending in each state:</p>
+    <div class="formula"><math display="block"><msub><mi>V</mi><mi>t</mi></msub><mo>(</mo><mi>j</mi><mo>)</mo><mo>=</mo><mi>l</mi><mo>(</mo><msub><mi>x</mi><mi>t</mi></msub><mo>,</mo><msub><mi>&theta;</mi><mi>j</mi></msub><mo>)</mo><mo>+</mo><munder><mo>min</mo><mi>i</mi></munder><mo>[</mo><msub><mi>V</mi><mrow><mi>t</mi><mo>&minus;</mo><mn>1</mn></mrow></msub><mo>(</mo><mi>i</mi><mo>)</mo><mo>+</mo><mi>&lambda;</mi><mn>1</mn><mo>{</mo><mi>i</mi><mo>&ne;</mo><mi>j</mi><mo>}</mo><mo>]</mo></math></div>
+    <p>For a tiny one-dimensional example, let centroids be 0 and 4 and observations be 0, 4, 0. The path 0&rarr;1&rarr;0 has zero mismatch and two switches, so its objective is <math><mn>2</mn><mi>&lambda;</mi></math>. Staying in state 0 has middle mismatch <math><mfrac><mn>1</mn><mn>2</mn></mfrac><msup><mn>4</mn><mn>2</mn></msup><mo>=</mo><mn>8</mn></math> and no switch cost. At <math><mi>&lambda;</mi><mo>=</mo><mn>3</mn></math>, switching costs 6 and wins. At <math><mi>&lambda;</mi><mo>=</mo><mn>5</mn></math>, staying costs 8 and wins. Persistence emerges from an explicit tradeoff, not from repainting a chart.</p>
+    <h3>Reconnect the selected state to the strategy</h3>
+    <div class="formula"><math display="block"><msubsup><mi>r</mi><mrow><mi>t</mi><mo>+</mo><mn>2</mn></mrow><mi>strategy</mi></msubsup><mo>=</mo><mo>(</mo><mn>1</mn><mo>&minus;</mo><msub><mover><mi>s</mi><mo>^</mo></mover><mi>t</mi></msub><mo>)</mo><msubsup><mi>r</mi><mrow><mi>t</mi><mo>+</mo><mn>2</mn></mrow><mi>equity</mi></msubsup><mo>+</mo><msub><mover><mi>s</mi><mo>^</mo></mover><mi>t</mi></msub><msubsup><mi>r</mi><mrow><mi>t</mi><mo>+</mo><mn>2</mn></mrow><mi>cash</mi></msubsup><mo>&minus;</mo><msubsup><mi>cost</mi><mrow><mi>t</mi><mo>+</mo><mn>2</mn></mrow><mi>trade</mi></msubsup></math></div>
+    <p>Because state 0 is favorable, <math><mn>1</mn><mo>&minus;</mo><msub><mover><mi>s</mi><mo>^</mo></mover><mi>t</mi></msub></math> is the risky weight. This equation exposes the paper's economic chain: features determine a delayed state, the state determines an allocation, the allocation determines a return, and only then can Table 4 measure performance.</p>
+  </section>
+
+  <section class="chapter-section" id="evidence-limitations">
+    <div class="eyebrow">Evidence and boundaries</div>
+    <h2>What the paper reports, and what remains open</h2>
+    <div class="evidence"><strong>Reported paper evidence</strong>Table 4 reports that the JM-guided 0/1 strategy has the authors' preferred Sharpe and maximum-drawdown ordering against HMM and buy-and-hold in all three markets. Figure 5 shows persistent JM bear intervals and cumulative paths; Figure 6 shows more frequent HMM state changes in the displayed US comparison. Table 5 reports greater JM resilience as assumed trading delay increases. These are point estimates from the paper's named sample and protocol.</div>
+    <p>The design has meaningful strengths. It tests three economically different markets, uses online terminal states rather than a retrospective full-sample path, includes local cash, applies a stated transaction cost and operational delay, validates smoothing on trailing strategy outcomes, compares against both a passive strategy and a parametric regime model, and repeats the selection process under longer delays.</p>
+    <div class="limitation"><strong>Data reproducibility boundary</strong>The paper names Bloomberg and Global Financial Data but does not publish the exact series identifiers, fields, gross-versus-net total-return convention, risk-free yield conversion, availability lag, missing-value handling, or checksums needed to reconstruct byte-identical inputs. Those details can materially affect excess returns, features, effective dates, and cash periods.</div>
+    <p>Several implementation choices are also not fully recoverable from the article alone: complete candidate grids, numerical tie handling, exact initialization and convergence acceptance, some state-label and missing-data conventions, and all package/code revisions. This does not show that any choice was wrong. It limits how confidently an independent researcher can distinguish implementation mismatch from model behavior.</p>
+    <p>Tables 4 and 5 report historical point estimates, but the paper does not provide sampling uncertainty for differences between strategies through confidence intervals, a block bootstrap, or multiple-comparison adjustment. The three market outcomes are useful repeated evidence, yet they are not independent draws from a simple experiment. Hyperparameters are selected from historical returns, and market returns are serially dependent.</p>
+    <p>The figures are explanatory, not standalone tests. A regime that visually overlaps a famous crash may also have been detected after losses began; Figure 4 explicitly demonstrates this latency. Ending wealth can conceal timing, turnover, tail behavior, and opportunity cost. Conversely, a model can miss part of a rebound yet still meet a downside-protection purpose. Read every plot together with timing rules and metrics.</p>
+    <p>Finally, the study evaluates a binary 0/1 allocation. Real mandates may limit turnover, require partial weights, hold multiple assets, pay market-impact costs, or face taxes and capacity. Section 5 recognizes broader assets and richer features as future directions. Those extensions require new protocols and evidence rather than being implied by the reported baseline.</p>
+  </section>
+
+  <section class="chapter-section" id="practice">
+    <div class="eyebrow">Practice with feedback</div>
+    <h2>Reconstruct the argument without skipping a link</h2>
+    <div class="quiz" id="paper-quiz">
+      <h3>Which sentence describes the paper's regime signal most accurately?</h3>
+      <div class="quiz-options"><button class="button" type="button" data-choice data-correct="false" data-feedback-incorrect="Not quite. The paper explicitly distinguishes identification from next-day prediction.">It predicts whether tomorrow's index return will be positive.</button><button class="button" type="button" data-choice data-correct="true" data-feedback-correct="Correct. The signal identifies today's prevailing state using current history; trading relies on persistence after a delay.">It identifies the prevailing state through today and relies on that state persisting long enough to trade.</button><button class="button" type="button" data-choice data-correct="false" data-feedback-incorrect="No. The state is generated daily; only model fitting or hyperparameter-selection clocks are less frequent.">It labels one regime retrospectively at the end of every month.</button></div>
+      <span class="quiz-feedback" aria-live="polite">Choose an answer, then check the explanation.</span><button class="button" type="button" data-reset>Reset question</button>
+    </div>
+    <details><summary>Recall: what are the six links in the reading chain?</summary><p>Question, mechanism, protocol, evidence, robustness, and limitations. Data identity belongs inside the protocol and constrains the evidence.</p></details>
+    <details><summary>Calculation: compare two paths in Equation (1)</summary><p>With zero mismatch, two switches, and <math><mi>&lambda;</mi><mo>=</mo><mn>4</mn></math>, the switch contribution is 8. A no-switch path with mismatch 7 has total 7, so the no-switch path is cheaper. This demonstrates how persistence can outweigh a modest local fit improvement.</p></details>
+    <details><summary>Error diagnosis: a beautiful red regime chart</summary><p>Ask whether shading is retrospective in-sample state or daily online terminal state, whether it is shifted to the actual position date, and whether the chart includes cost. Figure 4 shows that retrospective and online labels differ. Visual overlap alone cannot establish tradable foresight.</p></details>
+    <details><summary>Error diagnosis: reproduce Equation (1), change the data</summary><p>That reproduces a model objective, not the paper's experiment. Price versus total return, local cash, coverage, feature history, validation dates, and timing can all change states and performance. Label the result according to data parity.</p></details>
+    <details><summary>Cumulative recall from Chapters 1&ndash;12</summary><p>Chapter 1 supplies market and cash; Chapter 2 defines total and excess return; Chapter 3 defines downside metrics; Chapter 4 supplies hidden persistent regimes; Chapters 5&ndash;7 protect data identity and causality; Chapters 8&ndash;11 build features and online states; Chapter 12 selects and measures full strategies. The paper connects every one of those layers.</p></details>
+    <details><summary>Advisor explanation</summary><p>"The paper tests whether persistent online regime identification can improve a delayed, costed market-or-cash strategy. JM adds a transition penalty to clustering, selects that penalty monthly on trailing online strategy Sharpe, and reports stronger downside and risk-adjusted outcomes than HMM and buy-and-hold across three 1990&ndash;2023 markets. Those are the paper's reported findings; exact independent reproduction still requires precise source and implementation details."</p></details>
+  </section>
+
+  <section class="chapter-section" id="advisor">
+    <div class="eyebrow">How to explain this to your advisor</div>
+    <div class="advisor"><p><strong>Short version:</strong> "The contribution is not merely a jump-penalized objective. It is a complete online strategy protocol linking persistent state identification, monthly application-based selection, delayed trading, costs, and three-market evidence."</p><p><strong>Important qualification:</strong> "I separate the authors' reported positive findings from our independent proxy evidence. Missing exact data identifiers and implementation conventions prevent a numerical reproduction claim, while point estimates without uncertainty do not prove a universal advantage."</p></div>
+  </section>
+
+  <footer class="chapter-footer">
+    <p><strong>Next:</strong> compare the paper's experiment, the archived legacy project, and the verified v7 proxy run without confusing their questions or evidence.</p>
+    <p><a href="12-walk-forward-selection-performance.html">Back to Chapter 12</a> &middot; <a href="index.html">Review the course map</a></p>
+  </footer>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const lab = document.getElementById("reading-lab");
+  const input = document.getElementById("reading-stage");
+  const stages = [
+    ["Section 1", "Question: can persistent online states reduce downside risk?", "Begin with the economic problem and benchmark comparisons. Do not begin with the most attractive metric.", "Is the claimed benefit about prediction, identification, risk reduction, or all three?"],
+    ["Section 2; Figure 1; Table 1", "Data: what observations define the experiment?", "Identify total-return indices, local Treasury-bill yields, currencies, dates, and independent market tests before reading results.", "Could a price index, different cash series, or shorter warm-up answer a different question?"],
+    ["Sections 3.1-3.4; Equation (1)", "Mechanism: why might JM states be more tradable?", "The jump penalty prices transitions, encouraging persistence while feature mismatch still rewards adaptation.", "Does the mechanism create useful persistence, or merely force one state forever?"],
+    ["Sections 3.3-3.4.3; Tables 2-3; Figures 2-4", "Protocol: what was knowable at each date?", "Trace rolling fits, terminal online inference, eight-year validation, monthly selection, t+2 execution, and transaction cost.", "Can any fitted value, choice, label, or return see beyond its decision date?"],
+    ["Section 4; Table 4; Figures 5-6", "Evidence: what comparative pattern do the authors report?", "Read point estimates beside regime timing and wealth paths across all three markets and both benchmarks.", "Is a statement directly reported, visually inferred, or independently reproduced?"],
+    ["Sections 4.1-5; Table 5", "Limits: what survives delay, and what remains unknown?", "Separate the delay sensitivity from unresolved data identity, implementation detail, sampling uncertainty, and future extensions.", "How narrow must the conclusion remain before new data or a new experiment?"],
+  ];
+  function render() {
+    const stage = stages[Number(input.value) - 1];
+    document.getElementById("stage-location").textContent = stage[0];
+    document.getElementById("stage-title").textContent = stage[1];
+    document.getElementById("stage-detail").textContent = stage[2];
+    document.getElementById("stage-audit").textContent = stage[3];
+  }
+  input.addEventListener("input", render);
+  lab.addEventListener("course:reset", render);
+  render();
+});
+</script>
+</body>
+</html>
