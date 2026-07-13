@@ -29,6 +29,13 @@
     <div class="eyebrow">The opening question</div>
     <h2>Should one bad day erase everything we knew yesterday?</h2>
     <p>You invest $100 in an equity index while cash earns nothing in this tiny example. The index loses 4% today, so the account becomes $96. The daily excess return is therefore -4%. That number says today was bad, but it does not answer three broader questions: Was this one isolated loss or part of recent instability? Are recent gains large enough to compensate for recent downside? Does the short view tell the same story as the slower view?</p>
+    <figure class="concept-illustration" id="part-three-concept-illustration" aria-labelledby="part-three-concept-title">
+      <span class="teaching-label">Concept illustration - not data or evidence</span>
+      <h3 id="part-three-concept-title">Observed returns are visible; regimes must be inferred</h3>
+      <img src="assets/part-iii-observed-to-latent.webp" width="1400" height="788" loading="eager" decoding="async" alt="A layered teaching illustration: observed green and red return marks sit above hidden calm and stressed regime bands, pass through three feature lenses, then split toward a two-state hidden Markov model and a two-cluster jump model.">
+      <figcaption class="visual-caption">Read from left to right. Daily returns are observations, the colored band underneath represents an unobserved regime, and three feature lenses reshape the observations before HMM and jump-model inference. The two right-hand panels are conceptual structures, not fitted results.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> neither model sees a regime label. Both receive transformed observations and infer a state through different mathematical rules.</div>
+    </figure>
     <div class="example-grid">
       <article class="worked-example"><h3>Raw observation</h3><span class="big-number">$100 &rarr; $96</span><p>The -4% excess return describes one interval. Tomorrow it will be replaced by another noisy observation.</p></article>
       <article class="worked-example failure"><h3>A common failure: one-day diagnosis</h3><span class="big-number">One loss &ne; a regime</span><p>Calling every negative day a bear state creates rapid switches, costs, and false alarms. A feature should summarize recent history without seeing the future.</p></article>

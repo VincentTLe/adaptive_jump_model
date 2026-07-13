@@ -147,7 +147,7 @@ progress { width: 100%; }
 .enhanced-only { display: none; }
 .enhanced-only.is-ready { display: block; }
 
-.teaching-figure {
+.teaching-figure, .concept-illustration, .source-lens {
   margin: 24px 0;
   padding: 18px;
   border: 1px solid var(--line);
@@ -156,6 +156,8 @@ progress { width: 100%; }
 }
 .lab .teaching-figure { margin: 20px 0 0; padding: 0; border: 0; background: transparent; }
 .teaching-label { display: block; margin-bottom: 5px; color: var(--green); font-size: .76rem; font-weight: 800; text-transform: uppercase; }
+.concept-illustration .teaching-label { color: var(--amber); }
+.concept-illustration img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; background: #101319; }
 .visual-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(220px, 2fr); gap: 18px; align-items: center; }
 .visual-stage { position: relative; width: 100%; min-height: 260px; aspect-ratio: 16 / 9; overflow: hidden; background: #101319; }
 .visual-stage.compact { min-height: 190px; aspect-ratio: 2 / 1; }
@@ -279,6 +281,6 @@ summary { cursor: pointer; color: var(--amber); font-weight: 700; }
   .course-nav, .reading-mode, .lab .button, .stepper-controls { display: none; }
   body[data-reading-mode="visual"] .reading-detail-section { display: block !important; }
   .chapter-section { break-inside: avoid; }
-  .teaching-figure { break-inside: avoid; }
+  .teaching-figure, .concept-illustration, .source-lens { break-inside: avoid; }
   details.deep-explanation > :not(summary) { display: block !important; }
 }

@@ -65,6 +65,7 @@ VISUAL_TARGETS = {
     "11-dynamic-programming-online-inference.html": (1, 2),
     "12-walk-forward-selection-performance.html": (1, 2),
 }
+CONCEPT_ILLUSTRATION_TARGETS = {"08-returns-to-model-features.html": 1}
 FIXED_MATH_ARITY = {
     "mfrac": 2,
     "mover": 2,
@@ -259,6 +260,9 @@ def test_authored_chapter_contract(filename: str, title: str) -> None:
         ]
         assert visual_types.count("static") == static_target
         assert visual_types.count("interactive") == interactive_target
+    assert document.class_counts.get("concept-illustration", 0) == (
+        CONCEPT_ILLUSTRATION_TARGETS.get(filename, 0)
+    )
 
 
 def test_authored_chapter_order_and_navigation() -> None:
@@ -365,6 +369,10 @@ def test_media_credit_registry_matches_local_images() -> None:
             assert credits[source] == hashlib.sha256(target.read_bytes()).hexdigest()
             used_images.add(source)
     assert used_images == set(credits)
+    assert (
+        sum((LEARNING / source).stat().st_size for source in used_images)
+        <= 6 * 1024 * 1024
+    )
 
 
 def test_chapter_nine_contains_no_malformed_emission_subscript() -> None:
