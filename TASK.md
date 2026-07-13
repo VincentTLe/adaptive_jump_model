@@ -3,7 +3,7 @@
 ## Identity
 
 - `task_id`: `interactive-textbook-001`
-- `status`: `active`
+- `status`: `complete`
 - `target_branch`: `cleanup/research-protocol`
 - `starting_ref`: `bd130224da212a6934b006e7e7f525982ed71f49`
 - `primary_class`: `ENGINEERING / DOCUMENTATION`
@@ -143,3 +143,26 @@ not retain the old short course as a parallel active stack or add redirects.
 - Full pytest, Ruff, lock, package, clean-archive, and archive-immutability
   acceptance pass before task completion.
 - End each part with a handoff and stop for owner review.
+
+## Outcome
+
+Completed on 2026-07-13 without changing market data, the frozen v7 protocol,
+any model, metric, result, gate, or scientific conclusion.
+
+- The course now contains fourteen progressive English chapters and 37,747
+  visible words, with one deterministic lab, one quiz, worked examples,
+  mathematics, evidence boundaries, exercises, and feedback in every chapter.
+- Chapter 13 integrates Sections 1-5, Equation (1), Tables 1-5, and Figures 1-6
+  of the locked Shu, Yu, and Mulvey paper. Chapter 14 separates the paper's
+  reported finding, the archived legacy defects, and the verified v7 outcome.
+- The permanent authored-course contract passes 18 checks. The complete suite
+  passes 115 tests; Ruff check and format check pass.
+- Chromium passes 60 page-modes: index plus fourteen chapters at 1440x900 and
+  390x844, with external requests blocked, and with JavaScript disabled. The
+  interactive modes exercise 41 controls and 14 quizzes; both Chart.js canvases
+  are nonblank, and all navigation links in the course chain are clicked.
+- The locked environment, package build, dependency compatibility, and a clean
+  Git archive pass. The paper SHA-256 and archive immutability also pass.
+- The official through-2023 v7 artifact still verifies 131 inventory files, 18
+  boundary rows, and 27 metric rows. Its conclusion remains proxy
+  non-replication, so adaptive and post-2023 work remain unopened and blocked.
