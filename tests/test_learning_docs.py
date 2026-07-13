@@ -1,3 +1,4 @@
+import hashlib
 import json
 from html.parser import HTMLParser
 from pathlib import Path
@@ -121,6 +122,8 @@ class DocumentParser(HTMLParser):
         self.section_ids = set()
         self.class_counts = {}
         self.figures = []
+        self.images = []
+        self.media_credits = []
         self.figure_caption_count = 0
         self.math_arity_errors = []
         self.visible_text = []
@@ -142,9 +145,14 @@ class DocumentParser(HTMLParser):
             self.scripts.append((src, attributes.get("integrity")))
         if tag == "figure":
             self.figures.append(attributes)
+        if tag == "img":
+            self.images.append(attributes)
         if tag == "figcaption":
             self.figure_caption_count += 1
-        for class_name in (attributes.get("class") or "").split():
+        classes = (attributes.get("class") or "").split()
+        if "media-credit" in classes and attributes.get("data-media-path"):
+            self.media_credits.append(attributes)
+        for class_name in classes:
             self.class_counts[class_name] = self.class_counts.get(class_name, 0) + 1
 
         if tag == "math":
@@ -225,16 +233,30 @@ def test_authored_chapter_contract(filename: str, title: str) -> None:
 
     if document.figures:
         assert document.figure_caption_count == len(document.figures)
-        assert document.class_counts.get("teaching-figure", 0) == len(document.figures)
-        assert document.class_counts.get("deep-explanation", 0) >= 1
+        recognized_figures = 0
         for figure in document.figures:
+            classes = (figure.get("class") or "").split()
+            assert set(classes) & {
+                "teaching-figure",
+                "concept-illustration",
+                "source-lens",
+            }
             assert figure.get("id")
-            assert figure.get("data-visual-type") in {"interactive", "static"}
             assert figure.get("aria-label") or figure.get("aria-labelledby")
+            recognized_figures += 1
+            if "teaching-figure" in classes:
+                assert figure.get("data-visual-type") in {"interactive", "static"}
+        assert recognized_figures == len(document.figures)
+        if document.class_counts.get("teaching-figure", 0):
+            assert document.class_counts.get("deep-explanation", 0) >= 1
 
     if filename in VISUAL_TARGETS:
         static_target, interactive_target = VISUAL_TARGETS[filename]
-        visual_types = [figure["data-visual-type"] for figure in document.figures]
+        visual_types = [
+            figure["data-visual-type"]
+            for figure in document.figures
+            if "teaching-figure" in (figure.get("class") or "").split()
+        ]
         assert visual_types.count("static") == static_target
         assert visual_types.count("interactive") == interactive_target
 
@@ -266,6 +288,7 @@ def test_authored_chapter_order_and_navigation() -> None:
 def test_learning_documents_have_valid_local_references() -> None:
     pages = [
         LEARNING / "index.html",
+        LEARNING / "media-credits.html",
         *(LEARNING / filename for filename, _ in CHAPTERS),
     ]
     for page in pages:
@@ -307,6 +330,41 @@ def test_learning_stack_contains_no_mermaid() -> None:
         "mermaid" not in path.read_text(encoding="utf-8").lower()
         for path in authored_files
     )
+
+
+def test_shared_reading_mode_contract() -> None:
+    javascript = (LEARNING / "course.js").read_text(encoding="utf-8")
+    stylesheet = (LEARNING / "course.css").read_text(encoding="utf-8")
+
+    assert "Visual path" in javascript
+    assert "Full chapter" in javascript
+    assert "reading-detail-section" in javascript
+    assert "hashchange" in javascript
+    assert "if (!location.hash) return;" in javascript
+    assert "localStorage" not in javascript
+    assert 'body[data-reading-mode="visual"] .reading-detail-section' in stylesheet
+    assert "display: block !important" in stylesheet
+
+
+def test_media_credit_registry_matches_local_images() -> None:
+    credit_document = parse(LEARNING / "media-credits.html")
+    credits = {
+        entry["data-media-path"]: entry["data-sha256"]
+        for entry in credit_document.media_credits
+    }
+    used_images = set()
+    for page in LEARNING.glob("*.html"):
+        for image in parse(page).images:
+            source = image.get("src", "")
+            assert source.startswith("assets/")
+            assert image.get("alt", "").strip()
+            assert int(image.get("width", "0")) > 0
+            assert int(image.get("height", "0")) > 0
+            target = (page.parent / source).resolve()
+            assert target.exists()
+            assert credits[source] == hashlib.sha256(target.read_bytes()).hexdigest()
+            used_images.add(source)
+    assert used_images == set(credits)
 
 
 def test_chapter_nine_contains_no_malformed_emission_subscript() -> None:

@@ -159,7 +159,42 @@ document.documentElement.classList.add("js");
     return Object.freeze({ play, pause: stop, reset, setFrame });
   }
 
+  function mountReadingMode() {
+    const header = document.querySelector(".course-nav + .chapter-header");
+    if (!header) return;
+    let formulaKept = false;
+    document.querySelectorAll(".chapter-section").forEach((section) => {
+      const fixed = section.matches("#question, #evidence-limitations, #practice, #advisor");
+      const primary = section.querySelector(".teaching-figure, .concept-illustration, .source-lens, .lab");
+      const formula = !formulaKept && section.querySelector(".formula");
+      if (formula) formulaKept = true;
+      section.classList.toggle("reading-detail-section", !(fixed || primary || formula));
+    });
+    const toolbar = document.createElement("div");
+    toolbar.className = "reading-mode";
+    toolbar.innerHTML = '<span class="reading-mode-label">Reading depth</span><div role="group" aria-label="Reading depth"><button class="button" type="button" data-reading-mode="visual">Visual path</button><button class="button" type="button" data-reading-mode="full">Full chapter</button></div><span class="reading-mode-status" aria-live="polite"></span>';
+    header.after(toolbar);
+    const buttons = [...toolbar.querySelectorAll("[data-reading-mode]")];
+    const status = toolbar.querySelector(".reading-mode-status");
+    function setMode(mode) {
+      document.body.dataset.readingMode = mode;
+      buttons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.readingMode === mode)));
+      document.querySelectorAll("details.deep-explanation").forEach((details) => { details.open = mode === "full"; });
+      status.textContent = mode === "visual" ? "Visual path selected" : "Full chapter selected";
+    }
+    buttons.forEach((button) => button.addEventListener("click", () => setMode(button.dataset.readingMode)));
+    function revealHash() {
+      if (!location.hash) return;
+      const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+      if (target?.closest(".reading-detail-section")) setMode("full");
+    }
+    setMode("visual");
+    revealHash();
+    window.addEventListener("hashchange", revealHash);
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
+    mountReadingMode();
     document.querySelectorAll("input[type='range'][data-output]").forEach((input) => {
       updateRangeOutput(input);
       input.addEventListener("input", () => updateRangeOutput(input));
