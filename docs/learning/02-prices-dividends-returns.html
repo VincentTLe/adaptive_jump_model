@@ -55,6 +55,12 @@
     <p>Some market files contain an <span class="term">adjusted price</span>. The adjustment may account for splits, dividends, capital distributions, or vendor-specific repairs. It can be useful, but the label does not prove equivalence to an official total-return index. A researcher must document the field, adjustment setting, provider, currency, and methodology rather than silently assuming that every adjusted series means the same thing.</p>
     <p>A <span class="term">stock split</span> changes the number of shares and price per share without creating economic gain by itself. If one $100 share becomes two $50 shares, the owner still has $100. An unadjusted chart may appear to show a 50% crash even though no wealth disappeared. A dividend is different: value is transferred to the owner and must be included in total return. Good adjustment handles both events according to a declared methodology; blindly applying a vendor field can hide which treatment occurred.</p>
     <p>Reinvestment also has a precise meaning. If a $4 dividend is paid, a total-return index assumes that the $4 purchases additional units under the index convention. Those extra units participate in later gains and losses. The result is not simply “add every dividend at the end.” Reinvestment changes the base that compounds through all later periods, which is why a small repeated distribution can create a large long-horizon gap between price and total-return histories.</p>
+    <figure class="teaching-figure" id="corporate-actions-figure" data-visual-type="static" aria-labelledby="corporate-actions-title">
+      <span class="teaching-label">Teaching example</span><h3 id="corporate-actions-title">A split changes the share record; a distribution enters the wealth record</h3>
+      <div class="visual-stage"><svg viewBox="0 0 440 330" role="img" aria-labelledby="corporate-actions-svg-title corporate-actions-svg-desc"><title id="corporate-actions-svg-title">Stock split and distribution compared</title><desc id="corporate-actions-svg-desc">The top lane shows one 100 dollar share becoming two 50 dollar shares while wealth stays 100 dollars. The bottom lane shows a flat 100 dollar quoted price plus a 4 dollar distribution producing 104 dollars of investor wealth.</desc><text x="18" y="28" font-size="18" font-weight="700">Stock split</text><rect class="diagram-low" x="18" y="45" width="145" height="76" rx="8"/><text x="90" y="76" font-size="18" text-anchor="middle">1 share × $100</text><text x="90" y="103" font-size="17" text-anchor="middle">wealth $100</text><path class="diagram-link" d="M163 83 H272"/><path d="M272 83 L258 75 L258 91 Z" fill="#aab3bf"/><text x="218" y="69" font-size="15" text-anchor="middle">2-for-1 split</text><rect class="diagram-low" x="272" y="45" width="150" height="76" rx="8"/><text x="347" y="76" font-size="18" text-anchor="middle">2 shares × $50</text><text x="347" y="103" font-size="17" text-anchor="middle">wealth $100</text><line class="diagram-link" x1="18" y1="151" x2="422" y2="151" stroke-dasharray="5 5"/><text x="18" y="181" font-size="18" font-weight="700">Distribution</text><rect class="diagram-unavailable" x="18" y="198" width="145" height="76" rx="8"/><text x="90" y="226" font-size="17" text-anchor="middle">quoted price</text><text x="90" y="254" font-size="18" text-anchor="middle">$100</text><path class="diagram-link" d="M163 236 H272"/><path d="M272 236 L258 228 L258 244 Z" fill="#aab3bf"/><text x="218" y="222" font-size="15" text-anchor="middle">receive $4</text><rect class="diagram-cash" x="272" y="198" width="150" height="76" rx="8"/><text x="347" y="229" font-size="18" text-anchor="middle">$100 + $4 cash</text><text x="347" y="256" font-size="17" text-anchor="middle">wealth $104</text><text x="220" y="309" font-size="15" text-anchor="middle">A quoted price is only one component of the investor's record.</text></svg></div>
+      <figcaption class="visual-caption">The two lanes are separate teaching cases. A split changes units without creating gain. A distribution transfers value to the owner, so total wealth includes both the quoted holding and the received cash before any reinvestment convention.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> a large visible price change can leave wealth unchanged, while a flat price can coexist with positive wealth return.</div>
+    </figure>
     <div class="concept-grid three">
       <div class="panel"><h3>Price level</h3><p>A measurement at one date. It is not yet a return.</p></div>
       <div class="panel"><h3>Simple return</h3><p>The proportional wealth change between two valid dates.</p></div>
@@ -110,17 +116,13 @@
         <div class="panel"><span class="label">Total return</span><strong class="big-number" id="total-return-value">4.00%</strong></div>
         <div class="panel"><span class="label">Excess return</span><strong class="big-number" id="excess-return-value">3.50%</strong></div>
       </div>
-      <div class="chart-wrap enhanced-only"><canvas id="return-chart" role="img" aria-label="Ending wealth from price-only, total-return, and cash alternatives"></canvas></div>
-      <div class="table-wrap fallback-table">
-        <table class="data-table">
-          <thead><tr><th>Alternative</th><th>Ending wealth from $100</th></tr></thead>
-          <tbody>
-            <tr><td>Price only</td><td id="price-wealth-cell">$102.00</td></tr>
-            <tr><td>Total return</td><td id="total-wealth-cell">$104.00</td></tr>
-            <tr><td>Cash</td><td id="cash-wealth-cell">$100.50</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <figure class="teaching-figure" id="ending-wealth-figure" data-visual-type="interactive" aria-labelledby="ending-wealth-title">
+        <span class="teaching-label">Teaching example</span><h3 id="ending-wealth-title">One starting balance produces three ending-wealth definitions</h3>
+        <div class="chart-wrap visual-enhancement"><canvas id="return-chart" role="img" aria-label="Ending wealth from price-only, total-return, and cash alternatives"></canvas></div>
+        <div class="table-wrap visual-fallback"><table class="data-table"><thead><tr><th>Alternative</th><th>Ending wealth from $100</th></tr></thead><tbody><tr><td>Price only</td><td id="price-wealth-cell">$102.00</td></tr><tr><td>Total return</td><td id="total-wealth-cell">$104.00</td></tr><tr><td>Cash</td><td id="cash-wealth-cell">$100.50</td></tr></tbody></table></div>
+        <figcaption class="visual-caption">Change any laboratory input. The bars compare wealth after the same period and the same $100 starting balance. If Chart.js is unavailable, the exact table remains visible.</figcaption>
+        <div class="what-to-notice"><strong>What to notice:</strong> the distribution belongs in total-return wealth, while cash is a separate benchmark used to calculate excess return.</div>
+      </figure>
       <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The default calculation remains fully visible in the table.</p></noscript>
     </div>
     <h3>A common failure: subtracting cash from price return</h3>
@@ -132,6 +134,13 @@
     <div class="eyebrow">Worked example two</div>
     <h2>Returns compound; they do not simply add</h2>
     <p>Start with $100. A 10% gain raises wealth to $110. A 10% loss on the next day removes $11, not $10, because the second return acts on the new wealth. Ending wealth is $99. Adding +10% and −10% incorrectly suggests no change. Compounding correctly shows a 1% loss.</p>
+    <figure class="teaching-figure" id="compounding-stepper-figure" data-visual-type="interactive" aria-labelledby="compounding-stepper-title">
+      <span class="teaching-label">Teaching example</span><h3 id="compounding-stepper-title">Follow the changing dollar base one period at a time</h3>
+      <div class="visual-stage"><svg id="compounding-stepper" viewBox="0 0 520 320" role="img" aria-label="Step 1 of 3: both methods start at 100 dollars"><text x="12" y="30" font-size="18" font-weight="700">Correct: multiply the current balance</text><path id="compound-link-one" class="diagram-link" d="M142 92 H213" data-animate/><path id="compound-link-two" class="diagram-link" d="M307 92 H378" data-animate/><text x="178" y="78" font-size="15" text-anchor="middle">× 1.10</text><text x="343" y="78" font-size="15" text-anchor="middle">× 0.90</text><rect id="compound-node-zero" class="diagram-low is-active" x="48" y="64" width="94" height="56" rx="8" data-animate/><rect id="compound-node-one" class="diagram-low" x="213" y="64" width="94" height="56" rx="8" data-animate/><rect id="compound-node-two" class="diagram-low" x="378" y="64" width="94" height="56" rx="8" data-animate/><text x="95" y="99" font-size="20" font-weight="700" text-anchor="middle">$100</text><text x="260" y="99" font-size="20" font-weight="700" text-anchor="middle">$110</text><text x="425" y="99" font-size="20" font-weight="700" text-anchor="middle">$99</text><text x="12" y="172" font-size="18" font-weight="700">Wrong: add percentage points to the start</text><path id="add-link-one" class="diagram-link" d="M142 234 H213" data-animate/><path id="add-link-two" class="diagram-link" d="M307 234 H378" data-animate/><text x="178" y="220" font-size="15" text-anchor="middle">+10 pts</text><text x="343" y="220" font-size="15" text-anchor="middle">−10 pts</text><rect id="add-node-zero" class="diagram-warning is-active" x="48" y="206" width="94" height="56" rx="8" data-animate/><rect id="add-node-one" class="diagram-warning" x="213" y="206" width="94" height="56" rx="8" data-animate/><rect id="add-node-two" class="diagram-warning" x="378" y="206" width="94" height="56" rx="8" data-animate/><text x="95" y="241" font-size="20" font-weight="700" text-anchor="middle">$100</text><text x="260" y="241" font-size="20" font-weight="700" text-anchor="middle">$110</text><text x="425" y="241" font-size="20" font-weight="700" text-anchor="middle">$100</text><text id="compounding-step-note" x="260" y="302" font-size="16" text-anchor="middle">Start: both methods agree at $100.</text></svg></div>
+      <div class="stepper-controls"><button class="button" type="button" data-stepper-action="previous" aria-label="Previous compounding period">&#9664;</button><button class="button" type="button" data-stepper-action="play">Play</button><button class="button" type="button" data-stepper-action="pause">Pause</button><button class="button" type="button" data-stepper-action="next" aria-label="Next compounding period">&#9654;</button><button class="button" type="button" data-stepper-action="reset">Reset</button><span class="stepper-status" data-stepper-status aria-live="polite">Start · step 1 of 3</span></div>
+      <figcaption class="visual-caption">Use Previous and Next to follow the same two returns. The upper lane multiplies each new balance; the lower lane deliberately shows the common but incorrect shortcut of adding percentage points to the original $100.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> both methods agree after +10%. They separate only when −10% acts on the new $110 base.</div>
+    </figure>
     <div class="timeline">
       <div><strong>Start</strong><span>$100.00</span><span>No return yet</span></div>
       <div><strong>After +10%</strong><span>$110.00</span><span>$100 × 1.10</span></div>
@@ -164,7 +173,7 @@
     <p>For small daily changes, simple and log returns are close but not identical. A 1% simple return has log return approximately 0.995%. The distinction grows for larger moves. A 100% simple gain has log return about 69.3%, while a 50% simple loss has log return about −69.3%. The symmetry reflects doubling and halving as opposite multiplicative moves.</p>
     <p>Neither language is universally “more correct.” Use the one required by the task. Strategy wealth accounting needs simple returns because dollars evolve through factors such as 1.03. The paper's Gaussian HMM is fitted to daily log total returns. The Jump Model features begin from simple excess returns. Silently replacing one with the other changes the experiment.</p>
     <p>Log returns also require positive levels because the logarithm of zero or a negative number is not defined in this setting. That is appropriate for a conventional positive index level but must still be validated. Moreover, adding log returns gives the cumulative log return, not the investor's final percentage gain until it is transformed back with the exponential function. Statistical convenience does not remove the need to interpret the result in economic units.</p>
-    <details><summary>Why +10% and −10% log returns reveal the loss</summary><p>The log returns are <math><mi>log</mi><mo>(</mo><mn>1.10</mn><mo>)</mo></math> and <math><mi>log</mi><mo>(</mo><mn>0.90</mn><mo>)</mo></math>. Their sum equals <math><mi>log</mi><mo>(</mo><mn>1.10</mn><mo>×</mo><mn>0.90</mn><mo>)</mo><mo>=</mo><mi>log</mi><mo>(</mo><mn>0.99</mn><mo>)</mo></math>, a negative value. Exponentiating that sum recovers the 0.99 total growth factor.</p></details>
+    <details class="deep-explanation"><summary>Why +10% and −10% log returns reveal the loss</summary><p>The log returns are <math><mi>log</mi><mo>(</mo><mn>1.10</mn><mo>)</mo></math> and <math><mi>log</mi><mo>(</mo><mn>0.90</mn><mo>)</mo></math>. Their sum equals <math><mi>log</mi><mo>(</mo><mn>1.10</mn><mo>×</mo><mn>0.90</mn><mo>)</mo><mo>=</mo><mi>log</mi><mo>(</mo><mn>0.99</mn><mo>)</mo></math>, a negative value. Exponentiating that sum recovers the 0.99 total growth factor.</p></details>
   </section>
 
   <section class="chapter-section" id="excess-return">
@@ -268,17 +277,42 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById(`${name}-wealth-cell`).textContent = Course.money(values[index]);
     });
     if (!window.Chart) return;
-    context.parentElement.classList.add("is-ready");
     if (chart) chart.destroy();
     chart = new Chart(context, {
       type: "bar",
       data: { labels: ["Price only", "Total return", "Cash"], datasets: [{ data: values, backgroundColor: ["#75b8ff", "#63d59a", "#f0bd64"] }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { suggestedMin: Math.min(...values) - 2 } } },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: Course.palette.unavailable }, grid: { color: "#343b46" } }, y: { suggestedMin: Math.min(...values) - 2, ticks: { color: Course.palette.unavailable }, grid: { color: "#343b46" } } } },
     });
+    context.parentElement.classList.add("is-ready");
   }
   inputs.forEach((input) => input.addEventListener("input", render));
   lab.addEventListener("course:reset", render);
   render();
+
+  const compoundingFigure = document.getElementById("compounding-stepper-figure");
+  const compoundingNotes = [
+    "Start: both methods agree at $100.",
+    "Period 1: $100 × 1.10 = $110.",
+    "Period 2: $110 × 0.90 = $99; adding returns incorrectly says $100.",
+  ];
+  function renderCompounding(frame) {
+    [0, 1, 2].forEach((index) => {
+      document.getElementById(`compound-node-${["zero", "one", "two"][index]}`).classList.toggle("is-active", index === frame);
+      document.getElementById(`add-node-${["zero", "one", "two"][index]}`).classList.toggle("is-active", index === frame);
+    });
+    ["one", "two"].forEach((name, index) => {
+      const active = index + 1 === frame;
+      document.getElementById(`compound-link-${name}`).classList.toggle("is-active", active);
+      document.getElementById(`add-link-${name}`).classList.toggle("is-active", active);
+    });
+    document.getElementById("compounding-step-note").textContent = compoundingNotes[frame];
+    document.getElementById("compounding-stepper").setAttribute("aria-label", `Step ${frame + 1} of 3: ${compoundingNotes[frame]}`);
+  }
+  Course.mountStepper(compoundingFigure, {
+    frameCount: 3,
+    render: renderCompounding,
+    describe: (frame) => `${frame === 0 ? "Start" : `Period ${frame}`} · step ${frame + 1} of 3`,
+  });
 });
 </script>
 </body>
