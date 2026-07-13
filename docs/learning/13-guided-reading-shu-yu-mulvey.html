@@ -29,6 +29,13 @@
     <h2>Can a late but persistent warning protect your $100?</h2>
     <p>Imagine that you hold $100 in an equity index. At the end of day <math><mi>t</mi></math>, a regime model identifies the current market as unfavorable. The model is not claiming to know tomorrow's return. It is saying that the pattern observed through today resembles a persistent adverse state. Under the paper's one-day operational delay, you still hold the index on day <math><mi>t</mi><mo>+</mo><mn>1</mn></math>, switch at that day's end, and first earn the cash return on day <math><mi>t</mi><mo>+</mo><mn>2</mn></math>.</p>
     <p>Use invented teaching returns. If the index loses 4% on day <math><mi>t</mi><mo>+</mo><mn>1</mn></math>, your $100 becomes $96. A 10-basis-point one-way switch costs <math><mn>0.001</mn><mo>&times;</mo><mn>96</mn><mo>=</mo><mn>0.096</mn></math>, leaving $95.904. If cash then earns 0% while the index loses another 10%, your strategy remains $95.904 while uninterrupted buy-and-hold falls from $96 to $86.40. The warning was late, paid a cost, and still reduced the later loss. Those numbers are a toy, not paper evidence.</p>
+    <figure class="concept-illustration" id="part-four-concept-illustration" aria-labelledby="part-four-concept-title">
+      <span class="teaching-label">Concept illustration - not data or evidence</span>
+      <h3 id="part-four-concept-title">A paper claim becomes usable evidence only after four different inspections</h3>
+      <img src="assets/part-iv-claim-evidence-gates.webp" width="1400" height="788" loading="eager" decoding="async" alt="A dark tactile teaching illustration: a folded manuscript releases a white claim token through a blue data-matching gate, an amber chronology gate, two independent replication lanes, and a final evidence balance that separates supported green evidence from unresolved amber uncertainty.">
+      <figcaption class="visual-caption">Read left to right. A statement begins in a paper, but data identity, causal protocol, independent reconstruction, and evidence strength ask different questions. The final green and amber objects stay separate because support and unresolved uncertainty can coexist.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> no gate repairs a failure at an earlier gate. Attractive reported results cannot substitute for data parity, and reproducible computation cannot by itself establish that a scientific claim is general.</div>
+    </figure>
     <div class="example-grid">
       <article class="worked-example"><h3>What the paper asks</h3><span class="big-number">Identify, delay, protect</span><p>Can online states support a realistic 0/1 strategy that reduces downside risk after costs and delay, and does a Jump Model produce more useful persistent states than an HMM?</p></article>
       <article class="worked-example failure"><h3>A common failure: call it prediction</h3><span class="big-number">State today &ne; return tomorrow</span><p>A red bear label for day <math><mi>t</mi></math> identifies the prevailing state using data through <math><mi>t</mi></math>. The economic bet is persistence, not advance knowledge of the next return.</p></article>
@@ -77,13 +84,21 @@
     <div class="eyebrow">Interactive teaching visual</div>
     <h2>Inspect one link of the claim chain at a time</h2>
     <p>Move through six reading stages. Each stage asks a different question, points to the exact paper location, and names the mistake that would break the argument. This is a navigation aid; it calculates no market result.</p>
-    <div class="lab" id="reading-lab">
-      <div class="lab-header"><div><h3>Paper claim-chain inspector</h3><p>Use the slider or arrow keys. Reset returns to the research question.</p></div><button class="button" type="button" data-reset>Reset</button></div>
-      <form><label for="reading-stage">Stage: <output id="reading-stage-output" for="reading-stage">1 of 6</output></label><input id="reading-stage" type="range" min="1" max="6" value="1" data-output="reading-stage-output" data-suffix=" of 6"></form>
-      <div class="lab-output" aria-live="polite"><span class="label" id="stage-location">Section 1</span><h3 id="stage-title">Question: can persistent online states reduce downside risk?</h3><p id="stage-detail">Begin with the economic problem and the benchmark comparisons. Do not begin with the most attractive metric.</p><p><strong>Audit question:</strong> <span id="stage-audit">Is the claimed benefit about prediction, identification, risk reduction, or all three?</span></p></div>
-      <div class="table-wrap fallback-table"><table class="data-table" aria-label="Complete paper claim chain fallback"><thead><tr><th>Stage</th><th>Paper location</th><th>What to establish</th></tr></thead><tbody><tr><td>1. Question</td><td>Section 1</td><td>Economic problem, scope, and benchmarks</td></tr><tr><td>2. Data</td><td>Section 2; Figure 1; Table 1</td><td>Exact observations and market diversity</td></tr><tr><td>3. Mechanism</td><td>Sections 3.1&ndash;3.4; Equation (1)</td><td>How persistence enters identification and trading</td></tr><tr><td>4. Protocol</td><td>Sections 3.3&ndash;3.4.3; Tables 2&ndash;3; Figures 2&ndash;4</td><td>What was knowable at each decision date</td></tr><tr><td>5. Evidence</td><td>Section 4; Table 4; Figures 5&ndash;6</td><td>Reported comparative paths and point estimates</td></tr><tr><td>6. Limits</td><td>Sections 4.1&ndash;5; Table 5</td><td>Delay robustness, unresolved uncertainty, and future work</td></tr></tbody></table></div>
+    <figure class="teaching-figure lab" id="paper-claim-chain-figure" data-visual-type="interactive" aria-labelledby="paper-claim-chain-title">
+      <span class="teaching-label">Teaching example</span><h3 id="paper-claim-chain-title">Navigate the claim from question to limits without jumping to the winning chart</h3>
+      <div class="visual-enhancement" id="claim-chain-visual">
+        <div class="state-strip model-strip" id="claim-chain-map" role="group" aria-label="Six clickable stages in the paper claim chain">
+          <button class="state-day low-state" type="button" data-claim-stage="0" aria-current="step"><b>1</b><small>question</small></button><button class="state-day normal" type="button" data-claim-stage="1"><b>2</b><small>data</small></button><button class="state-day normal" type="button" data-claim-stage="2"><b>3</b><small>mechanism</small></button><button class="state-day normal" type="button" data-claim-stage="3"><b>4</b><small>protocol</small></button><button class="state-day normal" type="button" data-claim-stage="4"><b>5</b><small>evidence</small></button><button class="state-day normal" type="button" data-claim-stage="5"><b>6</b><small>limits</small></button>
+        </div>
+        <form><label for="reading-stage">Stage: <output id="reading-stage-output" for="reading-stage">1 of 6</output></label><input id="reading-stage" type="range" min="1" max="6" value="1" data-output="reading-stage-output" data-suffix=" of 6"></form>
+        <div class="stepper-controls" role="group" aria-label="Claim-chain playback controls"><button class="button" type="button" data-stepper-action="previous">Previous</button><button class="button" type="button" data-stepper-action="play">Play</button><button class="button" type="button" data-stepper-action="pause">Pause</button><button class="button" type="button" data-stepper-action="next">Next</button><button class="button" type="button" data-stepper-action="reset" data-reset>Reset</button><span class="stepper-status" data-stepper-status aria-live="polite">Stage 1 of 6: question</span></div>
+        <div class="lab-output" aria-live="polite"><span class="label" id="stage-location">Section 1</span><h3 id="stage-title">Question: can persistent online states reduce downside risk?</h3><p id="stage-detail">Begin with the economic problem and the benchmark comparisons. Do not begin with the most attractive metric.</p><p><strong>Audit question:</strong> <span id="stage-audit">Is the claimed benefit about prediction, identification, risk reduction, or all three?</span></p></div>
+      </div>
+      <div class="table-wrap visual-fallback"><table class="data-table" aria-label="Complete paper claim chain fallback"><thead><tr><th>Stage</th><th>Paper location</th><th>What to establish</th></tr></thead><tbody><tr><td>1. Question</td><td>Section 1</td><td>Economic problem, scope, and benchmarks</td></tr><tr><td>2. Data</td><td>Section 2; Figure 1; Table 1</td><td>Exact observations and market diversity</td></tr><tr><td>3. Mechanism</td><td>Sections 3.1&ndash;3.4; Equation (1)</td><td>How persistence enters identification and trading</td></tr><tr><td>4. Protocol</td><td>Sections 3.3&ndash;3.4.3; Tables 2&ndash;3; Figures 2&ndash;4</td><td>What was knowable at each decision date</td></tr><tr><td>5. Evidence</td><td>Section 4; Table 4; Figures 5&ndash;6</td><td>Reported comparative paths and point estimates</td></tr><tr><td>6. Limits</td><td>Sections 4.1&ndash;5; Table 5</td><td>Delay robustness, unresolved uncertainty, and future work</td></tr></tbody></table></div>
       <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The full six-stage reading sequence remains in the visible table. Begin at the question and never skip directly to the result.</p></noscript>
-    </div>
+      <figcaption class="visual-caption">The six stages are reading questions, not six tests already passed. Use the map, slider, keyboard, or playback controls to inspect what each paper section contributes and what failure at that stage would change.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> evidence is stage five, not stage one. A favorable line or table cell becomes interpretable only after the economic question, data identity, mechanism, and causal protocol are understood.</div>
+    </figure>
   </section>
 
   <section class="chapter-section" id="paper-connection">
@@ -92,6 +107,17 @@
     <p>The locked source is <a href="../../2402.05272v3.pdf">arXiv:2402.05272v3</a>, dated 17 September 2024. Its SHA-256 is recorded by the course task so another PDF revision cannot silently replace the protocol source. Equation (1) supplies the JM objective; Sections 3.4.1&ndash;3.4.3 turn that objective into features, online states, and monthly model selection; Section 3.1 turns states into positions; Section 4 measures the positions.</p>
     <p>This distinction matters because a correct implementation of Equation (1) can still fail to reproduce the paper if it uses price returns instead of total returns, no local cash return, a shorter fitting window, retrospective states, a different validation objective, a different delay, or unequal metric dates. Scientific replication concerns the connected procedure, not a recognizable model name.</p>
     <p>The paper reports that the JM-guided strategy has the preferred risk and risk-adjusted ordering in its three markets, and that its persistence makes performance more robust to delay. Cite those statements as the authors' findings supported by Table 4, Figures 5&ndash;6, and Table 5. Do not present a copied row as universal truth, and do not infer causality merely because bear shading overlaps well-known crises.</p>
+    <figure class="source-lens" id="paper-figure-five-lens" data-paper-figure="5" data-paper-page="17" aria-labelledby="paper-figure-five-lens-title">
+      <span class="teaching-label">Paper reading guide - original schematic</span>
+      <h3 id="paper-figure-five-lens-title">Read Figure 5 as aligned layers, delayed positions, and three separate market panels</h3>
+      <div class="source-lens-flow">
+        <div class="source-lens-step"><svg viewBox="0 0 240 150" role="img" aria-label="Three strategy layers and shifted bear shading share one time axis"><rect class="diagram-node" x="10" y="16" width="220" height="105" rx="7"/><rect class="diagram-high" x="118" y="25" width="38" height="86" opacity=".75"/><path d="M77 44 H214" stroke="#75b8ff" stroke-width="4"/><path d="M77 70 H214" stroke="#f0bd64" stroke-width="4"/><path d="M77 96 H214" stroke="#63d59a" stroke-width="4"/><text x="28" y="48" font-size="13">market</text><text x="28" y="74" font-size="13">JM</text><text x="28" y="100" font-size="13">HMM</text><text x="137" y="139" font-size="14" text-anchor="middle">one aligned time axis</text></svg><h4>1. Separate the layers</h4><p>Identify the market, JM strategy, HMM strategy, and shifted JM bear shading before judging any apparent overlap.</p></div>
+        <div class="source-lens-step"><svg viewBox="0 0 240 150" role="img" aria-label="An online JM bear state passes through a two-row delay before cash position and a flat excess-return segment"><rect class="diagram-high" x="3" y="45" width="52" height="46" rx="6"/><text x="29" y="64" font-size="13" text-anchor="middle">bear</text><text x="29" y="81" font-size="13" text-anchor="middle">state</text><path class="diagram-link" d="M57 68 H72"/><path d="M76 68 L67 62 L67 74 Z" fill="#aab3bf"/><rect class="diagram-warning" x="78" y="45" width="48" height="46" rx="6"/><text x="102" y="64" font-size="13" text-anchor="middle">shift</text><text x="102" y="81" font-size="13" text-anchor="middle">2 rows</text><path class="diagram-link" d="M128 68 H143"/><path d="M147 68 L138 62 L138 74 Z" fill="#aab3bf"/><rect class="diagram-cash" x="149" y="45" width="43" height="46" rx="6"/><text x="170" y="74" font-size="13" text-anchor="middle">cash</text><path class="diagram-link" d="M194 68 H209"/><path d="M213 68 L204 62 L204 74 Z" fill="#aab3bf"/><path d="M214 68 H236" stroke="#63d59a" stroke-width="5"/><circle cx="149" cy="106" r="6" fill="#f0bd64"/><text x="120" y="126" font-size="14" text-anchor="middle">cost at the switch</text><text x="120" y="144" font-size="14" text-anchor="middle">then cash excess is flat</text></svg><h4>2. Trace state to position</h4><p>The displayed shading is shifted to the delayed allocation date. A flat JM excess-return segment can indicate cash, not missing data.</p></div>
+        <div class="source-lens-step"><svg viewBox="0 0 240 150" role="img" aria-label="Three separate market panels repeat the same four-layer reading checklist"><rect class="diagram-low" x="8" y="20" width="68" height="86" rx="7"/><rect class="diagram-warning" x="86" y="20" width="68" height="86" rx="7"/><rect class="diagram-cash" x="164" y="20" width="68" height="86" rx="7"/><text x="42" y="43" font-size="14" text-anchor="middle">S&amp;P 500</text><text x="120" y="43" font-size="14" text-anchor="middle">DAX</text><text x="198" y="43" font-size="14" text-anchor="middle">Nikkei</text><g fill="none" stroke-width="4"><path d="M21 64 H63" stroke="#75b8ff"/><path d="M21 76 H63" stroke="#f0bd64"/><path d="M21 88 H63" stroke="#63d59a"/><path d="M99 64 H141" stroke="#75b8ff"/><path d="M99 76 H141" stroke="#f0bd64"/><path d="M99 88 H141" stroke="#63d59a"/><path d="M177 64 H219" stroke="#75b8ff"/><path d="M177 76 H219" stroke="#f0bd64"/><path d="M177 88 H219" stroke="#63d59a"/></g><text x="120" y="134" font-size="14" text-anchor="middle">compare panels; do not pool them</text></svg><h4>3. Repeat the audit</h4><p>Apply the same timing and layer questions independently to each market before summarizing a cross-market pattern.</p></div>
+      </div>
+      <figcaption class="visual-caption"><a href="../../2402.05272v3.pdf#page=17">Figure 5 on PDF page 17</a> reports cumulative excess-return paths for the market, JM strategy, and HMM strategy across three markets, with online JM bear regimes shifted to the strategy's delayed position dates. This guide copies none of its paths, coordinates, dates, percentages, shift counts, or empirical ordering.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> Figure 5 combines identification, execution, allocation, and wealth on one time axis. The bear shading is not a forecast made two days earlier, and visual overlap alone does not quantify uncertainty or prove independent replication.</div>
+    </figure>
   </section>
 
   <section class="chapter-section" id="project-connection">
@@ -106,7 +132,22 @@
   <section class="chapter-section" id="mathematics">
     <div class="eyebrow">Mathematical layer</div>
     <h2>Read Equation (1) term by term, then reconnect it to money</h2>
-    <div class="formula"><math display="block"><munder><mo>min</mo><mrow><mi>&Theta;</mi><mo>,</mo><mi>S</mi></mrow></munder><mrow><munderover><mo>&sum;</mo><mrow><mi>t</mi><mo>=</mo><mn>0</mn></mrow><mrow><mi>T</mi><mo>&minus;</mo><mn>1</mn></mrow></munderover><mi>l</mi><mo>(</mo><msub><mi>x</mi><mi>t</mi></msub><mo>,</mo><msub><mi>&theta;</mi><msub><mi>s</mi><mi>t</mi></msub></msub><mo>)</mo><mo>+</mo><mi>&lambda;</mi><munderover><mo>&sum;</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>T</mi><mo>&minus;</mo><mn>1</mn></mrow></munderover><mn>1</mn><mo>{</mo><msub><mi>s</mi><mrow><mi>t</mi><mo>&minus;</mo><mn>1</mn></mrow></msub><mo>&ne;</mo><msub><mi>s</mi><mi>t</mi></msub><mo>}</mo></mrow></math></div>
+    <figure class="teaching-figure" id="equation-one-term-figure" data-visual-type="interactive" aria-labelledby="equation-one-term-title">
+      <span class="teaching-label">Teaching example</span><h3 id="equation-one-term-title">Select a symbol and follow its meaning from feature space to your delayed $100 allocation</h3>
+      <div class="formula"><math display="block"><munder><mo>min</mo><mrow><mi>&Theta;</mi><mo>,</mo><mi>S</mi></mrow></munder><mrow><munderover><mo>&sum;</mo><mrow><mi>t</mi><mo>=</mo><mn>0</mn></mrow><mrow><mi>T</mi><mo>&minus;</mo><mn>1</mn></mrow></munderover><mi>l</mi><mo>(</mo><msub><mi>x</mi><mi>t</mi></msub><mo>,</mo><msub><mi>&theta;</mi><msub><mi>s</mi><mi>t</mi></msub></msub><mo>)</mo><mo>+</mo><mi>&lambda;</mi><munderover><mo>&sum;</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>T</mi><mo>&minus;</mo><mn>1</mn></mrow></munderover><mn>1</mn><mo>{</mo><msub><mi>s</mi><mrow><mi>t</mi><mo>&minus;</mo><mn>1</mn></mrow></msub><mo>&ne;</mo><msub><mi>s</mi><mi>t</mi></msub><mo>}</mo></mrow></math></div>
+      <div class="visual-enhancement" id="equation-term-visual">
+        <div class="control-grid" id="equation-term-buttons" role="group" aria-label="Clickable terms in Equation 1">
+          <button class="button state-day low-state" type="button" data-equation-term="0" aria-pressed="true"><b><math><mi>&Theta;</mi></math></b><small>centroids</small></button><button class="button state-day normal" type="button" data-equation-term="1" aria-pressed="false"><b><math><mi>S</mi></math></b><small>state path</small></button><button class="button state-day normal" type="button" data-equation-term="2" aria-pressed="false"><b><math><munderover><mo>&sum;</mo><mrow><mi>t</mi><mo>=</mo><mn>0</mn></mrow><mrow><mi>T</mi><mo>&minus;</mo><mn>1</mn></mrow></munderover><mi>l</mi><mo>(</mo><msub><mi>x</mi><mi>t</mi></msub><mo>,</mo><msub><mi>&theta;</mi><msub><mi>s</mi><mi>t</mi></msub></msub><mo>)</mo></math></b><small>feature mismatch</small></button><button class="button state-day normal" type="button" data-equation-term="3" aria-pressed="false"><b><math><mi>&lambda;</mi><munderover><mo>&sum;</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>T</mi><mo>&minus;</mo><mn>1</mn></mrow></munderover><mn>1</mn><mo>{</mo><msub><mi>s</mi><mrow><mi>t</mi><mo>&minus;</mo><mn>1</mn></mrow></msub><mo>&ne;</mo><msub><mi>s</mi><mi>t</mi></msub><mo>}</mo></math></b><small>switch regularizer</small></button>
+        </div>
+        <div class="visual-layout">
+          <div class="lab-output" style="min-height:190px"><span class="label">Plain-English meaning</span><h3 id="equation-term-name">Centroids define the typical feature pattern of each state</h3><p id="equation-term-meaning">The optimization places one point in standardized feature space for every state. Daily feature vectors are compared with these reference points.</p></div>
+          <div class="panel" style="min-height:190px"><span class="label">$100 consequence</span><p id="equation-term-consequence">A centroid is not a portfolio weight. It can change which state is selected, and only that later state-to-position mapping can redirect your $100.</p><p class="muted" id="equation-term-boundary"><strong>Boundary:</strong> estimated in feature units, not dollars or basis points.</p></div>
+        </div>
+      </div>
+      <div class="table-wrap visual-fallback"><table class="data-table" aria-label="Equation 1 term explanations"><thead><tr><th>Term</th><th>Plain-English role</th><th>$100 consequence and boundary</th></tr></thead><tbody><tr><td><math><mi>&Theta;</mi></math></td><td>Centroids define typical state feature patterns.</td><td>They influence the selected state but are not portfolio weights or dollars.</td></tr><tr><td><math><mi>S</mi></math></td><td>The complete sequence of favorable and unfavorable assignments.</td><td>The terminal state maps to market or cash only after the trading delay.</td></tr><tr><td>Fit-loss sum</td><td>Charges feature mismatch between each observation and its assigned centroid.</td><td>It is an objective score, not a financial loss deducted from $100.</td></tr><tr><td>Jump-penalty sum</td><td>Charges <math><mi>&lambda;</mi></math> objective units for every adjacent state change.</td><td>It can alter turnover indirectly; <math><mi>&lambda;</mi></math> is not the 10-bps transaction cost.</td></tr></tbody></table></div>
+      <figcaption class="visual-caption">Equation (1) jointly chooses centroids and a state path by balancing feature fit against state changes. Click each term to connect its mathematical role to the later market-or-cash strategy without confusing objective units with portfolio dollars.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> the equation contains no return forecast, trading delay, cash return, or transaction cost. Those enter later protocol links, so implementing this objective alone does not reproduce the paper's economic experiment.</div>
+    </figure>
     <div class="table-wrap"><table class="symbol-table"><thead><tr><th>Symbol</th><th>Meaning</th><th>Unit or allowed values</th></tr></thead><tbody><tr><td><math><mi>t</mi></math>, <math><mi>T</mi></math></td><td>Time index and number of observations</td><td>Trading-row index; positive count</td></tr><tr><td><math><msub><mi>x</mi><mi>t</mi></msub></math></td><td>Standardized feature vector available at day <math><mi>t</mi></math></td><td>Three dimensionless feature coordinates</td></tr><tr><td><math><msub><mi>&theta;</mi><mi>k</mi></msub></math>, <math><mi>&Theta;</mi></math></td><td>Centroid for state <math><mi>k</mi></math>, and the centroid collection</td><td>Same standardized feature space</td></tr><tr><td><math><msub><mi>s</mi><mi>t</mi></msub></math>, <math><mi>S</mi></math></td><td>State at day <math><mi>t</mi></math>, and the full path</td><td>0 favorable, 1 unfavorable</td></tr><tr><td><math><mi>l</mi><mo>(</mo><mi>x</mi><mo>,</mo><mi>&theta;</mi><mo>)</mo></math></td><td>Scaled squared Euclidean mismatch</td><td><math><mfrac><mn>1</mn><mn>2</mn></mfrac><msup><mrow><mo>&Vert;</mo><mi>x</mi><mo>&minus;</mo><mi>&theta;</mi><mo>&Vert;</mo></mrow><mn>2</mn></msup></math></td></tr><tr><td><math><mi>&lambda;</mi></math></td><td>Cost added for each state change</td><td>Nonnegative objective units</td></tr><tr><td><math><mn>1</mn><mo>{</mo><mo>&middot;</mo><mo>}</mo></math></td><td>Indicator: one when the condition is true, zero otherwise</td><td>0 or 1</td></tr></tbody></table></div>
     <h3>Derivation from ordinary clustering</h3>
     <p>With <math><mi>&lambda;</mi><mo>=</mo><mn>0</mn></math>, each date can choose the nearest centroid independently. That is the k-means assignment idea. A positive penalty couples adjacent decisions: changing state must reduce feature mismatch enough to pay <math><mi>&lambda;</mi></math>. For fixed centroids, dynamic programming records the cheapest partial path ending in each state:</p>
@@ -137,7 +178,7 @@
       <div class="quiz-options"><button class="button" type="button" data-choice data-correct="false" data-feedback-incorrect="Not quite. The paper explicitly distinguishes identification from next-day prediction.">It predicts whether tomorrow's index return will be positive.</button><button class="button" type="button" data-choice data-correct="true" data-feedback-correct="Correct. The signal identifies today's prevailing state using current history; trading relies on persistence after a delay.">It identifies the prevailing state through today and relies on that state persisting long enough to trade.</button><button class="button" type="button" data-choice data-correct="false" data-feedback-incorrect="No. The state is generated daily; only model fitting or hyperparameter-selection clocks are less frequent.">It labels one regime retrospectively at the end of every month.</button></div>
       <span class="quiz-feedback" aria-live="polite">Choose an answer, then check the explanation.</span><button class="button" type="button" data-reset>Reset question</button>
     </div>
-    <details><summary>Recall: what are the six links in the reading chain?</summary><p>Question, mechanism, protocol, evidence, robustness, and limitations. Data identity belongs inside the protocol and constrains the evidence.</p></details>
+    <details class="deep-explanation"><summary>Recall: what are the six links in the reading chain?</summary><p>Question, mechanism, protocol, evidence, robustness, and limitations. Data identity belongs inside the protocol and constrains the evidence.</p></details>
     <details><summary>Calculation: compare two paths in Equation (1)</summary><p>With zero mismatch, two switches, and <math><mi>&lambda;</mi><mo>=</mo><mn>4</mn></math>, the switch contribution is 8. A no-switch path with mismatch 7 has total 7, so the no-switch path is cheaper. This demonstrates how persistence can outweigh a modest local fit improvement.</p></details>
     <details><summary>Error diagnosis: a beautiful red regime chart</summary><p>Ask whether shading is retrospective in-sample state or daily online terminal state, whether it is shifted to the actual position date, and whether the chart includes cost. Figure 4 shows that retrospective and online labels differ. Visual overlap alone cannot establish tradable foresight.</p></details>
     <details><summary>Error diagnosis: reproduce Equation (1), change the data</summary><p>That reproduces a model objective, not the paper's experiment. Price versus total return, local cash, coverage, feature history, validation dates, and timing can all change states and performance. Label the result according to data parity.</p></details>
@@ -158,8 +199,11 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-  const lab = document.getElementById("reading-lab");
+  const chainVisual = document.getElementById("claim-chain-visual");
   const input = document.getElementById("reading-stage");
+  const stageOutput = document.getElementById("reading-stage-output");
+  const stageButtons = [...document.querySelectorAll("[data-claim-stage]")];
+  const stageNames = ["question", "data", "mechanism", "protocol", "evidence", "limits"];
   const stages = [
     ["Section 1", "Question: can persistent online states reduce downside risk?", "Begin with the economic problem and benchmark comparisons. Do not begin with the most attractive metric.", "Is the claimed benefit about prediction, identification, risk reduction, or all three?"],
     ["Section 2; Figure 1; Table 1", "Data: what observations define the experiment?", "Identify total-return indices, local Treasury-bill yields, currencies, dates, and independent market tests before reading results.", "Could a price index, different cash series, or shorter warm-up answer a different question?"],
@@ -168,16 +212,56 @@ document.addEventListener("DOMContentLoaded", () => {
     ["Section 4; Table 4; Figures 5-6", "Evidence: what comparative pattern do the authors report?", "Read point estimates beside regime timing and wealth paths across all three markets and both benchmarks.", "Is a statement directly reported, visually inferred, or independently reproduced?"],
     ["Sections 4.1-5; Table 5", "Limits: what survives delay, and what remains unknown?", "Separate the delay sensitivity from unresolved data identity, implementation detail, sampling uncertainty, and future extensions.", "How narrow must the conclusion remain before new data or a new experiment?"],
   ];
-  function render() {
-    const stage = stages[Number(input.value) - 1];
+  function renderStage(frame) {
+    const stage = stages[frame];
+    input.value = String(frame + 1);
+    stageOutput.value = `${frame + 1} of 6`;
+    stageButtons.forEach((button, index) => {
+      const active = index === frame;
+      button.classList.toggle("low-state", active);
+      button.classList.toggle("normal", !active);
+      if (active) button.setAttribute("aria-current", "step");
+      else button.removeAttribute("aria-current");
+    });
     document.getElementById("stage-location").textContent = stage[0];
     document.getElementById("stage-title").textContent = stage[1];
     document.getElementById("stage-detail").textContent = stage[2];
     document.getElementById("stage-audit").textContent = stage[3];
   }
-  input.addEventListener("input", render);
-  lab.addEventListener("course:reset", render);
-  render();
+  const chainStepper = Course.mountStepper(chainVisual, {
+    frameCount: stages.length,
+    intervalMs: 900,
+    render: renderStage,
+    describe: (frame) => `Stage ${frame + 1} of 6: ${stageNames[frame]}`,
+  });
+  input.addEventListener("input", () => chainStepper.setFrame(Number(input.value) - 1));
+  stageButtons.forEach((button) => button.addEventListener("click", () => chainStepper.setFrame(Number(button.dataset.claimStage))));
+  chainVisual.classList.add("is-ready");
+
+  const equationVisual = document.getElementById("equation-term-visual");
+  const termButtons = [...document.querySelectorAll("[data-equation-term]")];
+  const terms = [
+    ["Centroids define the typical feature pattern of each state", "The optimization places one point in standardized feature space for every state. Daily feature vectors are compared with these reference points.", "A centroid is not a portfolio weight. It can change which state is selected, and only that later state-to-position mapping can redirect your $100.", "estimated in feature units, not dollars or basis points."],
+    ["The state path records one discrete assignment for every date", "The path links neighboring dates, so today's assignment depends on both feature fit and the cost already accumulated by arriving from yesterday's state.", "Only the terminal state becomes today's signal. State 0 later routes $100 to the market; state 1 later routes it to cash after the operational delay.", "a state label is not a next-day return forecast."],
+    ["Feature mismatch rewards assigning each day to a nearby centroid", "The first sum adds scaled squared distances between every standardized feature vector and the centroid of its assigned state.", "A smaller mismatch can favor a different state and therefore a later allocation, but the score itself is not money subtracted from your $100 account.", "objective loss and portfolio loss are different units."],
+    ["The jump regularizer charges every adjacent state change", "The indicator is one only when consecutive labels differ, so lambda controls how much feature-fit improvement is required before the path switches.", "More persistence may reduce market-to-cash trades or delay a useful exit. Lambda affects turnover indirectly; it never deducts 10 basis points from your $100.", "lambda is selected objective smoothing, not transaction cost."],
+  ];
+  function renderTerm(index) {
+    const term = terms[index];
+    termButtons.forEach((button, buttonIndex) => {
+      const active = buttonIndex === index;
+      button.classList.toggle("low-state", active);
+      button.classList.toggle("normal", !active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+    document.getElementById("equation-term-name").textContent = term[0];
+    document.getElementById("equation-term-meaning").textContent = term[1];
+    document.getElementById("equation-term-consequence").textContent = term[2];
+    document.getElementById("equation-term-boundary").innerHTML = `<strong>Boundary:</strong> ${term[3]}`;
+  }
+  termButtons.forEach((button) => button.addEventListener("click", () => renderTerm(Number(button.dataset.equationTerm))));
+  renderTerm(0);
+  equationVisual.classList.add("is-ready");
 });
 </script>
 </body>

@@ -71,17 +71,20 @@ VISUAL_TARGETS = {
     "10-clustering-statistical-jump-models.html": (1, 2),
     "11-dynamic-programming-online-inference.html": (1, 2),
     "12-walk-forward-selection-performance.html": (1, 2),
+    "13-guided-reading-shu-yu-mulvey.html": (0, 2),
 }
 CONCEPT_ILLUSTRATION_TARGETS = {
     "01-money-assets-cash.html": 1,
     "05-data-parity-proxy-replication.html": 1,
     "08-returns-to-model-features.html": 1,
+    "13-guided-reading-shu-yu-mulvey.html": 1,
 }
 SOURCE_LENS_TARGETS = {
     "05-data-parity-proxy-replication.html": ("1", "4"),
     "09-hidden-markov-models.html": ("2", "9"),
     "10-clustering-statistical-jump-models.html": ("3", "12"),
     "11-dynamic-programming-online-inference.html": ("4", "14"),
+    "13-guided-reading-shu-yu-mulvey.html": ("5", "17"),
 }
 FIXED_MATH_ARITY = {
     "mfrac": 2,
