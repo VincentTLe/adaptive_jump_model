@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adaptive Jump Model: Start Here</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b0d10; --panel:#15191f; --line:#303640; --text:#f4f6f8; --muted:#aab3bf; --green:#63d59a; --amber:#f0bd64; --blue:#75b8ff; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.6 system-ui,sans-serif; }
+    main { width:min(980px, calc(100% - 32px)); margin:auto; padding:40px 0 64px; }
+    a { color:var(--blue); }
+    h1 { margin:8px 0 12px; font-size:clamp(2rem, 6vw, 3.4rem); line-height:1.08; letter-spacing:0; }
+    h2 { margin:0 0 8px; font-size:1.15rem; }
+    p { margin:0 0 12px; }
+    .eyebrow { color:var(--green); font-weight:700; text-transform:uppercase; }
+    .intro { max-width:720px; color:var(--muted); font-size:1.08rem; }
+    .remember { margin:28px 0; padding:18px; border-left:4px solid var(--green); background:#111b17; }
+    .path { display:grid; gap:12px; margin:28px 0; }
+    .lesson { display:grid; grid-template-columns:52px 1fr auto; gap:16px; align-items:center; padding:18px; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:inherit; text-decoration:none; }
+    .lesson:hover { border-color:var(--blue); }
+    .number { display:grid; place-items:center; width:44px; height:44px; border:1px solid var(--line); border-radius:50%; color:var(--green); font-weight:800; }
+    .lesson p { color:var(--muted); margin:0; }
+    .time { color:var(--amber); white-space:nowrap; }
+    .map { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:28px 0; }
+    .map div { min-height:96px; padding:14px; border-top:3px solid var(--blue); background:var(--panel); }
+    .map b,.map span { display:block; }
+    .map span { color:var(--muted); font-size:.9rem; }
+    .boundary { margin-top:32px; padding:18px; border:1px solid #705928; border-radius:8px; background:#1e190f; }
+    footer { margin-top:32px; color:var(--muted); font-size:.9rem; }
+    @media (max-width:700px) {
+      main { width:min(100% - 24px, 980px); padding-top:24px; }
+      .lesson { grid-template-columns:44px 1fr; }
+      .time { grid-column:2; }
+      .map { grid-template-columns:1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Beginner learning path</div>
+  <h1>How can a model decide when to leave the stock market?</h1>
+  <p class="intro">Start with no assumed knowledge. Four short lessons build from a $100 example to the project's verified fixed-model experiment.</p>
+
+  <div class="remember"><strong>One idea to remember:</strong> a trading result is believable only when the data, timing, model, and test are all defined before the result is inspected.</div>
+
+  <div class="map" aria-label="Learning sequence">
+    <div><b>Same input?</b><span>Data identity</span></div>
+    <div><b>Same file?</b><span>Hashes and records</span></div>
+    <div><b>No future?</b><span>Causal features</span></div>
+    <div><b>Fair winner?</b><span>Models and metrics</span></div>
+  </div>
+
+  <section class="path" aria-label="Lessons">
+    <a class="lesson" href="01-data-parity.html">
+      <span class="number">1</span><span><h2>Is this the same market data?</h2><p>Price, dividends, cash, and why a familiar index name is not enough.</p></span><span class="time">6 min</span>
+    </a>
+    <a class="lesson" href="02-data-pipeline.html">
+      <span class="number">2</span><span><h2>Can another person obtain the same input?</h2><p>Sources, cutoffs, file hashes, and the audit receipt.</p></span><span class="time">6 min</span>
+    </a>
+    <a class="lesson" href="03-returns-features.html">
+      <span class="number">3</span><span><h2>Did the model look into the future?</h2><p>Returns, simple features, and the two-day execution delay.</p></span><span class="time">8 min</span>
+    </a>
+    <a class="lesson" href="04-fixed-baselines.html">
+      <span class="number">4</span><span><h2>Did the Jump Model actually win?</h2><p>Buy-and-hold, HMM, Jump Model, and the current conclusion.</p></span><span class="time">10 min</span>
+    </a>
+  </section>
+
+  <div class="boundary"><strong>Research boundary:</strong> these lessons explain the frozen fixed-model proxy replication through 2023. Adaptive-model and post-2023 evidence remain closed.</div>
+
+  <footer>For an advisor-level overview, open <a href="../research-workflow-comparison.html">the three-workflow comparison</a>. The PDF paper and repository remain the source of truth.</footer>
+</main>
+</body>
+</html>
