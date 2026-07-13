@@ -41,6 +41,32 @@ CHAPTERS = [
         "The Paper, The Legacy Project, And The Verified V7 Run",
     ),
 ]
+BASELINE_WORDS = {
+    "01-money-assets-cash.html": 2_637,
+    "02-prices-dividends-returns.html": 2_518,
+    "03-risk-downside-losses.html": 2_500,
+    "04-market-regimes-persistence.html": 2_561,
+    "05-data-parity-proxy-replication.html": 2_582,
+    "06-reproducibility-sealed-evidence.html": 2_575,
+    "07-backtesting-without-future.html": 2_531,
+    "08-returns-to-model-features.html": 2_713,
+    "09-hidden-markov-models.html": 2_677,
+    "10-clustering-statistical-jump-models.html": 2_543,
+    "11-dynamic-programming-online-inference.html": 2_590,
+    "12-walk-forward-selection-performance.html": 2_686,
+    "13-guided-reading-shu-yu-mulvey.html": 3_228,
+    "14-paper-legacy-verified-v7.html": 3_406,
+}
+FIXED_MATH_ARITY = {
+    "mfrac": 2,
+    "mover": 2,
+    "mroot": 2,
+    "msub": 2,
+    "msubsup": 3,
+    "msup": 2,
+    "munder": 2,
+    "munderover": 3,
+}
 REQUIRED_SECTIONS = {
     "question",
     "vocabulary",
@@ -87,8 +113,13 @@ class DocumentParser(HTMLParser):
         self.scripts = []
         self.section_ids = set()
         self.class_counts = {}
+        self.figures = []
+        self.figure_caption_count = 0
+        self.math_arity_errors = []
         self.visible_text = []
         self._excluded_depth = 0
+        self._inside_math = False
+        self._math_stack = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
@@ -102,8 +133,20 @@ class DocumentParser(HTMLParser):
             self.hrefs.append(href)
         if tag == "script" and (src := attributes.get("src")):
             self.scripts.append((src, attributes.get("integrity")))
+        if tag == "figure":
+            self.figures.append(attributes)
+        if tag == "figcaption":
+            self.figure_caption_count += 1
         for class_name in (attributes.get("class") or "").split():
             self.class_counts[class_name] = self.class_counts.get(class_name, 0) + 1
+
+        if tag == "math":
+            self._inside_math = True
+            self._math_stack = []
+        elif self._inside_math:
+            if self._math_stack:
+                self._math_stack[-1][1] += 1
+            self._math_stack.append([tag, 0])
 
         if self._excluded_depth:
             if tag not in VOID_ELEMENTS:
@@ -112,6 +155,23 @@ class DocumentParser(HTMLParser):
             self._excluded_depth = 1
 
     def handle_endtag(self, tag: str) -> None:
+        if self._inside_math and tag == "math":
+            if self._math_stack:
+                self.math_arity_errors.append(("unclosed", len(self._math_stack)))
+            self._inside_math = False
+            self._math_stack = []
+        elif self._inside_math:
+            if not self._math_stack or self._math_stack[-1][0] != tag:
+                self.math_arity_errors.append(("nesting", tag))
+            else:
+                element, children = self._math_stack.pop()
+                if (
+                    element in FIXED_MATH_ARITY
+                    and children != FIXED_MATH_ARITY[element]
+                ):
+                    self.math_arity_errors.append(
+                        (element, children, FIXED_MATH_ARITY[element])
+                    )
         if self._excluded_depth:
             self._excluded_depth -= 1
 
@@ -141,7 +201,7 @@ def test_authored_chapter_contract(filename: str, title: str) -> None:
     visible_words = len(" ".join(document.visible_text).split())
 
     assert document.html_lang == "en"
-    assert 2_500 <= visible_words <= 3_500
+    assert BASELINE_WORDS[filename] <= visible_words <= 4_000
     assert REQUIRED_SECTIONS <= document.section_ids
     assert len(document.ids) == len(set(document.ids))
     assert document.class_counts.get("worked-example", 0) >= 2
@@ -154,6 +214,16 @@ def test_authored_chapter_contract(filename: str, title: str) -> None:
     assert "data-reset" in source
     assert "<math" in source
     assert "mermaid" not in source.lower()
+    assert not document.math_arity_errors
+
+    if document.figures:
+        assert document.figure_caption_count == len(document.figures)
+        assert document.class_counts.get("teaching-figure", 0) == len(document.figures)
+        assert document.class_counts.get("deep-explanation", 0) >= 1
+        for figure in document.figures:
+            assert figure.get("id")
+            assert figure.get("data-visual-type") in {"interactive", "static"}
+            assert figure.get("aria-label") or figure.get("aria-labelledby")
 
 
 def test_authored_chapter_order_and_navigation() -> None:
