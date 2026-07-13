@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Three Research Workflows: Legacy, Current, and Paper</title>
+  <style>
+    :root {
+      --bg:#0d1110; --surface:#171d1a; --surface2:#202823; --line:#3a4740;
+      --text:#f0f4f1; --muted:#aeb9b2; --green:#68d69b; --amber:#f2c55c;
+      --red:#ef8989; --blue:#72c9e8; --max:1180px;
+    }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.62 system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:0; }
+    header { padding:42px 22px 34px; border-bottom:1px solid var(--line); }
+    header>div,main,footer { width:min(var(--max),100%); margin:0 auto; }
+    main { padding:0 22px 68px; }
+    section { padding:38px 0; border-bottom:1px solid var(--line); }
+    h1,h2,h3 { line-height:1.22; letter-spacing:0; }
+    h1 { max-width:920px; margin:8px 0 13px; font-size:clamp(34px,5vw,52px); }
+    h2 { margin:0 0 14px; font-size:27px; }
+    h3 { margin:0 0 8px; font-size:18px; }
+    p { margin:0 0 13px; }
+    a { color:var(--blue); }
+    code { color:#d7f5f7; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; overflow-wrap:anywhere; }
+    .eyebrow,.tag { font-size:12px; font-weight:800; text-transform:uppercase; }
+    .eyebrow { color:var(--green); }
+    .lede { max-width:860px; color:var(--muted); font-size:19px; }
+    .answer { margin-top:20px; padding:18px; border-left:4px solid var(--amber); background:#252116; color:#f6e8b9; }
+    .legend { display:flex; flex-wrap:wrap; gap:14px; margin-top:20px; color:var(--muted); font-size:14px; }
+    .legend span { display:inline-flex; align-items:center; gap:7px; }
+    .dot { width:10px; height:10px; border-radius:50%; background:currentColor; }
+    .verified { color:var(--green); } .proxy { color:var(--amber); }
+    .defect { color:var(--red); } .control { color:var(--blue); }
+    .workflow { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:24px; margin:20px 0; }
+    .node { position:relative; min-width:0; min-height:142px; padding:16px; border:1px solid var(--line); border-top:4px solid var(--blue); border-radius:6px; background:var(--surface); }
+    .node:not(:last-child)::after { content:"\2192"; position:absolute; top:48%; right:-20px; color:var(--muted); font-size:22px; }
+    .node strong { display:block; margin:5px 0 7px; line-height:1.3; }
+    .node p { margin:0; color:var(--muted); font-size:14px; }
+    .node.red { border-top-color:var(--red); } .node.amber { border-top-color:var(--amber); }
+    .node.green { border-top-color:var(--green); } .node.blue { border-top-color:var(--blue); }
+    .stage { margin-top:20px; padding:18px; background:var(--surface2); border:1px solid var(--line); border-radius:6px; }
+    .stage-label { color:var(--blue); font-size:13px; font-weight:800; text-transform:uppercase; }
+    .finding-grid,.scenario-grid,.talk-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:18px; }
+    .finding,.scenario,.talk { min-width:0; padding:17px; border:1px solid var(--line); border-radius:6px; background:var(--surface); }
+    .finding strong,.scenario strong,.talk strong { display:block; margin-bottom:6px; }
+    .finding p,.scenario p,.talk p { margin:0; color:var(--muted); }
+    .finding.bad { border-left:4px solid var(--red); }
+    .finding.good { border-left:4px solid var(--green); }
+    .scenario { border-top:4px solid var(--amber); }
+    .callout { margin-top:18px; padding:17px; background:#151d21; border:1px solid #355765; color:#d9edf5; }
+    .table-wrap { overflow-x:auto; margin-top:18px; border:1px solid var(--line); border-radius:6px; }
+    table { width:100%; min-width:940px; border-collapse:collapse; background:var(--surface); }
+    th,td { padding:11px 12px; text-align:left; vertical-align:top; border-bottom:1px solid var(--line); }
+    th { color:var(--muted); font-size:13px; }
+    tbody tr:last-child td { border-bottom:0; }
+    td:first-child { color:var(--text); font-weight:700; }
+    .unknown { display:inline-block; color:var(--amber); font-weight:700; }
+    .withdrawn { display:inline-block; color:var(--red); font-weight:700; }
+    .outcome { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-top:18px; }
+    .outcome>div { padding:18px; border:1px solid var(--line); border-radius:6px; background:var(--surface); }
+    .outcome b { display:block; margin-bottom:6px; font-size:18px; }
+    .quote { padding:18px; background:#0a0d0b; border-left:4px solid var(--green); font-size:18px; }
+    .sources { columns:2; column-gap:34px; }
+    .sources li { margin:7px 0; break-inside:avoid; }
+    footer { padding:26px 22px 48px; color:var(--muted); font-size:14px; }
+    @media(max-width:900px) {
+      .workflow { grid-template-columns:1fr; gap:26px; }
+      .node { min-height:0; }
+      .node:not(:last-child)::after { content:"\2193"; top:auto; right:50%; bottom:-27px; }
+      .outcome { grid-template-columns:1fr; }
+    }
+    @media(max-width:680px) {
+      header { padding-top:32px; }
+      .finding-grid,.scenario-grid,.talk-grid { grid-template-columns:1fr; }
+      .sources { columns:1; }
+    }
+    @media print { body { background:#fff; color:#111; } .node,.stage,.finding,.scenario,.talk,.outcome>div,table { background:#fff; } }
+  </style>
+</head>
+<body>
+  <header><div>
+    <div class="eyebrow">Adaptive Jump Model Research Audit</div>
+    <h1>Three workflows explain why our result differs from the paper</h1>
+    <p class="lede">This document compares what the old repository actually ran, what the current verified pipeline runs, and what Shu, Yu, and Mulvey describe. It is designed for a discussion with an academic advisor.</p>
+    <div class="answer"><strong>Bottom line:</strong> the legacy result was not a paper replication. The current result is internally reproducible, but it is still a proxy replication with a later test period. Therefore, the current negative result cannot confirm or reject the paper until the original series identifiers and several implementation details are resolved.</div>
+    <div class="legend" aria-label="Diagram legend">
+      <span class="verified"><i class="dot"></i>Verified or aligned</span>
+      <span class="proxy"><i class="dot"></i>Proxy or unresolved</span>
+      <span class="defect"><i class="dot"></i>Verified defect or withdrawn claim</span>
+      <span class="control"><i class="dot"></i>Engineering control</span>
+    </div>
+  </div></header>
+
+  <main>
+    <section>
+      <h2>Workflow 1: the archived legacy project</h2>
+      <p>The old project contains two successive research directions. Both are preserved for provenance, but neither is active.</p>
+
+      <div class="stage">
+        <div class="stage-label">Legacy stage A - minute and tick experiments</div>
+        <div class="workflow">
+          <div class="node amber"><span class="tag">Input</span><strong>Kibot tick/minute files</strong><p>IBM, OIH, IVE, and WDC local files; mixed adjusted OHLCV and bid/ask formats.</p></div>
+          <div class="node red"><span class="tag">Question drift</span><strong>Microstructure features</strong><p>Spread, trade count, shocks, and noise scores. These are not the paper's daily return features.</p></div>
+          <div class="node red"><span class="tag">Model</span><strong>Custom HMM and JM stack</strong><p>Hand-set duration-based penalty scale and a separate custom dynamic program.</p></div>
+          <div class="node red"><span class="tag">Evaluation</span><strong>One train/test split</strong><p>No paper-style rolling 3,000-day fit plus eight-year monthly online validation.</p></div>
+          <div class="node amber"><span class="tag">Output</span><strong>Demo backtests and reports</strong><p>Useful engineering diagnostics, but not evidence about the Shu paper.</p></div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-label">Legacy stage B - Claude's pre-audit daily P0/P1/P2 pivot</div>
+        <div class="workflow">
+          <div class="node amber"><span class="tag">Input</span><strong>Yahoo price data, cash return = 0</strong><p>Required an uncommitted cache builder; no manifest, cutoff, or input hashes.</p></div>
+          <div class="node amber"><span class="tag">P0</span><strong>Approximate daily baseline</strong><p>2,520-day fit, 3- or 5-year validation, 126-day blocks, clipping, and OOS from 2005.</p></div>
+          <div class="node red"><span class="tag">Gate skipped</span><strong>Boundary-selected fixed penalty</strong><p>The largest tested penalty was repeatedly selected, yet P1 started before the fixed baseline was settled.</p></div>
+          <div class="node amber"><span class="tag">P1</span><strong>Adaptive penalty experiment</strong><p>A narrow exploratory null. It did nest fixed JM, but it was tested on an unsettled baseline.</p></div>
+          <div class="node red"><span class="tag">P2 withdrawn</span><strong>Asymmetric switch costs</strong><p>For two states, the proposed objective reduced to symmetric switching plus an endpoint term.</p></div>
+        </div>
+      </div>
+
+      <div class="finding-grid">
+        <div class="finding bad"><strong>What was wrong</strong><p>The research question, data, windows, risk-free return, decoder schedule, grid checks, and claim level differed from the paper. P2 also had a mathematical identifiability error.</p></div>
+        <div class="finding good"><strong>What was still useful</strong><p>The time-varying dynamic program was oracle-tested, train-only scaling and t+2 timing appeared in the daily pivot, and the archived Claude handoff explicitly withdrew P2.</p></div>
+      </div>
+      <div class="callout"><strong>Fair attribution:</strong> these statements come from archived code and the Claude-authored handoff. They describe verified properties of the implementation, not the agent's intent or general ability.</div>
+    </section>
+
+    <section>
+      <h2>Workflow 2: the current verified v7 pipeline</h2>
+      <p>The current system answers a narrower question: does fixed JM reproduce the paper's directional ordering on the best documented free proxy bundle?</p>
+      <div class="workflow">
+        <div class="node blue"><span class="tag">1. Audit</span><strong>Inspect free sources</strong><p>Classify price versus total return, coverage, instrument, availability, and license.</p></div>
+        <div class="node blue"><span class="tag">2. Freeze</span><strong>Hash research.toml v7</strong><p>Lock data definitions, windows, grids, tie rules, costs, delays, metrics, and gate.</p></div>
+        <div class="node green"><span class="tag">3. Acquire</span><strong>Six cutoff-safe series</strong><p>Raw responses, canonical CSVs, quality facts, URLs, timestamps, and SHA256 hashes.</p></div>
+        <div class="node green"><span class="tag">4. Prepare</span><strong>Causal returns and features</strong><p>Local cash availability, excess returns, DD-10, Sortino-20/60, and no clipping.</p></div>
+        <div class="node green"><span class="tag">5. Fit</span><strong>Paper-shaped fixed models</strong><p>3,000-row scaling/JM windows; daily 10-restart HMM; terminal online states only.</p></div>
+      </div>
+      <div class="workflow">
+        <div class="node green"><span class="tag">6. Select</span><strong>Monthly eight-year validation</strong><p>Choose penalty or HMM filter by costed, delayed validation Sharpe; smaller smoothing wins ties.</p></div>
+        <div class="node blue"><span class="tag">7. Guard</span><strong>Boundary gate before metrics</strong><p>Expand a grid if the largest candidate is selected in more than 5% of months.</p></div>
+        <div class="node green"><span class="tag">8. Compare</span><strong>Common model sample</strong><p>B&amp;H, HMM, and JM use identical complete dates within each market and delay.</p></div>
+        <div class="node green"><span class="tag">9. Account</span><strong>t+2 return and 10 bps cost</strong><p>Equity or local cash, delays 1/5/10, then frozen performance definitions.</p></div>
+        <div class="node blue"><span class="tag">10. Verify</span><strong>Recompute from trade paths</strong><p>Check identity locks, 131 immutable files, 18 boundaries, 27 metrics, and the claim.</p></div>
+      </div>
+      <div class="outcome">
+        <div><b class="verified">18 / 18</b>Grid-boundary checks passed before metrics were opened.</div>
+        <div><b class="verified">27 / 27</b>Metric rows independently matched; maximum difference was below 1e-12.</div>
+        <div><b class="defect">0 / 3</b>Markets passed the directional replication gate. Adaptive work remains blocked.</div>
+      </div>
+      <div class="callout"><strong>Remaining limitation:</strong> US and German free total-return candidates begin in the late 1980s, Japan uses a long price index, and German/Japanese cash series are instrument proxies. Eligibility therefore moves OOS to 2007-2009.</div>
+    </section>
+
+    <section>
+      <h2>Workflow 3: the paper as documented</h2>
+      <p>This is the strongest reconstruction supported by the paper. Amber text marks information that is not sufficiently disclosed for exact reproduction.</p>
+      <div class="workflow">
+        <div class="node amber"><span class="tag">Data</span><strong>Bloomberg total-return indices</strong><p>S&amp;P 500, DAX, and Nikkei 225 in local currency, 1970-2023. <span class="unknown">Exact tickers and fields unknown.</span></p></div>
+        <div class="node amber"><span class="tag">Cash</span><strong>GFD three-month Treasury Bills</strong><p>US, Germany, and Japan. <span class="unknown">Series IDs and daily conversion unknown.</span></p></div>
+        <div class="node green"><span class="tag">Features</span><strong>Excess-return features</strong><p>Downside deviation with halflife 10 and Sortino ratios with halflives 20 and 60.</p></div>
+        <div class="node green"><span class="tag">Models</span><strong>Rolling HMM and fixed JM</strong><p>Two states and 3,000-day windows; HMM daily, JM parameters every six months.</p></div>
+        <div class="node amber"><span class="tag">Selection</span><strong>Monthly online cross-validation</strong><p>Eight trailing years, strategy Sharpe objective. <span class="unknown">Complete grids and tie rules unknown.</span></p></div>
+      </div>
+      <div class="workflow">
+        <div class="node green"><span class="tag">Inference</span><strong>Online terminal regimes</strong><p>Only information available by the decision date should determine the current state.</p></div>
+        <div class="node green"><span class="tag">Allocation</span><strong>0/1 strategy</strong><p>Bull state holds the index; bear state holds the local risk-free asset.</p></div>
+        <div class="node green"><span class="tag">Execution</span><strong>One-day delay and 10 bps</strong><p>End-of-day signal t first earns return t+2; switching incurs one-way cost.</p></div>
+        <div class="node green"><span class="tag">Test</span><strong>OOS 1990-2023</strong><p>Three markets, plus robustness delays of 1, 5, and 10 trading days.</p></div>
+        <div class="node green"><span class="tag">Finding</span><strong>JM leads directionally</strong><p>Higher Sharpe than HMM/B&amp;H and lower drawdown than B&amp;H across all markets.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>The protocols differ before any model result is observed</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Dimension</th><th>Paper</th><th>Archived legacy</th><th>Current v7</th></tr></thead>
+        <tbody>
+          <tr><td>Research unit</td><td>Daily national equity indices</td><td>Minute stocks, then approximate daily indices</td><td>Daily national equity-index proxies</td></tr>
+          <tr><td>Equity definition</td><td>Bloomberg total return</td><td>Kibot stocks; later Yahoo price returns</td><td>S&amp;P TR candidate, DAX performance candidate, Nikkei price</td></tr>
+          <tr><td>Cash</td><td>Local 3-month Treasury Bill from GFD</td><td>Zero in daily P0/P1/P2</td><td>US bill candidate; German interbank and Japanese call-rate proxies</td></tr>
+          <tr><td>Coverage</td><td>1970-2023</td><td>Local minute periods; later OOS 2005-2024</td><td>Cut off at 2023; effective OOS 2007-2009 onward</td></tr>
+          <tr><td>Fit window</td><td>3,000 daily observations</td><td>One split; later 2,520 days</td><td>3,000 complete observations</td></tr>
+          <tr><td>Validation</td><td>Eight trailing years, monthly selection</td><td>None; later 3/5 years in 126-day blocks</td><td>Eight calendar years, monthly, online candidate paths</td></tr>
+          <tr><td>Outliers</td><td>No outlier processing</td><td>Daily pivot clipped features at 3 standard deviations</td><td>No clipping or imputation</td></tr>
+          <tr><td>Grid safety</td><td><span class="unknown">Not fully disclosed</span></td><td>Upper penalty repeatedly selected but work continued</td><td>Mandatory 5% boundary rule before metrics</td></tr>
+          <tr><td>Model comparison dates</td><td><span class="unknown">Not explicitly disclosed</span></td><td>Block outputs could reset and differ</td><td>Exact per-market-delay intersection</td></tr>
+          <tr><td>Reproducibility</td><td>Sources named; IDs/code artifact unavailable</td><td>Required ignored cache with no builder or hashes</td><td>Config/data/code locks, inventory, checkpoints, and verifier</td></tr>
+          <tr><td>Scientific status</td><td>Positive reported finding</td><td><span class="withdrawn">P0 approximate; P2 withdrawn</span></td><td>Shifted-window proxy non-replication</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section>
+      <h2>What could explain the current disagreement?</h2>
+      <div class="scenario-grid">
+        <div class="scenario"><strong>Scenario A: original data makes the result match</strong><p>The main cause was data definition or the 1990 test window. The current code remains useful, and the proxy result should not be generalized.</p></div>
+        <div class="scenario"><strong>Scenario B: original data still does not match</strong><p>The next suspects are undisclosed grids, tie rules, HMM filtering, yield conversion, or another implementation convention.</p></div>
+        <div class="scenario"><strong>Scenario C: author code and data reproduce their tables</strong><p>We differential-test their artifact against ours one stage at a time: returns, features, states, choices, trades, then metrics.</p></div>
+        <div class="scenario"><strong>Scenario D: changing our protocol creates a win</strong><p>That is a new exploratory study, not a repair of this replication. The viewed 1990-2023 target cannot be tuned post hoc.</p></div>
+        <div class="scenario"><strong>Scenario E: licensed data remain unavailable</strong><p>The exact-reproduction question stays inconclusive. A transparent proxy study can continue, but its estimand and claims must remain separate.</p></div>
+        <div class="scenario"><strong>Scenario F: fixed JM eventually passes the gate</strong><p>Only then do we freeze and test adaptive lambda. The extension must nest fixed JM and use untouched post-audit evidence.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>A concise explanation for an academic advisor</h2>
+      <div class="quote">"The first repository produced useful model demos, but it did not implement the paper's experiment. We rebuilt the study around a frozen, causal, auditable protocol. That new pipeline is reproducible, yet free data force a later out-of-sample period and proxy definitions. Fixed JM does not reproduce the paper's ranking on those proxies. We therefore report a proxy non-replication, not a contradiction, and we are asking the authors for exact series identifiers and implementation details before testing any adaptive extension."</div>
+      <div class="talk-grid">
+        <div class="talk"><strong>Safe to say</strong><p>The legacy claim was not comparable; current v7 is internally verified; the proxy gate failed; exact reproduction remains unresolved.</p></div>
+        <div class="talk"><strong>Not safe to say</strong><p>The paper is wrong, adaptive JM fails, the models are equivalent, or changing parameters after seeing the result would fix replication.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Evidence used for this comparison</h2>
+      <ul class="sources">
+        <li><a href="../2402.05272v3.pdf">Shu, Yu, and Mulvey paper PDF</a></li>
+        <li><a href="../research.toml">Frozen current protocol: research.toml v7</a></li>
+        <li><a href="../archive/completed-tasks/fixed-baselines-001.md">Completed v7 task contract</a></li>
+        <li><a href="../archive/pre-audit-daily/docs/HANDOFF_NEW_CHAT.md">Claude-authored pre-audit handoff</a></li>
+        <li><a href="../archive/pre-audit-daily/scripts/p0_daily_baseline.py">Archived daily P0 script</a></li>
+        <li><a href="../archive/pre-audit-daily/scripts/p1_adaptive_lambda.py">Archived daily P1 script</a></li>
+        <li><a href="../archive/pre-audit-daily/scripts/p2_asymmetric.py">Archived withdrawn P2 script</a></li>
+        <li><a href="../archive/legacy-minute/README.md">Frozen minute-pipeline status</a></li>
+        <li><code>artifacts/fixed-baselines/fixed-baselines-8adb330565d6-3636939b525d-e9614112b234</code></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>Evidence frozen through July 12, 2026. This page changes no model, data, metric, gate, or scientific conclusion.</footer>
+</body>
+</html>
