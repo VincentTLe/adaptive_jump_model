@@ -72,6 +72,7 @@ VISUAL_TARGETS = {
     "11-dynamic-programming-online-inference.html": (1, 2),
     "12-walk-forward-selection-performance.html": (1, 2),
     "13-guided-reading-shu-yu-mulvey.html": (0, 2),
+    "14-paper-legacy-verified-v7.html": (1, 1),
 }
 CONCEPT_ILLUSTRATION_TARGETS = {
     "01-money-assets-cash.html": 1,
@@ -85,6 +86,7 @@ SOURCE_LENS_TARGETS = {
     "10-clustering-statistical-jump-models.html": ("3", "12"),
     "11-dynamic-programming-online-inference.html": ("4", "14"),
     "13-guided-reading-shu-yu-mulvey.html": ("5", "17"),
+    "14-paper-legacy-verified-v7.html": ("6", "18"),
 }
 FIXED_MATH_ARITY = {
     "mfrac": 2,
