@@ -34,6 +34,12 @@
     </div>
     <p>This elimination rule is the heart of dynamic programming, or DP. At Day 10, suppose two partial paths both end in state 1, but one already costs 7 and the other costs 9. Every future continuation from state 1 adds exactly the same future possibilities to both. The path costing 9 can be discarded permanently.</p>
     <p>DP is not an approximation here. For fixed centroids and penalties, it finds an exact minimum-cost state path. The computational gain comes from recognizing that the future needs to know only today's ending state and accumulated best cost, not the complete route by which that state was reached.</p>
+    <figure class="teaching-figure" id="dp-compression-figure" data-visual-type="static" aria-labelledby="dp-compression-title">
+      <span class="teaching-label">Teaching example</span><h3 id="dp-compression-title">Many complete paths collapse into two retained endings</h3>
+      <div class="visual-stage"><svg viewBox="0 0 440 330" role="img" aria-label="A branching path tree with 32 five-day paths compressed into two retained values per day"><g class="diagram-link"><path d="M25 165L70 82M25 165L70 248M70 82L112 40M70 82L112 124M70 248L112 206M70 248L112 290M112 40L148 22M112 40L148 58M112 124L148 106M112 124L148 142M112 206L148 188M112 206L148 224M112 290L148 272M112 290L148 308"/></g><g fill="#aab3bf"><circle cx="25" cy="165" r="6"/><circle cx="70" cy="82" r="6"/><circle cx="70" cy="248" r="6"/><circle cx="112" cy="40" r="5"/><circle cx="112" cy="124" r="5"/><circle cx="112" cy="206" r="5"/><circle cx="112" cy="290" r="5"/><circle cx="148" cy="22" r="4"/><circle cx="148" cy="58" r="4"/><circle cx="148" cy="106" r="4"/><circle cx="148" cy="142" r="4"/><circle cx="148" cy="188" r="4"/><circle cx="148" cy="224" r="4"/><circle cx="148" cy="272" r="4"/><circle cx="148" cy="308" r="4"/></g><text x="15" y="18" font-size="15" font-weight="700">Brute force</text><text x="15" y="326" font-size="14">32 paths</text><path d="M162 165H214" stroke="#f0bd64" stroke-width="4" marker-end="url(#dp-arrow)"/><defs><marker id="dp-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#f0bd64"/></marker></defs><text x="161" y="145" font-size="13">discard worse</text><text x="168" y="188" font-size="13">same ending</text><g class="diagram-link"><path d="M240 92L285 92M240 236L285 236M285 92L330 92M285 92L330 236M285 236L330 92M285 236L330 236M330 92L375 92M330 92L375 236M330 236L375 92M330 236L375 236M375 92L420 92M375 92L420 236M375 236L420 92M375 236L420 236"/></g><g><circle class="diagram-low" cx="240" cy="92" r="17"/><circle class="diagram-high" cx="240" cy="236" r="17"/><circle class="diagram-low" cx="285" cy="92" r="17"/><circle class="diagram-high" cx="285" cy="236" r="17"/><circle class="diagram-low" cx="330" cy="92" r="17"/><circle class="diagram-high" cx="330" cy="236" r="17"/><circle class="diagram-low" cx="375" cy="92" r="17"/><circle class="diagram-high" cx="375" cy="236" r="17"/><circle class="diagram-low" cx="420" cy="92" r="17"/><circle class="diagram-high" cx="420" cy="236" r="17"/></g><g font-size="14" text-anchor="middle"><text x="240" y="97">0</text><text x="240" y="241">1</text><text x="285" y="97">0</text><text x="285" y="241">1</text><text x="330" y="97">0</text><text x="330" y="241">1</text><text x="375" y="97">0</text><text x="375" y="241">1</text><text x="420" y="97">0</text><text x="420" y="241">1</text><text x="240" y="26">D1</text><text x="285" y="26">D2</text><text x="330" y="26">D3</text><text x="375" y="26">D4</text><text x="420" y="26">D5</text></g><text x="330" y="322" font-size="14" text-anchor="middle">Two retained values per day</text></svg></div>
+      <figcaption class="visual-caption">The left side repeats partial work. The right side keeps only the cheapest prefix ending in blue state 0 and red state 1. Those two summaries contain everything the next day needs.</figcaption>
+      <p class="what-to-notice"><strong>What to notice:</strong> the number of full paths doubles every day, but the number of retained values stays equal to the number of states.</p>
+    </figure>
     <div class="remember"><strong>The idea to remember</strong>Dynamic programming summarizes every relevant past path by one best value per possible current state. Offline traceback reconstructs a full path after seeing the window. Online inference at date <math><mi>t</mi></math> uses only the value row available through <math><mi>t</mi></math> and keeps its cheapest terminal state.</div>
   </section>
 
@@ -48,6 +54,7 @@
       <div class="panel"><h3>Terminal state</h3><p>The cheapest ending state for the currently available prefix. It is the only path element needed for today's online output.</p></div>
       <div class="panel"><h3>Traceback</h3><p>Starting from the cheapest final state and following saved backpointers to recover earlier labels.</p></div>
     </div>
+    <details class="deep-explanation"><summary>Deep explanation: losses, recurrence, information sets, and complexity</summary>
     <p>A <span class="term">loss matrix</span> has one row per date and one column per state. Entry <math><mi>L</mi><mo>(</mo><mi>t</mi><mo>,</mo><mi>k</mi><mo>)</mo></math> measures the cost of assigning observation <math><mi>t</mi></math> to state <math><mi>k</mi></math>. For the discrete JM, it is half squared distance from the standardized feature vector to centroid <math><mi>k</mi></math>.</p>
     <p>A <span class="term">penalty matrix</span> gives the cost of moving from each previous state to each arrival state. The fixed two-state JM has zero on the diagonal and <math><mi>&lambda;</mi></math> off the diagonal. Remaining in the same state is free; changing either direction costs the same amount.</p>
     <p><span class="term">Optimal substructure</span> is the property that an optimal full path contains optimal relevant partial paths. If the cheapest path ending in state 1 at Day 5 used a non-cheapest earlier route ending in the same state, replacing that route with the cheaper one would improve the full path, contradicting optimality.</p>
@@ -56,6 +63,7 @@
     <p>A <span class="term">prefix</span> is the sequence from its start through a current endpoint. If we compute online terminal labels for Day 1, then Days 1-2, then Days 1-3, the earlier emitted labels are not retroactively replaced by a later full-window traceback. Doing so would create hindsight regimes rather than live-sample outputs.</p>
     <p><span class="term">Time complexity</span> describes how operations grow with input size. With <math><mi>T</mi></math> dates and <math><mi>K</mi></math> states, the general recurrence compares <math><mi>K</mi></math> previous states for each of <math><mi>K</mi></math> arrival states on each date: <math><mi>O</mi><mo>(</mo><mi>T</mi><msup><mi>K</mi><mn>2</mn></msup><mo>)</mo></math>. For two states, growth is linear in dates.</p>
     <p><span class="term">Space complexity</span> is stored information. A full value table and backpointers use order <math><mi>T</mi><mi>K</mi></math> memory. If only the latest terminal state is needed, values can be updated with two rows, though the upstream implementation returns the complete value matrix for its online sequence.</p>
+    </details>
   </section>
 
   <section class="chapter-section" id="worked-dp">
@@ -81,11 +89,20 @@
         <div><label for="dp-day-four-loss">Day 4 loss in state 0: <output id="dp-day-four-loss-output" for="dp-day-four-loss">0.40</output></label><input id="dp-day-four-loss" type="range" min="0" max="2" step="0.1" value="0.4" data-output="dp-day-four-loss-output" data-digits="2"></div>
       </div></form>
       <div class="metric-grid"><div class="panel"><span class="label">Final optimal objective</span><strong class="big-number" id="dp-objective">2.20</strong></div><div class="panel"><span class="label">Final terminal state</span><strong class="big-number" id="dp-terminal">State 1</strong></div></div>
-      <div class="table-wrap"><table class="data-table" aria-label="Default Bellman value table"><thead><tr><th>Day</th><th>Loss state 0</th><th>Loss state 1</th><th>Best value ending 0</th><th>Best value ending 1</th><th>Online terminal</th></tr></thead><tbody id="dp-rows"><tr><td>1</td><td>0.10</td><td>2.00</td><td>0.10</td><td>2.00</td><td>0</td></tr><tr><td>2</td><td>0.30</td><td>1.50</td><td>0.40</td><td>2.30</td><td>0</td></tr><tr><td>3</td><td>1.20</td><td>0.20</td><td>1.60</td><td>1.30</td><td>1</td></tr><tr><td>4</td><td>0.40</td><td>0.80</td><td>2.00</td><td>2.10</td><td>0</td></tr><tr><td>5</td><td>1.50</td><td>0.10</td><td>3.50</td><td>2.20</td><td>1</td></tr></tbody></table></div>
-      <h3>Online prefix terminals</h3>
-      <div class="state-strip five-day-strip" id="dp-online" aria-label="Online terminal states: 0, 0, 1, 0, 1"><span class="state-day low-state">0</span><span class="state-day low-state">0</span><span class="state-day high-state">1</span><span class="state-day low-state">0</span><span class="state-day high-state">1</span></div>
-      <h3>Offline traceback after Day 5</h3>
-      <div class="state-strip five-day-strip" id="dp-offline" aria-label="Offline traceback states: 0, 0, 1, 1, 1"><span class="state-day low-state">0</span><span class="state-day low-state">0</span><span class="state-day high-state">1</span><span class="state-day high-state">1</span><span class="state-day high-state">1</span></div>
+      <figure class="teaching-figure" id="dp-bellman-figure" data-visual-type="interactive" aria-labelledby="dp-bellman-title">
+        <span class="teaching-label">Teaching example</span><h3 id="dp-bellman-title">Build the Bellman table one row at a time</h3>
+        <div class="visual-stage compact"><svg id="dp-bellman-diagram" viewBox="0 0 440 300" role="img" aria-label="Day 1 initializes two Bellman values directly from observation losses"><text id="dp-step-day" x="220" y="30" font-size="20" font-weight="700" text-anchor="middle">Day 1: initialize</text><g id="dp-previous-layer" opacity="0.25" data-animate><text x="85" y="65" font-size="15" text-anchor="middle">previous values</text><circle class="diagram-low" cx="85" cy="115" r="32"/><circle class="diagram-high" cx="85" cy="225" r="32"/><text id="dp-previous-low" x="85" y="121" font-size="17" text-anchor="middle">none</text><text id="dp-previous-high" x="85" y="231" font-size="17" text-anchor="middle">none</text></g><g class="diagram-link" id="dp-candidate-links" opacity="0.25" data-animate><path id="dp-link-00" d="M117 115H323"/><path id="dp-link-01" d="M111 132L329 208"/><path id="dp-link-10" d="M111 208L329 132"/><path id="dp-link-11" d="M117 225H323"/></g><g><text x="355" y="65" font-size="15" text-anchor="middle">retained values</text><circle class="diagram-low is-active" id="dp-current-low-node" cx="355" cy="115" r="32"/><circle class="diagram-high" id="dp-current-high-node" cx="355" cy="225" r="32"/><text id="dp-current-low" x="355" y="121" font-size="18" text-anchor="middle">0.10</text><text id="dp-current-high" x="355" y="231" font-size="18" text-anchor="middle">2.00</text></g><text id="dp-step-explanation" x="220" y="284" font-size="15" text-anchor="middle">First row: value equals observation loss.</text></svg></div>
+        <div class="stepper-controls"><button class="button" type="button" data-stepper-action="previous" aria-label="Previous Bellman day">&#9664;</button><button class="button" type="button" data-stepper-action="play">Play</button><button class="button" type="button" data-stepper-action="pause">Pause</button><button class="button" type="button" data-stepper-action="next" aria-label="Next Bellman day">&#9654;</button><button class="button" type="button" data-stepper-action="reset">Reset</button><span class="stepper-status" data-stepper-status aria-live="polite">Day 1 of 5</span></div>
+        <div class="table-wrap"><table class="data-table" aria-label="Five-day Bellman value heatmap"><thead><tr><th>Day</th><th>Loss state 0</th><th>Loss state 1</th><th>Best value ending 0</th><th>Best value ending 1</th><th>Online terminal</th></tr></thead><tbody id="dp-rows"><tr><td>1</td><td>0.10</td><td>2.00</td><td>0.10</td><td>2.00</td><td>0</td></tr><tr><td>2</td><td>0.30</td><td>1.50</td><td>0.40</td><td>2.30</td><td>0</td></tr><tr><td>3</td><td>1.20</td><td>0.20</td><td>1.60</td><td>1.30</td><td>1</td></tr><tr><td>4</td><td>0.40</td><td>0.80</td><td>2.00</td><td>2.10</td><td>0</td></tr><tr><td>5</td><td>1.50</td><td>0.10</td><td>3.50</td><td>2.20</td><td>1</td></tr></tbody></table></div>
+        <figcaption class="visual-caption">Use Previous and Next before Play. Amber marks the current row and the cheaper terminal. Each current value keeps one winning predecessor; the losing route to the same endpoint is discarded.</figcaption>
+      </figure>
+      <figure class="teaching-figure" id="dp-online-offline-figure" data-visual-type="interactive" aria-labelledby="dp-online-offline-title">
+        <span class="teaching-label">Teaching example</span><h3 id="dp-online-offline-title">A live label is not a later traceback label</h3>
+        <h4>Online prefix terminals</h4><div class="state-strip five-day-strip" id="dp-online" aria-label="Online terminal states: 0, 0, 1, 0, 1"><span class="state-day low-state">0</span><span class="state-day low-state">0</span><span class="state-day high-state">1</span><span class="state-day low-state">0</span><span class="state-day high-state">1</span></div>
+        <h4>Offline traceback after Day 5</h4><div class="state-strip five-day-strip" id="dp-offline" aria-label="Offline traceback states: 0, 0, 1, 1, 1"><span class="state-day low-state">0</span><span class="state-day low-state">0</span><span class="state-day high-state">1</span><span class="state-day high-state">1</span><span class="state-day high-state">1</span></div>
+        <p class="what-to-notice" id="dp-revision-note"><strong>What to notice:</strong> Day 4 changes because offline traceback can use Day 5. The historical online output cannot.</p>
+        <figcaption class="visual-caption">Move the sliders and compare the same five dates under two information sets. Blue is state 0 and red is state 1; the border on a revised offline cell is amber.</figcaption>
+      </figure>
       <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The default Bellman values, online terminal sequence, and offline traceback remain fully visible. Their Day 4 disagreement is the lesson.</p></noscript>
     </div>
     <p>At zero penalty, each value row reduces to the accumulated cheapest pointwise losses and online/offline labels agree with the minimum-loss state on each day. Raising the penalty changes accumulated comparisons. It may cause online labels to lag a new local pattern and lets later evidence alter earlier labels only inside an offline traceback.</p>
@@ -167,6 +184,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const rows = document.getElementById("dp-rows");
   const onlineStrip = document.getElementById("dp-online");
   const offlineStrip = document.getElementById("dp-offline");
+  const bellmanFigure = document.getElementById("dp-bellman-figure");
+  let bellmanData = null;
+  let bellmanStepper = null;
   function cells(path) {
     return path.map((state) => `<span class="state-day ${state === 0 ? "low-state" : "high-state"}">${state}</span>`).join("");
   }
@@ -195,17 +215,47 @@ document.addEventListener("DOMContentLoaded", () => {
       offline.push(state);
     }
     offline.reverse();
-    rows.innerHTML = losses.map((loss, day) => `<tr><td>${day + 1}</td><td>${loss[0].toFixed(2)}</td><td>${loss[1].toFixed(2)}</td><td>${values[day][0].toFixed(2)}</td><td>${values[day][1].toFixed(2)}</td><td>${online[day]}</td></tr>`).join("");
+    bellmanData = { backpointers, losses, online, values };
+    rows.innerHTML = losses.map((loss, day) => `<tr data-bellman-day="${day}"><td>${day + 1}</td><td>${loss[0].toFixed(2)}</td><td>${loss[1].toFixed(2)}</td><td>${values[day][0].toFixed(2)}</td><td>${values[day][1].toFixed(2)}</td><td>${online[day]}</td></tr>`).join("");
     document.getElementById("dp-objective").textContent = Math.min(...values[values.length - 1]).toFixed(2);
     document.getElementById("dp-terminal").textContent = `State ${online[online.length - 1]}`;
     onlineStrip.innerHTML = cells(online);
-    offlineStrip.innerHTML = cells(offline);
+    offlineStrip.innerHTML = offline.map((item, day) => `<span class="state-day ${item === 0 ? "low-state" : "high-state"}"${item !== online[day] ? ' style="border-color:#f0bd64;border-width:3px"' : ""}>${item}</span>`).join("");
     onlineStrip.setAttribute("aria-label", `Online terminal states: ${online.join(", ")}`);
     offlineStrip.setAttribute("aria-label", `Offline traceback states: ${offline.join(", ")}`);
+    const revisions = offline.reduce((count, item, day) => count + Number(item !== online[day]), 0);
+    document.getElementById("dp-revision-note").innerHTML = `<strong>What to notice:</strong> ${revisions === 0 ? "No date is revised at this setting, but the information sets remain different." : `${revisions} date${revisions === 1 ? " is" : "s are"} revised because offline traceback can use later rows. Historical online outputs cannot.`}`;
+    if (bellmanStepper) bellmanStepper.setFrame(Number(bellmanFigure.dataset.frame || 0));
+  }
+
+  function renderBellmanFrame(day) {
+    if (!bellmanData) return;
+    const { backpointers, losses, online, values } = bellmanData;
+    const previous = day === 0 ? ["none", "none"] : values[day - 1].map((value) => value.toFixed(2));
+    document.getElementById("dp-step-day").textContent = day === 0 ? "Day 1: initialize" : `Day ${day + 1}: compare arrivals`;
+    document.getElementById("dp-previous-low").textContent = previous[0];
+    document.getElementById("dp-previous-high").textContent = previous[1];
+    document.getElementById("dp-current-low").textContent = values[day][0].toFixed(2);
+    document.getElementById("dp-current-high").textContent = values[day][1].toFixed(2);
+    document.getElementById("dp-previous-layer").setAttribute("opacity", day === 0 ? "0.25" : "1");
+    document.getElementById("dp-candidate-links").setAttribute("opacity", day === 0 ? "0.25" : "1");
+    ["dp-current-low-node", "dp-current-high-node"].forEach((id, state) => document.getElementById(id).classList.toggle("is-active", state === online[day]));
+    ["dp-link-00", "dp-link-01", "dp-link-10", "dp-link-11"].forEach((id) => document.getElementById(id).classList.remove("is-active"));
+    if (day > 0) {
+      [0, 1].forEach((state) => document.getElementById(`dp-link-${backpointers[day - 1][state]}${state}`).classList.add("is-active"));
+    }
+    document.getElementById("dp-step-explanation").textContent = day === 0 ? "First row: value equals observation loss." : `Add losses ${losses[day].map((value) => value.toFixed(2)).join(" / ")}; keep one winner per ending state.`;
+    [...rows.children].forEach((row, index) => {
+      row.style.outline = index === day ? "2px solid #f0bd64" : "none";
+      row.style.opacity = index <= day ? "1" : "0.35";
+      [3, 4].forEach((cell) => { row.children[cell].style.background = index === day ? (cell === 3 ? "#102538" : "#301616") : "transparent"; });
+    });
+    bellmanFigure.setAttribute("aria-label", `Bellman Day ${day + 1}: retained values ${values[day].map((value) => value.toFixed(2)).join(" and ")}; terminal state ${online[day]}`);
   }
   [penaltyInput, dayFourInput].forEach((input) => input.addEventListener("input", render));
   lab.addEventListener("course:reset", render);
   render();
+  bellmanStepper = window.Course.mountStepper(bellmanFigure, { frameCount: 5, render: renderBellmanFrame, describe: (day) => `Day ${day + 1} of 5` });
 });
 </script>
 </body>
