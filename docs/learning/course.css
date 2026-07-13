@@ -117,6 +117,8 @@ input[type="number"] {
 }
 .button:hover, .button:focus-visible { border-color: var(--blue); }
 .lab-output { min-height: 92px; padding: 16px; background: #101319; border-top: 3px solid var(--green); }
+.control-grid > div > .label { display: block; margin-bottom: 6px; }
+progress { width: 100%; }
 .chart-wrap { position: relative; width: 100%; min-height: 280px; margin-top: 18px; }
 .fallback-table { margin-top: 16px; }
 .js .enhanced-only { display: block; }
