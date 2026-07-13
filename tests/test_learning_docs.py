@@ -32,6 +32,14 @@ CHAPTERS = [
         "12-walk-forward-selection-performance.html",
         "Walk-Forward Selection And Performance Measurement",
     ),
+    (
+        "13-guided-reading-shu-yu-mulvey.html",
+        "A Guided Reading Of Shu, Yu, And Mulvey",
+    ),
+    (
+        "14-paper-legacy-verified-v7.html",
+        "The Paper, The Legacy Project, And The Verified V7 Run",
+    ),
 ]
 REQUIRED_SECTIONS = {
     "question",
