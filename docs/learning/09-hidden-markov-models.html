@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A from-zero guide to hidden states, Gaussian emissions, Markov transitions, likelihood fitting, Viterbi decoding, labels, and causal filtering.">
+  <title>Chapter 9: Hidden Markov Models From Zero</title>
+  <link rel="stylesheet" href="course.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/mml-chtml.js" integrity="sha384-GYAeDZjH9w23NyL4cfS+ZrgWmGvta6VNs4p+/vtuF+RWe30fQhmP8pHbzRmlwmAK" crossorigin="anonymous"></script>
+  <script defer src="course.js"></script>
+</head>
+<body>
+<main class="course-shell">
+  <nav class="course-nav" aria-label="Course navigation">
+    <a href="08-returns-to-model-features.html">Previous: model features</a>
+    <span>Part III &middot; Chapter 9 of 14</span>
+    <a href="index.html">Next: course map</a>
+  </nav>
+
+  <header class="chapter-header">
+    <div class="part-label">Part III &middot; Features And Models</div>
+    <h1>Hidden Markov Models From Zero</h1>
+    <p class="lead">How can a model reason about a market condition that we cannot observe directly?</p>
+    <div class="chapter-meta"><span>Beginner to intermediate</span><span>Viterbi path laboratory</span><span>Paper Section 3.3</span></div>
+  </header>
+
+  <section class="chapter-section" id="question">
+    <div class="eyebrow">The opening question</div>
+    <h2>Can the same loss come from two different worlds?</h2>
+    <p>You hold $100 in the market and lose 1%, ending with $99. That observation is compatible with at least two stories. In a calm market whose daily changes are usually small, -1% may be unusually bad. In a turbulent market whose changes are often large, -1% may be ordinary. The $1 loss is visible; the condition that generated it is not.</p>
+    <div class="example-grid">
+      <article class="worked-example"><h3>Observed variable</h3><span class="big-number">$100 &rarr; $99</span><p>The return can be measured. It is an output emitted by an unknown market condition.</p></article>
+      <article class="worked-example failure"><h3>A common failure: certainty from one row</h3><span class="big-number">-1% &ne; known state</span><p>A single return does not reveal its generator. The model weighs how plausible the observation is under each state and how persistent each state is.</p></article>
+    </div>
+    <p>A Hidden Markov Model, abbreviated HMM, separates what is seen from what is inferred. The seen sequence is daily return. Behind each return sits a discrete <span class="term">hidden state</span>. In the two-state version used here, one state has lower conditional variance and the other has higher conditional variance. Each state describes a different probability distribution for returns.</p>
+    <p>The model also represents persistence. If today is in the low-volatility state, tomorrow may be more likely to remain low than to switch high. The exact probabilities are estimated, not declared by the state names. By combining emission plausibility with transition plausibility across a sequence, the model finds a state path that explains the observed returns.</p>
+    <div class="remember"><strong>The idea to remember</strong>An HMM is two linked stories: states move according to transition probabilities, and each hidden state emits observations according to its own distribution. Viterbi decoding finds the single most probable state path under the fitted model; it does not make hidden truth directly observable.</div>
+  </section>
+
+  <section class="chapter-section" id="vocabulary">
+    <div class="eyebrow">Words before notation</div>
+    <h2>Name the probability machinery before using it</h2>
+    <div class="concept-grid three">
+      <div class="panel"><h3>Latent or hidden</h3><p>Not directly observed. A regime is inferred from returns and model assumptions rather than read from a market data field.</p></div>
+      <div class="panel"><h3>Observation</h3><p>The measured value at one date. The paper's HMM observation is a daily log total return.</p></div>
+      <div class="panel"><h3>Emission</h3><p>The probability distribution of an observation conditional on a state. A Gaussian emission has a state-specific mean and variance.</p></div>
+      <div class="panel"><h3>Transition</h3><p>A move from yesterday's hidden state to today's hidden state. A transition matrix assigns a probability to every permitted move.</p></div>
+      <div class="panel"><h3>Likelihood</h3><p>How compatible model parameters are with the observed sequence. HMM fitting seeks parameters with high data likelihood.</p></div>
+      <div class="panel"><h3>Viterbi decoding</h3><p>A dynamic-programming algorithm that finds the most probable complete hidden-state path for fixed HMM parameters.</p></div>
+    </div>
+    <p>A <span class="term">random variable</span> can take different values with specified probabilities. A <span class="term">probability distribution</span> describes those possibilities. The Gaussian, or normal, distribution is summarized by a mean and variance. Mean locates its center. Variance measures squared spread, while standard deviation is the square root of variance and has the same unit as return.</p>
+    <p><span class="term">Conditional</span> means "given something." An emission probability asks how plausible return <math><msub><mi>r</mi><mi>t</mi></msub></math> is given state <math><msub><mi>s</mi><mi>t</mi></msub></math>. It does not ask how likely the state is before seeing the return. The HMM combines the emission with the probability of arriving from an earlier state.</p>
+    <p>The <span class="term">Markov property</span> says the distribution of the next hidden state depends on the current hidden state, not the entire earlier state history, once the current state is known. This is a simplifying assumption. It does not say returns are independent through time, and it does not prove markets truly obey a first-order Markov chain.</p>
+    <p>The <span class="term">transition matrix</span> has one row for the previous state and one column for the next state. Every row sums to one. Diagonal entries describe staying in the same state. Large diagonal probabilities imply persistence. <span class="term">Initial probabilities</span> describe the state before the first observation in a fitted window.</p>
+    <p><span class="term">Parameters</span> are quantities estimated during fitting: initial probabilities, transition probabilities, and the means and variances of the state emissions. A <span class="term">local optimum</span> is a fit better than nearby alternatives but not necessarily best among all possible parameters. HMM likelihood is non-convex, so different initializations may end at different solutions.</p>
+    <p>A <span class="term">restart</span> fits the model again from another deterministic initialization. <span class="term">Convergence</span> means the optimization change has become smaller than a declared tolerance; reaching the iteration cap is not equivalent. The project accepts only strictly converged restarts and then retains the accepted fit with highest log-likelihood.</p>
+    <p><span class="term">Label switching</span> means numeric state names are arbitrary. A fitted package may call the volatile state 0 in one run and 1 in another. Economic interpretation requires a deterministic mapping. The project orders estimated conditional variances: lower variance becomes state 0 and higher variance becomes state 1. Equal variances are rejected because the mapping would be ambiguous.</p>
+    <p>A <span class="term">terminal state</span> is the last decoded state in a window. The paper repeatedly fits or decodes through date <math><mi>t</mi></math> and keeps only that endpoint as the online state for <math><mi>t</mi></math>. A <span class="term">causal majority filter</span> then smooths the sequence of daily terminal states using only current and earlier endpoints.</p>
+  </section>
+
+  <section class="chapter-section" id="worked-hmm">
+    <div class="eyebrow">Worked example two</div>
+    <h2>Combine emissions with persistence across several days</h2>
+    <p>Imagine a teaching HMM with two states. Low volatility has mean +0.05% and standard deviation 0.60%. High volatility has mean -0.30% and standard deviation 1.80%. Both states have a 90% probability of staying and a 10% probability of switching on the next day. These numbers are invented and are not fitted project values.</p>
+    <p>The six returns are +0.4%, -0.3%, +0.2%, -2.5%, -1.5%, and +0.6%. The first three small movements fit the narrow low-state distribution well. The -2.5% shock is far from the low-state mean but not unusual under the wider high-state distribution. Once a high state is selected, the 90% persistence probability makes remaining high plausible when -1.5% follows.</p>
+    <p>For the default values, Viterbi decoding chooses low, low, low, high, high, high. It does not classify each day independently. The +0.6% final return might individually look calm, but a switch back to low incurs a low 10% transition probability. The complete path through high can still have greater joint probability.</p>
+    <h3>A common failure: choose the nearest state each day</h3>
+    <p>If each return is assigned only to the Gaussian density with the highest value, transition probabilities disappear. The result can flicker between states on alternating observations. That is a Gaussian mixture classification, not HMM path decoding. The HMM's distinctive structure is the joint tradeoff between fitting each observation and maintaining a plausible state sequence.</p>
+    <p>Another common failure compares raw probability products over 3,000 days. Multiplying thousands of values below one underflows toward zero in floating-point arithmetic. Implementations work with log probabilities, converting products to sums. This is numerically safer and preserves ordering because the logarithm is monotone.</p>
+  </section>
+
+  <section class="chapter-section" id="hmm-lab-section">
+    <div class="eyebrow">Interactive teaching visual</div>
+    <h2>Move one return and watch the most probable path change</h2>
+    <p>The lab implements exact two-state Viterbi decoding for the six invented returns and fixed toy Gaussian parameters above. Change Day 4 or the same-state probability. It demonstrates path logic only; it does not fit an HMM, estimate a market regime, or reproduce evidence.</p>
+    <div class="lab" id="hmm-lab">
+      <div class="lab-header"><div><h3>Six-day Viterbi decoder</h3><p>Blue is low volatility; red is high volatility.</p></div><button class="button" type="button" data-reset>Reset</button></div>
+      <form><div class="control-grid">
+        <div><label for="hmm-shock">Day 4 log return: <output id="hmm-shock-output" for="hmm-shock">-2.5%</output></label><input id="hmm-shock" type="range" min="-5" max="3" step="0.1" value="-2.5" data-output="hmm-shock-output" data-digits="1" data-suffix="%"></div>
+        <div><label for="hmm-persistence">Same-state probability: <output id="hmm-persistence-output" for="hmm-persistence">90%</output></label><input id="hmm-persistence" type="range" min="50" max="99" value="90" data-output="hmm-persistence-output" data-suffix="%"></div>
+      </div></form>
+      <div class="metric-grid">
+        <div class="panel"><span class="label">Decoded terminal state</span><strong class="big-number" id="hmm-terminal">High volatility (1)</strong></div>
+        <div class="panel"><span class="label">Number of path switches</span><strong class="big-number" id="hmm-switches">1</strong></div>
+      </div>
+      <div class="state-strip model-strip" id="hmm-path" aria-label="Default Viterbi path: low, low, low, high, high, high"><span class="state-day low-state"><b>Day 1</b><small>low</small></span><span class="state-day low-state"><b>Day 2</b><small>low</small></span><span class="state-day low-state"><b>Day 3</b><small>low</small></span><span class="state-day high-state"><b>Day 4</b><small>high</small></span><span class="state-day high-state"><b>Day 5</b><small>high</small></span><span class="state-day high-state"><b>Day 6</b><small>high</small></span></div>
+      <div class="table-wrap fallback-table"><table class="data-table"><thead><tr><th>State</th><th>Toy mean</th><th>Toy standard deviation</th><th>Default path role</th></tr></thead><tbody><tr><td>Low (0)</td><td>+0.05%</td><td>0.60%</td><td>Explains the first three small returns</td></tr><tr><td>High (1)</td><td>-0.30%</td><td>1.80%</td><td>Explains the shock and persistent aftermath</td></tr></tbody></table></div>
+      <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The default Viterbi path remains visible: low, low, low, high, high, high, with one switch and high terminal state.</p></noscript>
+    </div>
+    <p>Lower persistence makes switching cheaper in probability terms, so the path follows individual emissions more readily. Very high persistence demands stronger or repeated evidence before changing state. Persistence can reduce noise but also causes latency: after the world changes, several observations may be needed before a switch becomes the most plausible path.</p>
+  </section>
+
+  <section class="chapter-section" id="paper-connection">
+    <div class="eyebrow">Connection to the named paper</div>
+    <h2>Section 3.3 turns daily rolling fits into online states</h2>
+    <p>Section 3.3 of <a href="../../2402.05272v3.pdf">Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3</a> uses a two-state Gaussian HMM on daily log total returns. A 3,000-day training window moves forward daily. Ten initializations address the non-convex likelihood, and the fit with highest log-likelihood is retained. Regimes are distinguished by estimated conditional volatility.</p>
+    <p>On the window ending at day <math><mi>t</mi></math>, the Viterbi algorithm decodes a state sequence and the authors extract only the last state as the online inferred regime. They identify endpoint instability as a practical problem: the last decoded state can be noisier than interior in-sample labels. The paper therefore applies a median filter, implemented as a trailing rolling mean of terminal labels, and signals high volatility only when that mean exceeds 0.5.</p>
+    <p>Figure 2 shows rolling conditional return and volatility estimates for the S&amp;P 500. Table 3 compares state-switch frequency under fixed HMM filter lengths and fixed JM jump penalties. Those displays describe the paper's evidence; this chapter does not copy their values. Section 3.4.3 later chooses the HMM filter length monthly through the same online strategy-validation framework used for JM penalty selection.</p>
+  </section>
+
+  <section class="chapter-section" id="project-connection">
+    <div class="eyebrow">Connection to this project</div>
+    <h2>The adapter makes every acceptance rule auditable</h2>
+    <p><a href="../../src/adaptive_jump/models.py"><code>src/adaptive_jump/models.py</code></a> sends only <code>equity_log</code> to <code>hmmlearn.GaussianHMM</code>. This differs from the JM's three standardized excess-return features. The adapter requires exactly 3,000 finite returns, uses two components and diagonal covariance, and runs deterministic seeds 0 through 9 from the frozen config.</p>
+    <p>Each restart must have at least two likelihood-history entries and an absolute final change below tolerance. Failed fits are recorded. Among accepted fits, the adapter selects maximum log-likelihood, orders state variances, rejects ties, maps lower variance to 0 and higher variance to 1, predicts the Viterbi path, and retains the terminal label. Daily diagnostics store date, window bounds, seed, score, ordered variances, accepted-start count, and failures.</p>
+    <pre><code>fit every day on trailing 3,000 log returns
+reject restart unless strict convergence passes
+choose accepted fit with highest log-likelihood
+map lower variance to 0 and higher variance to 1
+store only the Viterbi terminal state for that day</code></pre>
+    <p>The causal filter creates one candidate series per configured window <math><mi>k</mi></math>. For <math><mi>k</mi><mo>=</mo><mn>0</mn></math>, it leaves terminal states unchanged. Otherwise it computes the trailing mean and returns state 1 only when the mean is strictly greater than 0.5. A tie therefore maps to 0. The v7 config records an expanded frozen grid after its preregistered boundary procedure; Chapter 12 explains why candidate grids are checked before metrics open.</p>
+    <p><a href="../../tests/test_models.py"><code>tests/test_models.py</code></a> checks strict convergence, restart selection, deterministic variance labels, causal filtering, daily rolling windows, terminal extraction, and checkpoint-prefix validity. A checkpoint is accepted only as a contiguous causal prefix on identical dates. These checks prevent silent implementation drift; they do not prove Gaussian emissions or two states are true descriptions of markets.</p>
+  </section>
+
+  <section class="chapter-section" id="mathematics">
+    <div class="eyebrow">Mathematical layer</div>
+    <h2>Factor one hidden path, then decode it efficiently</h2>
+    <div class="formula"><math display="block"><mi>P</mi><mo>(</mo><msub><mi>s</mi><mn>0</mn></msub><mo>,</mo><mo>&hellip;</mo><mo>,</mo><msub><mi>s</mi><mi>T</mi></msub><mo>,</mo><msub><mi>r</mi><mn>0</mn></msub><mo>,</mo><mo>&hellip;</mo><mo>,</mo><msub><mi>r</mi><mi>T</mi></msub><mo>)</mo><mo>=</mo><msub><mi>&pi;</mi><msub><mi>s</mi><mn>0</mn></msub></msub><msubsup><mi>b</mi><msub><mi>s</mi><mn>0</mn></msub><mrow/><mo>(</mo><msub><mi>r</mi><mn>0</mn></msub><mo>)</mo></msubsup><munderover><mo>&prod;</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mi>T</mi></munderover><msub><mi>a</mi><mrow><msub><mi>s</mi><mrow><mi>t</mi><mo>&minus;</mo><mn>1</mn></mrow></msub><mo>,</mo><msub><mi>s</mi><mi>t</mi></msub></mrow></msub><msub><mi>b</mi><msub><mi>s</mi><mi>t</mi></msub></msub><mo>(</mo><msub><mi>r</mi><mi>t</mi></msub><mo>)</mo></math><math display="block"><msub><mi>b</mi><mi>k</mi></msub><mo>(</mo><mi>r</mi><mo>)</mo><mo>=</mo><mfrac><mn>1</mn><mrow><msub><mi>&sigma;</mi><mi>k</mi></msub><msqrt><mrow><mn>2</mn><mi>&pi;</mi></mrow></msqrt></mrow></mfrac><mi>exp</mi><mo>(</mo><mo>&minus;</mo><mfrac><msup><mrow><mo>(</mo><mi>r</mi><mo>&minus;</mo><msub><mi>&mu;</mi><mi>k</mi></msub><mo>)</mo></mrow><mn>2</mn></msup><mrow><mn>2</mn><msubsup><mi>&sigma;</mi><mi>k</mi><mn>2</mn></msubsup></mrow></mfrac><mo>)</mo></math><math display="block"><msub><mi>V</mi><mi>t</mi></msub><mo>(</mo><mi>k</mi><mo>)</mo><mo>=</mo><mo>log</mo><msub><mi>b</mi><mi>k</mi></msub><mo>(</mo><msub><mi>r</mi><mi>t</mi></msub><mo>)</mo><mo>+</mo><munder><mo>max</mo><mi>j</mi></munder><mo>[</mo><msub><mi>V</mi><mrow><mi>t</mi><mo>&minus;</mo><mn>1</mn></mrow></msub><mo>(</mo><mi>j</mi><mo>)</mo><mo>+</mo><mo>log</mo><msub><mi>a</mi><mrow><mi>j</mi><mo>,</mo><mi>k</mi></mrow></msub><mo>]</mo></math></div>
+    <div class="table-wrap"><table class="symbol-table"><thead><tr><th>Symbol</th><th>Meaning</th><th>Convention</th></tr></thead><tbody><tr><td><math><msub><mi>r</mi><mi>t</mi></msub></math></td><td>Observed log return at date index <math><mi>t</mi></math></td><td>Decimal return</td></tr><tr><td><math><msub><mi>s</mi><mi>t</mi></msub></math></td><td>Hidden state</td><td>0 low variance, 1 high variance after mapping</td></tr><tr><td><math><msub><mi>&pi;</mi><mi>k</mi></msub></math></td><td>Initial probability of state <math><mi>k</mi></math></td><td>Nonnegative; sums to one</td></tr><tr><td><math><msub><mi>a</mi><mrow><mi>j</mi><mo>,</mo><mi>k</mi></mrow></msub></math></td><td>Transition probability from state <math><mi>j</mi></math> to <math><mi>k</mi></math></td><td>Each previous-state row sums to one</td></tr><tr><td><math><msub><mi>b</mi><mi>k</mi></msub><mo>(</mo><mi>r</mi><mo>)</mo></math></td><td>Gaussian emission density in state <math><mi>k</mi></math></td><td>Density, not a state probability by itself</td></tr><tr><td><math><msub><mi>V</mi><mi>t</mi></msub><mo>(</mo><mi>k</mi><mo>)</mo></math></td><td>Best log joint score ending in state <math><mi>k</mi></math> at <math><mi>t</mi></math></td><td>Accumulated log score</td></tr></tbody></table></div>
+    <p>The first formula factors a complete path. Start in one state, emit the first return, then repeatedly transition and emit. For fixed parameters, Viterbi does not enumerate all <math><msup><mn>2</mn><mrow><mi>T</mi><mo>+</mo><mn>1</mn></mrow></msup></math> two-state paths. At each date and ending state, it retains only the best preceding score and a backpointer. After the final maximum, backpointers reconstruct the optimal path.</p>
+    <p>Fitting is a separate problem. The hidden states are unknown, so HMM training iteratively raises observed-data likelihood by estimating state responsibilities and updating parameters. Non-convexity explains restarts and explicit convergence checks. Viterbi then decodes using the selected fitted parameters.</p>
+    <p>For filter length <math><mi>k</mi><mo>&gt;</mo><mn>0</mn></math>, the paper's causal smoothing can be written <math><msub><mover><mi>s</mi><mo>~</mo></mover><mi>t</mi></msub><mo>=</mo><mn>1</mn><mo>{</mo><mfrac><mn>1</mn><mi>k</mi></mfrac><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mi>t</mi><mo>&minus;</mo><mi>k</mi><mo>+</mo><mn>1</mn></mrow><mi>t</mi></munderover><msub><mover><mi>s</mi><mo>^</mo></mover><mi>i</mi></msub><mo>&gt;</mo><mn>0.5</mn><mo>}</mo></math>, where each hatted state is a terminal output that existed on its own date. This filter adds persistence and latency but never uses future terminal states.</p>
+  </section>
+
+  <section class="chapter-section" id="evidence-limitations">
+    <div class="eyebrow">Evidence and limits</div>
+    <h2>Know what an inferred state can and cannot mean</h2>
+    <div class="concept-grid"><div class="panel"><h3>Verified implementation facts</h3><p>The locked paper, frozen config, adapter, and tests align on two Gaussian states, 3,000 rolling log returns, daily fitting, ten restarts, volatility labels, Viterbi terminal extraction, and causal filtering.</p></div><div class="panel"><h3>Unverified economic interpretation</h3><p>A high-volatility label is a statistical category under fitted assumptions. It is not proof of recession, crisis causation, or a profitable future trade.</p></div></div>
+    <div class="evidence"><strong>Evidence boundary</strong>The paper's Figure 2, Table 3, Table 4, and Figure 6 report its empirical HMM behavior. The project report holds separate proxy evidence. This lesson cites locations without reopening or copying result values.</div>
+    <div class="limitation"><strong>Assumption boundary</strong>Two states, Gaussian tails, state-conditional distributions, first-order transitions, rolling-window length, and filter choices are modeling assumptions. Financial returns can be skewed, heavy-tailed, structurally changing, and influenced by information outside return history.</div>
+    <p>Endpoint state uncertainty matters because the investment application needs today's state, exactly where retrospective decoding is least supported by future context. Filtering reduces flicker but delays switches. Multiple restarts reduce sensitivity to initialization but cannot guarantee a global optimum. These are reasons for honest validation and comparison, not reasons to discard HMMs or treat them as ground truth.</p>
+  </section>
+
+  <section class="chapter-section" id="practice">
+    <div class="eyebrow">Retrieval practice</div>
+    <h2>Separate observation, probability, path, and label</h2>
+    <div class="quiz">
+      <h3>Recall</h3><p>Why does the project order HMM states by fitted variance?</p>
+      <div class="quiz-options"><button class="button" type="button" data-choice data-correct="false">Because package label 1 is always economically bad</button><button class="button" type="button" data-choice data-correct="true" data-feedback-correct="Correct. Raw labels are arbitrary; variance ordering creates a deterministic low-state 0 and high-state 1 convention.">Because raw numeric labels are arbitrary across fits</button><button class="button" type="button" data-choice data-correct="false">Because variance reveals the next return with certainty</button></div>
+      <output class="quiz-feedback">Choose an answer, then check the explanation.</output><button class="button" type="button" data-reset>Reset</button>
+    </div>
+    <details><summary>Calculation: a transition row</summary><p>If low stays low with probability 0.92, its probability of switching high must be 0.08 in a two-state model because the row sums to one. These probabilities describe state movement, not return size.</p></details>
+    <details><summary>Error diagnosis: highest emission each day</summary><p>Independent daily classification ignores transition probabilities and is not Viterbi decoding. Compare complete path scores using both emissions and transitions.</p></details>
+    <details><summary>Error diagnosis: filter centered around today</summary><p>A centered filter includes future terminal states and leaks information. The valid filter ends at today and looks backward only.</p></details>
+    <details><summary>Cumulative recall from Chapters 1-8</summary><p>Returns describe changes in wealth, risk distinguishes spread from harmful loss, and regimes are latent persistent conditions. Honest data and walk-forward timing constrain every fit. Unlike the Chapter 8 JM features, this HMM consumes rolling daily log returns directly.</p></details>
+    <details><summary>Advisor explanation</summary><p>"Our HMM is a two-state probabilistic baseline. We fit ten deterministic starts daily on trailing log returns, require strict convergence, choose maximum likelihood, label states by conditional variance, keep only the Viterbi endpoint, and smooth those causal endpoints with a trailing majority rule selected later."</p></details>
+  </section>
+
+  <section class="chapter-section" id="advisor">
+    <div class="eyebrow">How to explain this to your advisor</div>
+    <div class="advisor"><p><strong>Short version:</strong> "An HMM explains returns through persistent hidden states with different Gaussian distributions. Viterbi combines observation fit and transition probability to produce one most probable path."</p><p><strong>Important qualification:</strong> "The endpoint label is model output, not observed truth. Daily refitting, convergence checks, deterministic labels, and causal smoothing make it auditable; they do not remove distributional assumptions or latency."</p></div>
+  </section>
+
+  <footer class="chapter-footer">
+    <p><strong>Next:</strong> Chapter 10 replaces probabilistic emissions with feature centroids and an explicit cost for changing states.</p>
+    <p><a href="08-returns-to-model-features.html">Back to Chapter 8</a> &middot; <a href="index.html">Review the full course map</a></p>
+  </footer>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const lab = document.getElementById("hmm-lab");
+  const shock = document.getElementById("hmm-shock");
+  const persistence = document.getElementById("hmm-persistence");
+  const strip = document.getElementById("hmm-path");
+  const means = [0.0005, -0.003];
+  const deviations = [0.006, 0.018];
+  const logDensity = (value, mean, deviation) => -Math.log(deviation * Math.sqrt(2 * Math.PI)) - 0.5 * ((value - mean) / deviation) ** 2;
+  function render() {
+    const returns = [0.004, -0.003, 0.002, Number(shock.value) / 100, -0.015, 0.006];
+    const stay = Number(persistence.value) / 100;
+    let scores = [0, 1].map((state) => Math.log(0.5) + logDensity(returns[0], means[state], deviations[state]));
+    const backpointers = [];
+    for (let day = 1; day < returns.length; day += 1) {
+      const nextScores = [];
+      const previousStates = [];
+      for (let state = 0; state < 2; state += 1) {
+        const candidates = [0, 1].map((previous) => scores[previous] + Math.log(previous === state ? stay : 1 - stay));
+        const previous = candidates[0] >= candidates[1] ? 0 : 1;
+        nextScores[state] = candidates[previous] + logDensity(returns[day], means[state], deviations[state]);
+        previousStates[state] = previous;
+      }
+      scores = nextScores;
+      backpointers.push(previousStates);
+    }
+    let state = scores[0] >= scores[1] ? 0 : 1;
+    const path = [state];
+    for (let day = backpointers.length - 1; day >= 0; day -= 1) {
+      state = backpointers[day][state];
+      path.push(state);
+    }
+    path.reverse();
+    const terminal = path[path.length - 1];
+    const switches = path.slice(1).filter((value, index) => value !== path[index]).length;
+    const names = ["low", "high"];
+    document.getElementById("hmm-terminal").textContent = `${terminal === 0 ? "Low" : "High"} volatility (${terminal})`;
+    document.getElementById("hmm-switches").textContent = String(switches);
+    strip.innerHTML = path.map((value, index) => `<span class="state-day ${value === 0 ? "low-state" : "high-state"}"><b>Day ${index + 1}</b><small>${names[value]}</small></span>`).join("");
+    strip.setAttribute("aria-label", `Viterbi path: ${path.map((value) => names[value]).join(", ")}; ${switches} switches`);
+  }
+  [shock, persistence].forEach((input) => input.addEventListener("input", render));
+  lab.addEventListener("course:reset", render);
+  render();
+});
+</script>
+</body>
+</html>
