@@ -62,6 +62,7 @@ VISUAL_TARGETS = {
     "01-money-assets-cash.html": (2, 1),
     "02-prices-dividends-returns.html": (1, 2),
     "03-risk-downside-losses.html": (1, 2),
+    "04-market-regimes-persistence.html": (2, 1),
     "08-returns-to-model-features.html": (1, 2),
     "09-hidden-markov-models.html": (1, 2),
     "10-clustering-statistical-jump-models.html": (1, 2),

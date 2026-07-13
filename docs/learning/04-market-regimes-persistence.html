@@ -29,6 +29,12 @@
     <h2>When does one bad day become a bad period?</h2>
     <p>You hold $100 in the market. On Monday it loses 2%. That single observation may be ordinary noise. If losses, large price movements, and weak risk-adjusted returns continue for several weeks, the pattern begins to look like a different market environment. A regime model tries to distinguish temporary variation from a persistent change.</p>
     <p>Weather provides a useful first analogy. One cold afternoon does not necessarily mean winter has arrived. A sustained combination of lower temperature, shorter daylight, and repeated cold days supports the winter label. The label summarizes a collection of observations; it does not determine the exact temperature tomorrow. Market regimes play a similar role, though the data and consequences are financial rather than meteorological.</p>
+    <figure class="teaching-figure" id="observed-hidden-layers-figure" data-visual-type="static" aria-labelledby="observed-hidden-layers-title">
+      <span class="teaching-label">Teaching example</span><h3 id="observed-hidden-layers-title">We observe market evidence, not the regime label itself</h3>
+      <div class="visual-stage"><svg viewBox="0 0 440 300" role="img" aria-labelledby="observed-hidden-svg-title observed-hidden-svg-desc"><title id="observed-hidden-svg-title">Observed returns above an inferred hidden-regime layer</title><desc id="observed-hidden-svg-desc">An illustrative sequence of positive and negative return bars is directly measured. A model maps the sequence to favorable and unfavorable hidden-state segments, which are inferred rather than observed answer labels.</desc><text x="24" y="26" font-size="18" font-weight="700">Observed layer: returns and features</text><text x="414" y="49" font-size="14" text-anchor="end">measured</text><line class="diagram-link" x1="32" y1="104" x2="408" y2="104"/><g stroke-width="2"><rect class="diagram-low" x="45" y="72" width="28" height="32"/><rect class="diagram-low" x="88" y="88" width="28" height="16"/><rect class="diagram-high" x="131" y="104" width="28" height="24"/><rect class="diagram-low" x="174" y="82" width="28" height="22"/><rect class="diagram-high" x="217" y="104" width="28" height="52"/><rect class="diagram-high" x="260" y="104" width="28" height="35"/><rect class="diagram-low" x="303" y="97" width="28" height="7"/><rect class="diagram-high" x="346" y="104" width="28" height="44"/></g><path class="diagram-link" d="M220 165 V192"/><path d="M220 199 L212 186 L228 186 Z" fill="#aab3bf"/><text x="220" y="180" font-size="14" text-anchor="middle">model inference from the sequence</text><rect x="24" y="207" width="392" height="70" rx="8" fill="none" stroke="#aab3bf" stroke-width="2" stroke-dasharray="6 4"/><text x="36" y="230" font-size="17" font-weight="700">Hidden layer: inferred regimes</text><rect class="diagram-low" x="36" y="240" width="184" height="27"/><rect class="diagram-high" x="220" y="240" width="184" height="27"/><text x="128" y="259" font-size="15" text-anchor="middle">state 0 · favorable</text><text x="312" y="259" font-size="15" text-anchor="middle">state 1 · unfavorable</text><text x="220" y="295" font-size="14" text-anchor="middle">inferred structure · no official daily answer key</text></svg></div>
+      <figcaption class="visual-caption">The bars are an unscaled schematic, not market data. Returns and derived features are observable inputs; the colored state layer is a model-dependent explanation of their sequence.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> an unfavorable inferred state can contain a positive return, and one negative bar does not automatically define an unfavorable regime.</div>
+    </figure>
     <div class="example-grid">
       <article class="worked-example">
         <div class="label">One isolated loss</div>
@@ -82,6 +88,12 @@
     <div class="eyebrow">Worked example one</div>
     <h2>Fast signals and stable signals trade advantages</h2>
     <p>A model that changes state after every surprising return reacts quickly. It can also mistake noise for a durable shift, create high turnover, and reverse before a trade is executed. A model that strongly favors persistence produces fewer switches and may be easier to trade, but it can recognize genuine turning points late.</p>
+    <figure class="teaching-figure" id="two-state-persistence-figure" data-visual-type="static" aria-labelledby="two-state-persistence-title">
+      <span class="teaching-label">Teaching example</span><h3 id="two-state-persistence-title">Persistence favors continuing a state without forbidding switches</h3>
+      <div class="visual-stage compact"><svg viewBox="0 0 440 300" role="img" aria-labelledby="persistence-svg-title persistence-svg-desc"><title id="persistence-svg-title">Two-state persistence graph</title><desc id="persistence-svg-desc">Favorable state zero and unfavorable state one each have a thick solid continuation loop. Thin dashed arrows allow switches in both directions.</desc><defs><marker id="persistence-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#aab3bf"/></marker></defs><path d="M70 114 C28 39 192 39 150 114" fill="none" stroke="#75b8ff" stroke-width="4" marker-end="url(#persistence-arrow)"/><path d="M290 114 C248 39 412 39 370 114" fill="none" stroke="#ff8585" stroke-width="4" marker-end="url(#persistence-arrow)"/><text x="110" y="42" font-size="16" text-anchor="middle">continue</text><text x="330" y="42" font-size="16" text-anchor="middle">continue</text><rect class="diagram-low" x="45" y="115" width="135" height="84" rx="10"/><rect class="diagram-high" x="260" y="115" width="135" height="84" rx="10"/><text x="112" y="150" font-size="20" font-weight="700" text-anchor="middle">State 0</text><text x="112" y="178" font-size="16" text-anchor="middle">favorable</text><text x="327" y="150" font-size="20" font-weight="700" text-anchor="middle">State 1</text><text x="327" y="178" font-size="16" text-anchor="middle">unfavorable</text><path class="diagram-link" d="M180 140 H260" stroke-dasharray="6 4" marker-end="url(#persistence-arrow)"/><path class="diagram-link" d="M260 178 H180" stroke-dasharray="6 4" marker-end="url(#persistence-arrow)"/><text x="220" y="130" font-size="14" text-anchor="middle">switch</text><text x="220" y="198" font-size="14" text-anchor="middle">switch</text><text x="220" y="244" font-size="15" text-anchor="middle">solid loops: continuation preference</text><text x="220" y="269" font-size="15" text-anchor="middle">dashed arrows: turning points remain possible</text><text x="220" y="292" font-size="13" text-anchor="middle">schematic only · no transition probabilities shown</text></svg></div>
+      <figcaption class="visual-caption">This graph expresses only the idea of persistence. An HMM learns normalized transition probabilities; a Jump Model charges a switch penalty. Their parameters are not interchangeable.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> stronger continuation preference reduces rapid flipping, but every real turning point must eventually use one of the dashed switch paths.</div>
+    </figure>
     <div class="example-grid">
       <article class="worked-example">
         <h3>Low persistence</h3>
@@ -128,22 +140,19 @@
         <div class="panel"><span class="label">Protected adverse days</span><strong class="big-number" id="protected-days">8</strong></div>
         <div class="panel"><span class="label">Cash position begins</span><strong class="big-number" id="protection-start">Day 5</strong></div>
       </div>
-      <div class="state-strip" id="state-strip" aria-label="Twenty-day adverse-regime timeline"></div>
-      <div class="state-legend">
-        <span><i class="state-day adverse-missed"></i> adverse, market still held</span>
-        <span><i class="state-day adverse-protected"></i> adverse, cash held</span>
-        <span><i class="state-day normal"></i> outside teaching regime</span>
-      </div>
-      <div class="table-wrap fallback-table">
-        <table class="data-table">
-          <thead><tr><th>Teaching input</th><th>Default value</th><th>Meaning</th></tr></thead>
-          <tbody>
-            <tr><td>Regime length</td><td>12 days</td><td>Adverse interval used only for illustration</td></tr>
-            <tr><td>Identification latency</td><td>3 days</td><td>Observations needed before the signal exists</td></tr>
-            <tr><td>Trading delay</td><td>1 day</td><td>Additional operational wait; position starts on day 5</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <figure class="teaching-figure" id="causal-latency-lanes-figure" data-visual-type="interactive" aria-labelledby="causal-latency-lanes-title">
+        <span class="teaching-label">Teaching example</span><h3 id="causal-latency-lanes-title">Follow one adverse interval through four causal lanes</h3>
+        <div class="visual-enhancement" id="latency-lanes">
+          <span class="label">1 · Teaching regime (known only for illustration)</span><div class="state-strip" id="true-regime-strip" aria-label="Teaching regime lane"></div>
+          <span class="label">2 · Detected signal (exists after the day's close)</span><div class="state-strip" id="detected-signal-strip" aria-label="Detected signal lane"></div>
+          <span class="label">3 · Held position (earns the day's return)</span><div class="state-strip" id="held-position-strip" aria-label="Held position lane"></div>
+          <span class="label">4 · Exposure outcome inside the adverse interval</span><div class="state-strip" id="exposure-outcome-strip" aria-label="Exposure outcome lane"></div>
+          <div class="state-legend"><span><i class="state-day high-state"></i> unfavorable</span><span><i class="state-day normal"></i> pending/outside teaching regime</span><span><i class="state-day low-state"></i> market</span><span><i class="state-day" style="border-color:#63d59a;background:#111b17"></i> cash</span><span><i class="state-day adverse-missed"></i> protection unavailable: adverse, market still held</span><span><i class="state-day adverse-protected"></i> cash active: adverse, cash held</span></div>
+        </div>
+        <div class="table-wrap visual-fallback"><table class="data-table"><thead><tr><th>Teaching input</th><th>Default value</th><th>Meaning</th></tr></thead><tbody><tr><td>Regime length</td><td>12 days</td><td>Adverse interval used only for illustration</td></tr><tr><td>Identification latency</td><td>3 days</td><td>Observations needed before the signal exists; in the default, it first exists after the close of day 3</td></tr><tr><td>Trading delay</td><td>1 day</td><td>Additional operational wait; position starts on day 5</td></tr><tr><td>Exposure outcome</td><td>4 unprotected / 8 protected</td><td>Days 1–4 hold market; days 5–12 hold cash</td></tr></tbody></table></div>
+        <figcaption class="visual-caption">Each lane uses the same 20 teaching days. A signal shown on day 3 exists only after that day's return; with one additional delay day, cash first earns a return on day 5. Letters M and C mean market and cash.</figcaption>
+        <div class="what-to-notice"><strong>What to notice:</strong> the true teaching boundary, inferred signal, held position, and exposure outcome are four different objects. Collapsing them into one row would give the strategy protection too early.</div>
+      </figure>
       <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The default timing calculation remains visible in the table.</p></noscript>
     </div>
     <p>The lab deliberately visualizes only entry into the unfavorable interval. A real strategy must also recognize the end. Excessive persistence can leave the portfolio in cash during a rebound. The full online path therefore contains entry latency, exit latency, delay, missed losses, missed gains, and transaction costs.</p>
@@ -217,7 +226,7 @@ signal = 1.0 - selected_state</code></pre>
       <output class="quiz-feedback">Choose an answer, then check the explanation.</output>
       <button class="button" type="button" data-reset>Reset</button>
     </div>
-    <details><summary>Calculation: latency plus delay</summary><p>An adverse regime lasts 10 days. Identification takes 4 days and trading delay is 1 day. The first five adverse days remain unprotected, leaving five protected adverse days in this entry-only teaching calculation.</p></details>
+    <details class="deep-explanation"><summary>Calculation: latency plus delay</summary><p>An adverse regime lasts 10 days. Identification takes 4 days and trading delay is 1 day. The first five adverse days remain unprotected, leaving five protected adverse days in this entry-only teaching calculation.</p></details>
     <details><summary>Error diagnosis: zero state switches</summary><p>A sequence that never switches is maximally persistent but cannot adapt. Persistence must balance false alarms against turning-point latency and must be selected without looking at test outcomes.</p></details>
     <details><summary>Cumulative recall from Chapters 1–3</summary><p>The inferred state maps to a delayed market-or-cash position. That position earns simple total or cash return. Compounded returns create wealth, and risk metrics evaluate the path. None of those later objects can be credited to the model before the signal was available.</p></details>
     <details><summary>Advisor explanation</summary><p>“The paper performs online regime identification, not exact-return forecasting. It hopes the state identified today persists long enough for a t+2 position to benefit. The Jump Model's persistence is therefore economically relevant, but it must still win an out-of-sample comparison.”</p></details>
@@ -243,22 +252,32 @@ document.addEventListener("DOMContentLoaded", () => {
   const lengthInput = document.getElementById("regime-length");
   const latencyInput = document.getElementById("identification-latency");
   const delayInput = document.getElementById("trading-delay");
-  const strip = document.getElementById("state-strip");
+  const lanes = document.getElementById("latency-lanes");
+  const laneRoots = {
+    regime: document.getElementById("true-regime-strip"),
+    signal: document.getElementById("detected-signal-strip"),
+    position: document.getElementById("held-position-strip"),
+    outcome: document.getElementById("exposure-outcome-strip"),
+  };
+  function writeLane(root, cells, summary) {
+    root.innerHTML = cells.map((cell) => `<span class="state-day ${cell.kind}" data-status="${cell.status}" title="${cell.title}"${cell.style ? ` style="${cell.style}"` : ""}><b>${cell.text}</b></span>`).join("");
+    root.setAttribute("aria-label", summary);
+  }
   function render() {
     const length = Number(lengthInput.value);
     const latency = Number(latencyInput.value);
     const delay = Number(delayInput.value);
     const missed = Math.min(length, latency + delay);
     const protectedDays = Math.max(0, length - missed);
+    const days = Array.from({ length: 20 }, (_, index) => index + 1);
     document.getElementById("missed-days").textContent = String(missed);
     document.getElementById("protected-days").textContent = String(protectedDays);
     document.getElementById("protection-start").textContent = protectedDays ? `Day ${missed + 1}` : "After regime";
-    strip.innerHTML = Array.from({ length: 20 }, (_, index) => {
-      const day = index + 1;
-      const kind = day > length ? "normal" : day <= missed ? "adverse-missed" : "adverse-protected";
-      return `<span class="state-day ${kind}" title="Day ${day}"><b>${day}</b></span>`;
-    }).join("");
-    strip.setAttribute("aria-label", `${missed} adverse days remain market-exposed and ${protectedDays} adverse days are held in cash`);
+    writeLane(laneRoots.regime, days.map((day) => day <= length ? { kind: "high-state", status: "adverse", title: `Day ${day}: unfavorable teaching regime`, text: day } : { kind: "normal", status: "outside", title: `Day ${day}: outside teaching regime`, text: day }), `Days 1 through ${length} form the unfavorable teaching regime`);
+    writeLane(laneRoots.signal, days.map((day) => day > length ? { kind: "normal", status: "outside", title: `Day ${day}: outside teaching interval`, text: "·" } : day < latency ? { kind: "normal", status: "pending", title: `Day ${day}: unfavorable signal not yet available`, text: "?" } : { kind: "high-state", status: "unfavorable-signal", title: `Day ${day}: unfavorable signal available after close`, text: "1" }), `Unfavorable signal first exists after the close of day ${latency}`);
+    writeLane(laneRoots.position, days.map((day) => day > length ? { kind: "normal", status: "outside", title: `Day ${day}: outside entry-only teaching interval`, text: "·" } : day <= missed ? { kind: "low-state", status: "market", title: `Day ${day}: market position still earns the return`, text: "M" } : { kind: "", status: "cash", style: "border-color:#63d59a;background:#111b17", title: `Day ${day}: cash position earns the return`, text: "C" }), protectedDays ? `Market is held through day ${missed}; cash starts on day ${missed + 1}` : "Market remains held for the complete adverse interval");
+    writeLane(laneRoots.outcome, days.map((day) => day > length ? { kind: "normal", status: "outside", title: `Day ${day}: outside teaching regime`, text: day } : day <= missed ? { kind: "adverse-missed", status: "unprotected", title: `Day ${day}: adverse day remains market-exposed`, text: day } : { kind: "adverse-protected", status: "protected", title: `Day ${day}: adverse day is held in cash`, text: day }), `${missed} adverse days remain market-exposed and ${protectedDays} adverse days are held in cash`);
+    lanes.classList.add("is-ready");
   }
   [lengthInput, latencyInput, delayInput].forEach((input) => input.addEventListener("input", render));
   lab.addEventListener("course:reset", render);
