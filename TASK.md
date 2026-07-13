@@ -3,7 +3,7 @@
 ## Identity
 
 - `task_id`: `author-contact-and-english-docs-001`
-- `status`: `active`
+- `status`: `complete`
 - `target_branch`: `cleanup/research-protocol`
 - `starting_ref`: `4812f230696748158eb173ef97cdb6a996c1bf90`
 - `primary_class`: `ENGINEERING / DOCUMENTATION`
@@ -84,3 +84,26 @@ model, feature, grid, metric, gate, or conclusion may be changed.
 - Run the complete test, Ruff, lock, package, and clean-archive acceptance suite.
 - End with a sealed handoff. The next scientific action is author/data access,
   not adaptive-model implementation.
+
+## Outcome
+
+Completed on 2026-07-12 without changing the frozen scientific protocol,
+market data, metrics, or conclusion.
+
+- The advisor-facing comparison documents the legacy, current, and paper
+  workflows with repository evidence and three complete visual diagrams.
+- The author email requests the undisclosed paid-series identifiers and
+  implementation conventions without treating proxy non-replication as a
+  refutation.
+- The four lessons are now a short English beginner sequence with no manually
+  copied result tables.
+- `adaptive-jump report --run <run_dir>` verifies the sealed run before writing
+  a deterministic English report outside the immutable inventory.
+- Chromium rendered all seven HTML deliverables at 1440x900 and 390x844 with no
+  console errors, missing local links, or page-level horizontal overflow.
+- The official v7 run still verifies 131 immutable files, 18 boundary rows, and
+  27 recomputed metric rows. Its conclusion remains proxy non-replication, so
+  adaptive and extension work remain blocked.
+- The project environment and a clean Git archive passed 97 tests, Ruff check
+  and format check, package build, dependency compatibility, lock validation,
+  and CLI discovery.
