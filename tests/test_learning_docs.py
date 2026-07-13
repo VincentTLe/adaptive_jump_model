@@ -69,6 +69,7 @@ CONCEPT_ILLUSTRATION_TARGETS = {"08-returns-to-model-features.html": 1}
 SOURCE_LENS_TARGETS = {
     "09-hidden-markov-models.html": ("2", "9"),
     "10-clustering-statistical-jump-models.html": ("3", "12"),
+    "11-dynamic-programming-online-inference.html": ("4", "14"),
 }
 FIXED_MATH_ARITY = {
     "mfrac": 2,
