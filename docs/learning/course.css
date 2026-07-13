@@ -138,6 +138,7 @@ progress { width: 100%; }
 .state-day.normal { color: var(--muted); }
 .backtest-strip { grid-template-columns: repeat(8, 1fr); }
 .model-strip { grid-template-columns: repeat(6, 1fr); }
+.five-day-strip { grid-template-columns: repeat(5, 1fr); }
 .state-day.low-state { border-color: #356a91; background: #102538; }
 .state-day.high-state { border-color: #8d4545; background: #301616; }
 .state-legend { display: flex; flex-wrap: wrap; gap: 10px 18px; color: var(--muted); font-size: .86rem; }

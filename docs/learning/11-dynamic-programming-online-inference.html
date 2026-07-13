@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A beginner derivation of dynamic programming, Bellman values, backpointers, offline paths, online terminal inference, complexity, and exact implementation tests.">
+  <title>Chapter 11: Dynamic Programming And Online Inference</title>
+  <link rel="stylesheet" href="course.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/mml-chtml.js" integrity="sha384-GYAeDZjH9w23NyL4cfS+ZrgWmGvta6VNs4p+/vtuF+RWe30fQhmP8pHbzRmlwmAK" crossorigin="anonymous"></script>
+  <script defer src="course.js"></script>
+</head>
+<body>
+<main class="course-shell">
+  <nav class="course-nav" aria-label="Course navigation">
+    <a href="10-clustering-statistical-jump-models.html">Previous: statistical Jump Models</a>
+    <span>Part III &middot; Chapter 11 of 14</span>
+    <a href="index.html">Next: course map</a>
+  </nav>
+
+  <header class="chapter-header">
+    <div class="part-label">Part III &middot; Features And Models</div>
+    <h1>Dynamic Programming And Online Inference</h1>
+    <p class="lead">How can we find the best persistent state path without checking every possible path, and how can we do it without future data?</p>
+    <div class="chapter-meta"><span>Intermediate level</span><span>Bellman table laboratory</span><span>Paper Section 3.4.2</span></div>
+  </header>
+
+  <section class="chapter-section" id="question">
+    <div class="eyebrow">The opening question</div>
+    <h2>Must we inspect more than a billion paths before moving $100?</h2>
+    <p>A two-state model observes 30 days before deciding whether your $100 should remain in the market or move toward cash after the required delay. Each day can be state 0 or state 1, so there are <math><msup><mn>2</mn><mn>30</mn></msup></math>, or 1,073,741,824, complete paths. Checking every path is possible in theory but wasteful. A 3,000-day research window would have an unimaginable number of possibilities.</p>
+    <div class="example-grid">
+      <article class="worked-example failure"><h3>A common failure: brute force</h3><span class="big-number">Over 1 billion</span><p>Enumerating every 30-day binary sequence repeats the same partial calculations and becomes impossible as the window grows.</p></article>
+      <article class="worked-example"><h3>Dynamic program</h3><span class="big-number">2 states per day</span><p>For each ending state, retain only the cheapest way to arrive there. Any more expensive route to the same endpoint can never become optimal later.</p></article>
+    </div>
+    <p>This elimination rule is the heart of dynamic programming, or DP. At Day 10, suppose two partial paths both end in state 1, but one already costs 7 and the other costs 9. Every future continuation from state 1 adds exactly the same future possibilities to both. The path costing 9 can be discarded permanently.</p>
+    <p>DP is not an approximation here. For fixed centroids and penalties, it finds an exact minimum-cost state path. The computational gain comes from recognizing that the future needs to know only today's ending state and accumulated best cost, not the complete route by which that state was reached.</p>
+    <div class="remember"><strong>The idea to remember</strong>Dynamic programming summarizes every relevant past path by one best value per possible current state. Offline traceback reconstructs a full path after seeing the window. Online inference at date <math><mi>t</mi></math> uses only the value row available through <math><mi>t</mi></math> and keeps its cheapest terminal state.</div>
+  </section>
+
+  <section class="chapter-section" id="vocabulary">
+    <div class="eyebrow">Words before notation</div>
+    <h2>Separate values, pointers, paths, and information sets</h2>
+    <div class="concept-grid three">
+      <div class="panel"><h3>Subproblem</h3><p>A smaller question reused inside the larger problem. Here: the cheapest path through date <math><mi>t</mi></math> that ends in state <math><mi>k</mi></math>.</p></div>
+      <div class="panel"><h3>Value</h3><p>The minimum accumulated objective for a subproblem. A value is a cost, not a state probability or portfolio return.</p></div>
+      <div class="panel"><h3>Recurrence</h3><p>A rule that computes today's values from yesterday's values, today's losses, and transition penalties.</p></div>
+      <div class="panel"><h3>Backpointer</h3><p>The previous state that achieved a minimum. Saving pointers allows an optimal final path to be reconstructed backward.</p></div>
+      <div class="panel"><h3>Terminal state</h3><p>The cheapest ending state for the currently available prefix. It is the only path element needed for today's online output.</p></div>
+      <div class="panel"><h3>Traceback</h3><p>Starting from the cheapest final state and following saved backpointers to recover earlier labels.</p></div>
+    </div>
+    <p>A <span class="term">loss matrix</span> has one row per date and one column per state. Entry <math><mi>L</mi><mo>(</mo><mi>t</mi><mo>,</mo><mi>k</mi><mo>)</mo></math> measures the cost of assigning observation <math><mi>t</mi></math> to state <math><mi>k</mi></math>. For the discrete JM, it is half squared distance from the standardized feature vector to centroid <math><mi>k</mi></math>.</p>
+    <p>A <span class="term">penalty matrix</span> gives the cost of moving from each previous state to each arrival state. The fixed two-state JM has zero on the diagonal and <math><mi>&lambda;</mi></math> off the diagonal. Remaining in the same state is free; changing either direction costs the same amount.</p>
+    <p><span class="term">Optimal substructure</span> is the property that an optimal full path contains optimal relevant partial paths. If the cheapest path ending in state 1 at Day 5 used a non-cheapest earlier route ending in the same state, replacing that route with the cheaper one would improve the full path, contradicting optimality.</p>
+    <p>The <span class="term">Bellman principle</span> is the general idea behind this recurrence: make the current decision using optimal values of smaller preceding problems. The name does not imply a new market assumption. It is an algorithmic structure created by additive losses and state-dependent transition costs.</p>
+    <p><span class="term">Offline decoding</span> uses the full chosen window and reconstructs labels for every row. A label in the middle can depend on observations later in that window. <span class="term">Online terminal inference</span> asks only which state minimizes cost at the current endpoint using observations available through that endpoint.</p>
+    <p>A <span class="term">prefix</span> is the sequence from its start through a current endpoint. If we compute online terminal labels for Day 1, then Days 1-2, then Days 1-3, the earlier emitted labels are not retroactively replaced by a later full-window traceback. Doing so would create hindsight regimes rather than live-sample outputs.</p>
+    <p><span class="term">Time complexity</span> describes how operations grow with input size. With <math><mi>T</mi></math> dates and <math><mi>K</mi></math> states, the general recurrence compares <math><mi>K</mi></math> previous states for each of <math><mi>K</mi></math> arrival states on each date: <math><mi>O</mi><mo>(</mo><mi>T</mi><msup><mi>K</mi><mn>2</mn></msup><mo>)</mo></math>. For two states, growth is linear in dates.</p>
+    <p><span class="term">Space complexity</span> is stored information. A full value table and backpointers use order <math><mi>T</mi><mi>K</mi></math> memory. If only the latest terminal state is needed, values can be updated with two rows, though the upstream implementation returns the complete value matrix for its online sequence.</p>
+  </section>
+
+  <section class="chapter-section" id="worked-dp">
+    <div class="eyebrow">Worked example two</div>
+    <h2>Fill one Bellman row by hand</h2>
+    <p>Use two states and jump penalty 0.7. On Day 1, losses are 0.1 for state 0 and 2.0 for state 1. There is no incoming transition, so the first value row is simply [0.1, 2.0]. On Day 2, losses are [0.3, 1.5].</p>
+    <p>To end Day 2 in state 0, either stay from state 0 for cost 0.1 + 0, or jump from state 1 for cost 2.0 + 0.7. The cheaper predecessor costs 0.1. Add today's state-0 loss 0.3, giving value 0.4. The backpointer for this cell is state 0.</p>
+    <p>To end Day 2 in state 1, either jump from state 0 for 0.1 + 0.7, or stay from state 1 for 2.0 + 0. The first predecessor is cheaper. Add today's state-1 loss 1.5, giving value 2.3. Its backpointer is state 0. Since 0.4 is lower than 2.3, the online terminal state at Day 2 is 0.</p>
+    <p>Continue through five rows. The online terminal sequence becomes 0, 0, 1, 0, 1. But traceback after the fifth row gives the full-window path 0, 0, 1, 1, 1. Day 4 differs: future Day 5 makes remaining in state 1 globally cheaper for the completed window, while Day 4's live endpoint had favored state 0.</p>
+    <h3>A common failure: publish the offline path as online history</h3>
+    <p>If the final traceback path is plotted as though every middle label existed in real time, Day 4 is rewritten using Day 5. That can make transition timing look cleaner and improve a backtest impossibly. The valid online stream stores the terminal choice made at each endpoint before the next observation arrived.</p>
+    <p>Another failure uses greedy nearest-centroid labels and calls them DP. Greedy choice keeps only today's smallest loss. DP keeps one accumulated best value for every possible ending state, allowing a locally worse state to survive when it leads to a cheaper persistent path later.</p>
+  </section>
+
+  <section class="chapter-section" id="dp-lab-section">
+    <div class="eyebrow">Interactive teaching visual</div>
+    <h2>Read the value table before reading the path</h2>
+    <p>Change the fixed jump penalty or Day 4 state-0 loss. The table recomputes every prefix value and online terminal. Two strips then compare live prefix outputs with hindsight traceback for the complete five-day toy window.</p>
+    <div class="lab" id="dp-lab">
+      <div class="lab-header"><div><h3>Five-day Bellman table</h3><p>Invented losses; two fixed states; exact minimization.</p></div><button class="button" type="button" data-reset>Reset</button></div>
+      <form><div class="control-grid">
+        <div><label for="dp-penalty">Jump penalty: <output id="dp-penalty-output" for="dp-penalty">0.70</output></label><input id="dp-penalty" type="range" min="0" max="2" step="0.1" value="0.7" data-output="dp-penalty-output" data-digits="2"></div>
+        <div><label for="dp-day-four-loss">Day 4 loss in state 0: <output id="dp-day-four-loss-output" for="dp-day-four-loss">0.40</output></label><input id="dp-day-four-loss" type="range" min="0" max="2" step="0.1" value="0.4" data-output="dp-day-four-loss-output" data-digits="2"></div>
+      </div></form>
+      <div class="metric-grid"><div class="panel"><span class="label">Final optimal objective</span><strong class="big-number" id="dp-objective">2.20</strong></div><div class="panel"><span class="label">Final terminal state</span><strong class="big-number" id="dp-terminal">State 1</strong></div></div>
+      <div class="table-wrap"><table class="data-table" aria-label="Default Bellman value table"><thead><tr><th>Day</th><th>Loss state 0</th><th>Loss state 1</th><th>Best value ending 0</th><th>Best value ending 1</th><th>Online terminal</th></tr></thead><tbody id="dp-rows"><tr><td>1</td><td>0.10</td><td>2.00</td><td>0.10</td><td>2.00</td><td>0</td></tr><tr><td>2</td><td>0.30</td><td>1.50</td><td>0.40</td><td>2.30</td><td>0</td></tr><tr><td>3</td><td>1.20</td><td>0.20</td><td>1.60</td><td>1.30</td><td>1</td></tr><tr><td>4</td><td>0.40</td><td>0.80</td><td>2.00</td><td>2.10</td><td>0</td></tr><tr><td>5</td><td>1.50</td><td>0.10</td><td>3.50</td><td>2.20</td><td>1</td></tr></tbody></table></div>
+      <h3>Online prefix terminals</h3>
+      <div class="state-strip five-day-strip" id="dp-online" aria-label="Online terminal states: 0, 0, 1, 0, 1"><span class="state-day low-state">0</span><span class="state-day low-state">0</span><span class="state-day high-state">1</span><span class="state-day low-state">0</span><span class="state-day high-state">1</span></div>
+      <h3>Offline traceback after Day 5</h3>
+      <div class="state-strip five-day-strip" id="dp-offline" aria-label="Offline traceback states: 0, 0, 1, 1, 1"><span class="state-day low-state">0</span><span class="state-day low-state">0</span><span class="state-day high-state">1</span><span class="state-day high-state">1</span><span class="state-day high-state">1</span></div>
+      <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The default Bellman values, online terminal sequence, and offline traceback remain fully visible. Their Day 4 disagreement is the lesson.</p></noscript>
+    </div>
+    <p>At zero penalty, each value row reduces to the accumulated cheapest pointwise losses and online/offline labels agree with the minimum-loss state on each day. Raising the penalty changes accumulated comparisons. It may cause online labels to lag a new local pattern and lets later evidence alter earlier labels only inside an offline traceback.</p>
+  </section>
+
+  <section class="chapter-section" id="paper-connection">
+    <div class="eyebrow">Connection to the named paper</div>
+    <h2>Section 3.4.2 uses only the last state</h2>
+    <p>Section 3.4 of <a href="../../2402.05272v3.pdf">Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3</a> states that DP solves the discrete state-sequence block in linear time when model parameters are fixed. Section 3.4.2 then defines the live-sample use: with the most recently fitted centroids and a fixed candidate penalty, process the trailing 3,000 feature rows available through day <math><mi>t</mi></math> and extract the last state.</p>
+    <p>A nearest-centroid endpoint would ignore temporal information. DP carries the path's persistence cost into the current terminal comparison. The paper emphasizes that tomorrow's feature vector is unavailable. Its Figure 4 contrasts a later full-window in-sample regime path with daily online inferred regimes around the 2020 episode, illustrating that online detection can lag turning points.</p>
+    <p>Latency is not the trading delay. Model latency is the observations needed before changing the inferred state becomes worthwhile. Trading delay is the later operational gap between an available signal and the return first controlled by its position. A persistent DP path may have latency even when execution is immediate.</p>
+  </section>
+
+  <section class="chapter-section" id="project-connection">
+    <div class="eyebrow">Connection to this project</div>
+    <h2>Reference behavior is tested, not assumed</h2>
+    <p>The fixed baseline in <a href="../../src/adaptive_jump/models.py"><code>src/adaptive_jump/models.py</code></a> calls upstream <code>JumpModel.predict_online</code> on each scaled trailing window. The upstream library builds the half-squared-distance loss matrix, computes all DP value rows, and takes each row's minimum-cost state. The adapter validates shape and labels, then stores only the final label for the current date.</p>
+    <p><a href="../../src/adaptive_jump/tv_jump.py"><code>src/adaptive_jump/tv_jump.py</code></a> contains the single custom time-varying-penalty DP reserved for the preregistered extension. Its recurrence uses <code>penalty_seq[t]</code> for the transition arriving on date <math><mi>t</mi></math>; index zero is unused because the first state has no incoming jump. A scalar sequence is expanded to matrices with zero diagonals and date-specific off-diagonal penalties.</p>
+    <pre><code>values[0] = loss[0]
+for t in 1..T-1:
+    values[t, k] = loss[t, k] + min_j(
+        values[t-1, j] + penalty[t, j, k]
+    )</code></pre>
+    <p><a href="../../tests/test_tv_jump.py"><code>tests/test_tv_jump.py</code></a> compares tiny random DP problems with brute-force enumeration, including two and three states. It verifies the returned path actually achieves the optimum. Zero penalty must equal pointwise row minima; a huge penalty must forbid switching.</p>
+    <p>Most importantly, a constant penalty sequence must match upstream fixed DP exactly: objective value, full assignment, and online value matrix. The fitted time-varying class with a constant sequence must also match upstream fitted labels, objective, and online labels under identical starts. This is a numerical nesting contract. It says the extension contains the fixed baseline; it does not say a changing penalty improves scientific outcomes.</p>
+    <p>The scalar penalty-sequence constructor rejects non-finite, negative, or non-vector inputs, and the solver checks matrix shape. Adaptive experiments, parameter selection, and any performance claim remain outside the current textbook task and behind the replication gate.</p>
+  </section>
+
+  <section class="chapter-section" id="mathematics">
+    <div class="eyebrow">Mathematical layer</div>
+    <h2>Derive the recurrence from the last transition</h2>
+    <div class="formula"><math display="block"><msub><mi>V</mi><mn>0</mn></msub><mo>(</mo><mi>k</mi><mo>)</mo><mo>=</mo><mi>L</mi><mo>(</mo><mn>0</mn><mo>,</mo><mi>k</mi><mo>)</mo></math><math display="block"><msub><mi>V</mi><mi>t</mi></msub><mo>(</mo><mi>k</mi><mo>)</mo><mo>=</mo><mi>L</mi><mo>(</mo><mi>t</mi><mo>,</mo><mi>k</mi><mo>)</mo><mo>+</mo><munder><mo>min</mo><mi>j</mi></munder><mo>[</mo><msub><mi>V</mi><mrow><mi>t</mi><mo>&minus;</mo><mn>1</mn></mrow></msub><mo>(</mo><mi>j</mi><mo>)</mo><mo>+</mo><msub><mi>&Lambda;</mi><mi>t</mi></msub><mo>(</mo><mi>j</mi><mo>,</mo><mi>k</mi><mo>)</mo><mo>]</mo></math><math display="block"><msub><mover><mi>s</mi><mo>^</mo></mover><mi>t</mi></msub><mo>=</mo><munder><mo>arg min</mo><mi>k</mi></munder><msub><mi>V</mi><mi>t</mi></msub><mo>(</mo><mi>k</mi><mo>)</mo></math></div>
+    <div class="table-wrap"><table class="symbol-table"><thead><tr><th>Symbol</th><th>Meaning</th><th>Unit or convention</th></tr></thead><tbody><tr><td><math><mi>t</mi></math></td><td>Current row index</td><td>0 through <math><mi>T</mi><mo>&minus;</mo><mn>1</mn></math></td></tr><tr><td><math><mi>j</mi></math></td><td>Candidate previous state</td><td>0 through <math><mi>K</mi><mo>&minus;</mo><mn>1</mn></math></td></tr><tr><td><math><mi>k</mi></math></td><td>Candidate arrival state</td><td>0 through <math><mi>K</mi><mo>&minus;</mo><mn>1</mn></math></td></tr><tr><td><math><mi>L</mi><mo>(</mo><mi>t</mi><mo>,</mo><mi>k</mi><mo>)</mo></math></td><td>Observation loss for assigning row <math><mi>t</mi></math> to state <math><mi>k</mi></math></td><td>Nonnegative objective cost</td></tr><tr><td><math><msub><mi>&Lambda;</mi><mi>t</mi></msub><mo>(</mo><mi>j</mi><mo>,</mo><mi>k</mi><mo>)</mo></math></td><td>Cost of transition <math><mi>j</mi><mo>&rarr;</mo><mi>k</mi></math> arriving at <math><mi>t</mi></math></td><td>Zero to stay in fixed JM</td></tr><tr><td><math><msub><mi>V</mi><mi>t</mi></msub><mo>(</mo><mi>k</mi><mo>)</mo></math></td><td>Minimum prefix objective ending in state <math><mi>k</mi></math></td><td>Accumulated objective cost</td></tr></tbody></table></div>
+    <p>Every path ending in state <math><mi>k</mi></math> at date <math><mi>t</mi></math> must come from exactly one previous state <math><mi>j</mi></math>. Its cost is a best prefix ending at <math><mi>j</mi></math>, plus the transition into <math><mi>k</mi></math>, plus today's observation loss. Taking the minimum over <math><mi>j</mi></math> therefore covers every relevant path without listing them.</p>
+    <p>For fixed JM, <math><msub><mi>&Lambda;</mi><mi>t</mi></msub><mo>(</mo><mi>j</mi><mo>,</mo><mi>k</mi><mo>)</mo><mo>=</mo><mi>&lambda;</mi><mn>1</mn><mo>{</mo><mi>j</mi><mo>&ne;</mo><mi>k</mi><mo>}</mo></math> for every arrival date. A date-varying scalar replaces <math><mi>&lambda;</mi></math> by <math><msub><mi>&lambda;</mi><mi>t</mi></msub></math>. If all <math><msub><mi>&lambda;</mi><mi>t</mi></msub></math> equal the same value, every recurrence cell equals the fixed reference, which explains the nesting test.</p>
+    <p>The online terminal equation needs only values through <math><mi>t</mi></math>. Offline traceback additionally stores <math><msub><mi>B</mi><mi>t</mi></msub><mo>(</mo><mi>k</mi><mo>)</mo></math>, the minimizing predecessor, starts from the final minimum, and follows pointers backward. Both are exact for their different questions.</p>
+  </section>
+
+  <section class="chapter-section" id="evidence-limitations">
+    <div class="eyebrow">Evidence and limits</div>
+    <h2>An exact algorithm can still optimize the wrong model</h2>
+    <div class="concept-grid"><div class="panel"><h3>What exactness means</h3><p>For fixed losses and penalties, DP returns a globally minimum state sequence. Oracle tests verify the implementation against enumeration and the upstream reference.</p></div><div class="panel"><h3>What exactness does not mean</h3><p>Centroids, features, penalty choice, data definitions, state interpretation, or future economic usefulness are not proven correct by solving their objective exactly.</p></div></div>
+    <div class="evidence"><strong>Evidence boundary</strong>The tests establish numerical contracts on deterministic inputs. The paper supplies empirical examples of online latency. Neither source turns a hidden state into observed truth.</div>
+    <div class="limitation"><strong>Online limitation</strong>The endpoint has less future context than an interior offline label. Persistence prevents flicker but creates detection latency. A trailing 3,000-row window also drops old information as it advances, so consecutive online problems are related but not identical prefixes forever.</div>
+    <p>Computational efficiency makes repeated evaluation possible; it does not justify searching unlimited model variants. Every extra penalty rule or asymmetry creates another scientific choice. The current extension preserves a scalar time-varying penalty and an exact fixed baseline, but adaptive performance remains unopened until the earlier replication gate and research freeze permit it.</p>
+  </section>
+
+  <section class="chapter-section" id="practice">
+    <div class="eyebrow">Retrieval practice</div>
+    <h2>Ask what information each label used</h2>
+    <div class="quiz">
+      <h3>Recall</h3><p>Why may the Day 4 offline label differ from the Day 4 online terminal label?</p>
+      <div class="quiz-options"><button class="button" type="button" data-choice data-correct="false">DP is random on every run</button><button class="button" type="button" data-choice data-correct="true" data-feedback-correct="Correct. Offline traceback after Day 5 can use Day 5 to revise Day 4; the Day 4 online terminal could not.">Offline traceback can use later observations in its window</button><button class="button" type="button" data-choice data-correct="false">The online label ignores all transition costs</button></div>
+      <output class="quiz-feedback">Choose an answer, then check the explanation.</output><button class="button" type="button" data-reset>Reset</button>
+    </div>
+    <details><summary>Calculation: one Bellman cell</summary><p>Previous values are [1.2, 2.0], <math><mi>&lambda;</mi><mo>=</mo><mn>0.5</mn></math>, and today's state-1 loss is 0.3. Arriving in state 1 costs min(1.2 + 0.5, 2.0 + 0) + 0.3 = 2.0.</p></details>
+    <details><summary>Error diagnosis: penalty on the first row</summary><p>There is no incoming state inside the window at row zero, so initialize values from row-zero losses only. Charging a jump there changes the objective.</p></details>
+    <details><summary>Error diagnosis: future-revised regime chart</summary><p>A full-window traceback can relabel interior dates. For a live backtest, save the terminal state produced at each historical endpoint and never replace it using later rows.</p></details>
+    <details><summary>Cumulative recall from Chapters 1-10</summary><p>The DP operates on Chapter 10's distance losses and jump costs, which derive from Chapter 8 features. It plays a role analogous to Chapter 9's Viterbi recurrence but minimizes objective cost instead of maximizing HMM joint probability. Chapter 7 governs when terminal output can trade.</p></details>
+    <details><summary>Advisor explanation</summary><p>"For each day and possible ending state, DP stores the cheapest prefix cost and predecessor. That reduces exponential path search to order T times K squared. Our online signal uses only the current terminal argmin; full traceback is an offline explanation and may revise interior labels."</p></details>
+  </section>
+
+  <section class="chapter-section" id="advisor">
+    <div class="eyebrow">How to explain this to your advisor</div>
+    <div class="advisor"><p><strong>Short version:</strong> "DP is exact because paths ending in the same current state share all future options, so only the cheapest such prefix must survive."</p><p><strong>Important qualification:</strong> "Exact objective minimization is an algorithm claim. It does not validate the objective economically, and an offline traceback must never be substituted for historical online terminal states."</p></div>
+  </section>
+
+  <footer class="chapter-footer">
+    <p><strong>Next:</strong> Chapter 12 places fitting and terminal inference inside monthly walk-forward selection, delayed trading, fair comparison, and performance measurement.</p>
+    <p><a href="10-clustering-statistical-jump-models.html">Back to Chapter 10</a> &middot; <a href="index.html">Review the full course map</a></p>
+  </footer>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const lab = document.getElementById("dp-lab");
+  const penaltyInput = document.getElementById("dp-penalty");
+  const dayFourInput = document.getElementById("dp-day-four-loss");
+  const rows = document.getElementById("dp-rows");
+  const onlineStrip = document.getElementById("dp-online");
+  const offlineStrip = document.getElementById("dp-offline");
+  function cells(path) {
+    return path.map((state) => `<span class="state-day ${state === 0 ? "low-state" : "high-state"}">${state}</span>`).join("");
+  }
+  function render() {
+    const losses = [[0.1, 2.0], [0.3, 1.5], [1.2, 0.2], [Number(dayFourInput.value), 0.8], [1.5, 0.1]];
+    const penalty = Number(penaltyInput.value);
+    const values = [losses[0].slice()];
+    const backpointers = [];
+    for (let day = 1; day < losses.length; day += 1) {
+      const valueRow = [];
+      const pointerRow = [];
+      for (let state = 0; state < 2; state += 1) {
+        const candidates = [values[day - 1][0] + (state === 0 ? 0 : penalty), values[day - 1][1] + (state === 1 ? 0 : penalty)];
+        const previous = candidates[0] <= candidates[1] ? 0 : 1;
+        valueRow[state] = losses[day][state] + candidates[previous];
+        pointerRow[state] = previous;
+      }
+      values.push(valueRow);
+      backpointers.push(pointerRow);
+    }
+    const online = values.map((row) => row[0] <= row[1] ? 0 : 1);
+    let state = online[online.length - 1];
+    const offline = [state];
+    for (let day = backpointers.length - 1; day >= 0; day -= 1) {
+      state = backpointers[day][state];
+      offline.push(state);
+    }
+    offline.reverse();
+    rows.innerHTML = losses.map((loss, day) => `<tr><td>${day + 1}</td><td>${loss[0].toFixed(2)}</td><td>${loss[1].toFixed(2)}</td><td>${values[day][0].toFixed(2)}</td><td>${values[day][1].toFixed(2)}</td><td>${online[day]}</td></tr>`).join("");
+    document.getElementById("dp-objective").textContent = Math.min(...values[values.length - 1]).toFixed(2);
+    document.getElementById("dp-terminal").textContent = `State ${online[online.length - 1]}`;
+    onlineStrip.innerHTML = cells(online);
+    offlineStrip.innerHTML = cells(offline);
+    onlineStrip.setAttribute("aria-label", `Online terminal states: ${online.join(", ")}`);
+    offlineStrip.setAttribute("aria-label", `Offline traceback states: ${offline.join(", ")}`);
+  }
+  [penaltyInput, dayFourInput].forEach((input) => input.addEventListener("input", render));
+  lab.addEventListener("course:reset", render);
+  render();
+});
+</script>
+</body>
+</html>
