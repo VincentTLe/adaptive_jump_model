@@ -1,168 +1,155 @@
-# Task: Interactive Adaptive Jump Model Textbook
+# Task: Visual Textbook V2
 
 ## Identity
 
-- `task_id`: `interactive-textbook-001`
-- `status`: `complete`
+- `task_id`: `visual-textbook-002`
+- `status`: `active`
 - `target_branch`: `cleanup/research-protocol`
-- `starting_ref`: `bd130224da212a6934b006e7e7f525982ed71f49`
+- `starting_ref`: `2b62f4c61de168a8bd753a9dfba557aba5a7108a`
 - `primary_class`: `ENGINEERING / DOCUMENTATION`
 - `scientific_claim_change`: forbidden
 - `adaptive_experiment`: forbidden
 - `extension_access`: forbidden
 
-The owner approved this task after reviewing the short four-lesson sequence.
-The completed communication task is frozen at
-`archive/completed-tasks/author-contact-and-english-docs-001.md`.
+The owner approved this task on 2026-07-13 after reviewing the completed
+fourteen-chapter textbook and a research-backed visual redesign plan. The
+completed predecessor is frozen at
+`archive/completed-tasks/interactive-textbook-001.md`.
 
 ## Goal
 
-Replace the short lessons with a long, progressive English textbook for a
-reader who knows no finance, statistics, machine learning, or software. The
-course must remain simple at each step without becoming a summary: fourteen
-chapters, each approximately 2,500-3,500 visible words, should build from a
-$100 example to the exact mathematics, protocol, paper, and verified project
-evidence.
+Turn the existing English textbook into an explorable visual textbook without
+removing its authored explanations. Add exactly 38 teaching figures across the
+fourteen chapters: 23 interactive and 15 static. Each figure must answer a
+specific finance, statistics, model, protocol, or evidence question.
 
-The course is one authored documentation product. It must not create a second
-research pipeline, rerun a market experiment, or change the frozen v7 result.
+The work begins with the mathematical chapters, then returns to the foundation
+and evidence chapters. It is documentation work only. It must not alter market
+data, model code, configuration, protocol, frozen v7 results, gates, or claims.
 
-## Locked Source And Evidence Boundary
+## Locked Content And Evidence Boundary
 
-The named paper is exactly:
+- Preserve at least the baseline visible word count for every chapter.
+- Keep all course copy, captions, controls, and labels in English.
+- Use only deterministic toy values already present in the chapters.
+- Do not download data, inspect post-2023 evidence, or run an adaptive model.
+- Do not manually copy empirical result values into authored HTML.
+- Do not reproduce paper figures; create original teaching schematics.
+- Keep the current conclusion: proxy non-replication and adaptive work blocked.
 
-- Shu, Yu, and Mulvey, *Downside Risk Reduction Using Regime-Switching
-  Signals: A Statistical Jump Model Approach*;
-- arXiv `2402.05272v3`, 17 September 2024, 22 pages;
-- local file `2402.05272v3.pdf`;
-- SHA-256 `141e48bd5ccaefe5d2c276a3c8772716b583b1df91517109d54a2452f4cb3af1`.
+The locked paper remains Shu, Yu, and Mulvey, arXiv `2402.05272v3`, local
+SHA-256 `141e48bd5ccaefe5d2c276a3c8772716b583b1df91517109d54a2452f4cb3af1`.
 
-Use the local PDF as the protocol source of truth. Permitted project evidence
-is limited to the frozen v7 config and artifacts, active source/tests, Git
-history, and archived provenance used only to describe earlier work.
+## Baseline And Visual Inventory
 
-No new market data may be downloaded. No post-2023 evidence may be inspected.
-No model, feature, grid, metric, gate, result, or conclusion may change. The
-course may use deterministic toy data that is visibly labeled as teaching data.
+| Chapter | Baseline words | Static | Interactive |
+| --- | ---: | ---: | ---: |
+| 01 | 2,637 | 2 | 1 |
+| 02 | 2,518 | 1 | 2 |
+| 03 | 2,500 | 1 | 2 |
+| 04 | 2,561 | 2 | 1 |
+| 05 | 2,582 | 1 | 1 |
+| 06 | 2,575 | 1 | 1 |
+| 07 | 2,531 | 1 | 2 |
+| 08 | 2,713 | 1 | 2 |
+| 09 | 2,677 | 1 | 2 |
+| 10 | 2,543 | 1 | 2 |
+| 11 | 2,590 | 1 | 2 |
+| 12 | 2,686 | 1 | 2 |
+| 13 | 3,228 | 0 | 2 |
+| 14 | 3,406 | 1 | 1 |
+| **Total** | **37,747** | **15** | **23** |
 
-## Course Map
+## Learning Presentation Contract
 
-### Part I: Money, Returns, And Risk
+Each important concept follows this reading sequence:
 
-1. Money, Assets, And Cash
-2. Prices, Dividends, And Returns
-3. Risk And Downside Losses
-4. Market Regimes And Persistence
+1. plain-language question and `$100` example;
+2. teaching figure or direct manipulation;
+3. caption and a short `What to notice` explanation;
+4. native `details.deep-explanation` containing retained long-form prose;
+5. mathematical layer, empirical evidence, limits, and advisor explanation.
 
-### Part II: Honest Research
+The question, example, caption, takeaway, formula, evidence boundary,
+limitation, and advisor explanation remain visible. Deep explanations are
+closed by default on screen and expanded for print. Text may move into this
+layer but must not be deleted, shortened, or silently rewritten.
 
-5. Data Parity And Proxy Replication
-6. Reproducibility And Sealed Evidence
-7. Backtesting Without Seeing The Future
+Every visual must:
 
-### Part III: Features And Models
+- carry a visible `Teaching example` label;
+- have a semantic heading or accessible name and a `figcaption`;
+- encode meaning with labels or shapes as well as color;
+- remain useful with JavaScript and external requests disabled;
+- expose deterministic state through accessible text or a table;
+- avoid autoplay, random simulation, decoration, and result-bearing data.
 
-8. From Returns To Model Features
-9. Hidden Markov Models From Zero
-10. Clustering And Statistical Jump Models
-11. Dynamic Programming And Online Inference
-12. Walk-Forward Selection And Performance Measurement
+Interactive visuals support keyboard use and `Play`, `Pause`, `Previous`,
+`Next`, and `Reset` where a sequence is shown. Frames advance every 900 ms only
+after `Play`. Reduced-motion mode removes tweening without removing controls.
 
-### Part IV: The Paper And Our Evidence
+## Browser Architecture
 
-13. A Guided Reading Of Shu, Yu, And Mulvey
-14. The Paper, The Legacy Project, And The Verified V7 Run
+- Keep the static HTML, shared `course.css`, shared `course.js`, and inline
+  chapter scripts.
+- Keep exact MathJax `4.1.3` and Chart.js `4.5.1` pins and integrity hashes.
+- Add no framework, D3, Mermaid, Node build system, image library, or runtime
+  dependency.
+- Use Chart.js for quantitative charts, semantic inline SVG for custom diagrams,
+  and HTML grids/tables for state and evidence structures.
+- Inline SVG contains a meaningful initial state before JavaScript runs.
+- Canvas fallback tables remain visible unless chart rendering succeeds.
+- `window.Course` may add a small stepper helper, a reduced-motion query, and
+  shared semantic colors; existing `money()` and `percent()` remain stable.
+- Keep `course.css` near 400 lines, `course.js` near 220 lines, and chapter
+  files near 450 lines. Pause before exceeding those flags.
 
-Every chapter includes a paper connection. Chapter 13 supplies the integrated
-guided tour of Sections 1-5, Equation (1), Tables 1-5, and Figures 1-6.
+## Chapter Deliverables
 
-## Teaching Contract
+- **01:** allocation split, before/after wealth, crash/rebound opportunity cost.
+- **02:** corporate-action storyboard, ending wealth chart, compounding stepper.
+- **03:** path comparison, wealth/peak/drawdown, interactive metric lens.
+- **04:** observed/hidden layers, persistence graph, causal latency lanes.
+- **05:** data identity comparison and exact-parity conjunction matrix.
+- **06:** sealed evidence chain and tamper-point verifier response.
+- **07:** causal clock, trailing-window scrubber, delayed net-return lanes.
+- **08:** EWM decay chart, shock propagation, trailing scaler schematic.
+- **09:** HMM anatomy, Gaussian emission explorer, Viterbi trellis stepper.
+- **10:** objective anatomy, centroid feature space, objective/path response.
+- **11:** path-tree compression, Bellman stepper, online/offline comparison.
+- **12:** rolling windows, selection surface/gate, performance pipeline.
+- **13:** paper claim-chain navigator and linked Equation (1) explanation.
+- **14:** three workflow lanes and evidence/claim classification matrix.
 
-Each chapter must include, in order:
+## Write Boundary And Commit Order
 
-1. one plain-language question and a hand-worked `$100` example;
-2. one idea to remember before notation;
-3. definitions for every new term, symbol, unit, index, and state convention;
-4. at least two worked examples, including one common failure;
-5. hand-built diagrams or deterministic interactive teaching visuals;
-6. a precise paper connection and project code/artifact map;
-7. layered mathematics: intuition, formula, symbol table, then derivation;
-8. separate empirical evidence and limitations sections;
-9. recall, calculation, error-diagnosis, and advisor-explanation exercises;
-10. complete answers with feedback and cumulative recall from earlier chapters.
-
-Use short annotated code excerpts only after the theory. Link to the exact
-implementation and artifact. Do not reproduce whole modules. Do not copy
-rounded empirical values into authored HTML; link current project values to the
-verified generated report and describe paper results with exact table/figure
-citations rather than copied result tables.
-
-## Interactive Presentation Contract
-
-JavaScript and browser dependencies are authorized only where they improve
-understanding. The approved browser libraries are:
-
-- MathJax `4.1.3` for accessible equation rendering;
-- Chart.js `4.5.1` for deterministic toy-data charts.
-
-Load exact versions, record source URLs and integrity hashes, and never use a
-rolling `latest` URL. Do not add a JavaScript framework, Node build system, or
-project runtime dependency. Shared authored CSS and JavaScript must stay small,
-direct, and documented.
-
-Every interaction must have a reset action, deterministic output, keyboard
-operation, accessible labels, and visible non-canvas fallback content. If the
-network, MathJax, Chart.js, or all JavaScript is unavailable, the chapter's
-text, native MathML, data table, exercises, and conclusion must remain usable.
-
-Interactions teach the concept; they must not add decoration, random market
-simulation, gamification, live prices, or result-bearing calculations.
-
-## Milestones And Commit Rules
+Authorized substantive paths are `TASK.md`, its completed-task archive,
+`docs/learning/`, and `tests/test_learning_docs.py`. Procedural handoff files
+remain governed by `AGENTS.md`. Do not touch model, data, config, artifact, or
+reporting code.
 
 1. Freeze this task and archive the completed predecessor.
-2. Add the shared course design, interaction layer, and dependency manifest.
-3. Complete and browser-review Part I before beginning Part II.
-4. Complete and browser-review Part II before beginning Part III.
-5. Complete and browser-review Part III before beginning Part IV.
-6. Complete Part IV, full acceptance, task close, and handoff.
+2. Repair Chapter 9 MathML in a dedicated commit.
+3. Add shared visual primitives and their static contract.
+4. Complete Chapters 08-12 one chapter per commit, then browser-review Part III.
+5. Complete Chapters 01-04 one chapter per commit, then browser-review Part I.
+6. Complete Chapters 05-07 one chapter per commit, then browser-review Part II.
+7. Complete Chapters 13-14 one chapter per commit, then browser-review Part IV.
+8. Update exact index counts, run full acceptance, close the task, and hand off.
 
-Keep each commit below approximately 400 changed lines and 15 files. Write one
-chapter per commit. Update index and previous/next navigation atomically. Do
-not retain the old short course as a parallel active stack or add redirects.
+Keep each commit below approximately 400 changed lines and 15 files. Stop at
+each part checkpoint for owner review.
 
 ## Acceptance
 
-- Fourteen chapters each contain approximately 2,500-3,500 visible words.
-- Static checks validate English language, required sections, chapter order,
-  internal links, unique IDs, dependency pins, and absence of Mermaid.
-- Chromium opens every page at 1440x900 and 390x844 with no console error,
-  missing local link, text overlap, blank equation/chart, or page overflow.
-- Browser tests exercise each slider, stepper, quiz, reset, and navigation path.
-- A JavaScript-disabled and external-network-blocked pass confirms fallbacks.
-- Full pytest, Ruff, lock, package, clean-archive, and archive-immutability
-  acceptance pass before task completion.
-- End each part with a handoff and stop for owner review.
-
-## Outcome
-
-Completed on 2026-07-13 without changing market data, the frozen v7 protocol,
-any model, metric, result, gate, or scientific conclusion.
-
-- The course now contains fourteen progressive English chapters and 37,747
-  visible words, with one deterministic lab, one quiz, worked examples,
-  mathematics, evidence boundaries, exercises, and feedback in every chapter.
-- Chapter 13 integrates Sections 1-5, Equation (1), Tables 1-5, and Figures 1-6
-  of the locked Shu, Yu, and Mulvey paper. Chapter 14 separates the paper's
-  reported finding, the archived legacy defects, and the verified v7 outcome.
-- The permanent authored-course contract passes 18 checks. The complete suite
-  passes 115 tests; Ruff check and format check pass.
-- Chromium passes 60 page-modes: index plus fourteen chapters at 1440x900 and
-  390x844, with external requests blocked, and with JavaScript disabled. The
-  interactive modes exercise 41 controls and 14 quizzes; both Chart.js canvases
-  are nonblank, and all navigation links in the course chain are clicked.
-- The locked environment, package build, dependency compatibility, and a clean
-  Git archive pass. The paper SHA-256 and archive immutability also pass.
-- The official through-2023 v7 artifact still verifies 131 inventory files, 18
-  boundary rows, and 27 metric rows. Its conclusion remains proxy
-  non-replication, so adaptive and post-2023 work remain unopened and blocked.
+- Static tests enforce per-chapter word floors and exact visual targets.
+- Every teaching figure has a caption, accessible identity, stable dimensions,
+  deterministic output, and an appropriate no-JavaScript fallback.
+- MathML fixed-arity elements are valid; Chapter 9 has no `mjx-merror` and no
+  formula overflow at 390 px.
+- Browser checks cover 1440x900 and 390x844 in normal, external-blocked, and
+  JavaScript-disabled modes.
+- All controls, extrema, ties, steppers, resets, quizzes, navigation, canvas
+  pixels, SVG bounds, keyboard paths, reduced motion, and print behavior pass.
+- Full pytest, Ruff, lock, package, clean-archive, paper-hash, archive
+  immutability, and frozen-v7 verification pass before closure.
