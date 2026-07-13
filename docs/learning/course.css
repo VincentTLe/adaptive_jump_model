@@ -158,6 +158,14 @@ progress { width: 100%; }
 .teaching-label { display: block; margin-bottom: 5px; color: var(--green); font-size: .76rem; font-weight: 800; text-transform: uppercase; }
 .concept-illustration .teaching-label { color: var(--amber); }
 .concept-illustration img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; background: #101319; }
+.source-lens .teaching-label { color: var(--blue); }
+.source-lens-flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 16px 0; border-block: 1px solid var(--line); }
+.source-lens-step { min-width: 0; padding: 16px; }
+.source-lens-step + .source-lens-step { border-left: 1px solid var(--line); }
+.source-lens-step svg { display: block; width: 100%; height: auto; color: var(--text); }
+.source-lens-step svg text { fill: currentColor; font-family: system-ui, sans-serif; letter-spacing: 0; }
+.source-lens-step h4 { margin: 8px 0 4px; }
+.source-lens-step p { margin: 0; color: var(--muted); }
 .visual-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(220px, 2fr); gap: 18px; align-items: center; }
 .visual-stage { position: relative; width: 100%; min-height: 260px; aspect-ratio: 16 / 9; overflow: hidden; background: #101319; }
 .visual-stage.compact { min-height: 190px; aspect-ratio: 2 / 1; }
@@ -255,6 +263,8 @@ summary { cursor: pointer; color: var(--amber); font-weight: 700; }
   .reading-mode-label { flex-basis: 100%; }
   .reading-mode [role="group"] { width: 100%; }
   .reading-mode .button { flex: 1; }
+  .source-lens-flow { grid-template-columns: 1fr; }
+  .source-lens-step + .source-lens-step { border-top: 1px solid var(--line); border-left: 0; }
   .example-grid, .concept-grid, .concept-grid.three, .metric-grid, .metric-grid.three,
   .control-grid, .timeline, .check-grid { grid-template-columns: 1fr; }
   .state-strip { grid-template-columns: repeat(5, 1fr); }

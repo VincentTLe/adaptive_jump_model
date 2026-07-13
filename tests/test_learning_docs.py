@@ -66,6 +66,7 @@ VISUAL_TARGETS = {
     "12-walk-forward-selection-performance.html": (1, 2),
 }
 CONCEPT_ILLUSTRATION_TARGETS = {"08-returns-to-model-features.html": 1}
+SOURCE_LENS_TARGETS = {"09-hidden-markov-models.html": ("2", "9")}
 FIXED_MATH_ARITY = {
     "mfrac": 2,
     "mover": 2,
@@ -125,6 +126,7 @@ class DocumentParser(HTMLParser):
         self.figures = []
         self.images = []
         self.media_credits = []
+        self.source_credits = []
         self.figure_caption_count = 0
         self.math_arity_errors = []
         self.visible_text = []
@@ -153,6 +155,8 @@ class DocumentParser(HTMLParser):
         classes = (attributes.get("class") or "").split()
         if "media-credit" in classes and attributes.get("data-media-path"):
             self.media_credits.append(attributes)
+        if "source-credit" in classes and attributes.get("data-lens-id"):
+            self.source_credits.append(attributes)
         for class_name in classes:
             self.class_counts[class_name] = self.class_counts.get(class_name, 0) + 1
 
@@ -263,6 +267,19 @@ def test_authored_chapter_contract(filename: str, title: str) -> None:
     assert document.class_counts.get("concept-illustration", 0) == (
         CONCEPT_ILLUSTRATION_TARGETS.get(filename, 0)
     )
+    source_lenses = [
+        figure
+        for figure in document.figures
+        if "source-lens" in (figure.get("class") or "").split()
+    ]
+    expected_lens = SOURCE_LENS_TARGETS.get(filename)
+    assert len(source_lenses) == int(expected_lens is not None)
+    if expected_lens:
+        paper_figure, paper_page = expected_lens
+        assert source_lenses[0].get("data-paper-figure") == paper_figure
+        assert source_lenses[0].get("data-paper-page") == paper_page
+        assert f"../../2402.05272v3.pdf#page={paper_page}" in document.hrefs
+        assert "Paper reading guide - original schematic" in source
 
 
 def test_authored_chapter_order_and_navigation() -> None:
@@ -373,6 +390,26 @@ def test_media_credit_registry_matches_local_images() -> None:
         sum((LEARNING / source).stat().st_size for source in used_images)
         <= 6 * 1024 * 1024
     )
+    registered_lenses = {
+        (
+            entry["data-lens-id"],
+            entry["data-paper-figure"],
+            entry["data-paper-page"],
+        )
+        for entry in credit_document.source_credits
+    }
+    used_lenses = set()
+    for filename, _ in CHAPTERS:
+        for figure in parse(LEARNING / filename).figures:
+            if "source-lens" in (figure.get("class") or "").split():
+                used_lenses.add(
+                    (
+                        figure["id"],
+                        figure["data-paper-figure"],
+                        figure["data-paper-page"],
+                    )
+                )
+    assert used_lenses == registered_lenses
 
 
 def test_chapter_nine_contains_no_malformed_emission_subscript() -> None:
