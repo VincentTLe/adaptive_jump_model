@@ -28,7 +28,20 @@
     <div class="eyebrow">The opening question</div>
     <h2>You have $100 tonight. Where can it go?</h2>
     <p>Imagine that you have exactly $100 and must choose where to keep it for one day. You could buy part of a broad stock-market investment, keep part in a short-term cash-like investment, or divide the money between the two. This simple choice is the economic heart of the entire project. The Hidden Markov Model and Jump Model will eventually produce complicated-looking state sequences, but those states matter only because they control this ordinary allocation decision.</p>
+    <figure class="concept-illustration" id="part-one-concept-illustration" aria-labelledby="part-one-concept-title">
+      <span class="teaching-label">Concept illustration - not data or evidence</span>
+      <h3 id="part-one-concept-title">One pool of wealth can be redirected, but every route has a tradeoff</h3>
+      <img src="assets/part-i-market-cash-path.webp" width="1400" height="788" loading="eager" decoding="async" alt="A mechanical switch redirects one stack of wealth from a changing market rail to a steady cash rail as the scene moves through calm conditions, a loss, and a recovery.">
+      <figcaption class="visual-caption">Read left to right. The gold stack at entry and the stack later on the cash rail are sequential snapshots of the same wealth, not two portfolios. The lower rail protects it while the red market path falls, but the cash rail does not climb with the later green recovery.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> moving to cash changes exposure. It can avoid a market loss and also miss a market rebound; the switch itself creates no return.</div>
+    </figure>
     <p>Suppose you put all $100 in the market. If the market gains 5%, your wealth becomes $105. If it loses 5%, your wealth becomes $95. Now suppose a cash investment earns 0.02% for the day. Your $100 becomes $100.02. The cash gain is tiny, but its value is much more stable. The market offers more opportunity and more uncertainty; cash offers less opportunity and less uncertainty.</p>
+    <figure class="teaching-figure" id="hundred-dollar-choice-figure" data-visual-type="static" aria-labelledby="hundred-dollar-choice-title">
+      <span class="teaching-label">Teaching example</span><h3 id="hundred-dollar-choice-title">The same $100 can take one of two binary positions</h3>
+      <div class="visual-stage compact"><svg viewBox="0 0 440 260" role="img" aria-labelledby="hundred-dollar-choice-svg-title hundred-dollar-choice-svg-desc"><title id="hundred-dollar-choice-svg-title">One hundred dollars choosing between market and cash</title><desc id="hundred-dollar-choice-svg-desc">Starting wealth of one hundred dollars branches to either full risky market exposure, position one, or full cash exposure, position zero.</desc><rect class="diagram-warning" x="145" y="20" width="150" height="54" rx="8"/><text x="220" y="53" font-size="22" font-weight="700" text-anchor="middle">Starting wealth $100</text><path class="diagram-link" d="M220 74 V100 M220 100 L110 126 M220 100 L330 126"/><path d="M110 126 L120 116 L123 132 Z" fill="#aab3bf"/><path d="M330 126 L317 117 L317 133 Z" fill="#aab3bf"/><rect class="diagram-low" x="25" y="132" width="170" height="82" rx="8"/><rect class="diagram-cash" x="245" y="132" width="170" height="82" rx="8"/><text x="110" y="164" font-size="21" font-weight="700" text-anchor="middle">Market position 1</text><text x="110" y="192" font-size="17" text-anchor="middle">full risky exposure</text><text x="330" y="164" font-size="21" font-weight="700" text-anchor="middle">Cash position 0</text><text x="330" y="192" font-size="17" text-anchor="middle">cash-side return</text><text x="220" y="244" font-size="16" text-anchor="middle">one portfolio, one held position</text></svg></div>
+      <figcaption class="visual-caption">The paper's strategy later restricts the market weight to exactly 1 or 0. The mixed 60/40 portfolio below is a teaching bridge for weighted-return arithmetic, not an allowed paper position.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> position 0 means the wealth remains invested on the cash side; it does not mean the portfolio disappears.</div>
+    </figure>
     <div class="example-grid">
       <article class="worked-example">
         <div class="label">Market rises 5%</div>
@@ -108,6 +121,13 @@
         <strong class="big-number" id="ending-wealth">$106.80</strong>
         <span id="allocation-explanation">The market contributes $6.00 and cash contributes $0.80.</span>
       </div>
+      <figure class="teaching-figure" id="allocation-wealth-figure" data-visual-type="interactive" aria-labelledby="allocation-wealth-title">
+        <span class="teaching-label">Teaching example</span><h3 id="allocation-wealth-title">Starting wealth becomes one stacked ending-wealth bar</h3>
+        <div class="visual-stage compact"><svg id="allocation-wealth-bars" viewBox="0 0 440 300" role="img" aria-label="Before wealth 100 dollars; after wealth 106 dollars and 80 cents, made of a 66 dollar market sleeve and a 40 dollar and 80 cent cash sleeve"><line class="diagram-link" x1="32" y1="240" x2="408" y2="240"/><rect id="allocation-before-bar" class="diagram-unavailable" x="65" y="90" width="110" height="150"/><rect id="allocation-after-cash" class="diagram-cash" x="265" y="179" width="110" height="61"/><rect id="allocation-after-market" class="diagram-low" x="265" y="80" width="110" height="99"/><text id="allocation-before-value" x="120" y="78" font-size="19" font-weight="700" text-anchor="middle">$100.00</text><text id="allocation-after-value" x="320" y="68" font-size="19" font-weight="700" text-anchor="middle">$106.80</text><text x="120" y="270" font-size="18" text-anchor="middle">Before</text><text x="320" y="270" font-size="18" text-anchor="middle">After</text></svg></div>
+        <div class="visual-legend"><span><i class="legend-swatch" style="color:#75b8ff"></i>Market sleeve: <strong id="allocation-market-sleeve">$66.00</strong></span><span><i class="legend-swatch" style="color:#63d59a"></i>Cash sleeve: <strong id="allocation-cash-sleeve">$40.80</strong></span></div>
+        <figcaption class="visual-caption">Move any control. The gray bar is starting wealth; the stacked blue and green bar is ending market wealth plus ending cash wealth. Bar height uses a common scale on each render.</figcaption>
+        <div class="what-to-notice"><strong>What to notice:</strong> allocation weights apply before each sleeve earns its own return. Ending wealth is the sum of sleeve values, not an unweighted average of returns.</div>
+      </figure>
       <div class="control-grid" aria-label="Allocation split">
         <div><span class="label">Market share</span><progress id="market-progress" max="100" value="60">60%</progress></div>
         <div><span class="label">Cash share</span><progress id="cash-progress" max="100" value="40">40%</progress></div>
@@ -126,6 +146,12 @@
     <p>A binary strategy isolates the economic value of regime identification. If the portfolio also optimized many partial weights, several assets, leverage, and diversification, it would become difficult to tell whether performance came from the regime model or from the portfolio optimizer. By switching between only two positions, the experiment asks a cleaner question: did the model identify unfavorable periods well enough that leaving the market helped after delay and transaction costs?</p>
     <p><span class="term">Exposure</span> describes how much of the portfolio is affected by an asset's return. Position 1 gives full market exposure. Position 0 removes market exposure but does not remove every economic risk: the cash instrument still has a return definition, and inflation can reduce purchasing power. <span class="term">Leverage</span> in the paper's metric table is the average risky weight through time. If a strategy holds the market on three quarters of its measured days and cash on one quarter, its average risky exposure is approximately 75%. This describes behavior; by itself it does not tell us whether the timing was skillful.</p>
     <p>Leaving the market also creates an <span class="term">opportunity cost</span>. If the model moves to cash before a crash, it may avoid a large loss. If it remains in cash during a rebound, it misses a gain. Avoiding bad days and missing good days are two sides of the same switch. This is why a chart showing only protected crashes would be incomplete evidence. The full path, including quiet periods and rapid recoveries, must be evaluated on dates that were not used to choose the model.</p>
+    <figure class="teaching-figure" id="protection-opportunity-figure" data-visual-type="static" aria-labelledby="protection-opportunity-title">
+      <span class="teaching-label">Teaching example</span><h3 id="protection-opportunity-title">Protection during a loss and opportunity cost during a rebound are one tradeoff</h3>
+      <div class="visual-stage compact"><svg viewBox="0 0 440 300" role="img" aria-labelledby="protection-opportunity-svg-title protection-opportunity-svg-desc"><title id="protection-opportunity-svg-title">Market and cash wealth on separate loss and rebound days</title><desc id="protection-opportunity-svg-desc">On a five percent market loss day, market wealth is 95 dollars while cash is 100 dollars and two cents. On a five percent rebound day, market wealth is 105 dollars while cash remains 100 dollars and two cents.</desc><text x="110" y="28" font-size="20" font-weight="700" text-anchor="middle">Loss day</text><text x="330" y="28" font-size="20" font-weight="700" text-anchor="middle">Rebound day</text><path class="diagram-link" stroke-dasharray="5 4" d="M20 70 H200 M240 70 H420"/><text x="24" y="62" font-size="14">$100 start</text><text x="244" y="62" font-size="14">$100 start</text><rect class="diagram-high" x="45" y="78" width="55" height="152"/><rect class="diagram-cash" x="125" y="70" width="55" height="160"/><rect class="diagram-low" x="265" y="62" width="55" height="168"/><rect class="diagram-cash" x="345" y="70" width="55" height="160"/><text x="72" y="252" font-size="15" text-anchor="middle">market</text><text x="152" y="252" font-size="15" text-anchor="middle">cash</text><text x="292" y="252" font-size="15" text-anchor="middle">market</text><text x="372" y="252" font-size="15" text-anchor="middle">cash</text><text x="72" y="99" font-size="15" text-anchor="middle">$95</text><text x="152" y="92" font-size="15" text-anchor="middle">$100.02</text><text x="292" y="84" font-size="15" text-anchor="middle">$105</text><text x="372" y="92" font-size="15" text-anchor="middle">$100.02</text><text x="110" y="282" font-size="15" text-anchor="middle">cash protects $5.02</text><text x="330" y="282" font-size="15" text-anchor="middle">cash misses $4.98</text></svg></div>
+      <figcaption class="visual-caption">These are two separate one-day scenarios using the chapter's existing +5%, -5%, and +0.02% toy returns. They are arithmetic examples, not a sequential strategy path or empirical result.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> reporting only the left panel would hide the cost of defensive timing. A complete backtest must include both kinds of interval.</div>
+    </figure>
     <div class="timeline">
       <div><strong>State 0</strong><span>Favorable regime</span><span>Signal requests market</span></div>
       <div><strong>Position 1</strong><span>100% risky index</span><span>Earn market return</span></div>
@@ -165,7 +191,7 @@
         </tbody>
       </table>
     </div>
-    <details>
+    <details class="deep-explanation">
       <summary>Derive the $106.80 result step by step</summary>
       <p>Use <math><msub><mi>W</mi><mn>0</mn></msub><mo>=</mo><mn>100</mn></math>, <math><mi>w</mi><mo>=</mo><mn>0.60</mn></math>, <math><msub><mi>r</mi><mi>m</mi></msub><mo>=</mo><mn>0.10</mn></math>, and <math><msub><mi>r</mi><mi>f</mi></msub><mo>=</mo><mn>0.02</mn></math>. The market growth factor is 1.10 and the cash growth factor is 1.02. The weighted growth factor is <math><mn>0.60</mn><mo>×</mo><mn>1.10</mn><mo>+</mo><mn>0.40</mn><mo>×</mo><mn>1.02</mn><mo>=</mo><mn>1.068</mn></math>. Multiply $100 by 1.068 to obtain $106.80.</p>
     </details>
@@ -253,11 +279,39 @@ document.addEventListener("DOMContentLoaded", () => {
     const cashReturn = Number(inputs.cash.value) / 100;
     const marketGain = wealth * weight * marketReturn;
     const cashGain = wealth * (1 - weight) * cashReturn;
-    document.getElementById("ending-wealth").textContent = Course.money(wealth + marketGain + cashGain);
+    const marketEnd = wealth * weight + marketGain;
+    const cashEnd = wealth * (1 - weight) + cashGain;
+    const ending = marketEnd + cashEnd;
+    document.getElementById("ending-wealth").textContent = Course.money(ending);
     document.getElementById("allocation-explanation").textContent =
       `The market contributes ${Course.money(marketGain)} and cash contributes ${Course.money(cashGain)}.`;
     document.getElementById("market-progress").value = weight * 100;
     document.getElementById("cash-progress").value = (1 - weight) * 100;
+    const scale = 160 / Math.max(wealth, ending, 1);
+    const beforeHeight = wealth * scale;
+    const marketHeight = marketEnd * scale;
+    const cashHeight = cashEnd * scale;
+    const beforeBar = document.getElementById("allocation-before-bar");
+    const marketBar = document.getElementById("allocation-after-market");
+    const cashBar = document.getElementById("allocation-after-cash");
+    beforeBar.setAttribute("y", String(240 - beforeHeight));
+    beforeBar.setAttribute("height", String(beforeHeight));
+    cashBar.setAttribute("y", String(240 - cashHeight));
+    cashBar.setAttribute("height", String(cashHeight));
+    marketBar.setAttribute("y", String(240 - cashHeight - marketHeight));
+    marketBar.setAttribute("height", String(marketHeight));
+    const beforeLabelY = Math.max(25, 230 - beforeHeight);
+    const afterLabelY = Math.max(25, 230 - marketHeight - cashHeight);
+    document.getElementById("allocation-before-value").setAttribute("y", String(beforeLabelY));
+    document.getElementById("allocation-after-value").setAttribute("y", String(afterLabelY));
+    document.getElementById("allocation-before-value").textContent = Course.money(wealth);
+    document.getElementById("allocation-after-value").textContent = Course.money(ending);
+    document.getElementById("allocation-market-sleeve").textContent = Course.money(marketEnd);
+    document.getElementById("allocation-cash-sleeve").textContent = Course.money(cashEnd);
+    document.getElementById("allocation-wealth-bars").setAttribute(
+      "aria-label",
+      `Before wealth ${Course.money(wealth)}; after wealth ${Course.money(ending)}, made of market sleeve ${Course.money(marketEnd)} and cash sleeve ${Course.money(cashEnd)}`,
+    );
   }
   Object.values(inputs).forEach((input) => input.addEventListener("input", render));
   lab.addEventListener("course:reset", render);

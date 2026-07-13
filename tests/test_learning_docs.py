@@ -59,13 +59,17 @@ BASELINE_WORDS = {
     "14-paper-legacy-verified-v7.html": 3_406,
 }
 VISUAL_TARGETS = {
+    "01-money-assets-cash.html": (2, 1),
     "08-returns-to-model-features.html": (1, 2),
     "09-hidden-markov-models.html": (1, 2),
     "10-clustering-statistical-jump-models.html": (1, 2),
     "11-dynamic-programming-online-inference.html": (1, 2),
     "12-walk-forward-selection-performance.html": (1, 2),
 }
-CONCEPT_ILLUSTRATION_TARGETS = {"08-returns-to-model-features.html": 1}
+CONCEPT_ILLUSTRATION_TARGETS = {
+    "01-money-assets-cash.html": 1,
+    "08-returns-to-model-features.html": 1,
+}
 SOURCE_LENS_TARGETS = {
     "09-hidden-markov-models.html": ("2", "9"),
     "10-clustering-statistical-jump-models.html": ("3", "12"),
