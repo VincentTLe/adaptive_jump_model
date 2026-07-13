@@ -66,6 +66,12 @@
   <section class="chapter-section" id="evidence-chain">
     <div class="eyebrow">Worked example two</div>
     <h2>Build a chain in which every link has one job</h2>
+    <figure class="teaching-figure" id="sealed-evidence-chain-figure" data-visual-type="static" aria-labelledby="sealed-evidence-chain-title">
+      <span class="teaching-label">Teaching example</span><h3 id="sealed-evidence-chain-title">Identity locks, detailed artifacts, and recomputation protect different links</h3>
+      <div class="visual-stage"><svg viewBox="0 0 720 500" role="img" aria-labelledby="sealed-chain-svg-title sealed-chain-svg-desc"><title id="sealed-chain-svg-title">A sealed evidence chain from configuration, data, and code to a verification receipt</title><desc id="sealed-chain-svg-desc">Configuration lock, data manifest, and Git commit converge into one run identity. The identity leads to an immutable artifact pack containing detailed paths and an inventory. A verifier checks identity and file hashes, recomputes summaries from detailed evidence, and either issues or rejects a receipt.</desc><rect class="diagram-low" x="20" y="20" width="200" height="70" rx="9"/><text x="120" y="48" font-size="19" font-weight="700" text-anchor="middle">Config lock</text><text x="120" y="73" font-size="15" text-anchor="middle">settings + SHA-256</text><rect class="diagram-cash" x="260" y="20" width="200" height="70" rx="9"/><text x="360" y="48" font-size="19" font-weight="700" text-anchor="middle">Data manifest</text><text x="360" y="73" font-size="15" text-anchor="middle">sources + SHA-256</text><rect class="diagram-warning" x="500" y="20" width="200" height="70" rx="9"/><text x="600" y="48" font-size="19" font-weight="700" text-anchor="middle">Git commit</text><text x="600" y="73" font-size="15" text-anchor="middle">declared code state</text><path class="diagram-link" d="M120 90 V112 H360 M360 90 V125 M600 90 V112 H360"/><path d="M360 132 L352 119 L368 119 Z" fill="#aab3bf"/><rect class="diagram-node" x="150" y="132" width="420" height="62" rx="9"/><text x="360" y="158" font-size="20" font-weight="700" text-anchor="middle">Run identity</text><text x="360" y="181" font-size="15" text-anchor="middle">config[:12] + data[:12] + git[:12]</text><path class="diagram-link" d="M360 194 V222"/><path d="M360 229 L352 216 L368 216 Z" fill="#aab3bf"/><rect class="diagram-node" x="90" y="229" width="540" height="105" rx="9"/><text x="360" y="255" font-size="20" font-weight="700" text-anchor="middle">Immutable artifact pack</text><rect class="diagram-low" x="112" y="272" width="236" height="39" rx="6"/><text x="230" y="297" font-size="15" text-anchor="middle">states · choices · trades · metrics</text><rect class="diagram-cash" x="372" y="272" width="236" height="39" rx="6"/><text x="490" y="297" font-size="15" text-anchor="middle">inventory: sealed paths + hashes</text><path class="diagram-link" d="M360 334 V359"/><path d="M360 366 L352 353 L368 353 Z" fill="#aab3bf"/><rect class="diagram-warning" x="80" y="366" width="360" height="72" rx="9"/><text x="260" y="393" font-size="20" font-weight="700" text-anchor="middle">Independent verifier</text><text x="260" y="417" font-size="15" text-anchor="middle">check locks + recompute from trades</text><path class="diagram-link" d="M440 402 H493"/><path d="M500 402 L487 394 L487 410 Z" fill="#aab3bf"/><rect class="diagram-cash" x="500" y="366" width="140" height="72" rx="9"/><text x="570" y="393" font-size="19" font-weight="700" text-anchor="middle">Receipt</text><text x="570" y="417" font-size="15" text-anchor="middle">pass or reject</text><text x="360" y="477" font-size="15" text-anchor="middle">identity + derivation integrity · not a certificate of scientific truth</text></svg></div>
+      <figcaption class="visual-caption">The three top inputs bind one run name. The artifact pack preserves detailed evidence and a complete inventory. The verifier follows a separate checking path and recomputes summaries rather than trusting the receipt it is supposed to validate.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> a Git SHA cannot replace a data hash, an inventory cannot replace trade-level recomputation, and a passing receipt cannot establish that the research question or data definition was correct.</div>
+    </figure>
     <div class="timeline">
       <div><strong>Contract</strong><span>What will be tested?</span><span>Meaning before outcomes</span></div>
       <div><strong>Identity</strong><span>Which config, data, and code?</span><span>Hashes plus Git SHA</span></div>
@@ -103,7 +109,16 @@
         <span id="seal-explanation">All five locks pass. Scientific interpretation still requires separate protocol review.</span>
       </div>
       <progress id="seal-progress" max="5" value="5">5 of 5 checks pass</progress>
-      <div class="table-wrap fallback-table"><table class="data-table"><thead><tr><th>Default</th><th>Decision</th></tr></thead><tbody><tr><td>All five checks pass</td><td>The fictional package is internally verifiable.</td></tr><tr><td>Any check fails</td><td>Reject the package until the mismatch is explained by a new valid run.</td></tr></tbody></table></div>
+      <figure class="teaching-figure" id="tamper-response-figure" data-visual-type="interactive" aria-labelledby="tamper-response-title">
+        <span class="teaching-label">Teaching example</span><h3 id="tamper-response-title">The first broken lock stops the audit; later stages are not reached</h3>
+        <div class="visual-enhancement" id="audit-chain">
+          <div class="concept-grid" id="audit-stages" aria-label="Five-stage teaching audit"></div>
+          <div class="lab-output" aria-live="polite"><span class="label">First stopping point</span><strong class="big-number" id="audit-stop">Receipt issued</strong><span id="audit-stop-explanation">All five teaching locks pass; scientific validity still requires separate review.</span></div>
+        </div>
+        <div class="table-wrap visual-fallback"><table class="data-table"><thead><tr><th>Default</th><th>Decision</th></tr></thead><tbody><tr><td>All five checks pass</td><td>The fictional package is internally verifiable.</td></tr><tr><td>Any check fails</td><td>Reject the package until the mismatch is explained by a new valid run.</td></tr></tbody></table></div>
+        <figcaption class="visual-caption">This teaching order follows the verifier's fail-closed logic: inventory first, then config/data/declared-code identity, then downstream recomputation. The real verifier also validates terminal status, schema, boundary coverage, metrics, and the reconstructed claim.</figcaption>
+        <div class="what-to-notice"><strong>What to notice:</strong> a gray “not reached” stage has not passed. The verifier stops using the package at the first failure instead of guessing whether later files would have been acceptable.</div>
+      </figure>
       <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The default decision and failure rule remain visible in the table.</p></noscript>
     </div>
   </section>
@@ -170,7 +185,7 @@ run_id = "fixed-baselines-" + "-".join(value[:12] for value in identity.values()
       <output class="quiz-feedback">Choose an answer, then check the explanation.</output>
       <button class="button" type="button" data-reset>Reset</button>
     </div>
-    <details><summary>Calculation: transparent ending wealth</summary><p>Start with $100 and apply +5%, -2%, and +6.8%. Wealth is $100 &times; 1.05 &times; 0.98 &times; 1.068 = $109.89 after rounding to cents. Preserve full precision in the artifact and round only for display.</p></details>
+    <details class="deep-explanation"><summary>Calculation: transparent ending wealth</summary><p>Start with $100 and apply +5%, -2%, and +6.8%. Wealth is $100 &times; 1.05 &times; 0.98 &times; 1.068 = $109.89 after rounding to cents. Preserve full precision in the artifact and round only for display.</p></details>
     <details><summary>Error diagnosis: "the command ran, so the study is reproducible"</summary><p>A command can run against different data, defaults, code, or package versions. Reproducibility requires resolved inputs, a frozen contract, identity records, complete outputs, and verification of the real path.</p></details>
     <details><summary>Cumulative recall from Chapters 1-5</summary><p>The sealed trade path must preserve market-or-cash positions, total and cash returns, costs, wealth inputs, and data definitions. A hash can protect a price-index proxy exactly while Chapter 5 still tells us it is not the paper's total-return series.</p></details>
     <details><summary>Advisor explanation</summary><p>"Our run name binds config, data manifest, and Git revision. The inventory detects file changes, while the verifier recomputes accounting, metrics, and the claim from detailed paths. This establishes internal computational integrity, not exact data parity or scientific truth."</p></details>
@@ -194,13 +209,42 @@ run_id = "fixed-baselines-" + "-".join(value[:12] for value in identity.values()
 document.addEventListener("DOMContentLoaded", () => {
   const lab = document.getElementById("seal-lab");
   const locks = [...lab.querySelectorAll("[data-lock]")];
+  const auditChain = document.getElementById("audit-chain");
+  const auditStages = document.getElementById("audit-stages");
+  const auditStop = document.getElementById("audit-stop");
+  const auditStopExplanation = document.getElementById("audit-stop-explanation");
+  const teachingOrder = [
+    { lock: "Inventory", label: "Files", purpose: "Compare every path and hash.", failure: "The file set or a stored fingerprint differs." },
+    { lock: "Config hash", label: "Config", purpose: "Bind frozen settings to the run.", failure: "The configuration lock does not match run identity." },
+    { lock: "Data hash", label: "Data", purpose: "Bind the exact manifest snapshot.", failure: "The data-manifest lock does not match run identity." },
+    { lock: "Git identity", label: "Code", purpose: "Check the declared code identity.", failure: "The Git identity and run declaration disagree." },
+    { lock: "Recomputation", label: "Recompute", purpose: "Derive metrics and claim again.", failure: "Detailed evidence does not reproduce the stored summary." },
+  ];
   function render() {
     const failed = locks.filter((lock) => !lock.checked).map((lock) => lock.dataset.lock);
+    const lockByName = new Map(locks.map((lock) => [lock.dataset.lock, lock]));
+    const firstFailure = teachingOrder.findIndex((stage) => !lockByName.get(stage.lock).checked);
     document.getElementById("seal-status").textContent = failed.length ? "Verification rejected" : "Internally verifiable";
     document.getElementById("seal-explanation").textContent = failed.length
       ? `Failed locks: ${failed.join(", ")}. Do not use the stored claim.`
       : "All five locks pass. Scientific interpretation still requires separate protocol review.";
     document.getElementById("seal-progress").value = locks.length - failed.length;
+    auditStages.innerHTML = teachingOrder.map((stage, index) => {
+      const status = firstFailure < 0 || index < firstFailure ? "pass" : index === firstFailure ? "stop" : "not-reached";
+      const statusLabel = status === "pass" ? "PASS" : status === "stop" ? "STOP" : "NOT REACHED";
+      const style = status === "pass" ? "border-top:4px solid #63d59a;background:#111b17" : status === "stop" ? "border-top:4px solid #ff8585;background:#301616" : "border-top:4px solid #aab3bf;background:#20242a;color:#aab3bf";
+      return `<div class="panel" data-stage-status="${status}" style="${style};min-height:126px"><span class="label" style="display:block">${index + 1}. ${stage.label}</span><strong style="display:block;margin:6px 0">${statusLabel}</strong><small style="display:block">${stage.purpose}</small></div>`;
+    }).join("");
+    if (firstFailure < 0) {
+      auditStop.textContent = "Receipt issued";
+      auditStopExplanation.textContent = "All five teaching locks pass; scientific validity still requires separate review.";
+    } else {
+      const stage = teachingOrder[firstFailure];
+      auditStop.textContent = `Stop at ${stage.label}`;
+      auditStopExplanation.textContent = stage.failure;
+    }
+    auditChain.setAttribute("aria-label", firstFailure < 0 ? "All five teaching audit stages pass" : `Audit stops at stage ${firstFailure + 1}, ${teachingOrder[firstFailure].label}`);
+    auditChain.classList.add("is-ready");
   }
   locks.forEach((lock) => lock.addEventListener("input", render));
   lab.addEventListener("course:reset", render);
