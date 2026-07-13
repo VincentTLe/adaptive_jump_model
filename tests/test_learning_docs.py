@@ -12,6 +12,12 @@ CHAPTERS = [
     ("02-prices-dividends-returns.html", "Prices, Dividends, And Returns"),
     ("03-risk-downside-losses.html", "Risk And Downside Losses"),
     ("04-market-regimes-persistence.html", "Market Regimes And Persistence"),
+    ("05-data-parity-proxy-replication.html", "Data Parity And Proxy Replication"),
+    (
+        "06-reproducibility-sealed-evidence.html",
+        "Reproducibility And Sealed Evidence",
+    ),
+    ("07-backtesting-without-future.html", "Backtesting Without Seeing The Future"),
 ]
 REQUIRED_SECTIONS = {
     "question",
@@ -106,7 +112,7 @@ def local_target(page: Path, reference: str) -> Path | None:
 
 
 @pytest.mark.parametrize(("filename", "title"), CHAPTERS)
-def test_part_one_chapter_contract(filename: str, title: str) -> None:
+def test_authored_chapter_contract(filename: str, title: str) -> None:
     path = LEARNING / filename
     source = path.read_text(encoding="utf-8")
     document = parse(path)
@@ -128,7 +134,7 @@ def test_part_one_chapter_contract(filename: str, title: str) -> None:
     assert "mermaid" not in source.lower()
 
 
-def test_part_one_order_and_navigation() -> None:
+def test_authored_chapter_order_and_navigation() -> None:
     index = (LEARNING / "index.html").read_text(encoding="utf-8")
     positions = []
     for chapter_number, (filename, title) in enumerate(CHAPTERS, start=1):
