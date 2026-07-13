@@ -24,7 +24,10 @@ document.documentElement.classList.add("js");
     const value = Number(input.value);
     const scale = Number(input.dataset.scale || 1);
     const digits = Number(input.dataset.digits || 0);
-    output.value = `${input.dataset.prefix || ""}${(value * scale).toFixed(digits)}${input.dataset.suffix || ""}`;
+    const suffix = input.dataset.singular
+      ? (value === 1 ? input.dataset.singular : input.dataset.plural)
+      : input.dataset.suffix || "";
+    output.value = `${input.dataset.prefix || ""}${(value * scale).toFixed(digits)}${suffix}`;
   }
 
   function resetContainer(button) {
