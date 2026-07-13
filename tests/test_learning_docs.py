@@ -327,6 +327,38 @@ def test_authored_chapter_order_and_navigation() -> None:
         assert expected_next in hrefs
 
 
+def test_index_reports_current_course_inventory() -> None:
+    index = (LEARNING / "index.html").read_text(encoding="utf-8")
+    chapter_words = []
+    visual_counts = {"static": 0, "interactive": 0, "concept": 0, "lens": 0}
+
+    for filename, _ in CHAPTERS:
+        document = parse(LEARNING / filename)
+        words = len(" ".join(document.visible_text).split())
+        chapter_words.append(words)
+        assert f'<span class="status">{words:,} words</span>' in index
+        for figure in document.figures:
+            classes = (figure.get("class") or "").split()
+            if "teaching-figure" in classes:
+                visual_counts[figure["data-visual-type"]] += 1
+            if "concept-illustration" in classes:
+                visual_counts["concept"] += 1
+            if "source-lens" in classes:
+                visual_counts["lens"] += 1
+
+    part_ranges = ((0, 4), (4, 7), (7, 12), (12, 14))
+    for start, end in part_ranges:
+        assert f"contain {sum(chapter_words[start:end]):,} visible words" in index
+    assert f"<span>{sum(chapter_words):,} authored words</span>" in index
+    assert visual_counts == {
+        "static": 15,
+        "interactive": 23,
+        "concept": 4,
+        "lens": 6,
+    }
+    assert "<span>48 primary visual objects</span>" in index
+
+
 def test_learning_documents_have_valid_local_references() -> None:
     pages = [
         LEARNING / "index.html",
@@ -389,7 +421,9 @@ def test_shared_reading_mode_contract() -> None:
 
 
 def test_media_credit_registry_matches_local_images() -> None:
-    credit_document = parse(LEARNING / "media-credits.html")
+    credit_path = LEARNING / "media-credits.html"
+    credit_source = credit_path.read_text(encoding="utf-8")
+    credit_document = parse(credit_path)
     credits = {
         entry["data-media-path"]: entry["data-sha256"]
         for entry in credit_document.media_credits
@@ -431,6 +465,16 @@ def test_media_credit_registry_matches_local_images() -> None:
                     )
                 )
     assert used_lenses == registered_lenses
+    asset_bytes = sum((LEARNING / source).stat().st_size for source in used_images)
+    assert (
+        f"{len(credits)} of {len(credits)} concept illustrations committed"
+        in credit_source
+    )
+    lens_count = len(registered_lenses)
+    assert (
+        f"{lens_count} of {lens_count} paper-reading lenses committed" in credit_source
+    )
+    assert f"{asset_bytes:,} bytes of 6 MB used" in credit_source
 
 
 def test_chapter_nine_contains_no_malformed_emission_subscript() -> None:
