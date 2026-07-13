@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A beginner guide from excess returns to exponential memory, downside deviation, Sortino features, and causal trailing standardization.">
+  <title>Chapter 8: From Returns To Model Features</title>
+  <link rel="stylesheet" href="course.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/mml-chtml.js" integrity="sha384-GYAeDZjH9w23NyL4cfS+ZrgWmGvta6VNs4p+/vtuF+RWe30fQhmP8pHbzRmlwmAK" crossorigin="anonymous"></script>
+  <script defer src="course.js"></script>
+</head>
+<body>
+<main class="course-shell">
+  <nav class="course-nav" aria-label="Course navigation">
+    <a href="07-backtesting-without-future.html">Previous: honest backtests</a>
+    <span>Part III &middot; Chapter 8 of 14</span>
+    <a href="index.html">Next: course map</a>
+  </nav>
+
+  <header class="chapter-header">
+    <div class="part-label">Part III &middot; Features And Models</div>
+    <h1>From Returns To Model Features</h1>
+    <p class="lead">How can a noisy list of daily gains and losses become three stable measurements that a model can compare?</p>
+    <div class="chapter-meta"><span>Beginner level</span><span>Deterministic feature laboratory</span><span>Paper Section 3.4.1 and Table 2</span></div>
+  </header>
+
+  <section class="chapter-section" id="question">
+    <div class="eyebrow">The opening question</div>
+    <h2>Should one bad day erase everything we knew yesterday?</h2>
+    <p>You invest $100 in an equity index while cash earns nothing in this tiny example. The index loses 4% today, so the account becomes $96. The daily excess return is therefore -4%. That number says today was bad, but it does not answer three broader questions: Was this one isolated loss or part of recent instability? Are recent gains large enough to compensate for recent downside? Does the short view tell the same story as the slower view?</p>
+    <div class="example-grid">
+      <article class="worked-example"><h3>Raw observation</h3><span class="big-number">$100 &rarr; $96</span><p>The -4% excess return describes one interval. Tomorrow it will be replaced by another noisy observation.</p></article>
+      <article class="worked-example failure"><h3>A common failure: one-day diagnosis</h3><span class="big-number">One loss &ne; a regime</span><p>Calling every negative day a bear state creates rapid switches, costs, and false alarms. A feature should summarize recent history without seeing the future.</p></article>
+    </div>
+    <p>A model cannot reason directly about your anxiety or about a story in the news. It receives numbers. A <span class="term">feature</span> is a deliberately constructed number that exposes a useful aspect of the observations. In this project, three features summarize recent excess returns: downside deviation over a fast memory, and two Sortino ratios over medium and slow memories.</p>
+    <p>The transformation does not predict tomorrow and does not prove a regime exists. It changes the representation. Instead of asking a model to discover every idea from one jagged return series, we provide one measure of recent harmful variation and two measures of reward relative to harmful variation. Every value at date <math><mi>t</mi></math> uses only returns through date <math><mi>t</mi></math>.</p>
+    <div class="remember"><strong>The idea to remember</strong>A feature is a causal summary, not new evidence. Exponential memory gives recent observations more influence; downside deviation measures harmful variation; the Sortino ratio compares average excess return with that downside. Standardization then places the three columns on comparable numerical scales.</div>
+  </section>
+
+  <section class="chapter-section" id="vocabulary">
+    <div class="eyebrow">Words before notation</div>
+    <h2>Build a precise vocabulary for memory and scale</h2>
+    <div class="concept-grid three">
+      <div class="panel"><h3>Excess return</h3><p>Equity simple return minus the causally aligned cash return for the same observation. It measures reward above the available safer alternative.</p></div>
+      <div class="panel"><h3>Exponential weight</h3><p>A positive historical weight that shrinks by a constant factor as an observation gets older. Recent rows count more, but older rows do not abruptly disappear.</p></div>
+      <div class="panel"><h3>Half-life</h3><p>The age, in observations, at which an unnormalized exponential weight is half the weight of the newest observation. A 10-day half-life describes memory, not a ten-row cutoff.</p></div>
+      <div class="panel"><h3>Downside deviation</h3><p>The square root of a weighted average of squared negative excess returns. Positive returns contribute zero to its loss term.</p></div>
+      <div class="panel"><h3>Sortino ratio</h3><p>A weighted average excess return divided by downside deviation computed at the same half-life. It is unitless when numerator and denominator use the same return unit.</p></div>
+      <div class="panel"><h3>Standard score</h3><p>A value after subtracting a training-window mean and dividing by that window's population standard deviation. It says how unusual the feature is relative to permitted history.</p></div>
+    </div>
+    <p><span class="term">Simple return</span> is the percentage change in value over one interval. A 1% return is stored as the decimal 0.01. <span class="term">Cash return</span> is the daily return of the local safer asset proxy. <span class="term">Excess return</span> is not the equity return alone: if equity earns 0.04% and cash earns 0.01%, excess return is 0.03%, or 0.0003 as a decimal.</p>
+    <p>An <span class="term">exponentially weighted moving</span>, or EWM, statistic uses all available earlier observations with decaying influence. The word <span class="term">moving</span> means the endpoint advances one date at a time. The word <span class="term">weighted</span> means observations do not count equally. A half-life of 20 gives a return from 20 observations ago half the raw weight of today's return; at age 40 it receives one quarter.</p>
+    <p>The project uses <span class="term">adjusted EWM weights</span>. At each endpoint, the finite historical weights are normalized to sum to one. Early in a series, this avoids pretending that an infinite prehistory of zero-valued observations existed. The project also preserves missing observations instead of silently filling them. A missing excess return makes the feature on that row missing, and model input later requires complete feature rows.</p>
+    <p><span class="term">Downside</span> means returns below zero in this protocol. It is not the same as volatility. A +5% surprise increases ordinary squared variation, but it contributes zero to the downside square. Squaring prevents negative and positive signs from canceling within the loss measure and gives larger losses more influence. Taking the square root restores the original return unit.</p>
+    <p>The word <span class="term">Sortino</span> names a reward-to-downside measure. A positive numerator and small denominator produce a positive, larger ratio. A negative recent mean produces a negative ratio. If every weighted return is nonnegative, downside deviation is zero and division is undefined; the project records the Sortino feature as missing rather than inventing infinity or adding an undocumented constant.</p>
+    <p><span class="term">Standardization</span> is distinct from annualization. Annualization changes a daily statistic into a yearly convention, often using 252 trading days. Standardization changes coordinates to center zero and scale one within a training window. The frozen model features are not annualized. Their rolling training-window scaler uses three separate means and three separate population standard deviations, with zero degrees-of-freedom correction, as implemented by scikit-learn's <code>StandardScaler</code>.</p>
+  </section>
+
+  <section class="chapter-section" id="worked-features">
+    <div class="eyebrow">Worked example two</div>
+    <h2>Follow one loss through the three feature columns</h2>
+    <p>Consider eight invented excess returns: +1%, -1%, +0.5%, -4%, +1%, -0.5%, +1.5%, and -1%. With a teaching half-life of 10, normalized adjusted weights rise gradually from about 9.7% for the oldest row to about 15.7% for the newest row. The weighted mean is about -0.31%.</p>
+    <p>Only four negative rows enter the downside sum. Each is squared, multiplied by its endpoint weight, and added. The square root gives a downside deviation of about 1.48%. Dividing the -0.31% weighted mean by 1.48% gives a teaching Sortino ratio near -0.21. The ratio is negative because weighted reward is negative, not because downside deviation itself is negative; a deviation cannot be below zero.</p>
+    <p>Now imagine the -4% observation were +4%. The downside feature would fall because that row would contribute zero instead of a squared loss. The weighted mean would rise. Both changes would push the Sortino ratio upward. This is why the three features are related but not duplicates: downside records one risk dimension, while Sortino combines direction and downside at a chosen memory speed.</p>
+    <h3>A common failure: mixing half-lives inside one ratio</h3>
+    <p>Suppose someone divides a 20-day EWM mean by the 10-day downside feature because DD-10 is already available. That creates a different statistic from the paper's Sortino-20. The denominator for Sortino-20 must be downside deviation computed with half-life 20; Sortino-60 uses both a 60-day mean and a 60-day downside denominator. The standalone risk feature remains DD-10.</p>
+    <p>Another common failure fits one scaler over the entire 1970-2023 sample. A late crash then changes standardized features assigned to earlier years. The correct sequence is: construct causal unscaled features, take the current trailing 3,000 complete model rows, fit the three scaler parameters on that window only, and transform that window for the current model fit or terminal inference.</p>
+  </section>
+
+  <section class="chapter-section" id="feature-lab-section">
+    <div class="eyebrow">Interactive teaching visual</div>
+    <h2>Change one loss and watch exponential memory respond</h2>
+    <p>The laboratory uses the eight invented returns above. Move the Day 4 return and the teaching half-life. The endpoint weights always sum to 100%. The calculation is deterministic, uses adjusted weights, and contains no market data or research result.</p>
+    <div class="lab" id="feature-lab">
+      <div class="lab-header"><div><h3>Endpoint feature calculator</h3><p>One teaching horizon, eight observations, newest row at Day 8.</p></div><button class="button" type="button" data-reset>Reset</button></div>
+      <form><div class="control-grid">
+        <div><label for="feature-shock">Day 4 excess return: <output id="feature-shock-output" for="feature-shock">-4%</output></label><input id="feature-shock" type="range" min="-8" max="4" step="0.5" value="-4" data-output="feature-shock-output" data-digits="1" data-suffix="%"></div>
+        <div><label for="feature-halflife">Teaching half-life: <output id="feature-halflife-output" for="feature-halflife">10 days</output></label><input id="feature-halflife" type="range" min="2" max="30" value="10" data-output="feature-halflife-output" data-singular=" day" data-plural=" days"></div>
+      </div></form>
+      <div class="metric-grid three">
+        <div class="panel"><span class="label">EWM mean</span><strong class="big-number" id="feature-mean">-0.31%</strong></div>
+        <div class="panel"><span class="label">Downside deviation</span><strong class="big-number" id="feature-downside">1.48%</strong></div>
+        <div class="panel"><span class="label">Sortino</span><strong class="big-number" id="feature-sortino">-0.21</strong></div>
+      </div>
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>Day</th><th>Age at Day 8</th><th>Excess return</th><th>Normalized weight</th><th>Downside contribution</th></tr></thead><tbody id="feature-rows"><tr><td>1</td><td>7</td><td>+1.0%</td><td>9.7%</td><td>0</td></tr><tr><td>2</td><td>6</td><td>-1.0%</td><td>10.4%</td><td>weight &times; 0.01<sup>2</sup></td></tr><tr><td>3</td><td>5</td><td>+0.5%</td><td>11.1%</td><td>0</td></tr><tr><td>4</td><td>4</td><td>-4.0%</td><td>11.9%</td><td>weight &times; 0.04<sup>2</sup></td></tr><tr><td>5</td><td>3</td><td>+1.0%</td><td>12.8%</td><td>0</td></tr><tr><td>6</td><td>2</td><td>-0.5%</td><td>13.7%</td><td>weight &times; 0.005<sup>2</sup></td></tr><tr><td>7</td><td>1</td><td>+1.5%</td><td>14.7%</td><td>0</td></tr><tr><td>8</td><td>0</td><td>-1.0%</td><td>15.7%</td><td>weight &times; 0.01<sup>2</sup></td></tr></tbody></table></div>
+      <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The default inputs and endpoint results remain in the table and metric panels: mean -0.31%, downside deviation 1.48%, and Sortino -0.21.</p></noscript>
+    </div>
+    <p>A shorter half-life concentrates more weight near Day 8, so the older Day 4 shock matters less relative to the newest rows. A longer half-life makes weights more even and preserves the shock's influence. This does not mean one half-life is universally superior. The paper preregisters different speeds because risk may change quickly while average return is noisier and benefits from longer memory.</p>
+  </section>
+
+  <section class="chapter-section" id="paper-connection">
+    <div class="eyebrow">Connection to the named paper</div>
+    <h2>Table 2 fixes a small, shared feature set</h2>
+    <p>Section 3.4.1 of <a href="../../2402.05272v3.pdf">Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3</a> defines three JM features from an excess-return series. Table 2 lists EWM downside deviation with half-life 10 and EWM Sortino ratios with half-lives 20 and 60. The same feature design is used for the S&amp;P 500, DAX, and Nikkei 225 rather than customizing features after inspecting each market.</p>
+    <p>The authors motivate downside deviation by investors' concern with harmful losses rather than upside uncertainty. They use a shorter memory for the smoother risk measure and two longer memories for noisier return information. The two Sortino features give return two views while retaining one direct risk feature. Section 3.4.1 also says the parsimonious set supports a fair comparison with the one-dimensional return input used by the HMM.</p>
+    <p>Figure 3 plots fitted JM feature centroids by regime over rolling windows. Its displayed values are transformed for interpretation, including annualization and plotting rescalings described in the caption. Those display choices must not be confused with the raw model feature contract. Chapter 13 will read the figure in context; this chapter establishes only how the model inputs are constructed.</p>
+    <p>The paper mentions broader feature sets, sparse feature selection, macroeconomic indicators, and cross-asset variables as possible research directions. Those are proposals, not part of the replication protocol. Adding them now would change the scientific question and increase researcher degrees of freedom.</p>
+  </section>
+
+  <section class="chapter-section" id="project-connection">
+    <div class="eyebrow">Connection to this project</div>
+    <h2>The code preserves the feature contract explicitly</h2>
+    <p><a href="../../src/adaptive_jump/features.py"><code>src/adaptive_jump/features.py</code></a> first computes simple and log equity returns between consecutive valid index levels. It causally aligns the local cash yield, converts that annual percentage proxy to a daily decimal under the frozen convention, and defines <code>excess_return = equity_simple - cash_return</code>.</p>
+    <p>The <code>make_features</code> function clips excess return only from above at zero to form the downside term; this is not outlier clipping. It squares that nonpositive series, computes adjusted EWM means, and takes a square root. Each Sortino numerator and denominator use the same requested half-life. Infinite ratios are replaced by missing values, and any row with missing excess return keeps all feature outputs missing.</p>
+    <pre><code>negative_squared = excess.clip(upper=0).pow(2)
+downside = sqrt(EWM(negative_squared, halflife=h).mean())
+sortino_h = EWM(excess, halflife=h).mean() / downside_h</code></pre>
+    <p>The frozen choices live in <a href="../../research.toml"><code>research.toml</code></a>: half-lives 10, 20, and 60; adjusted EWM; no burn-in; no feature annualization; no outlier clipping; and zero downside recorded as missing. <a href="../../src/adaptive_jump/models.py"><code>src/adaptive_jump/models.py</code></a> fits one <code>StandardScaler</code> on each trailing 3,000-row JM window and records its means and scales in refit diagnostics.</p>
+    <p><a href="../../tests/test_features.py"><code>tests/test_features.py</code></a> checks formulas against direct pandas calculations, missing behavior, cash availability, and future-prefix invariance. Model tests check that scaling is fitted on the trailing window and recorded. These tests establish implementation consistency. They do not establish that these three features are the best economic representation.</p>
+  </section>
+
+  <section class="chapter-section" id="mathematics">
+    <div class="eyebrow">Mathematical layer</div>
+    <h2>Write exponential memory one symbol at a time</h2>
+    <div class="formula"><math display="block"><msub><mi>q</mi><mi>h</mi></msub><mo>=</mo><msup><mn>2</mn><mrow><mo>&minus;</mo><mn>1</mn><mo>/</mo><mi>h</mi></mrow></msup><mo>,</mo><mspace width="1em"/><msubsup><mi>w</mi><mrow><mi>i</mi><mo>,</mo><mi>t</mi></mrow><mi>h</mi></msubsup><mo>=</mo><mfrac><msubsup><mi>q</mi><mi>h</mi><mrow><mi>t</mi><mo>&minus;</mo><mi>i</mi></mrow></msubsup><mrow><munderover><mo>&sum;</mo><mrow><mi>j</mi><mo>=</mo><mn>0</mn></mrow><mi>t</mi></munderover><msubsup><mi>q</mi><mi>h</mi><mrow><mi>t</mi><mo>&minus;</mo><mi>j</mi></mrow></msubsup></mrow></mfrac></math><math display="block"><msubsup><mi>DD</mi><mi>t</mi><mi>h</mi></msubsup><mo>=</mo><msqrt><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>0</mn></mrow><mi>t</mi></munderover><msubsup><mi>w</mi><mrow><mi>i</mi><mo>,</mo><mi>t</mi></mrow><mi>h</mi></msubsup><msup><mrow><mo>min</mo><mo>(</mo><msub><mi>R</mi><mi>i</mi></msub><mo>,</mo><mn>0</mn><mo>)</mo></mrow><mn>2</mn></msup></msqrt></math><math display="block"><msubsup><mi>Sortino</mi><mi>t</mi><mi>h</mi></msubsup><mo>=</mo><mfrac><mrow><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>0</mn></mrow><mi>t</mi></munderover><msubsup><mi>w</mi><mrow><mi>i</mi><mo>,</mo><mi>t</mi></mrow><mi>h</mi></msubsup><msub><mi>R</mi><mi>i</mi></msub></mrow><msubsup><mi>DD</mi><mi>t</mi><mi>h</mi></msubsup></mfrac></math></div>
+    <div class="table-wrap"><table class="symbol-table"><thead><tr><th>Symbol</th><th>Meaning</th><th>Unit or convention</th></tr></thead><tbody><tr><td><math><mi>t</mi></math></td><td>Current endpoint</td><td>Trading-observation index</td></tr><tr><td><math><mi>i</mi></math></td><td>A historical observation no later than <math><mi>t</mi></math></td><td>Trading-observation index</td></tr><tr><td><math><mi>h</mi></math></td><td>EWM half-life</td><td>Trading observations</td></tr><tr><td><math><msub><mi>R</mi><mi>i</mi></msub></math></td><td>Equity simple return minus aligned cash return</td><td>Decimal per observation</td></tr><tr><td><math><msub><mi>q</mi><mi>h</mi></msub></math></td><td>One-step weight-decay factor</td><td>Between zero and one</td></tr><tr><td><math><msubsup><mi>w</mi><mrow><mi>i</mi><mo>,</mo><mi>t</mi></mrow><mi>h</mi></msubsup></math></td><td>Adjusted normalized weight at endpoint <math><mi>t</mi></math></td><td>Nonnegative; sums to one</td></tr><tr><td><math><msubsup><mi>DD</mi><mi>t</mi><mi>h</mi></msubsup></math></td><td>EWM downside deviation</td><td>Decimal return</td></tr></tbody></table></div>
+    <p>The decay equation guarantees the half-life interpretation. An observation aged <math><mi>h</mi></math> has raw weight <math><msubsup><mi>q</mi><mi>h</mi><mi>h</mi></msubsup><mo>=</mo><msup><mn>2</mn><mrow><mo>&minus;</mo><mn>1</mn></mrow></msup><mo>=</mo><mn>1</mn><mo>/</mo><mn>2</mn></math>. The denominator normalizes all weights that actually exist through endpoint <math><mi>t</mi></math>. There is no term from <math><mi>t</mi><mo>+</mo><mn>1</mn></math>, so the construction is causal.</p>
+    <p>For a positive return, <math><mo>min</mo><mo>(</mo><msub><mi>R</mi><mi>i</mi></msub><mo>,</mo><mn>0</mn><mo>)</mo><mo>=</mo><mn>0</mn></math>. For a -4% return stored as -0.04, its squared downside is 0.0016. Weighted squares are averaged before the root; averaging already-rooted absolute losses would define a different statistic.</p>
+    <p>After constructing the three unscaled columns, feature <math><mi>j</mi></math> in the current training window is standardized as <math><msub><mi>z</mi><mrow><mi>t</mi><mo>,</mo><mi>j</mi></mrow></msub><mo>=</mo><mo>(</mo><msub><mi>x</mi><mrow><mi>t</mi><mo>,</mo><mi>j</mi></mrow></msub><mo>&minus;</mo><msub><mi>&mu;</mi><mi>j</mi></msub><mo>)</mo><mo>/</mo><msub><mi>&sigma;</mi><mi>j</mi></msub></math>. Here <math><msub><mi>&mu;</mi><mi>j</mi></msub></math> and <math><msub><mi>&sigma;</mi><mi>j</mi></msub></math> come only from that trailing training window. Standardization prevents a numerically large DD coordinate from automatically dominating a smaller Sortino coordinate in Euclidean distance.</p>
+  </section>
+
+  <section class="chapter-section" id="evidence-limitations">
+    <div class="eyebrow">Evidence and limits</div>
+    <h2>Separate verified arithmetic from economic belief</h2>
+    <div class="concept-grid">
+      <div class="panel"><h3>What is verified</h3><p>The locked PDF names the three features. Config, source, and tests agree on return alignment, half-lives, EWM options, missing values, trailing scaling, and absence of feature clipping or annualization.</p></div>
+      <div class="panel"><h3>What remains empirical</h3><p>Whether these features separate useful persistent regimes on the project's free-source proxies, whether they transfer across markets, and whether any resulting strategy improves future outcomes.</p></div>
+    </div>
+    <div class="evidence"><strong>Evidence boundary</strong>The frozen v7 report contains the project's through-2023 proxy evidence. This lesson neither opens nor recalculates its metrics. The toy laboratory proves only its displayed arithmetic.</div>
+    <div class="limitation"><strong>Modeling limitation</strong>EWM half-life is a human-chosen memory shape. Downside threshold zero may not match every investor's required return. Sortino can be unstable when downside is tiny, and standardization can make an extreme but valid observation numerically large. None of these transformations creates causal explanation.</div>
+    <p>The paper reports a purposeful but parsimonious set, not a theorem that three features are optimal. Adding variables can provide information but also creates more opportunities to overfit. A scientific extension needs a preregistered reason, data-availability audit, causal release timing, selection protocol, and fresh evidence. It should not be justified only because a larger feature set improved a result already inspected.</p>
+  </section>
+
+  <section class="chapter-section" id="practice">
+    <div class="eyebrow">Retrieval practice</div>
+    <h2>Explain each transformation without hiding behind a library</h2>
+    <div class="quiz">
+      <h3>Recall</h3><p>Which return enters the standalone DD-10 feature?</p>
+      <div class="quiz-options"><button class="button" type="button" data-choice data-correct="false">Every return squared, including gains</button><button class="button" type="button" data-choice data-correct="true" data-feedback-correct="Correct. Only the negative part of excess return is squared; nonnegative returns contribute zero to DD.">The negative part of excess return, squared</button><button class="button" type="button" data-choice data-correct="false">Only the single worst future return</button></div>
+      <output class="quiz-feedback">Choose an answer, then check the explanation.</output><button class="button" type="button" data-reset>Reset</button>
+    </div>
+    <details><summary>Calculation: excess return and downside term</summary><p>Equity earns -1.20% and aligned cash earns +0.01%. Excess return is -1.21%, or -0.0121. Its downside square is 0.00014641 before weighting. The cash subtraction matters even though it is small.</p></details>
+    <details><summary>Error diagnosis: ten-day half-life as a ten-day window</summary><p>A half-life is not a cutoff. A row ten observations old has half today's raw weight; rows older than ten still contribute with progressively smaller weights. Replacing EWM with an equal-weight ten-row average changes the feature.</p></details>
+    <details><summary>Error diagnosis: globally scaled features</summary><p>A scaler fitted on the full sample lets future observations alter earlier standardized coordinates. Fit it inside the permitted trailing 3,000-row model window and retain those parameters for the associated inference.</p></details>
+    <details><summary>Cumulative recall from Chapters 1-7</summary><p>Chapter 1 supplied market and cash; Chapter 2 supplied simple and excess returns; Chapter 3 introduced downside risk; Chapter 4 explained persistent hidden regimes. Chapters 5-6 lock data definitions and evidence identity. Chapter 7 requires every endpoint feature and scaler to use only information available then.</p></details>
+    <details><summary>Advisor explanation</summary><p>"We transform causally aligned excess returns into DD-10 and Sortino-20/60 using adjusted exponential weights. Each Sortino horizon has its own matching mean and downside denominator. We do not annualize or clip these inputs, and each JM fit standardizes only its trailing 3,000 complete rows."</p></details>
+  </section>
+
+  <section class="chapter-section" id="advisor">
+    <div class="eyebrow">How to explain this to your advisor</div>
+    <div class="advisor"><p><strong>Short version:</strong> "The JM does not ingest raw prices. It receives one fast downside-risk summary and two slower reward-to-downside summaries, all derived from excess returns without future data."</p><p><strong>Important qualification:</strong> "The formulas and implementation are verified against the locked protocol. Their economic usefulness is an empirical question, and our free-source study remains a proxy replication rather than exact data parity."</p></div>
+  </section>
+
+  <footer class="chapter-footer">
+    <p><strong>Next:</strong> Chapter 9 will use a different input, daily log total returns, to build a Hidden Markov Model from first principles.</p>
+    <p><a href="07-backtesting-without-future.html">Back to Chapter 7</a> &middot; <a href="index.html">Review the full course map</a></p>
+  </footer>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const lab = document.getElementById("feature-lab");
+  const shock = document.getElementById("feature-shock");
+  const halflife = document.getElementById("feature-halflife");
+  const rows = document.getElementById("feature-rows");
+  function render() {
+    const returns = [1, -1, 0.5, Number(shock.value), 1, -0.5, 1.5, -1].map((value) => value / 100);
+    const decay = 2 ** (-1 / Number(halflife.value));
+    const rawWeights = returns.map((_, index) => decay ** (returns.length - 1 - index));
+    const weightTotal = rawWeights.reduce((total, value) => total + value, 0);
+    const weights = rawWeights.map((value) => value / weightTotal);
+    const mean = returns.reduce((total, value, index) => total + value * weights[index], 0);
+    const downside = Math.sqrt(returns.reduce((total, value, index) => total + Math.min(value, 0) ** 2 * weights[index], 0));
+    const sortino = downside > 0 ? mean / downside : NaN;
+    document.getElementById("feature-mean").textContent = Course.percent(mean, 2);
+    document.getElementById("feature-downside").textContent = Course.percent(downside, 2);
+    document.getElementById("feature-sortino").textContent = Number.isFinite(sortino) ? sortino.toFixed(2) : "missing";
+    rows.innerHTML = returns.map((value, index) => {
+      const age = returns.length - 1 - index;
+      const contribution = value < 0 ? `${(weights[index] * value ** 2).toFixed(6)}` : "0";
+      const sign = value > 0 ? "+" : "";
+      return `<tr><td>${index + 1}</td><td>${age}</td><td>${sign}${(value * 100).toFixed(1)}%</td><td>${(weights[index] * 100).toFixed(1)}%</td><td>${contribution}</td></tr>`;
+    }).join("");
+    rows.closest("table").setAttribute("aria-label", `Eight teaching returns with half-life ${halflife.value}; endpoint downside ${Course.percent(downside, 2)} and Sortino ${Number.isFinite(sortino) ? sortino.toFixed(2) : "missing"}`);
+  }
+  [shock, halflife].forEach((input) => input.addEventListener("input", render));
+  lab.addEventListener("course:reset", render);
+  render();
+});
+</script>
+</body>
+</html>
