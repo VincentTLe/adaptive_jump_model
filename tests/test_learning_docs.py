@@ -57,6 +57,9 @@ BASELINE_WORDS = {
     "13-guided-reading-shu-yu-mulvey.html": 3_228,
     "14-paper-legacy-verified-v7.html": 3_406,
 }
+VISUAL_TARGETS = {
+    "08-returns-to-model-features.html": (1, 2),
+}
 FIXED_MATH_ARITY = {
     "mfrac": 2,
     "mover": 2,
@@ -224,6 +227,12 @@ def test_authored_chapter_contract(filename: str, title: str) -> None:
             assert figure.get("id")
             assert figure.get("data-visual-type") in {"interactive", "static"}
             assert figure.get("aria-label") or figure.get("aria-labelledby")
+
+    if filename in VISUAL_TARGETS:
+        static_target, interactive_target = VISUAL_TARGETS[filename]
+        visual_types = [figure["data-visual-type"] for figure in document.figures]
+        assert visual_types.count("static") == static_target
+        assert visual_types.count("interactive") == interactive_target
 
 
 def test_authored_chapter_order_and_navigation() -> None:

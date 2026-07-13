@@ -7,6 +7,7 @@
   <title>Chapter 8: From Returns To Model Features</title>
   <link rel="stylesheet" href="course.css">
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/mml-chtml.js" integrity="sha384-GYAeDZjH9w23NyL4cfS+ZrgWmGvta6VNs4p+/vtuF+RWe30fQhmP8pHbzRmlwmAK" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
   <script defer src="course.js"></script>
 </head>
 <body>
@@ -48,12 +49,14 @@
       <div class="panel"><h3>Sortino ratio</h3><p>A weighted average excess return divided by downside deviation computed at the same half-life. It is unitless when numerator and denominator use the same return unit.</p></div>
       <div class="panel"><h3>Standard score</h3><p>A value after subtracting a training-window mean and dividing by that window's population standard deviation. It says how unusual the feature is relative to permitted history.</p></div>
     </div>
+    <details class="deep-explanation"><summary>Deep explanation: memory, downside, missing values, and scale</summary>
     <p><span class="term">Simple return</span> is the percentage change in value over one interval. A 1% return is stored as the decimal 0.01. <span class="term">Cash return</span> is the daily return of the local safer asset proxy. <span class="term">Excess return</span> is not the equity return alone: if equity earns 0.04% and cash earns 0.01%, excess return is 0.03%, or 0.0003 as a decimal.</p>
     <p>An <span class="term">exponentially weighted moving</span>, or EWM, statistic uses all available earlier observations with decaying influence. The word <span class="term">moving</span> means the endpoint advances one date at a time. The word <span class="term">weighted</span> means observations do not count equally. A half-life of 20 gives a return from 20 observations ago half the raw weight of today's return; at age 40 it receives one quarter.</p>
     <p>The project uses <span class="term">adjusted EWM weights</span>. At each endpoint, the finite historical weights are normalized to sum to one. Early in a series, this avoids pretending that an infinite prehistory of zero-valued observations existed. The project also preserves missing observations instead of silently filling them. A missing excess return makes the feature on that row missing, and model input later requires complete feature rows.</p>
     <p><span class="term">Downside</span> means returns below zero in this protocol. It is not the same as volatility. A +5% surprise increases ordinary squared variation, but it contributes zero to the downside square. Squaring prevents negative and positive signs from canceling within the loss measure and gives larger losses more influence. Taking the square root restores the original return unit.</p>
     <p>The word <span class="term">Sortino</span> names a reward-to-downside measure. A positive numerator and small denominator produce a positive, larger ratio. A negative recent mean produces a negative ratio. If every weighted return is nonnegative, downside deviation is zero and division is undefined; the project records the Sortino feature as missing rather than inventing infinity or adding an undocumented constant.</p>
     <p><span class="term">Standardization</span> is distinct from annualization. Annualization changes a daily statistic into a yearly convention, often using 252 trading days. Standardization changes coordinates to center zero and scale one within a training window. The frozen model features are not annualized. Their rolling training-window scaler uses three separate means and three separate population standard deviations, with zero degrees-of-freedom correction, as implemented by scikit-learn's <code>StandardScaler</code>.</p>
+    </details>
   </section>
 
   <section class="chapter-section" id="worked-features">
@@ -65,6 +68,12 @@
     <h3>A common failure: mixing half-lives inside one ratio</h3>
     <p>Suppose someone divides a 20-day EWM mean by the 10-day downside feature because DD-10 is already available. That creates a different statistic from the paper's Sortino-20. The denominator for Sortino-20 must be downside deviation computed with half-life 20; Sortino-60 uses both a 60-day mean and a 60-day downside denominator. The standalone risk feature remains DD-10.</p>
     <p>Another common failure fits one scaler over the entire 1970-2023 sample. A late crash then changes standardized features assigned to earlier years. The correct sequence is: construct causal unscaled features, take the current trailing 3,000 complete model rows, fit the three scaler parameters on that window only, and transform that window for the current model fit or terminal inference.</p>
+    <figure class="teaching-figure" id="feature-scaler-figure" data-visual-type="static" aria-labelledby="feature-scaler-title">
+      <span class="teaching-label">Teaching example</span><h3 id="feature-scaler-title">The scaler can see one trailing window, not the future</h3>
+      <div class="visual-stage compact"><svg viewBox="0 0 440 320" role="img" aria-labelledby="feature-scaler-svg-title feature-scaler-svg-desc"><title id="feature-scaler-svg-title">Causal trailing standardization window</title><desc id="feature-scaler-svg-desc">Three thousand permitted feature rows define the mean and standard deviation. A future block is unavailable when today's standardized value is calculated.</desc><rect class="diagram-low" x="35" y="28" width="370" height="86" rx="8"/><rect class="diagram-warning" x="35" y="136" width="370" height="70" rx="8"/><rect class="diagram-unavailable" x="35" y="228" width="370" height="64" rx="8"/><text x="58" y="64" font-size="22" font-weight="700">Trailing 3,000 complete rows</text><text x="58" y="94" font-size="18">fit mean and population scale</text><text x="58" y="166" font-size="21" font-weight="700">Today: transform one z-score</text><text x="58" y="190" font-size="17">using the blue window only</text><text x="58" y="256" font-size="21" font-weight="700">Future: unavailable</text><text x="58" y="280" font-size="17">cannot revise today's scale</text><path class="diagram-link" d="M220 114 L220 136 M220 206 L220 228"/></svg></div>
+      <figcaption class="visual-caption">The blue block supplies three means and three scales. Today's row may be transformed with them; the gray future block cannot revise either the scaler or an earlier feature.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> standardization changes coordinates, not information timing.</div>
+    </figure>
   </section>
 
   <section class="chapter-section" id="feature-lab-section">
@@ -77,11 +86,22 @@
         <div><label for="feature-shock">Day 4 excess return: <output id="feature-shock-output" for="feature-shock">-4%</output></label><input id="feature-shock" type="range" min="-8" max="4" step="0.5" value="-4" data-output="feature-shock-output" data-digits="1" data-suffix="%"></div>
         <div><label for="feature-halflife">Teaching half-life: <output id="feature-halflife-output" for="feature-halflife">10 days</output></label><input id="feature-halflife" type="range" min="2" max="30" value="10" data-output="feature-halflife-output" data-singular=" day" data-plural=" days"></div>
       </div></form>
+      <figure class="teaching-figure" id="feature-weight-figure" data-visual-type="interactive" aria-labelledby="feature-weight-title">
+        <span class="teaching-label">Teaching example</span><h3 id="feature-weight-title">Older observations fade instead of falling off a cliff</h3>
+        <div class="chart-wrap visual-enhancement" id="feature-weight-enhancement"><canvas id="feature-weight-chart" role="img" aria-label="Normalized weights for the eight teaching returns"></canvas></div>
+        <div class="visual-fallback table-wrap"><table class="data-table" aria-label="Default normalized weight fallback"><thead><tr><th>Age</th><th>Default weight</th></tr></thead><tbody><tr><td>7 days</td><td id="feature-old-weight">9.7%</td></tr><tr><td>4 days</td><td id="feature-middle-weight">11.9%</td></tr><tr><td>0 days</td><td id="feature-new-weight">15.7%</td></tr></tbody></table></div>
+        <figcaption class="visual-caption">Move the half-life control. A short half-life tilts the bars toward recent days; a long half-life makes them more even. Every displayed set is normalized to 100%.</figcaption>
+      </figure>
       <div class="metric-grid three">
         <div class="panel"><span class="label">EWM mean</span><strong class="big-number" id="feature-mean">-0.31%</strong></div>
         <div class="panel"><span class="label">Downside deviation</span><strong class="big-number" id="feature-downside">1.48%</strong></div>
         <div class="panel"><span class="label">Sortino</span><strong class="big-number" id="feature-sortino">-0.21</strong></div>
       </div>
+      <figure class="teaching-figure" id="feature-propagation-figure" data-visual-type="interactive" aria-labelledby="feature-propagation-title">
+        <span class="teaching-label">Teaching example</span><h3 id="feature-propagation-title">One changed return moves reward and downside differently</h3>
+        <div class="visual-stage compact"><svg id="feature-propagation" viewBox="0 0 440 360" role="img" aria-label="Default shock produces a negative mean, positive downside deviation, and negative Sortino ratio"><line class="diagram-link" x1="180" y1="30" x2="180" y2="325"/><text x="22" y="82" font-size="20" font-weight="700">EWM mean</text><rect id="feature-mean-bar" x="155" y="55" width="25" height="34" fill="#ff8585" data-animate/><text id="feature-mean-visual" x="350" y="82" font-size="20">-0.31%</text><text x="22" y="182" font-size="20" font-weight="700">Downside</text><rect id="feature-downside-bar" x="180" y="155" width="90" height="34" fill="#ff8585" data-animate/><text id="feature-downside-visual" x="350" y="182" font-size="20">1.48%</text><text x="22" y="282" font-size="20" font-weight="700">Sortino</text><rect id="feature-sortino-bar" x="163" y="255" width="17" height="34" fill="#ff8585" data-animate/><text id="feature-sortino-visual" x="350" y="282" font-size="20">-0.21</text><text x="174" y="348" font-size="16">0</text></svg></div>
+        <figcaption class="visual-caption">A gain contributes to the mean but contributes zero to the downside square. The Sortino ratio moves through both channels, so it is related to DD without duplicating it.</figcaption>
+      </figure>
       <div class="table-wrap"><table class="data-table"><thead><tr><th>Day</th><th>Age at Day 8</th><th>Excess return</th><th>Normalized weight</th><th>Downside contribution</th></tr></thead><tbody id="feature-rows"><tr><td>1</td><td>7</td><td>+1.0%</td><td>9.7%</td><td>0</td></tr><tr><td>2</td><td>6</td><td>-1.0%</td><td>10.4%</td><td>weight &times; 0.01<sup>2</sup></td></tr><tr><td>3</td><td>5</td><td>+0.5%</td><td>11.1%</td><td>0</td></tr><tr><td>4</td><td>4</td><td>-4.0%</td><td>11.9%</td><td>weight &times; 0.04<sup>2</sup></td></tr><tr><td>5</td><td>3</td><td>+1.0%</td><td>12.8%</td><td>0</td></tr><tr><td>6</td><td>2</td><td>-0.5%</td><td>13.7%</td><td>weight &times; 0.005<sup>2</sup></td></tr><tr><td>7</td><td>1</td><td>+1.5%</td><td>14.7%</td><td>0</td></tr><tr><td>8</td><td>0</td><td>-1.0%</td><td>15.7%</td><td>weight &times; 0.01<sup>2</sup></td></tr></tbody></table></div>
       <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The default inputs and endpoint results remain in the table and metric panels: mean -0.31%, downside deviation 1.48%, and Sortino -0.21.</p></noscript>
     </div>
@@ -163,6 +183,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const shock = document.getElementById("feature-shock");
   const halflife = document.getElementById("feature-halflife");
   const rows = document.getElementById("feature-rows");
+  const propagation = document.getElementById("feature-propagation");
+  let weightChart = null;
   function render() {
     const returns = [1, -1, 0.5, Number(shock.value), 1, -0.5, 1.5, -1].map((value) => value / 100);
     const decay = 2 ** (-1 / Number(halflife.value));
@@ -175,6 +197,23 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("feature-mean").textContent = Course.percent(mean, 2);
     document.getElementById("feature-downside").textContent = Course.percent(downside, 2);
     document.getElementById("feature-sortino").textContent = Number.isFinite(sortino) ? sortino.toFixed(2) : "missing";
+    document.getElementById("feature-old-weight").textContent = Course.percent(weights[0], 1);
+    document.getElementById("feature-middle-weight").textContent = Course.percent(weights[3], 1);
+    document.getElementById("feature-new-weight").textContent = Course.percent(weights[7], 1);
+    const setSignedBar = (id, value, scale, color) => {
+      const bar = document.getElementById(id);
+      const width = Math.min(Math.abs(value) * scale, 130);
+      bar.setAttribute("x", String(value < 0 ? 180 - width : 180));
+      bar.setAttribute("width", String(width));
+      bar.setAttribute("fill", color);
+    };
+    setSignedBar("feature-mean-bar", mean, 8000, mean < 0 ? Course.palette.high : Course.palette.cash);
+    setSignedBar("feature-downside-bar", downside, 6000, Course.palette.high);
+    setSignedBar("feature-sortino-bar", sortino, 80, sortino < 0 ? Course.palette.high : Course.palette.cash);
+    document.getElementById("feature-mean-visual").textContent = Course.percent(mean, 2);
+    document.getElementById("feature-downside-visual").textContent = Course.percent(downside, 2);
+    document.getElementById("feature-sortino-visual").textContent = Number.isFinite(sortino) ? sortino.toFixed(2) : "missing";
+    propagation.setAttribute("aria-label", `EWM mean ${Course.percent(mean, 2)}, downside deviation ${Course.percent(downside, 2)}, Sortino ${Number.isFinite(sortino) ? sortino.toFixed(2) : "missing"}`);
     rows.innerHTML = returns.map((value, index) => {
       const age = returns.length - 1 - index;
       const contribution = value < 0 ? `${(weights[index] * value ** 2).toFixed(6)}` : "0";
@@ -182,6 +221,15 @@ document.addEventListener("DOMContentLoaded", () => {
       return `<tr><td>${index + 1}</td><td>${age}</td><td>${sign}${(value * 100).toFixed(1)}%</td><td>${(weights[index] * 100).toFixed(1)}%</td><td>${contribution}</td></tr>`;
     }).join("");
     rows.closest("table").setAttribute("aria-label", `Eight teaching returns with half-life ${halflife.value}; endpoint downside ${Course.percent(downside, 2)} and Sortino ${Number.isFinite(sortino) ? sortino.toFixed(2) : "missing"}`);
+    if (window.Chart) {
+      document.getElementById("feature-weight-enhancement").classList.add("is-ready");
+      if (weightChart) weightChart.destroy();
+      weightChart = new Chart(document.getElementById("feature-weight-chart"), {
+        type: "bar",
+        data: {labels: returns.map((_, index) => `Day ${index + 1}`), datasets: [{data: weights.map((value) => value * 100), backgroundColor: Course.palette.low}]},
+        options: {animation: false, maintainAspectRatio: false, plugins: {legend: {display: false}}, scales: {x: {title: {display: true, text: "Oldest to newest"}}, y: {beginAtZero: true, title: {display: true, text: "Normalized weight (%)"}}}},
+      });
+    }
   }
   [shock, halflife].forEach((input) => input.addEventListener("input", render));
   lab.addEventListener("course:reset", render);
