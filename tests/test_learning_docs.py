@@ -59,6 +59,7 @@ BASELINE_WORDS = {
 }
 VISUAL_TARGETS = {
     "08-returns-to-model-features.html": (1, 2),
+    "09-hidden-markov-models.html": (1, 2),
 }
 FIXED_MATH_ARITY = {
     "mfrac": 2,

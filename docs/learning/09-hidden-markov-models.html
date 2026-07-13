@@ -34,6 +34,12 @@
     </div>
     <p>A Hidden Markov Model, abbreviated HMM, separates what is seen from what is inferred. The seen sequence is daily return. Behind each return sits a discrete <span class="term">hidden state</span>. In the two-state version used here, one state has lower conditional variance and the other has higher conditional variance. Each state describes a different probability distribution for returns.</p>
     <p>The model also represents persistence. If today is in the low-volatility state, tomorrow may be more likely to remain low than to switch high. The exact probabilities are estimated, not declared by the state names. By combining emission plausibility with transition plausibility across a sequence, the model finds a state path that explains the observed returns.</p>
+    <figure class="teaching-figure" id="hmm-anatomy-figure" data-visual-type="static" aria-labelledby="hmm-anatomy-title">
+      <span class="teaching-label">Teaching example</span><h3 id="hmm-anatomy-title">Hidden states move above the returns we can observe</h3>
+      <div class="visual-stage compact"><svg viewBox="0 0 440 340" role="img" aria-labelledby="hmm-anatomy-svg-title hmm-anatomy-svg-desc"><title id="hmm-anatomy-svg-title">Two-state Hidden Markov Model anatomy</title><desc id="hmm-anatomy-svg-desc">Low and high volatility hidden states transition between each other and emit observable returns from different distributions.</desc><defs><marker id="hmm-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#aab3bf"/></marker></defs><rect class="diagram-low" x="35" y="36" width="160" height="76" rx="12"/><rect class="diagram-high" x="245" y="36" width="160" height="76" rx="12"/><text x="72" y="70" font-size="22" font-weight="700">Low state</text><text x="55" y="96" font-size="17">narrow distribution</text><text x="278" y="70" font-size="22" font-weight="700">High state</text><text x="266" y="96" font-size="17">wide distribution</text><path class="diagram-link" d="M195 58 C215 40 225 40 245 58" marker-end="url(#hmm-arrow)"/><path class="diagram-link" d="M245 92 C225 110 215 110 195 92" marker-end="url(#hmm-arrow)"/><text x="183" y="28" font-size="16">transition</text><path class="diagram-link" d="M115 112 L115 196" marker-end="url(#hmm-arrow)"/><path class="diagram-link" d="M325 112 L325 196" marker-end="url(#hmm-arrow)"/><text x="129" y="163" font-size="16">emission</text><text x="339" y="163" font-size="16">emission</text><rect class="diagram-low" x="35" y="200" width="160" height="72" rx="8"/><rect class="diagram-high" x="245" y="200" width="160" height="72" rx="8"/><text x="67" y="232" font-size="20" font-weight="700">Small return</text><text x="60" y="256" font-size="16">observed value</text><text x="272" y="232" font-size="20" font-weight="700">Large return</text><text x="270" y="256" font-size="16">observed value</text></svg></div>
+      <figcaption class="visual-caption">The upper row is inferred; the lower row is measured. Transitions connect hidden states through time, while emissions connect each state to returns.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> an observed loss influences the state estimate, but it is never itself a state label.</div>
+    </figure>
     <div class="remember"><strong>The idea to remember</strong>An HMM is two linked stories: states move according to transition probabilities, and each hidden state emits observations according to its own distribution. Viterbi decoding finds the single most probable state path under the fitted model; it does not make hidden truth directly observable.</div>
   </section>
 
@@ -48,6 +54,7 @@
       <div class="panel"><h3>Likelihood</h3><p>How compatible model parameters are with the observed sequence. HMM fitting seeks parameters with high data likelihood.</p></div>
       <div class="panel"><h3>Viterbi decoding</h3><p>A dynamic-programming algorithm that finds the most probable complete hidden-state path for fixed HMM parameters.</p></div>
     </div>
+    <details class="deep-explanation"><summary>Deep explanation: probability, fitting, labels, and online endpoints</summary>
     <p>A <span class="term">random variable</span> can take different values with specified probabilities. A <span class="term">probability distribution</span> describes those possibilities. The Gaussian, or normal, distribution is summarized by a mean and variance. Mean locates its center. Variance measures squared spread, while standard deviation is the square root of variance and has the same unit as return.</p>
     <p><span class="term">Conditional</span> means "given something." An emission probability asks how plausible return <math><msub><mi>r</mi><mi>t</mi></msub></math> is given state <math><msub><mi>s</mi><mi>t</mi></msub></math>. It does not ask how likely the state is before seeing the return. The HMM combines the emission with the probability of arriving from an earlier state.</p>
     <p>The <span class="term">Markov property</span> says the distribution of the next hidden state depends on the current hidden state, not the entire earlier state history, once the current state is known. This is a simplifying assumption. It does not say returns are independent through time, and it does not prove markets truly obey a first-order Markov chain.</p>
@@ -56,6 +63,7 @@
     <p>A <span class="term">restart</span> fits the model again from another deterministic initialization. <span class="term">Convergence</span> means the optimization change has become smaller than a declared tolerance; reaching the iteration cap is not equivalent. The project accepts only strictly converged restarts and then retains the accepted fit with highest log-likelihood.</p>
     <p><span class="term">Label switching</span> means numeric state names are arbitrary. A fitted package may call the volatile state 0 in one run and 1 in another. Economic interpretation requires a deterministic mapping. The project orders estimated conditional variances: lower variance becomes state 0 and higher variance becomes state 1. Equal variances are rejected because the mapping would be ambiguous.</p>
     <p>A <span class="term">terminal state</span> is the last decoded state in a window. The paper repeatedly fits or decodes through date <math><mi>t</mi></math> and keeps only that endpoint as the online state for <math><mi>t</mi></math>. A <span class="term">causal majority filter</span> then smooths the sequence of daily terminal states using only current and earlier endpoints.</p>
+    </details>
   </section>
 
   <section class="chapter-section" id="worked-hmm">
@@ -79,11 +87,23 @@
         <div><label for="hmm-shock">Day 4 log return: <output id="hmm-shock-output" for="hmm-shock">-2.5%</output></label><input id="hmm-shock" type="range" min="-5" max="3" step="0.1" value="-2.5" data-output="hmm-shock-output" data-digits="1" data-suffix="%"></div>
         <div><label for="hmm-persistence">Same-state probability: <output id="hmm-persistence-output" for="hmm-persistence">90%</output></label><input id="hmm-persistence" type="range" min="50" max="99" value="90" data-output="hmm-persistence-output" data-suffix="%"></div>
       </div></form>
+      <figure class="teaching-figure" id="hmm-emission-figure" data-visual-type="interactive" aria-labelledby="hmm-emission-title">
+        <span class="teaching-label">Teaching example</span><h3 id="hmm-emission-title">The same return receives two emission scores</h3>
+        <div class="visual-stage compact"><svg id="hmm-emission-plot" viewBox="0 0 440 360" role="img" aria-label="Day 4 return compared with low- and high-volatility Gaussian emissions"><line class="diagram-link" x1="38" y1="300" x2="414" y2="300"/><path d="M38 296 C120 292 180 245 250 190 C320 245 370 292 414 296" fill="none" stroke="#ff8585" stroke-width="4"/><path d="M130 296 C205 292 225 92 262 42 C299 92 320 292 394 296" fill="none" stroke="#75b8ff" stroke-width="4"/><line id="hmm-return-marker" x1="169" y1="36" x2="169" y2="306" stroke="#f0bd64" stroke-width="3" data-animate/><circle id="hmm-low-point" cx="169" cy="299" r="7" fill="#75b8ff" data-animate/><circle id="hmm-high-point" cx="169" cy="196" r="7" fill="#ff8585" data-animate/><text x="278" y="72" font-size="18" fill="#75b8ff">Low: narrow</text><text x="278" y="206" font-size="18" fill="#ff8585">High: wide</text><text id="hmm-return-label" x="145" y="330" font-size="18">-2.5%</text></svg></div>
+        <div class="visual-legend"><span id="hmm-low-fit">Low relative density: 0.0%</span><span id="hmm-high-fit">High relative density: 47.4%</span></div>
+        <figcaption class="visual-caption">Move Day 4. The blue state strongly favors returns near its narrow center; the red state assigns more relative density to large moves. These are observation scores, not a complete decoded path.</figcaption>
+      </figure>
       <div class="metric-grid">
         <div class="panel"><span class="label">Decoded terminal state</span><strong class="big-number" id="hmm-terminal">High volatility (1)</strong></div>
         <div class="panel"><span class="label">Number of path switches</span><strong class="big-number" id="hmm-switches">1</strong></div>
       </div>
-      <div class="state-strip model-strip" id="hmm-path" aria-label="Default Viterbi path: low, low, low, high, high, high"><span class="state-day low-state"><b>Day 1</b><small>low</small></span><span class="state-day low-state"><b>Day 2</b><small>low</small></span><span class="state-day low-state"><b>Day 3</b><small>low</small></span><span class="state-day high-state"><b>Day 4</b><small>high</small></span><span class="state-day high-state"><b>Day 5</b><small>high</small></span><span class="state-day high-state"><b>Day 6</b><small>high</small></span></div>
+      <figure class="teaching-figure" id="hmm-trellis-figure" data-visual-type="interactive" aria-labelledby="hmm-trellis-title">
+        <span class="teaching-label">Teaching example</span><h3 id="hmm-trellis-title">Viterbi keeps two winners at each day, then traces one path</h3>
+        <div class="visual-stage compact"><svg id="hmm-trellis" viewBox="0 0 440 360" role="img" aria-label="Day 1 initial Viterbi scores"><text id="hmm-trellis-day" x="22" y="30" font-size="20" font-weight="700">Day 1: initialize</text><rect id="hmm-previous-low" class="diagram-low" x="28" y="72" width="150" height="72" rx="9"/><rect id="hmm-previous-high" class="diagram-high" x="28" y="218" width="150" height="72" rx="9"/><text x="58" y="102" font-size="18" font-weight="700">Previous low</text><text id="hmm-previous-low-score" x="58" y="128" font-size="16">initial</text><text x="52" y="248" font-size="18" font-weight="700">Previous high</text><text id="hmm-previous-high-score" x="58" y="274" font-size="16">initial</text><path id="hmm-link-00" class="diagram-link" d="M178 108 L264 108"/><path id="hmm-link-10" class="diagram-link" d="M178 254 L264 125"/><path id="hmm-link-01" class="diagram-link" d="M178 108 L264 235"/><path id="hmm-link-11" class="diagram-link" d="M178 254 L264 252"/><rect id="hmm-current-low" class="diagram-low" x="264" y="72" width="150" height="72" rx="9"/><rect id="hmm-current-high" class="diagram-high" x="264" y="218" width="150" height="72" rx="9"/><text x="300" y="102" font-size="18" font-weight="700">End low</text><text id="hmm-current-low-score" x="286" y="128" font-size="16">score pending</text><text x="294" y="248" font-size="18" font-weight="700">End high</text><text id="hmm-current-high-score" x="286" y="274" font-size="16">score pending</text><text id="hmm-trellis-return" x="118" y="334" font-size="18">Observed return: +0.4%</text></svg></div>
+        <div class="stepper-controls"><button class="button" type="button" data-stepper-action="previous" title="Previous day">Previous</button><button class="button" type="button" data-stepper-action="play" title="Play six days">Play</button><button class="button" type="button" data-stepper-action="pause" title="Pause">Pause</button><button class="button" type="button" data-stepper-action="next" title="Next day">Next</button><button class="button" type="button" data-stepper-action="reset" title="Return to day one">Reset</button><output class="stepper-status" data-stepper-status aria-live="polite">Day 1 of 6</output></div>
+        <div class="state-strip model-strip" id="hmm-path" aria-label="Default Viterbi path: low, low, low, high, high, high"><span class="state-day low-state"><b>Day 1</b><small>low</small></span><span class="state-day low-state"><b>Day 2</b><small>low</small></span><span class="state-day low-state"><b>Day 3</b><small>low</small></span><span class="state-day high-state"><b>Day 4</b><small>high</small></span><span class="state-day high-state"><b>Day 5</b><small>high</small></span><span class="state-day high-state"><b>Day 6</b><small>high</small></span></div>
+        <figcaption class="visual-caption">Step through the dates. Each current state retains its better incoming score. Only after Day 6 does traceback select the single displayed low/high path.</figcaption>
+      </figure>
       <div class="table-wrap fallback-table"><table class="data-table"><thead><tr><th>State</th><th>Toy mean</th><th>Toy standard deviation</th><th>Default path role</th></tr></thead><tbody><tr><td>Low (0)</td><td>+0.05%</td><td>0.60%</td><td>Explains the first three small returns</td></tr><tr><td>High (1)</td><td>-0.30%</td><td>1.80%</td><td>Explains the shock and persistent aftermath</td></tr></tbody></table></div>
       <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The default Viterbi path remains visible: low, low, low, high, high, high, with one switch and high terminal state.</p></noscript>
     </div>
@@ -177,14 +197,65 @@ document.addEventListener("DOMContentLoaded", () => {
   const shock = document.getElementById("hmm-shock");
   const persistence = document.getElementById("hmm-persistence");
   const strip = document.getElementById("hmm-path");
+  const emissionPlot = document.getElementById("hmm-emission-plot");
+  const trellis = document.getElementById("hmm-trellis");
   const means = [0.0005, -0.003];
   const deviations = [0.006, 0.018];
   const logDensity = (value, mean, deviation) => -Math.log(deviation * Math.sqrt(2 * Math.PI)) - 0.5 * ((value - mean) / deviation) ** 2;
+  let trellisData = null;
+  let trellisStepper = null;
+
+  function renderEmission(value) {
+    const x = 38 + ((value + 0.06) / 0.1) * 376;
+    const relative = means.map((mean, state) => Math.exp(logDensity(value, mean, deviations[state]) - logDensity(mean, mean, deviations[state])));
+    const marker = document.getElementById("hmm-return-marker");
+    marker.setAttribute("x1", String(x));
+    marker.setAttribute("x2", String(x));
+    document.getElementById("hmm-low-point").setAttribute("cx", String(x));
+    document.getElementById("hmm-low-point").setAttribute("cy", String(300 - relative[0] * 220));
+    document.getElementById("hmm-high-point").setAttribute("cx", String(x));
+    document.getElementById("hmm-high-point").setAttribute("cy", String(300 - relative[1] * 220));
+    document.getElementById("hmm-return-label").setAttribute("x", String(Math.max(38, Math.min(x - 24, 370))));
+    document.getElementById("hmm-return-label").textContent = Course.percent(value, 1);
+    document.getElementById("hmm-low-fit").textContent = `Low relative density: ${(relative[0] * 100).toFixed(1)}%`;
+    document.getElementById("hmm-high-fit").textContent = `High relative density: ${(relative[1] * 100).toFixed(1)}%`;
+    emissionPlot.setAttribute("aria-label", `Day 4 return ${Course.percent(value, 1)}; low-state relative density ${(relative[0] * 100).toFixed(1)} percent; high-state relative density ${(relative[1] * 100).toFixed(1)} percent`);
+  }
+
+  function renderTrellisFrame(frame) {
+    if (!trellisData) return;
+    const {returns, scoreRows, pointerRows, path} = trellisData;
+    const previous = frame === 0 ? null : scoreRows[frame - 1];
+    document.getElementById("hmm-trellis-day").textContent = frame === 0 ? "Day 1: initialize" : `Day ${frame + 1}: compare arrivals`;
+    document.getElementById("hmm-previous-low-score").textContent = previous ? `score ${previous[0].toFixed(2)}` : "prior 0.50";
+    document.getElementById("hmm-previous-high-score").textContent = previous ? `score ${previous[1].toFixed(2)}` : "prior 0.50";
+    document.getElementById("hmm-current-low-score").textContent = `score ${scoreRows[frame][0].toFixed(2)}`;
+    document.getElementById("hmm-current-high-score").textContent = `score ${scoreRows[frame][1].toFixed(2)}`;
+    document.getElementById("hmm-trellis-return").textContent = `Observed return: ${Course.percent(returns[frame], 1)}`;
+    ["00", "10", "01", "11"].forEach((key) => {
+      const link = document.getElementById(`hmm-link-${key}`);
+      link.classList.remove("is-active");
+      link.style.opacity = frame === 0 ? "0.2" : "1";
+    });
+    if (frame > 0) {
+      const pointers = pointerRows[frame - 1];
+      document.getElementById(`hmm-link-${pointers[0]}0`).classList.add("is-active");
+      document.getElementById(`hmm-link-${pointers[1]}1`).classList.add("is-active");
+    }
+    [0, 1].forEach((state) => document.getElementById(`hmm-current-${state === 0 ? "low" : "high"}`).classList.toggle("is-active", path[frame] === state));
+    [...strip.children].forEach((cell, index) => {
+      cell.style.outline = index === frame ? `2px solid ${Course.palette.uncertainty}` : "none";
+      cell.style.outlineOffset = index === frame ? "2px" : "0";
+    });
+    trellis.setAttribute("aria-label", `Day ${frame + 1}, return ${Course.percent(returns[frame], 1)}, best ending scores ${scoreRows[frame][0].toFixed(2)} for low and ${scoreRows[frame][1].toFixed(2)} for high, decoded path state ${path[frame]}`);
+  }
+
   function render() {
     const returns = [0.004, -0.003, 0.002, Number(shock.value) / 100, -0.015, 0.006];
     const stay = Number(persistence.value) / 100;
     let scores = [0, 1].map((state) => Math.log(0.5) + logDensity(returns[0], means[state], deviations[state]));
-    const backpointers = [];
+    const scoreRows = [scores.slice()];
+    const pointerRows = [];
     for (let day = 1; day < returns.length; day += 1) {
       const nextScores = [];
       const previousStates = [];
@@ -195,12 +266,13 @@ document.addEventListener("DOMContentLoaded", () => {
         previousStates[state] = previous;
       }
       scores = nextScores;
-      backpointers.push(previousStates);
+      scoreRows.push(scores.slice());
+      pointerRows.push(previousStates);
     }
     let state = scores[0] >= scores[1] ? 0 : 1;
     const path = [state];
-    for (let day = backpointers.length - 1; day >= 0; day -= 1) {
-      state = backpointers[day][state];
+    for (let day = pointerRows.length - 1; day >= 0; day -= 1) {
+      state = pointerRows[day][state];
       path.push(state);
     }
     path.reverse();
@@ -211,10 +283,18 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("hmm-switches").textContent = String(switches);
     strip.innerHTML = path.map((value, index) => `<span class="state-day ${value === 0 ? "low-state" : "high-state"}"><b>Day ${index + 1}</b><small>${names[value]}</small></span>`).join("");
     strip.setAttribute("aria-label", `Viterbi path: ${path.map((value) => names[value]).join(", ")}; ${switches} switches`);
+    trellisData = {returns, scoreRows, pointerRows, path};
+    renderEmission(returns[3]);
+    if (trellisStepper) trellisStepper.setFrame(Number(document.getElementById("hmm-trellis-figure").dataset.frame || 0));
   }
   [shock, persistence].forEach((input) => input.addEventListener("input", render));
   lab.addEventListener("course:reset", render);
   render();
+  trellisStepper = Course.mountStepper(document.getElementById("hmm-trellis-figure"), {
+    frameCount: 6,
+    render: renderTrellisFrame,
+    describe: (frame) => `Day ${frame + 1} of 6`,
+  });
 });
 </script>
 </body>
