@@ -18,6 +18,20 @@ CHAPTERS = [
         "Reproducibility And Sealed Evidence",
     ),
     ("07-backtesting-without-future.html", "Backtesting Without Seeing The Future"),
+    ("08-returns-to-model-features.html", "From Returns To Model Features"),
+    ("09-hidden-markov-models.html", "Hidden Markov Models From Zero"),
+    (
+        "10-clustering-statistical-jump-models.html",
+        "Clustering And Statistical Jump Models",
+    ),
+    (
+        "11-dynamic-programming-online-inference.html",
+        "Dynamic Programming And Online Inference",
+    ),
+    (
+        "12-walk-forward-selection-performance.html",
+        "Walk-Forward Selection And Performance Measurement",
+    ),
 ]
 REQUIRED_SECTIONS = {
     "question",
