@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A beginner guide to prices, dividends, simple returns, log returns, excess returns, and compounding.">
+  <title>Chapter 2: Prices, Dividends, And Returns</title>
+  <link rel="stylesheet" href="course.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/mml-chtml.js" integrity="sha384-GYAeDZjH9w23NyL4cfS+ZrgWmGvta6VNs4p+/vtuF+RWe30fQhmP8pHbzRmlwmAK" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+  <script defer src="course.js"></script>
+</head>
+<body>
+<main class="course-shell">
+  <nav class="course-nav" aria-label="Course navigation">
+    <a href="01-money-assets-cash.html">Previous: money and assets</a>
+    <span>Part I · Chapter 2 of 14</span>
+    <a href="03-returns-features.html">Next: risk and downside</a>
+  </nav>
+
+  <header class="chapter-header">
+    <div class="part-label">Part I · Money, Returns, And Risk</div>
+    <h1>Prices, Dividends, And Returns</h1>
+    <p class="lead">If an index starts and ends at 100, did the investor earn nothing?</p>
+    <div class="chapter-meta"><span>Beginner level</span><span>Builds on Chapter 1</span><span>Interactive return laboratory</span></div>
+  </header>
+
+  <section class="chapter-section" id="question">
+    <div class="eyebrow">The opening question</div>
+    <h2>A price can stay flat while wealth grows</h2>
+    <p>You invest $100 in a collection of companies. One year later the quoted market value is still $100. During the year, however, the companies distributed $4 to owners. If you ignore that payment, you report no gain. If you include it, your economic wealth is $104. The price did not rise, but the investment produced a positive return.</p>
+    <div class="example-grid">
+      <article class="worked-example">
+        <div class="label">Price-only view</div>
+        <span class="big-number">$100 → $100</span>
+        <p>The price return is 0%. This view ignores the $4 distribution.</p>
+      </article>
+      <article class="worked-example">
+        <div class="label">Total-return view</div>
+        <span class="big-number">$100 → $104</span>
+        <p>The total return is 4% because the distribution belongs to the investor.</p>
+      </article>
+    </div>
+    <p>A <span class="term">dividend</span> is a payment from a company to its shareholders. An index may represent only price movements, or it may represent both price movements and reinvested distributions. Both series can carry the familiar market name, yet they answer different economic questions.</p>
+    <div class="remember"><strong>One idea to remember</strong>A return is a change in investor wealth, not merely a change in the quoted price. Before comparing a replication with a paper, identify exactly which wealth definition each dataset represents.</div>
+  </section>
+
+  <section class="chapter-section" id="vocabulary">
+    <div class="eyebrow">Build the vocabulary</div>
+    <h2>Price level, distribution, and index definition</h2>
+    <p>A <span class="term">price level</span> is the quoted value of an asset or index at a moment in time. The number 5,000 for an index is not five thousand dollars of personal wealth. It is a standardized level created by the index methodology. What matters for return calculation is the ratio between levels, provided both observations use the same definition.</p>
+    <p>A <span class="term">distribution</span> transfers value from the company or fund to the owner. Cash dividends are the most familiar example. On the ex-dividend date, the quoted price may fall because some value has left the company and been paid to shareholders. Calling that price decline an investor loss while ignoring the received cash would be incomplete.</p>
+    <p>A <span class="term">price index</span> follows constituent prices and excludes reinvested distributions. A <span class="term">total-return index</span> models the wealth path obtained when distributions are reinvested into the index. Over a few days the difference may look small. Across decades, repeated dividends and compounding can make the two histories materially different.</p>
+    <p>A <span class="term">gross total-return index</span> generally reinvests distributions before withholding taxes. A <span class="term">net total-return index</span> generally applies an assumed withholding-tax treatment before reinvestment. Exact vendor methodologies matter. “Total return” alone may still be an incomplete identifier.</p>
+    <p>Some market files contain an <span class="term">adjusted price</span>. The adjustment may account for splits, dividends, capital distributions, or vendor-specific repairs. It can be useful, but the label does not prove equivalence to an official total-return index. A researcher must document the field, adjustment setting, provider, currency, and methodology rather than silently assuming that every adjusted series means the same thing.</p>
+    <p>A <span class="term">stock split</span> changes the number of shares and price per share without creating economic gain by itself. If one $100 share becomes two $50 shares, the owner still has $100. An unadjusted chart may appear to show a 50% crash even though no wealth disappeared. A dividend is different: value is transferred to the owner and must be included in total return. Good adjustment handles both events according to a declared methodology; blindly applying a vendor field can hide which treatment occurred.</p>
+    <p>Reinvestment also has a precise meaning. If a $4 dividend is paid, a total-return index assumes that the $4 purchases additional units under the index convention. Those extra units participate in later gains and losses. The result is not simply “add every dividend at the end.” Reinvestment changes the base that compounds through all later periods, which is why a small repeated distribution can create a large long-horizon gap between price and total-return histories.</p>
+    <div class="concept-grid three">
+      <div class="panel"><h3>Price level</h3><p>A measurement at one date. It is not yet a return.</p></div>
+      <div class="panel"><h3>Simple return</h3><p>The proportional wealth change between two valid dates.</p></div>
+      <div class="panel"><h3>Wealth path</h3><p>The result of compounding a sequence of returns.</p></div>
+    </div>
+  </section>
+
+  <section class="chapter-section" id="simple-return">
+    <div class="eyebrow">Worked example one</div>
+    <h2>Calculate a simple return</h2>
+    <p>Suppose a total-return index moves from 100 to 103 between two consecutive valid observations. Divide the ending level by the starting level to obtain 1.03, then subtract 1. The simple return is 0.03, which is 3%.</p>
+    <div class="formula" aria-label="Simple return formula">
+      <math display="block">
+        <msub><mi>r</mi><mi>t</mi></msub><mo>=</mo>
+        <mfrac><msub><mi>P</mi><mi>t</mi></msub><msub><mi>P</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub></mfrac>
+        <mo>−</mo><mn>1</mn>
+      </math>
+    </div>
+    <div class="table-wrap">
+      <table class="symbol-table">
+        <thead><tr><th>Symbol</th><th>Meaning</th><th>Unit</th></tr></thead>
+        <tbody>
+          <tr><td><math><msub><mi>P</mi><mi>t</mi></msub></math></td><td>Current valid total-return index level</td><td>Index points</td></tr>
+          <tr><td><math><msub><mi>P</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub></math></td><td>Previous valid index level</td><td>Index points</td></tr>
+          <tr><td><math><msub><mi>r</mi><mi>t</mi></msub></math></td><td>Simple return between those observations</td><td>Decimal; 0.03 means 3%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The subscript <math><mi>t</mi></math> means the current observation, not necessarily the next calendar day. Markets close on weekends and holidays, and different countries have different calendars. The active code calculates between consecutive <em>valid</em> index levels. If Friday is followed by Monday, Monday's return spans that observation gap. It does not invent Saturday and Sunday prices.</p>
+    <p>A missing observation is not automatically a zero return. Zero says that the asset was observed and did not change. Missing says that the value is unknown or unavailable. Replacing missing with zero creates a claim that the source never made and can suppress measured variability. Forward-filling a missing equity level creates the same false zero before moving the delayed change to a later date. The frozen project preserves missing source values and computes only between valid levels, while recording the calendar gap for audit.</p>
+    <p>A return of −3% is written as −0.03 in calculations. A 100% loss is −1 because wealth falls to zero. A simple return cannot be less than −100% for an unlevered long asset whose value cannot be negative, but it has no fixed positive upper bound. Keeping decimals and percentages distinct prevents a common hundred-fold error: 3% is 0.03, not 3, inside the formula.</p>
+  </section>
+
+  <section class="chapter-section" id="return-lab">
+    <div class="eyebrow">Interactive worked example</div>
+    <h2>Separate price, total, cash, and excess return</h2>
+    <p>Use one-period teaching values. The starting price is $100, ending price is $102, and a $2 distribution is received. Price return is 2%, but total return is 4%. If cash earns 0.5%, the investment's <span class="term">excess return</span> is 3.5 percentage points: total return minus cash return.</p>
+    <div class="lab" id="return-lab-tool">
+      <div class="lab-header">
+        <div><h3>Return laboratory</h3><p>Change the toy price, distribution, and cash return.</p></div>
+        <button class="button" type="button" data-reset>Reset</button>
+      </div>
+      <form>
+        <div class="control-grid">
+          <div><label for="start-price">Starting price</label><input id="start-price" type="number" min="0.01" step="0.01" value="100"></div>
+          <div><label for="end-price">Ending price</label><input id="end-price" type="number" min="0.01" step="0.01" value="102"></div>
+          <div><label for="distribution">Distribution received</label><input id="distribution" type="number" min="0" step="0.01" value="2"></div>
+          <div><label for="cash-period-return">Cash return (%)</label><input id="cash-period-return" type="number" min="-20" max="100" step="0.1" value="0.5"></div>
+        </div>
+      </form>
+      <div class="metric-grid three">
+        <div class="panel"><span class="label">Price return</span><strong class="big-number" id="price-return-value">2.00%</strong></div>
+        <div class="panel"><span class="label">Total return</span><strong class="big-number" id="total-return-value">4.00%</strong></div>
+        <div class="panel"><span class="label">Excess return</span><strong class="big-number" id="excess-return-value">3.50%</strong></div>
+      </div>
+      <div class="chart-wrap enhanced-only"><canvas id="return-chart" role="img" aria-label="Ending wealth from price-only, total-return, and cash alternatives"></canvas></div>
+      <div class="table-wrap fallback-table">
+        <table class="data-table">
+          <thead><tr><th>Alternative</th><th>Ending wealth from $100</th></tr></thead>
+          <tbody>
+            <tr><td>Price only</td><td id="price-wealth-cell">$102.00</td></tr>
+            <tr><td>Total return</td><td id="total-wealth-cell">$104.00</td></tr>
+            <tr><td>Cash</td><td id="cash-wealth-cell">$100.50</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The default calculation remains fully visible in the table.</p></noscript>
+    </div>
+    <h3>A common failure: subtracting cash from price return</h3>
+    <p>If the research asset is a total-return index, excess return must begin with total return. Subtracting cash from the 2% price return would report 1.5%, omitting the distribution. That error would propagate into downside deviation, Sortino features, regime assignments, strategy signals, and every later metric.</p>
+    <p>Notice the phrase <span class="term">percentage points</span>. A total return of 4% minus a cash return of 0.5% equals 3.5 percentage points. Saying that the market return is “700% higher” describes a relative comparison, not the subtraction used for excess return, and becomes awkward when cash is zero or negative. Research formulas should state whether they use a difference in percentage points or a relative percent change.</p>
+  </section>
+
+  <section class="chapter-section" id="compounding">
+    <div class="eyebrow">Worked example two</div>
+    <h2>Returns compound; they do not simply add</h2>
+    <p>Start with $100. A 10% gain raises wealth to $110. A 10% loss on the next day removes $11, not $10, because the second return acts on the new wealth. Ending wealth is $99. Adding +10% and −10% incorrectly suggests no change. Compounding correctly shows a 1% loss.</p>
+    <div class="timeline">
+      <div><strong>Start</strong><span>$100.00</span><span>No return yet</span></div>
+      <div><strong>After +10%</strong><span>$110.00</span><span>$100 × 1.10</span></div>
+      <div><strong>After −10%</strong><span>$99.00</span><span>$110 × 0.90</span></div>
+      <div><strong>Total</strong><span>−1.00%</span><span>$99 / $100 − 1</span></div>
+    </div>
+    <div class="formula" aria-label="Compounded wealth formula">
+      <math display="block">
+        <msub><mi>W</mi><mi>T</mi></msub><mo>=</mo>
+        <msub><mi>W</mi><mn>0</mn></msub>
+        <munderover><mo>∏</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mi>T</mi></munderover>
+        <mo>(</mo><mn>1</mn><mo>+</mo><msub><mi>r</mi><mi>t</mi></msub><mo>)</mo>
+      </math>
+    </div>
+    <p>The large product symbol means “multiply the growth factor from every period.” <math><mi>T</mi></math> is the number of measured periods. Compounding is path-dependent in dollars because each return changes the base on which the next return acts. This asymmetry explains why recovering from a loss requires a larger percentage gain: after a 50% loss, wealth must gain 100% to return from $50 to $100.</p>
+  </section>
+
+  <section class="chapter-section" id="log-return">
+    <div class="eyebrow">A second return language</div>
+    <h2>Why researchers also use log returns</h2>
+    <p>A <span class="term">log return</span> is the natural logarithm of the ending-to-starting level ratio. The natural logarithm is a mathematical transformation that turns multiplication into addition. This is useful for statistical models because multi-period log returns can be added exactly, while simple returns must be compounded.</p>
+    <div class="formula" aria-label="Log return formula">
+      <math display="block">
+        <msub><mi>g</mi><mi>t</mi></msub><mo>=</mo>
+        <mi>log</mi><mo>(</mo>
+        <mfrac><msub><mi>P</mi><mi>t</mi></msub><msub><mi>P</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub></mfrac>
+        <mo>)</mo><mo>=</mo><mi>log</mi><mo>(</mo><mn>1</mn><mo>+</mo><msub><mi>r</mi><mi>t</mi></msub><mo>)</mo>
+      </math>
+    </div>
+    <p>For small daily changes, simple and log returns are close but not identical. A 1% simple return has log return approximately 0.995%. The distinction grows for larger moves. A 100% simple gain has log return about 69.3%, while a 50% simple loss has log return about −69.3%. The symmetry reflects doubling and halving as opposite multiplicative moves.</p>
+    <p>Neither language is universally “more correct.” Use the one required by the task. Strategy wealth accounting needs simple returns because dollars evolve through factors such as 1.03. The paper's Gaussian HMM is fitted to daily log total returns. The Jump Model features begin from simple excess returns. Silently replacing one with the other changes the experiment.</p>
+    <p>Log returns also require positive levels because the logarithm of zero or a negative number is not defined in this setting. That is appropriate for a conventional positive index level but must still be validated. Moreover, adding log returns gives the cumulative log return, not the investor's final percentage gain until it is transformed back with the exponential function. Statistical convenience does not remove the need to interpret the result in economic units.</p>
+    <details><summary>Why +10% and −10% log returns reveal the loss</summary><p>The log returns are <math><mi>log</mi><mo>(</mo><mn>1.10</mn><mo>)</mo></math> and <math><mi>log</mi><mo>(</mo><mn>0.90</mn><mo>)</mo></math>. Their sum equals <math><mi>log</mi><mo>(</mo><mn>1.10</mn><mo>×</mo><mn>0.90</mn><mo>)</mo><mo>=</mo><mi>log</mi><mo>(</mo><mn>0.99</mn><mo>)</mo></math>, a negative value. Exponentiating that sum recovers the 0.99 total growth factor.</p></details>
+  </section>
+
+  <section class="chapter-section" id="excess-return">
+    <div class="eyebrow">The cash comparison</div>
+    <h2>Excess return asks what the market added beyond cash</h2>
+    <p>If the market earns 4% while the cash alternative earns 0.5% over the same period, market excess return is 3.5%. The subtraction must compare aligned periods and information that was actually available. A monthly quoted annual interest rate cannot be subtracted directly from a daily market return. It must first be converted under a declared convention and aligned causally.</p>
+    <div class="formula" aria-label="Excess return formula">
+      <math display="block">
+        <msub><mi>x</mi><mi>t</mi></msub><mo>=</mo>
+        <msub><mi>r</mi><mrow><mi>market</mi><mo>,</mo><mi>t</mi></mrow></msub>
+        <mo>−</mo>
+        <msub><mi>r</mi><mrow><mi>cash</mi><mo>,</mo><mi>t</mi></mrow></msub>
+      </math>
+    </div>
+    <p>Excess return does not mean profit after every possible cost. It is specifically return relative to the designated cash benchmark. Transaction costs enter the strategy accounting separately. Inflation, tax, management fee, and implementation shortfall are also separate unless the protocol explicitly includes them.</p>
+    <p>The current proxy contract converts an annual percentage yield to a daily value by dividing by 100 and then by 252 trading days. That convention is frozen and transparent, but the exact conversion used for the paper's Global Financial Data series is undisclosed. Therefore, matching the formula in our code does not establish data parity with the paper.</p>
+  </section>
+
+  <section class="chapter-section" id="paper-connection">
+    <div class="eyebrow">Paper connection</div>
+    <h2>Three return roles in the Shu paper</h2>
+    <p>Section 2 of <a href="../../2402.05272v3.pdf">Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3</a> states that the empirical assets are daily <em>total return</em> series for the S&amp;P 500, DAX, and Nikkei 225, denominated in local currencies. Local three-month Treasury-bill yields supply the risk-free side. Figure 1 visualizes cumulative excess returns, and Table 1 summarizes variance, covariance, and correlation.</p>
+    <p>Section 3.3 fits the HMM to daily log total returns. Section 3.4.1 derives the Jump Model's downside deviation and Sortino features from excess returns. Section 4 evaluates strategy wealth after the state signal becomes a market-or-cash position. One paper therefore uses total index levels, simple returns, log returns, excess returns, and compounded strategy returns for different jobs. Treating them as interchangeable would destroy protocol fidelity.</p>
+    <div class="warning"><strong>Version discipline</strong>This course explains the local v3 PDF. It does not infer protocol from a similarly titled earlier draft or from an experimental HTML conversion.</div>
+  </section>
+
+  <section class="chapter-section" id="project-connection">
+    <div class="eyebrow">Project connection</div>
+    <h2>Where returns are calculated</h2>
+    <p>The frozen formulas are recorded under <code>[returns]</code> in <a href="../../research.toml">research.toml</a>. The active implementation is <a href="../../src/adaptive_jump/features.py"><code>equity_returns()</code> and <code>prepare_market()</code> in <code>src/adaptive_jump/features.py</code></a>:</p>
+    <pre><code>equity_simple = value.pct_change(fill_method=None)
+equity_log = log(value / value.shift(1))
+excess_return = equity_simple - cash_return</code></pre>
+    <p>The function removes missing index levels before calculating between consecutive valid observations, records the calendar-day gap, rejects nonpositive levels, and does not fill a missing equity value. <code>align_cash_returns()</code> separately applies the source-specific availability lag and staleness rule before a cash observation is allowed to influence a market date.</p>
+    <p>These columns appear in each market's prepared feature artifact and trade paths. The generated report summarizes verified strategy metrics, but authored lessons do not copy those rounded values. Chapter 6 will explain how hashes and inventories connect the source file, feature frame, trades, metrics, and report.</p>
+  </section>
+
+  <section class="chapter-section" id="evidence-limitations">
+    <div class="eyebrow">Evidence and limits</div>
+    <h2>Correct arithmetic is necessary, not sufficient</h2>
+    <div class="concept-grid">
+      <div class="panel"><h3>Established here</h3><p>Price and total return can differ; simple returns compound; log returns add; excess return subtracts an aligned cash return.</p></div>
+      <div class="panel"><h3>Still unresolved</h3><p>Whether the free series have the same definitions, history, tax treatment, and cash conversion as Bloomberg and GFD.</p></div>
+    </div>
+    <div class="limitation"><strong>Scientific boundary</strong>The laboratory uses invented one-period values. Its Chart.js bars are arithmetic illustrations, not observed market data or evidence that a switching strategy works.</div>
+    <p>A perfectly implemented return formula can process the wrong economic series. Conversely, the correct series can be damaged by forward-filling, incorrect adjustment, timestamp errors, or future cash information. Research credibility requires both definition parity and causal processing.</p>
+  </section>
+
+  <section class="chapter-section" id="practice">
+    <div class="eyebrow">Retrieval practice</div>
+    <h2>Use the distinctions without looking back</h2>
+    <div class="quiz">
+      <h3>Recall</h3>
+      <p>An index price stays at 100 and pays a reinvested distribution worth 4. Which statement is correct?</p>
+      <div class="quiz-options">
+        <button class="button" type="button" data-choice data-correct="false">Both price return and total return are 0%.</button>
+        <button class="button" type="button" data-choice data-correct="true" data-feedback-correct="Correct. Price return is 0%, while total return is 4% before any tax convention.">Price return is 0%, but total return is 4%.</button>
+        <button class="button" type="button" data-choice data-correct="false">Price return is 4%, but total return is 0%.</button>
+      </div>
+      <output class="quiz-feedback">Choose an answer, then check the explanation.</output>
+      <button class="button" type="button" data-reset>Reset</button>
+    </div>
+    <details><summary>Calculation: compound +20% and −20%</summary><p>Start at $100. After +20%, wealth is $120. After −20%, wealth is $96. The total return is −4%, not zero, because the second percentage acts on $120.</p></details>
+    <details><summary>Error diagnosis: annual cash yield minus daily market return</summary><p>The units and horizons do not match. Convert the quoted annual cash rate to a declared daily return and align only information available by that market date before subtraction.</p></details>
+    <details><summary>Cumulative recall from Chapter 1</summary><p>A position of 1 earns the risky market's simple total return; a position of 0 earns the aligned cash return. The model state does not earn money directly. Execution timing determines which position is actually held.</p></details>
+    <details><summary>Advisor explanation</summary><p>“The paper needs total-return data because investment wealth includes distributions. It fits HMMs on log total returns, constructs JM features from simple excess returns, and compounds simple strategy returns. Those are related but distinct objects.”</p></details>
+  </section>
+
+  <section class="chapter-section" id="advisor">
+    <div class="eyebrow">How to explain this to your advisor</div>
+    <div class="advisor">
+      <p><strong>Short version:</strong> “Before discussing models, I must identify the wealth series. A price index omits distributions, while the paper specifies local-currency total returns. I then use simple, log, and excess returns only for their declared roles.”</p>
+      <p><strong>Important qualification:</strong> “The formulas are verified, but our free-source definitions are proxies. Correct transformation does not turn a proxy into the paper's paid series.”</p>
+    </div>
+  </section>
+
+  <footer class="chapter-footer">
+    <p><strong>Next:</strong> Chapter 3 asks what “risk” means when two investments have the same average return but very different paths.</p>
+    <p><a href="01-money-assets-cash.html">Back to Chapter 1</a> · <a href="index.html">Course home</a> · <a href="03-returns-features.html">Continue to Chapter 3</a></p>
+  </footer>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const lab = document.getElementById("return-lab-tool");
+  const inputs = ["start-price", "end-price", "distribution", "cash-period-return"]
+    .map((id) => document.getElementById(id));
+  const context = document.getElementById("return-chart");
+  let chart = null;
+  function render() {
+    const [start, end, distribution, cashPercent] = inputs.map((input) => Number(input.value));
+    if (!(start > 0) || !(end > 0) || distribution < 0) return;
+    const priceReturn = end / start - 1;
+    const totalReturn = (end + distribution) / start - 1;
+    const cashReturn = cashPercent / 100;
+    const values = [100 * (1 + priceReturn), 100 * (1 + totalReturn), 100 * (1 + cashReturn)];
+    document.getElementById("price-return-value").textContent = Course.percent(priceReturn, 2);
+    document.getElementById("total-return-value").textContent = Course.percent(totalReturn, 2);
+    document.getElementById("excess-return-value").textContent = Course.percent(totalReturn - cashReturn, 2);
+    ["price", "total", "cash"].forEach((name, index) => {
+      document.getElementById(`${name}-wealth-cell`).textContent = Course.money(values[index]);
+    });
+    if (!window.Chart) return;
+    context.parentElement.classList.add("is-ready");
+    if (chart) chart.destroy();
+    chart = new Chart(context, {
+      type: "bar",
+      data: { labels: ["Price only", "Total return", "Cash"], datasets: [{ data: values, backgroundColor: ["#75b8ff", "#63d59a", "#f0bd64"] }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { suggestedMin: Math.min(...values) - 2 } } },
+    });
+  }
+  inputs.forEach((input) => input.addEventListener("input", render));
+  lab.addEventListener("course:reset", render);
+  render();
+});
+</script>
+</body>
+</html>

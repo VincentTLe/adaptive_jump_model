@@ -121,8 +121,8 @@ input[type="number"] {
 progress { width: 100%; }
 .chart-wrap { position: relative; width: 100%; min-height: 280px; margin-top: 18px; }
 .fallback-table { margin-top: 16px; }
-.js .enhanced-only { display: block; }
 .enhanced-only { display: none; }
+.enhanced-only.is-ready { display: block; }
 
 .timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin: 20px 0; }
 .timeline > div { min-height: 100px; padding: 14px; border-top: 3px solid var(--blue); background: var(--surface); }
