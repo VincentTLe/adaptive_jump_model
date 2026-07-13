@@ -66,7 +66,10 @@ VISUAL_TARGETS = {
     "12-walk-forward-selection-performance.html": (1, 2),
 }
 CONCEPT_ILLUSTRATION_TARGETS = {"08-returns-to-model-features.html": 1}
-SOURCE_LENS_TARGETS = {"09-hidden-markov-models.html": ("2", "9")}
+SOURCE_LENS_TARGETS = {
+    "09-hidden-markov-models.html": ("2", "9"),
+    "10-clustering-statistical-jump-models.html": ("3", "12"),
+}
 FIXED_MATH_ARITY = {
     "mfrac": 2,
     "mover": 2,
