@@ -23,8 +23,8 @@ artifacts/reports/fixed-baselines-8adb330565d6-3636939b525d-e9614112b234/report.
 
 Only `src/adaptive_jump/` is active source code. Everything under `archive/` is
 frozen provenance and must not be imported or used as a second research stack.
-The active CLI workflows are `fetch`, `run`, and `verify`; archived scripts are
-unsupported. No post-2023 data has been downloaded or evaluated.
+The active CLI workflows are `fetch`, `run`, `verify`, and `report`; archived
+scripts are unsupported. No post-2023 data has been downloaded or evaluated.
 
 ## Reproduce The Environment
 
@@ -82,8 +82,24 @@ Verify a completed or boundary-failed run without trusting its stored metrics:
 
 `verify` checks identity locks and every inventory hash, validates the complete
 boundary surface, recomputes accounting and metrics from all trade CSVs, and
-reconstructs the claim. The beginner explanation is
-[`docs/learning/04-fixed-baselines.html`](docs/learning/04-fixed-baselines.html).
+reconstructs the claim.
+
+Generate the deterministic English report only after verification succeeds:
+
+```bash
+.venv/bin/adaptive-jump report \
+  --run artifacts/fixed-baselines/<run_id>
+```
+
+The report is written outside the immutable run at
+`artifacts/reports/<run_id>/report.html`. It can always be regenerated and is
+therefore ignored by Git.
+
+Start with the [beginner learning path](docs/learning/index.html). For a
+research-advisor discussion, use the
+[legacy/current/paper workflow comparison](docs/research-workflow-comparison.html).
+The ready-to-send author request is in
+[`docs/author-data-request.txt`](docs/author-data-request.txt).
 
 ## Dependency Roles
 
