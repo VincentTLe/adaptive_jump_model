@@ -28,6 +28,19 @@
     <div class="eyebrow">The opening question</div>
     <h2>Can the label on a file tell you what your $100 earned?</h2>
     <p>Suppose two researchers each download a file named "Index." Both begin with $100. In the first file, the index level rises from 100 to 108. In the second, the same price change is recorded, but a $2 distribution is also reinvested. The first series reports $108 and an 8% return. The second represents $110 and a 10% total return. The market name is identical, yet the economic investment is not.</p>
+    <figure class="concept-illustration" id="part-two-concept-illustration" aria-labelledby="part-two-concept-title">
+      <span class="teaching-label">Concept illustration - not data or evidence</span>
+      <h3 id="part-two-concept-title">A research claim should pass through inspectable gates while the future stays sealed</h3>
+      <img src="assets/part-ii-sealed-research-chain.webp" width="1400" height="788" loading="eager" decoding="async" alt="A tactile research chain: several differently shaped blue source containers enter a transparent channel, pass through four locked inspection gates, become a green verified object, and stop at a locked partition separating an unavailable future compartment.">
+      <figcaption class="visual-caption">Read left to right. Distinct source objects enter one auditable chain, each locked gate preserves a different research contract, and the gray compartment on the right represents future information that cannot flow backward. The objects are conceptual and contain no market values.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> seals can prove what moved through a chain, but they cannot make the wrong economic definition correct. Semantic data parity must be checked before reproducibility locks become meaningful.</div>
+    </figure>
+    <figure class="teaching-figure" id="data-identity-comparison-figure" data-visual-type="static" aria-labelledby="data-identity-comparison-title">
+      <span class="teaching-label">Teaching example</span><h3 id="data-identity-comparison-title">One familiar market name can hide four different economic definitions</h3>
+      <div class="visual-stage"><svg viewBox="0 0 720 480" role="img" aria-labelledby="data-identity-svg-title data-identity-svg-desc"><title id="data-identity-svg-title">Four cards distinguishing price, total return, currency treatment, and cash instrument</title><desc id="data-identity-svg-desc">A price-only card ends a one-hundred-dollar example at one hundred eight dollars, while a total-return card reinvests a two-dollar distribution and ends at one hundred ten dollars. Separate cards distinguish local-currency treatment from currency conversion and a three-month Treasury bill from interbank or call-rate proxies.</desc><rect class="diagram-low" x="20" y="20" width="330" height="205" rx="10"/><text x="42" y="55" font-size="21" font-weight="700">1. Price index</text><text x="42" y="103" font-size="31" font-weight="700">$100 &rarr; $108</text><text x="42" y="145" font-size="17">quoted level only</text><text x="42" y="178" font-size="17">$2 distribution omitted</text><text x="42" y="207" font-size="15">8% in this teaching example</text><rect class="diagram-cash" x="370" y="20" width="330" height="205" rx="10"/><text x="392" y="55" font-size="21" font-weight="700">2. Total-return index</text><text x="392" y="103" font-size="31" font-weight="700">$100 &rarr; $110</text><text x="392" y="145" font-size="17">$2 distribution reinvested</text><text x="392" y="178" font-size="17">a different investment path</text><text x="392" y="207" font-size="15">10% in this teaching example</text><rect class="diagram-warning" x="20" y="255" width="330" height="205" rx="10"/><text x="42" y="290" font-size="21" font-weight="700">3. Currency treatment</text><text x="42" y="337" font-size="19">local USD / EUR / JPY</text><text x="42" y="372" font-size="17">excludes exchange-rate return</text><text x="42" y="407" font-size="17">conversion would add FX exposure</text><text x="42" y="440" font-size="15">the rule is part of series identity</text><rect class="diagram-unavailable" x="370" y="255" width="330" height="205" rx="10"/><text x="392" y="290" font-size="21" font-weight="700">4. Cash definition</text><text x="392" y="337" font-size="19">three-month Treasury bill</text><text x="392" y="372" font-size="17">is not automatically equivalent to</text><text x="392" y="407" font-size="17">an interbank or call-rate proxy</text><text x="392" y="440" font-size="15">instrument and conversion both matter</text></svg></div>
+      <figcaption class="visual-caption">The first two cards reuse the chapter's deterministic $100 example; the other two show definition rules, not observations. None of the four cards contains project or paper market data.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> matching a market label does not answer whether distributions, currency returns, or cash returns represent the same investment as the named study.</div>
+    </figure>
     <div class="example-grid">
       <article class="worked-example">
         <h3>File A: price only</h3>
@@ -88,13 +101,13 @@
         <button class="button" type="button" data-reset>Reset</button>
       </div>
       <form class="check-grid">
-        <label class="check-row"><input type="checkbox" data-parity="Provider"> Same provider and documented series</label>
-        <label class="check-row"><input type="checkbox" data-parity="Instrument" checked> Same economic instrument</label>
-        <label class="check-row"><input type="checkbox" data-parity="Field"> Same field and adjustment convention</label>
-        <label class="check-row"><input type="checkbox" data-parity="Currency" checked> Same currency treatment</label>
-        <label class="check-row"><input type="checkbox" data-parity="Return definition"> Same price or total-return definition</label>
-        <label class="check-row"><input type="checkbox" data-parity="Coverage"> Same required history and dates</label>
-        <label class="check-row"><input type="checkbox" data-parity="Risk-free series"> Same risk-free instrument and conversion</label>
+        <label class="check-row"><input type="checkbox" data-parity="Provider" data-parity-short="Provider"> Same provider and documented series</label>
+        <label class="check-row"><input type="checkbox" data-parity="Instrument" data-parity-short="Asset" checked> Same economic instrument</label>
+        <label class="check-row"><input type="checkbox" data-parity="Field" data-parity-short="Field"> Same field and adjustment convention</label>
+        <label class="check-row"><input type="checkbox" data-parity="Currency" data-parity-short="Currency" checked> Same currency treatment</label>
+        <label class="check-row"><input type="checkbox" data-parity="Return definition" data-parity-short="Return"> Same price or total-return definition</label>
+        <label class="check-row"><input type="checkbox" data-parity="Coverage" data-parity-short="Coverage"> Same required history and dates</label>
+        <label class="check-row"><input type="checkbox" data-parity="Risk-free series" data-parity-short="Cash"> Same risk-free instrument and conversion</label>
       </form>
       <div class="lab-output" aria-live="polite">
         <span class="label">Honest study label</span>
@@ -102,9 +115,16 @@
         <span id="parity-explanation">2 of 7 dimensions match. Differences: Provider, Field, Return definition, Coverage, Risk-free series.</span>
       </div>
       <progress id="parity-progress" max="7" value="2">2 of 7 dimensions match</progress>
-      <div class="table-wrap fallback-table">
-        <table class="data-table"><thead><tr><th>Default teaching state</th><th>Meaning</th></tr></thead><tbody><tr><td>Instrument and currency match</td><td>Two dimensions alone cannot establish reproduction.</td></tr><tr><td>Five dimensions differ</td><td>The study must be labeled as a proxy replication and each difference disclosed.</td></tr></tbody></table>
-      </div>
+      <figure class="teaching-figure" id="parity-conjunction-figure" data-visual-type="interactive" aria-labelledby="parity-conjunction-title">
+        <span class="teaching-label">Teaching example</span><h3 id="parity-conjunction-title">Exact parity is a seven-factor AND gate, not a match percentage</h3>
+        <div class="visual-enhancement" id="parity-matrix" aria-live="polite">
+          <div class="state-strip" id="parity-matrix-cells" aria-label="Seven parity dimensions"></div>
+          <div class="lab-output"><span class="label">Conjunction result</span><strong class="big-number" id="parity-product">E = 0</strong><span>Every cell must show match before the product can equal one.</span></div>
+        </div>
+        <div class="table-wrap visual-fallback"><table class="data-table"><thead><tr><th>Default teaching state</th><th>Meaning</th></tr></thead><tbody><tr><td>Instrument and currency match</td><td>Two dimensions alone cannot establish reproduction.</td></tr><tr><td>Five dimensions differ</td><td>The study must be labeled as a proxy replication and each difference disclosed.</td></tr></tbody></table></div>
+        <figcaption class="visual-caption">Green cells contribute one and red cells contribute zero to the exact-parity product. Toggle any checkbox above: one remaining zero keeps <math><mi>E</mi><mo>=</mo><mn>0</mn></math>. This is a logical classification, not a quality score.</figcaption>
+        <div class="what-to-notice"><strong>What to notice:</strong> six matches and one material mismatch still produce zero exact parity. The matrix identifies where disclosure is needed; it does not rank one proxy as 86% scientifically valid.</div>
+      </figure>
       <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The default classification and its reasoning remain in the table and text above.</p></noscript>
     </div>
   </section>
@@ -115,6 +135,17 @@
     <p>Section 2 of <a href="../../2402.05272v3.pdf">Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3</a> states that the risky assets are daily <em>total return</em> series for the S&amp;P 500, DAX, and Nikkei 225 from the start of 1970 through the end of 2023. It identifies Bloomberg Terminal as the equity provider and Global Financial Data as the provider of each country's three-month Treasury Bill Yield. Footnote 5 says the indices are denominated in local currencies, so exchange-rate risk is excluded.</p>
     <p>Figure 1 shows cumulative excess returns over that period. Table 1 reports annualized variance, covariance, and correlation, with covariance and correlation calculated on common trading days. Section 2 also says the three markets are tested independently and that extreme returns are not processed as outliers. These statements constrain provider, return type, cash instrument, currency, dates, market treatment, calendar alignment, and outlier policy. Matching only the market names is therefore insufficient.</p>
     <p>The paper does not publish the exact Bloomberg identifiers, GFD series identifiers, raw snapshots, adjustment metadata, or a complete yield-to-daily-return conversion in the text we verified. Those open details matter for exact data parity. Asking the authors for identifiers or permissible snapshots is not criticism; it is the normal act of separating what the paper specifies from what a reproducer must infer.</p>
+    <figure class="source-lens" id="paper-figure-one-lens" data-paper-figure="1" data-paper-page="4" aria-labelledby="paper-figure-one-lens-title">
+      <span class="teaching-label">Paper reading guide - original schematic</span>
+      <h3 id="paper-figure-one-lens-title">Read Figure 1 from series identity to three independent cumulative comparisons</h3>
+      <div class="source-lens-flow">
+        <div class="source-lens-step"><svg viewBox="0 0 240 150" role="img" aria-label="A total-return index and a local three-month Treasury bill define one market pair"><rect class="diagram-low" x="12" y="20" width="95" height="52" rx="7"/><text x="59" y="42" font-size="15" text-anchor="middle">total-return</text><text x="59" y="62" font-size="15" text-anchor="middle">index</text><text x="120" y="53" font-size="24" text-anchor="middle">+</text><rect class="diagram-cash" x="133" y="20" width="95" height="52" rx="7"/><text x="180" y="42" font-size="15" text-anchor="middle">local 3-month</text><text x="180" y="62" font-size="15" text-anchor="middle">Treasury bill</text><path class="diagram-link" d="M120 82 V111"/><path d="M120 118 L112 105 L128 105 Z" fill="#aab3bf"/><rect class="diagram-warning" x="35" y="116" width="170" height="27" rx="6"/><text x="120" y="135" font-size="13" text-anchor="middle">one market definition</text></svg><h4>1. Verify identity</h4><p>The paper pairs one local-currency total-return index with that country's three-month Treasury bill series.</p></div>
+        <div class="source-lens-step"><svg viewBox="0 0 240 150" role="img" aria-label="Daily total return minus local cash return produces an ordered excess-return series"><rect class="diagram-low" x="4" y="27" width="62" height="50" rx="7"/><text x="35" y="48" font-size="13" text-anchor="middle">daily total</text><text x="35" y="65" font-size="13" text-anchor="middle">return</text><text x="77" y="59" font-size="24" text-anchor="middle">−</text><rect class="diagram-cash" x="88" y="27" width="62" height="50" rx="7"/><text x="119" y="48" font-size="13" text-anchor="middle">local cash</text><text x="119" y="65" font-size="13" text-anchor="middle">return</text><path class="diagram-link" d="M154 52 H169"/><path d="M173 52 L164 46 L164 58 Z" fill="#aab3bf"/><rect class="diagram-warning" x="176" y="27" width="60" height="50" rx="7"/><text x="206" y="57" font-size="14" text-anchor="middle">excess</text><rect class="diagram-node" x="22" y="103" width="196" height="35" rx="6"/><text x="120" y="126" font-size="15" text-anchor="middle">ordered through time</text></svg><h4>2. Form excess returns</h4><p>Each market produces its own dated excess-return sequence before any cumulative path is drawn.</p></div>
+        <div class="source-lens-step"><svg viewBox="0 0 240 150" role="img" aria-label="Three independent cumulative paths are compared by path shape, drawdown, and long-run level without being merged"><rect class="diagram-node" x="12" y="13" width="216" height="32" rx="6"/><text x="120" y="34" font-size="15" text-anchor="middle">three separate cumulative paths</text><rect class="diagram-low" x="12" y="62" width="64" height="48" rx="6"/><text x="44" y="82" font-size="14" text-anchor="middle">path</text><text x="44" y="100" font-size="14" text-anchor="middle">shape</text><rect class="diagram-high" x="88" y="62" width="64" height="48" rx="6"/><text x="120" y="82" font-size="14" text-anchor="middle">drawdown</text><text x="120" y="100" font-size="14" text-anchor="middle">depth</text><rect class="diagram-warning" x="164" y="62" width="64" height="48" rx="6"/><text x="196" y="82" font-size="14" text-anchor="middle">long-run</text><text x="196" y="100" font-size="14" text-anchor="middle">level</text><text x="120" y="137" font-size="14" text-anchor="middle">compare; do not merge markets</text></svg><h4>3. Compare paths</h4><p>The display supports visual comparison of trajectory, losses, and long-run separation, not an international portfolio.</p></div>
+      </div>
+      <figcaption class="visual-caption"><a href="../../2402.05272v3.pdf#page=4">Figure 1 on PDF page 4</a> reports the paper's cumulative excess-return paths for 1970-2023. This guide copies none of its curves, coordinates, ordering, or values. It redraws only the reading logic: verify each risky/cash pair, form a market-specific excess-return sequence, then compare three independent cumulative paths.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> a convincing path shape cannot establish data parity. The figure becomes interpretable only after total-return treatment, local currency, cash instrument, dates, and independent-market construction are fixed.</div>
+    </figure>
   </section>
 
   <section class="chapter-section" id="project-connection">
@@ -172,7 +203,7 @@
       <output class="quiz-feedback">Choose an answer, then check the explanation.</output>
       <button class="button" type="button" data-reset>Reset</button>
     </div>
-    <details><summary>Calculation: price versus total return</summary><p>A price rises from $100 to $106 and pays a reinvested $3 distribution. Price return is 6%. Total return is 9% because ($106 + $3) / $100 - 1 = 0.09. Omitting the distribution understates ending wealth by $3 in this one-period example.</p></details>
+    <details class="deep-explanation"><summary>Calculation: price versus total return</summary><p>A price rises from $100 to $106 and pays a reinvested $3 distribution. Price return is 6%. Total return is 9% because ($106 + $3) / $100 - 1 = 0.09. Omitting the distribution understates ending wealth by $3 in this one-period example.</p></details>
     <details><summary>Error diagnosis: "the correlation is close, so the data are equivalent"</summary><p>High correlation describes co-movement, not identity. Two series can correlate closely while differing in distributions, levels, volatility, tail observations, start date, or cash subtraction. Those differences can alter features and strategy metrics.</p></details>
     <details><summary>Cumulative recall from Chapters 1-4</summary><p>Data definition determines the risky and cash returns from Chapter 2. Those returns create wealth and risk from Chapter 3. Their patterns become regime evidence in Chapter 4. A model cannot repair an input series that measures the wrong investment.</p></details>
     <details><summary>Advisor explanation</summary><p>"The paper uses Bloomberg local-currency total-return indices and GFD local three-month Treasury bill yields from 1970. Our credential-free sources differ in coverage and, for Germany and Japan, instrument or return definition. Therefore I call the result a proxy replication and preserve every source and hash instead of claiming exact reproduction."</p></details>
@@ -196,6 +227,9 @@
 document.addEventListener("DOMContentLoaded", () => {
   const lab = document.getElementById("parity-lab");
   const boxes = [...lab.querySelectorAll("[data-parity]")];
+  const matrix = document.getElementById("parity-matrix");
+  const matrixCells = document.getElementById("parity-matrix-cells");
+  const matrixProduct = document.getElementById("parity-product");
   function render() {
     const matched = boxes.filter((box) => box.checked);
     const differences = boxes.filter((box) => !box.checked).map((box) => box.dataset.parity);
@@ -204,6 +238,15 @@ document.addEventListener("DOMContentLoaded", () => {
       ? `${matched.length} of ${boxes.length} dimensions match. Differences: ${differences.join(", ")}.`
       : "All listed dimensions match. Protocol and implementation parity must still be verified.";
     document.getElementById("parity-progress").value = matched.length;
+    matrixCells.innerHTML = boxes.map((box) => {
+      const status = box.checked ? "match" : "mismatch";
+      const statusLabel = box.checked ? "match" : "diff";
+      const style = box.checked ? ' style="border-color:#63d59a;background:#111b17"' : "";
+      return `<span class="state-day ${box.checked ? "" : "adverse-missed"}" data-status="${status}" title="${box.dataset.parity}: ${status}" aria-label="${box.dataset.parity}: ${status}"${style}><b>${box.dataset.parityShort}</b><small>${statusLabel}</small></span>`;
+    }).join("");
+    matrixProduct.textContent = differences.length ? "E = 0" : "E = 1";
+    matrix.setAttribute("aria-label", `${matched.length} matching dimensions and ${differences.length} mismatches; exact-parity indicator ${differences.length ? 0 : 1}`);
+    matrix.classList.add("is-ready");
   }
   boxes.forEach((box) => box.addEventListener("input", render));
   lab.addEventListener("course:reset", render);

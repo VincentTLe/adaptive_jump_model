@@ -63,6 +63,7 @@ VISUAL_TARGETS = {
     "02-prices-dividends-returns.html": (1, 2),
     "03-risk-downside-losses.html": (1, 2),
     "04-market-regimes-persistence.html": (2, 1),
+    "05-data-parity-proxy-replication.html": (1, 1),
     "08-returns-to-model-features.html": (1, 2),
     "09-hidden-markov-models.html": (1, 2),
     "10-clustering-statistical-jump-models.html": (1, 2),
@@ -71,9 +72,11 @@ VISUAL_TARGETS = {
 }
 CONCEPT_ILLUSTRATION_TARGETS = {
     "01-money-assets-cash.html": 1,
+    "05-data-parity-proxy-replication.html": 1,
     "08-returns-to-model-features.html": 1,
 }
 SOURCE_LENS_TARGETS = {
+    "05-data-parity-proxy-replication.html": ("1", "4"),
     "09-hidden-markov-models.html": ("2", "9"),
     "10-clustering-statistical-jump-models.html": ("3", "12"),
     "11-dynamic-programming-online-inference.html": ("4", "14"),
