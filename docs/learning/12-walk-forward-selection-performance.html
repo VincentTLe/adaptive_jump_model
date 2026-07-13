@@ -48,6 +48,7 @@
       <div class="panel"><h3>Boundary gate</h3><p>A pre-metric check that asks whether the upper search-grid value is selected too often, suggesting the grid may be too narrow.</p></div>
       <div class="panel"><h3>Common sample</h3><p>The identical complete date rows used for every competing strategy within one market and delay comparison.</p></div>
     </div>
+    <details class="deep-explanation"><summary>Deep explanation: windows, cadences, ties, gates, and final metrics</summary>
     <p>A <span class="term">training window</span> supplies data for fitted parameters. In the paper protocol it contains 3,000 observations. A <span class="term">validation window</span> comes after enough training history and evaluates candidate complete strategies over the trailing eight calendar years. The outer <span class="term">testing path</span> uses the candidate selected at each historical month-end.</p>
     <p><span class="term">Cadence</span> means how often an operation occurs. The fixed JM estimates centroids initially and in January/July; its terminal state is inferred daily for every penalty. The HMM is fitted daily. Hyperparameter selection occurs monthly. Strategy returns occur on each eligible trading row. These clocks must not be collapsed into one vague "rolling model."</p>
     <p>The <span class="term">Sharpe ratio</span> compares average strategy excess return with strategy-return volatility. The project annualizes by multiplying the daily ratio by the square root of 252. Higher is preferred during monthly selection. A score is eligible only with enough paired valid strategy and cash returns, finite Sharpe, and a current candidate state.</p>
@@ -55,6 +56,7 @@
     <p><span class="term">Grid boundary</span> is the largest candidate. If it is selected frequently, an even larger untested value might have been preferred. The project's preregistered check counts upper-bound selections over OOS months. A fraction no greater than 5% passes. Metrics remain sealed until every model-delay boundary check passes.</p>
     <p><span class="term">Robustness delay</span> repeats the complete validation and test accounting under an operational delay of 1, 5, or 10 trading days. It is invalid to select smoothing under one-day validation and merely shift the final strategy by ten days. Candidate selection must experience the same assumed delay as its test path.</p>
     <p><span class="term">Turnover</span> is annualized average one-way position change. <span class="term">Leverage</span> is average risky weight, which is the fraction of complete rows in position 1 for this binary strategy. <span class="term">Maximum drawdown</span> is the worst percentage fall in cumulative wealth from its running peak. <span class="term">Expected shortfall</span> averages returns at or below a chosen lower-tail quantile.</p>
+    </details>
   </section>
 
   <section class="chapter-section" id="workflow">
@@ -66,10 +68,22 @@
       <div><strong>Select and trade</strong><span>Month-end choice, deterministic tie</span><span>Signal applied after delay</span></div>
       <div><strong>Gate and measure</strong><span>Upper-bound frequency first</span><span>Common-date OOS metrics second</span></div>
     </div>
+    <figure class="teaching-figure" id="walkforward-window-figure" data-visual-type="interactive" aria-labelledby="walkforward-window-title">
+      <span class="teaching-label">Teaching example</span><h3 id="walkforward-window-title">Move the decision date without letting any window reach forward</h3>
+      <form><label for="walkforward-year">Toy decision year: <output id="walkforward-year-output" for="walkforward-year">2000</output></label><input id="walkforward-year" type="range" min="1997" max="2003" value="2000" data-output="walkforward-year-output"><button class="button" id="walkforward-reset" type="button">Reset</button></form>
+      <div class="visual-stage"><svg id="walkforward-window" viewBox="0 0 440 300" role="img" aria-label="A trailing 3,000-row fit feeds an eight-year online validation ending at the December 2000 decision, followed by January 2001 out of sample"><defs><marker id="wf-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#f0bd64"/></marker></defs><text x="20" y="26" font-size="15" font-weight="700">One daily fit dependency</text><rect class="diagram-low" x="20" y="42" width="142" height="62" rx="4"/><text x="91" y="68" text-anchor="middle" font-size="15">trailing 3,000 rows</text><text id="wf-fit-end" x="91" y="89" text-anchor="middle" font-size="13">ending Jan 1993</text><path d="M164 73H198" stroke="#f0bd64" stroke-width="3" marker-end="url(#wf-arrow)"/><text x="309" y="20" font-size="13" text-anchor="middle">Daily fits repeat</text><text x="309" y="36" font-size="13" text-anchor="middle">across validation</text><rect class="diagram-warning" x="198" y="42" width="222" height="62" rx="4"/><text x="309" y="68" text-anchor="middle" font-size="15">online state and strategy return</text><text x="309" y="89" text-anchor="middle" font-size="13">created without later rows</text><rect class="diagram-warning" x="34" y="155" width="292" height="66" rx="4"/><text x="180" y="181" text-anchor="middle" font-size="16" font-weight="700">Trailing 8-year validation</text><text id="wf-validation-range" x="180" y="204" text-anchor="middle" font-size="14">Jan 1993 to Dec 2000</text><line x1="326" y1="132" x2="326" y2="242" stroke="#f0bd64" stroke-width="4"/><text id="wf-decision-label" x="326" y="264" text-anchor="middle" font-size="14">Decision: Dec 2000</text><rect class="diagram-cash" x="334" y="155" width="86" height="66" rx="4"/><text x="377" y="181" text-anchor="middle" font-size="15" font-weight="700">OOS</text><text id="wf-oos-label" x="377" y="204" text-anchor="middle" font-size="13">Jan 2001</text><text x="20" y="288" font-size="13">Window widths are schematic, not calendar scale.</text></svg></div>
+      <figcaption class="visual-caption">Drag the year. The decision and all trailing information move together; only the green next-month block lies after the choice. The blue 3,000-row fit is one example of a fit repeated throughout the amber validation history.</figcaption>
+      <p class="what-to-notice"><strong>What to notice:</strong> validation states are already online outputs. A final full-sample state path cannot be substituted for them.</p>
+    </figure>
     <p>First, create all candidate state histories without using outer outcomes for selection. JM columns correspond to fixed penalties; HMM columns correspond to causal filter lengths applied to daily terminal states. Convert state 0 to risky signal 1 and state 1 to cash signal 0.</p>
     <p>Second, run each candidate signal through the accounting engine. A one-day delay shifts by two return rows. Gross return mixes equity and cash according to the delayed position. Every later position change pays 10 basis points; the frozen protocol does not charge the first valid allocation. The resulting net candidate returns, not raw state accuracy or in-sample objective, enter validation.</p>
     <p>Third, on the last complete trading date of each month, score paired candidate and cash returns whose dates are later than the eight-year start boundary and no later than the decision date. Select the highest eligible Sharpe, with the lower-smoothing tie rule. Forward-fill that hyperparameter choice until the next decision and read the corresponding candidate state each day.</p>
     <p>Fourth, before opening any OOS performance table, count how often each upper-grid value was selected in OOS months for every model and robustness delay. If any gate fails, the study stops; the grid cannot be expanded after inspecting favorable or unfavorable metrics. Only a passing study builds buy-and-hold, HMM, and fixed-JM paths on their intersection of complete metric rows.</p>
+    <figure class="teaching-figure" id="performance-pipeline-figure" data-visual-type="static" aria-labelledby="performance-pipeline-title">
+      <span class="teaching-label">Teaching example</span><h3 id="performance-pipeline-title">One signal must survive six accounting stages before it becomes a metric</h3>
+      <div class="visual-stage"><svg viewBox="0 0 440 300" role="img" aria-label="A six-stage pipeline from selected state through delay, position, gross return, turnover and cost, to comparable metrics"><defs><marker id="pipeline-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#aab3bf"/></marker></defs><g class="diagram-link" marker-end="url(#pipeline-arrow)"><path d="M128 82H157"/><path d="M273 82H302"/><path d="M365 116V166"/><path d="M302 201H273"/><path d="M157 201H128"/></g><g><rect class="diagram-low" x="12" y="48" width="116" height="68" rx="4"/><rect class="diagram-unavailable" x="157" y="48" width="116" height="68" rx="4"/><rect class="diagram-cash" x="302" y="48" width="126" height="68" rx="4"/><rect class="diagram-verified" x="302" y="166" width="126" height="70" rx="4"/><rect class="diagram-warning" x="157" y="166" width="116" height="70" rx="4"/><rect class="diagram-low" x="12" y="166" width="116" height="70" rx="4"/></g><g text-anchor="middle"><text x="70" y="73" font-size="15" font-weight="700">1. Selected state</text><text x="70" y="96" font-size="13">signal at t</text><text x="215" y="73" font-size="15" font-weight="700">2. Delay queue</text><text x="215" y="96" font-size="13">no future shortcut</text><text x="365" y="73" font-size="15" font-weight="700">3. Position</text><text x="365" y="96" font-size="13">market or cash</text><text x="365" y="192" font-size="15" font-weight="700">4. Gross return</text><text x="365" y="215" font-size="13">equity/cash mix</text><text x="215" y="192" font-size="15" font-weight="700">5. Net return</text><text x="215" y="215" font-size="13">turnover + cost</text><text x="70" y="192" font-size="15" font-weight="700">6. Metrics</text><text x="70" y="215" font-size="13">common dates only</text></g><text x="220" y="278" font-size="14" text-anchor="middle">Skipping any arrow changes the strategy being evaluated.</text></svg></div>
+      <figcaption class="visual-caption">A model state is not a return. Delay determines the position date; position determines gross return; position changes determine cost; only complete common rows enter the final comparison.</figcaption>
+    </figure>
   </section>
 
   <section class="chapter-section" id="worked-selection">
@@ -94,8 +108,13 @@
         <div><label for="score-70">Sharpe for 70: <output id="score-70-output" for="score-70">0.58</output></label><input id="score-70" type="range" min="0.3" max="0.7" step="0.01" value="0.58" data-output="score-70-output" data-digits="2"></div>
         <div><label for="prior-upper">Earlier upper choices: <output id="prior-upper-output" for="prior-upper">0 months</output></label><input id="prior-upper" type="range" min="0" max="4" value="0" data-output="prior-upper-output" data-singular=" month" data-plural=" months"></div>
       </div></form>
-      <div class="metric-grid three"><div class="panel"><span class="label">Selected penalty</span><strong class="big-number" id="selected-candidate">35</strong></div><div class="panel"><span class="label">Upper-bound frequency</span><strong class="big-number" id="boundary-frequency">0.0%</strong></div><div class="panel"><span class="label">Metric gate</span><strong class="big-number" id="boundary-status">Pass</strong></div></div>
-      <div class="table-wrap"><table class="data-table" aria-label="Toy monthly selection candidates"><thead><tr><th>Candidate</th><th>Validation Sharpe</th><th>Eligible</th><th>Selection status</th></tr></thead><tbody id="selection-rows"><tr><td>5</td><td>0.42</td><td>Yes</td><td>Not selected</td></tr><tr><td>35</td><td>0.58</td><td>Yes</td><td>Selected by lower tie</td></tr><tr><td>70 (upper)</td><td>0.58</td><td>Yes</td><td>Not selected</td></tr></tbody></table></div>
+      <figure class="teaching-figure" id="candidate-surface-figure" data-visual-type="interactive" aria-labelledby="candidate-surface-title">
+        <span class="teaching-label">Teaching example</span><h3 id="candidate-surface-title">The winner and the boundary diagnostic answer different questions</h3>
+        <div class="visual-stage compact"><svg id="candidate-surface" viewBox="0 0 440 300" role="img" aria-label="Candidates 35 and 70 tie at Sharpe 0.58, candidate 35 wins the lower-smoothing tie, and the zero-percent boundary gate passes"><line x1="35" y1="238" x2="285" y2="238" stroke="#aab3bf" stroke-width="2"/><g><rect id="candidate-bar-5" x="55" y="181" width="45" height="57" fill="#aab3bf" data-animate/><rect id="candidate-bar-35" x="130" y="105" width="45" height="133" fill="#aab3bf" stroke="#f0bd64" stroke-width="4" data-animate/><rect id="candidate-bar-70" x="205" y="105" width="45" height="133" fill="#aab3bf" data-animate/></g><g text-anchor="middle"><text id="candidate-score-5" x="77" y="169" font-size="15">0.42</text><text id="candidate-score-35" x="152" y="93" font-size="15">0.58</text><text id="candidate-score-70" x="227" y="93" font-size="15">0.58</text><text x="77" y="260" font-size="14">5</text><text x="152" y="260" font-size="14">35</text><text x="227" y="260" font-size="14">70 upper</text><text x="152" y="286" font-size="13">validation Sharpe</text></g><text id="candidate-selection-note" x="35" y="28" font-size="16" font-weight="700">Selected: 35 by lower tie</text><line x1="350" y1="55" x2="350" y2="238" stroke="#aab3bf" stroke-width="8"/><line x1="328" y1="201" x2="372" y2="201" stroke="#f0bd64" stroke-width="3"/><text x="381" y="205" font-size="13">5%</text><circle id="boundary-marker" cx="350" cy="238" r="11" fill="#63d59a" stroke="#fff" stroke-width="2" data-animate/><text x="350" y="28" font-size="15" text-anchor="middle">upper choices</text><text id="boundary-visual-note" x="350" y="276" font-size="15" text-anchor="middle">0.0%: pass</text></svg></div>
+        <div class="metric-grid three"><div class="panel"><span class="label">Selected penalty</span><strong class="big-number" id="selected-candidate">35</strong></div><div class="panel"><span class="label">Upper-bound frequency</span><strong class="big-number" id="boundary-frequency">0.0%</strong></div><div class="panel"><span class="label">Metric gate</span><strong class="big-number" id="boundary-status">Pass</strong></div></div>
+        <div class="table-wrap"><table class="data-table" aria-label="Toy monthly selection candidates"><thead><tr><th>Candidate</th><th>Validation Sharpe</th><th>Eligible</th><th>Selection status</th></tr></thead><tbody id="selection-rows"><tr><td>5</td><td>0.42</td><td>Yes</td><td>Not selected</td></tr><tr><td>35</td><td>0.58</td><td>Yes</td><td>Selected by lower tie</td></tr><tr><td>70 (upper)</td><td>0.58</td><td>Yes</td><td>Not selected</td></tr></tbody></table></div>
+        <figcaption class="visual-caption">Bars choose this month's candidate; the right meter counts how often the upper grid value wins across 20 toy months. Exactly 5% passes. Above 5%, metrics remain sealed.</figcaption>
+      </figure>
       <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The default surface remains visible: 35 and 70 tie at 0.58, so 35 is selected; zero of 20 months select the upper boundary and the gate passes.</p></noscript>
     </div>
     <p>The lab uses exact equality because its displayed decimals are teaching inputs. Production selection uses full-precision Sharpe and a frozen tolerance of <math><msup><mn>10</mn><mrow><mo>&minus;</mo><mn>12</mn></mrow></msup></math>. The gate uses <math><mo>&le;</mo></math>, so exactly 5% passes; a value above 5% fails.</p>
@@ -166,11 +185,20 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
+  const timelineYear = document.getElementById("walkforward-year");
   const lab = document.getElementById("selection-lab");
   const score35 = document.getElementById("score-35");
   const score70 = document.getElementById("score-70");
   const priorUpper = document.getElementById("prior-upper");
   const rows = document.getElementById("selection-rows");
+  function renderTimeline() {
+    const year = Number(timelineYear.value);
+    document.getElementById("wf-fit-end").textContent = `ending Jan ${year - 7}`;
+    document.getElementById("wf-validation-range").textContent = `Jan ${year - 7} to Dec ${year}`;
+    document.getElementById("wf-decision-label").textContent = `Decision: Dec ${year}`;
+    document.getElementById("wf-oos-label").textContent = `Jan ${year + 1}`;
+    document.getElementById("walkforward-window").setAttribute("aria-label", `A trailing 3,000-row fit feeds eight-year online validation from January ${year - 7} through the December ${year} decision, followed by January ${year + 1} out of sample`);
+  }
   function render() {
     const candidates = [{value: 5, score: 0.42}, {value: 35, score: Number(score35.value)}, {value: 70, score: Number(score70.value)}];
     const best = Math.max(...candidates.map((candidate) => candidate.score));
@@ -181,15 +209,36 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("selected-candidate").textContent = String(selected);
     document.getElementById("boundary-frequency").textContent = `${(fraction * 100).toFixed(1)}%`;
     document.getElementById("boundary-status").textContent = passed ? "Pass" : "Stop";
+    const scoreScale = (score) => 238 - ((score - 0.3) / 0.4) * 190;
+    candidates.forEach((candidate) => {
+      const bar = document.getElementById(`candidate-bar-${candidate.value}`);
+      const top = scoreScale(candidate.score);
+      bar.setAttribute("y", top.toFixed(1));
+      bar.setAttribute("height", (238 - top).toFixed(1));
+      bar.setAttribute("stroke", candidate.value === selected ? "#f0bd64" : "none");
+      bar.setAttribute("stroke-width", candidate.value === selected ? "4" : "0");
+      document.getElementById(`candidate-score-${candidate.value}`).setAttribute("y", String(top - 12));
+      document.getElementById(`candidate-score-${candidate.value}`).textContent = candidate.score.toFixed(2);
+    });
+    const tied = candidates.filter((candidate) => candidate.score === best).length > 1;
+    document.getElementById("candidate-selection-note").textContent = `Selected: ${selected}${tied ? " by lower tie" : ""}`;
+    const markerY = 238 - Math.min(fraction, 0.25) / 0.25 * 183;
+    document.getElementById("boundary-marker").setAttribute("cy", markerY.toFixed(1));
+    document.getElementById("boundary-marker").setAttribute("fill", passed ? "#63d59a" : "#ff8585");
+    document.getElementById("boundary-visual-note").textContent = `${(fraction * 100).toFixed(1)}%: ${passed ? "pass" : "stop"}`;
     rows.innerHTML = candidates.map((candidate) => {
       const tied = candidate.score === best && candidates.filter((other) => other.score === best).length > 1;
       const status = candidate.value === selected ? (tied ? "Selected by lower tie" : "Selected") : "Not selected";
       return `<tr><td>${candidate.value}${candidate.value === 70 ? " (upper)" : ""}</td><td>${candidate.score.toFixed(2)}</td><td>Yes</td><td>${status}</td></tr>`;
     }).join("");
     rows.closest("table").setAttribute("aria-label", `Toy selection chooses ${selected}; upper-bound frequency ${(fraction * 100).toFixed(1)} percent; gate ${passed ? "passes" : "stops"}`);
+    document.getElementById("candidate-surface").setAttribute("aria-label", `Candidate ${selected} is selected${tied ? " by the lower-smoothing tie rule" : ""}; upper-bound frequency ${(fraction * 100).toFixed(1)} percent; gate ${passed ? "passes" : "stops"}`);
   }
+  timelineYear.addEventListener("input", renderTimeline);
+  document.getElementById("walkforward-reset").addEventListener("click", () => { timelineYear.value = "2000"; timelineYear.dispatchEvent(new Event("input", {bubbles: true})); });
   [score35, score70, priorUpper].forEach((input) => input.addEventListener("input", render));
   lab.addEventListener("course:reset", render);
+  renderTimeline();
   render();
 });
 </script>

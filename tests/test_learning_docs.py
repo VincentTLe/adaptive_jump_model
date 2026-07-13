@@ -62,6 +62,7 @@ VISUAL_TARGETS = {
     "09-hidden-markov-models.html": (1, 2),
     "10-clustering-statistical-jump-models.html": (1, 2),
     "11-dynamic-programming-online-inference.html": (1, 2),
+    "12-walk-forward-selection-performance.html": (1, 2),
 }
 FIXED_MATH_ARITY = {
     "mfrac": 2,
