@@ -45,6 +45,7 @@ from adaptive_jump.config import ConfigError, ResearchConfig, load_config
 from adaptive_jump.data import AcquisitionError, acquire, research_git_sha
 from adaptive_jump.features import effective_oos_start, prepare_market
 from adaptive_jump.models import HMMResult, hmm_states
+from adaptive_jump.reporting import build_report
 from adaptive_jump.walkforward import (
     BaselineStudy,
     baseline_paths,
@@ -412,6 +413,8 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--manifest", help="exact acquisition manifest path")
     verify = commands.add_parser("verify", help="verify a sealed research run")
     verify.add_argument("--run", required=True, help="path to one run directory")
+    report = commands.add_parser("report", help="report a verified sealed run")
+    report.add_argument("--run", required=True, help="path to one run directory")
     return parser
 
 
@@ -432,6 +435,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if arguments.command == "verify":
             print(json.dumps(verify_run(arguments.run), sort_keys=True))
+            return 0
+        if arguments.command == "report":
+            print(build_report(arguments.run))
             return 0
     except (
         AcquisitionError,

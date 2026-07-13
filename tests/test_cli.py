@@ -220,6 +220,18 @@ def test_replication_runner_writes_and_verifies_complete_artifact(
     assert receipt["boundary_rows"] == 18
     assert receipt["metric_rows"] == 27
 
+    assert main(["report", "--run", str(run_dir)]) == 0
+    report_path = Path(capsys.readouterr().out.strip())
+    report = report_path.read_text(encoding="utf-8")
+    assert report_path.parent.name == run_dir.name
+    assert '<html lang="en">' in report
+    assert "Fixed-baseline proxy replication" in report
+    assert "non-replication; adaptive work remains blocked" in report
+    first_report = report_path.read_bytes()
+    assert main(["report", "--run", str(run_dir)]) == 0
+    assert report_path.read_bytes() == first_report
+    capsys.readouterr()
+
     metrics_path = run_dir / "metrics.csv"
     original_metrics = metrics_path.read_bytes()
     metrics = pd.read_csv(metrics_path)
