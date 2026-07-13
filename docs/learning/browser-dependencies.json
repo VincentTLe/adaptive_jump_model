@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "dependencies": [
+    {
+      "name": "MathJax",
+      "version": "4.1.3",
+      "license": "Apache-2.0",
+      "purpose": "Accessible enhancement of native MathML equations",
+      "url": "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/mml-chtml.js",
+      "integrity": "sha384-GYAeDZjH9w23NyL4cfS+ZrgWmGvta6VNs4p+/vtuF+RWe30fQhmP8pHbzRmlwmAK"
+    },
+    {
+      "name": "Chart.js",
+      "version": "4.5.1",
+      "license": "MIT",
+      "purpose": "Deterministic interactive teaching charts with visible table fallbacks",
+      "url": "https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js",
+      "integrity": "sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ"
+    }
+  ]
+}
