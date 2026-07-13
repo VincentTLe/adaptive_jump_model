@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A beginner guide to reproducibility, frozen contracts, manifests, hashes, Git identity, inventories, and independent verification.">
+  <title>Chapter 6: Reproducibility And Sealed Evidence</title>
+  <link rel="stylesheet" href="course.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/mml-chtml.js" integrity="sha384-GYAeDZjH9w23NyL4cfS+ZrgWmGvta6VNs4p+/vtuF+RWe30fQhmP8pHbzRmlwmAK" crossorigin="anonymous"></script>
+  <script defer src="course.js"></script>
+</head>
+<body>
+<main class="course-shell">
+  <nav class="course-nav" aria-label="Course navigation">
+    <a href="05-data-parity-proxy-replication.html">Previous: data parity</a>
+    <span>Part II · Chapter 6 of 14</span>
+    <a href="index.html">Part II progress: course map</a>
+  </nav>
+
+  <header class="chapter-header">
+    <div class="part-label">Part II · Honest Research</div>
+    <h1>Reproducibility And Sealed Evidence</h1>
+    <p class="lead">What must travel with a reported number so another person can check it without trusting us?</p>
+    <div class="chapter-meta"><span>Beginner level</span><span>Tamper-check laboratory</span><span>Artifact verification</span></div>
+  </header>
+
+  <section class="chapter-section" id="question">
+    <div class="eyebrow">The opening question</div>
+    <h2>Is "$100 became $110" a result or only a sentence?</h2>
+    <p>A researcher says a strategy turned $100 into $110. You ask for the daily returns, the positions, the cash series, transaction costs, model settings, code version, and calculation. The researcher has only a screenshot. The number may be honest, but you cannot determine which inputs produced it, whether the calculation can be repeated, or whether the screenshot was changed after the run.</p>
+    <div class="example-grid">
+      <article class="worked-example failure">
+        <h3>Unsealed claim</h3>
+        <span class="big-number">"Ending wealth: $110"</span>
+        <p>No return path, config, code identity, or audit record accompanies the number. Recalculation is impossible.</p>
+      </article>
+      <article class="worked-example">
+        <h3>Checkable evidence</h3>
+        <span class="big-number">$100 &times; 1.05 &times; 0.98 &times; 1.068</span>
+        <p>The three returns, exact formula, config, source hashes, and code revision are preserved. Another person can recompute the ending wealth.</p>
+      </article>
+    </div>
+    <p>The second package is not automatically scientifically valid. The data could measure the wrong instrument, the strategy could look into the future, or the hypothesis could be poorly designed. Sealing answers a narrower but essential question: are these exactly the inputs, code, rules, and outputs that belong to this run, and do the stored summaries follow from the detailed evidence?</p>
+    <div class="remember"><strong>The idea to remember</strong>A result is not reproducible because a command exists. Reproducibility requires frozen meaning, identifiable inputs and code, complete artifacts, and an independent path that recalculates important claims instead of trusting stored summaries.</div>
+  </section>
+
+  <section class="chapter-section" id="vocabulary">
+    <div class="eyebrow">Words before notation</div>
+    <h2>From a research plan to an evidence package</h2>
+    <div class="concept-grid">
+      <div class="panel"><h3>Frozen contract</h3><p>A specification fixed before result-bearing output is viewed. It names data, dates, models, grids, timing, costs, metrics, gates, and stopping rules.</p></div>
+      <div class="panel"><h3>Configuration lock</h3><p>The exact machine-readable settings copied into a run. It prevents a later config edit from silently changing what the old run means.</p></div>
+      <div class="panel"><h3>Data manifest</h3><p>A structured record of source files, identifiers, hashes, coverage, quality facts, and retrieval metadata. It points to the exact input snapshot.</p></div>
+      <div class="panel"><h3>Git SHA</h3><p>The identifier of one committed source-tree state. It says which tracked implementation produced the run, assuming the tree was clean.</p></div>
+      <div class="panel"><h3>Artifact</h3><p>A file produced by a run: states, validation surfaces, selections, trade paths, metrics, claim decisions, metadata, or reports.</p></div>
+      <div class="panel"><h3>Inventory</h3><p>A complete path-to-hash map for immutable run files. Missing, extra, or modified files cause verification to fail.</p></div>
+    </div>
+    <p><span class="term">Computational reproducibility</span> means rerunning or recomputing from an immutable input snapshot and software identity. <span class="term">Source reproducibility</span> means repeating the provider query; it may return revised bytes later. <span class="term">Conceptual replication</span> means retesting the method when the original snapshot cannot be obtained. Chapter 5 showed why these levels must not be given the same label.</p>
+    <p>A <span class="term">hash</span> is a fixed-length fingerprint computed from bytes. The project uses SHA-256. If one byte changes, the fingerprint is expected to change dramatically. A hash is excellent for detecting accidental or unauthorized modification. It does not explain what the bytes mean, certify that the original file was correct, or prove who created it.</p>
+    <p><span class="term">Immutable</span> means a completed run is not edited in place. A changed config or source snapshot receives a new identity. <span class="term">Deterministic</span> means the same declared inputs and procedure produce the same output bytes or numerically specified result. <span class="term">Fail closed</span> means uncertainty or mismatch stops verification instead of quietly accepting the closest available file.</p>
+    <p>An <span class="term">independent verifier</span> reads the saved evidence as a skeptical reviewer. It should not merely print the stored metric table. It checks identity locks, file inventory, schema, date coverage, accounting identities, signal delay, common samples, recomputed metrics, and the claim rule. Independence here means a separate checking path inside the software, not a claim that another institution has audited the project.</p>
+    <p><span class="term">Rerunning</span> and <span class="term">verifying</span> are different operations. A rerun executes models again and may expose hardware, library, or optimizer variation. Verification asks whether one already completed package is internally consistent. A strong project supports both, but verification should not require repeating an expensive fit merely to check simple accounting. Detailed artifacts let a reviewer recalculate downstream evidence cheaply while preserving the exact model output that was originally used.</p>
+    <p>A <span class="term">verification receipt</span> is a compact statement produced after checks pass: run identity, terminal status, inventory size, completed coverage, recomputation difference, and conclusion. It is useful for communication, but it is not the evidence itself. Anyone evaluating the receipt must be able to point back to the immutable files and the verifier version that produced it.</p>
+  </section>
+
+  <section class="chapter-section" id="evidence-chain">
+    <div class="eyebrow">Worked example two</div>
+    <h2>Build a chain in which every link has one job</h2>
+    <div class="timeline">
+      <div><strong>Contract</strong><span>What will be tested?</span><span>Meaning before outcomes</span></div>
+      <div><strong>Identity</strong><span>Which config, data, and code?</span><span>Hashes plus Git SHA</span></div>
+      <div><strong>Evidence</strong><span>What happened each day?</span><span>States, choices, trades</span></div>
+      <div><strong>Verification</strong><span>Do summaries follow?</span><span>Recompute and reject mismatch</span></div>
+    </div>
+    <p>Consider a three-day toy path. Day returns are +5%, -2%, and +6.8%. Starting from $100, the transparent calculation is $100 multiplied by 1.05, then 0.98, then 1.068. Anyone can recompute the endpoint. To reproduce a strategy result, however, we also need to know which position generated each return, whether cash replaced the market, whether a switch cost was subtracted, and when each signal became actionable.</p>
+    <p>The detailed trade table is therefore more valuable than a final equity chart. It preserves date, risky return, cash return, signal, delayed position, gross return, turnover, cost, and net strategy return. The metric table is a compact summary derived from this path. If a stored Sharpe ratio changes while the trade path does not, independent recomputation should reject the package.</p>
+    <p>Lifecycle state also matters. A <span class="term">running</span> package may contain valid checkpoints but does not yet support a result. A <span class="term">boundary-failed</span> package stopped at a preregistered search-grid gate before metrics were opened; it supports that diagnostic only. A <span class="term">complete</span> package contains every required market, model, delay, path, metric, and claim file. An interrupted directory must never be promoted to complete simply because some attractive outputs already exist.</p>
+    <p>Checkpoints are mutable while a run is active because new progress must be saved. Their identity metadata and payload hashes still prevent incompatible reuse. Once the run reaches a terminal state, the final evidence is inventoried and treated as immutable. This distinction permits practical recovery from interruption without allowing a completed result to drift.</p>
+    <h3>A common failure: replacing the seal after editing the evidence</h3>
+    <p>Suppose someone changes a metric CSV and then regenerates the inventory. The new file hash now matches the new inventory, so a hash-only check passes. But the metric no longer agrees with the unchanged trade path. A real verifier recalculates metrics from trades and catches the inconsistency. This is why the project combines file identity with semantic and arithmetic checks.</p>
+    <p>The reverse failure also matters. If the correct trade file is copied into an old run directory without updating the inventory, the arithmetic might be valid but the package is still rejected. The verifier cannot silently infer whether the copy was intentional, whether another file is missing, or whether identities were mixed. Create a new run identity rather than repairing completed evidence by hand.</p>
+  </section>
+
+  <section class="chapter-section" id="seal-lab-section">
+    <div class="eyebrow">Interactive teaching visual</div>
+    <h2>Break one lock and watch verification stop</h2>
+    <p>The five checks below represent different responsibilities. Uncheck one to simulate a mismatch. A green result means only that this fictional package is internally verifiable; it does not certify data parity, causal design, or a scientific claim.</p>
+    <div class="lab" id="seal-lab">
+      <div class="lab-header">
+        <div><h3>Evidence seal checker</h3><p>Deterministic teaching states; no project artifact is modified.</p></div>
+        <button class="button" type="button" data-reset>Reset</button>
+      </div>
+      <form class="check-grid">
+        <label class="check-row"><input type="checkbox" data-lock="Config hash" checked> Config lock hash matches run metadata</label>
+        <label class="check-row"><input type="checkbox" data-lock="Data hash" checked> Data manifest hash matches run metadata</label>
+        <label class="check-row"><input type="checkbox" data-lock="Git identity" checked> Git SHA matches the declared code state</label>
+        <label class="check-row"><input type="checkbox" data-lock="Inventory" checked> File inventory has no missing, extra, or changed file</label>
+        <label class="check-row"><input type="checkbox" data-lock="Recomputation" checked> Accounting, metrics, and claim recompute from detailed evidence</label>
+      </form>
+      <div class="lab-output" aria-live="polite">
+        <span class="label">Verifier decision</span>
+        <strong class="big-number" id="seal-status">Internally verifiable</strong>
+        <span id="seal-explanation">All five locks pass. Scientific interpretation still requires separate protocol review.</span>
+      </div>
+      <progress id="seal-progress" max="5" value="5">5 of 5 checks pass</progress>
+      <div class="table-wrap fallback-table"><table class="data-table"><thead><tr><th>Default</th><th>Decision</th></tr></thead><tbody><tr><td>All five checks pass</td><td>The fictional package is internally verifiable.</td></tr><tr><td>Any check fails</td><td>Reject the package until the mismatch is explained by a new valid run.</td></tr></tbody></table></div>
+      <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The default decision and failure rule remain visible in the table.</p></noscript>
+    </div>
+  </section>
+
+  <section class="chapter-section" id="paper-connection">
+    <div class="eyebrow">Connection to the named paper</div>
+    <h2>The paper defines the study; sealing preserves one implementation</h2>
+    <p>The exact source remains <a href="../../2402.05272v3.pdf">Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3</a>. Section 2 defines the broad data objects and dates. Sections 3.3 and 3.4 define HMM and Jump Model procedures. Section 3.4.3 describes monthly time-series cross-validation over an eight-year lookback, followed by out-of-sample use. Section 4 and Tables 4-5 present performance and delay evidence.</p>
+    <p>Those descriptions are the scientific source of truth for the protocol comparison. A versioned PDF hash ensures we do not accidentally quote a different revision. But the paper itself is not this project's artifact format, and this chapter does not claim the authors used our run ID, inventory, or verifier. Those are engineering controls added so our interpretation can be audited precisely.</p>
+    <p>A paper can be scientifically informative without publishing every raw byte, especially when data licenses restrict redistribution. Reproduction then requires documented acquisition procedures, exact identifiers where possible, and author communication for unresolved details. Sealing cannot manufacture inaccessible Bloomberg or GFD data. It preserves the proxy inputs we actually used and prevents us from later describing them as something else.</p>
+  </section>
+
+  <section class="chapter-section" id="project-connection">
+    <div class="eyebrow">Connection to this project</div>
+    <h2>Three identities create the run name</h2>
+    <p>The active runner in <a href="../../src/adaptive_jump/cli.py"><code>src/adaptive_jump/cli.py</code></a> combines the frozen config hash, exact data-manifest hash, and Git SHA. The first twelve hexadecimal characters of each become part of the run directory name. The run also copies <code>config.lock.toml</code> and <code>data-manifest.json</code>, records package versions and lifecycle status, and rejects an existing directory whose locks disagree.</p>
+    <pre><code>identity = {
+    "config_sha256": config.sha256,
+    "data_manifest_sha256": frozen.sha256,
+    "git_sha": git_sha,
+}
+run_id = "fixed-baselines-" + "-".join(value[:12] for value in identity.values())</code></pre>
+    <p>Checkpoint reuse follows the same identity. An interrupted expensive HMM run can resume only when payload hash, config hash, data hash, and Git SHA match. A completed or boundary-failed run is immutable. Generated reports live outside the run because they can be regenerated; they are presentation, not the primary evidence.</p>
+    <p>The verifier in <a href="../../src/adaptive_jump/artifacts.py"><code>src/adaptive_jump/artifacts.py</code></a> first recomputes the inventory, then checks identity locks and boundary coverage. For a complete run it reads every expected trade path, confirms binary signals and positions, recalculates gross return, turnover, cost, delayed alignment, and performance metrics, and rebuilds the directional claim. The CLI workflow is documented in the <a href="../../README.md">README</a>.</p>
+    <p>Tests deliberately tamper with canonical data, metric files, and inventories. They require the loader or verifier to reject the package. Another test modifies a metric, regenerates the inventory, and still expects metric recomputation to find the inconsistency. These tests validate the checking machinery; they do not validate the paper's hypothesis.</p>
+  </section>
+
+  <section class="chapter-section" id="mathematics">
+    <div class="eyebrow">Mathematical layer</div>
+    <h2>Identity first, then recomputation</h2>
+    <p>Let <math><mi>b</mi></math> be the ordered bytes of a file and <math><mi>H</mi></math> the SHA-256 function. Its fingerprint is:</p>
+    <div class="formula"><math display="block"><mi>h</mi><mo>=</mo><mi>H</mi><mo>(</mo><mi>b</mi><mo>)</mo></math><math display="block"><mi>I</mi><mo>=</mo><mo>(</mo><msub><mi>h</mi><mi>config</mi></msub><mo>,</mo><msub><mi>h</mi><mi>data</mi></msub><mo>,</mo><mi>g</mi><mo>)</mo></math></div>
+    <div class="table-wrap"><table class="symbol-table"><thead><tr><th>Symbol</th><th>Meaning</th><th>Unit</th></tr></thead><tbody><tr><td><math><mi>b</mi></math></td><td>Ordered bytes of one file</td><td>Bytes</td></tr><tr><td><math><mi>H</mi></math></td><td>SHA-256 hash function</td><td>Function</td></tr><tr><td><math><mi>h</mi></math></td><td>Resulting file fingerprint</td><td>256 bits, displayed in hexadecimal</td></tr><tr><td><math><mi>I</mi></math></td><td>Run identity tuple</td><td>Structured identifiers</td></tr><tr><td><math><msub><mi>h</mi><mi>config</mi></msub></math></td><td>Frozen configuration fingerprint</td><td>Hash</td></tr><tr><td><math><msub><mi>h</mi><mi>data</mi></msub></math></td><td>Exact data-manifest fingerprint</td><td>Hash</td></tr><tr><td><math><mi>g</mi></math></td><td>Git commit SHA</td><td>Repository identifier</td></tr></tbody></table></div>
+    <p>An inventory is a mapping from each relative path <math><msub><mi>p</mi><mi>j</mi></msub></math> to an expected hash <math><msub><mi>h</mi><mi>j</mi></msub></math>. Inventory verification requires both the path set and every fingerprint to match. The logical operation is a conjunction: all files must pass. One missing file, one extra file, or one changed fingerprint makes the package fail.</p>
+    <div class="formula"><math display="block"><mi>V</mi><mo>=</mo><mi mathvariant="normal">I</mi><mo>(</mo><msub><mi>P</mi><mi>actual</mi></msub><mo>=</mo><msub><mi>P</mi><mi>expected</mi></msub><mo>)</mo><mo>&times;</mo><munderover><mo>&prod;</mo><mrow><mi>j</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><mi mathvariant="normal">I</mi><mo>(</mo><mi>H</mi><mo>(</mo><msub><mi>b</mi><mi>j</mi></msub><mo>)</mo><mo>=</mo><msub><mi>h</mi><mi>j</mi></msub><mo>)</mo></math></div>
+    <p>Finally, let detailed trade evidence be <math><mi>T</mi></math>, frozen settings be <math><mi>C</mi></math>, the metric function be <math><mi>F</mi></math>, and the stored metric be <math><msub><mi>m</mi><mi>stored</mi></msub></math>. Verification recomputes <math><msub><mi>m</mi><mi>new</mi></msub><mo>=</mo><mi>F</mi><mo>(</mo><mi>T</mi><mo>,</mo><mi>C</mi><mo>)</mo></math> and requires the absolute difference to remain within a frozen numerical tolerance. This checks derivation, not merely file identity.</p>
+    <p>SHA-256 collisions are theoretically possible but are not the practical risk addressed here. The ordinary research risks are wrong files, accidental edits, mixed run directories, stale checkpoints, changed configs, and summaries that no longer follow from detailed evidence. More importantly, a perfect hash match says nothing about causal correctness or data semantics. Those need the protocol checks from Chapters 5 and 7.</p>
+  </section>
+
+  <section class="chapter-section" id="evidence-limitations">
+    <div class="eyebrow">Evidence and limitations</div>
+    <h2>A seal protects identity, not truth</h2>
+    <div class="concept-grid">
+      <div class="panel"><h3>What sealing establishes</h3><p>The exact config, manifest, code identity, file set, detailed paths, stored metrics, and claim decision agree under the implemented verifier.</p></div>
+      <div class="panel"><h3>What sealing cannot establish</h3><p>That proxy data equal the paper data, that a model captures a real economic state, that the holdout remains untouched, or that a claim is universally true.</p></div>
+    </div>
+    <div class="evidence"><strong>Current project evidence</strong>The frozen v7 run has a verifier-readable artifact package and a deterministic English report generated only after verification. Current values should be read from that generated report through the README workflow, not copied into this lesson.</div>
+    <div class="limitation"><strong>Remaining boundary</strong>Computational integrity makes a negative or positive result auditable. It does not upgrade a proxy replication to exact reproduction and does not unblock adaptive research after a failed scientific gate.</div>
+    <p>Long-term reproduction also depends on environment and access. The project pins Python packages in <code>uv.lock</code>, but operating systems, CPU libraries, provider APIs, and licensed files can still change. Preserving source snapshots and package metadata reduces uncertainty without promising that every future machine will reproduce every floating-point bit forever.</p>
+    <p>A narrative report and an experiment registry serve different audit roles. The report explains one verified run to a human and can be regenerated. The registry records that the experiment existed, what sample it accessed, and whether later work was result-driven. Neither substitutes for trade-level artifacts. Conversely, a directory full of CSV files without a frozen question and registry history cannot show whether the same holdout was inspected repeatedly while the model changed.</p>
+  </section>
+
+  <section class="chapter-section" id="practice">
+    <div class="eyebrow">Retrieval practice</div>
+    <h2>Separate identity, recomputation, and interpretation</h2>
+    <div class="quiz">
+      <h3>Recall</h3>
+      <p>A modified metric file is added to a newly regenerated inventory. What must the verifier do next?</p>
+      <div class="quiz-options">
+        <button class="button" type="button" data-choice data-correct="false">Accept it because the new hash matches</button>
+        <button class="button" type="button" data-choice data-correct="true" data-feedback-correct="Correct. Recomputing from the detailed trade path can reveal a metric that is internally inconsistent even when its new hash is recorded.">Recompute the metric from detailed evidence and the frozen config</button>
+        <button class="button" type="button" data-choice data-correct="false">Round both values until they agree</button>
+      </div>
+      <output class="quiz-feedback">Choose an answer, then check the explanation.</output>
+      <button class="button" type="button" data-reset>Reset</button>
+    </div>
+    <details><summary>Calculation: transparent ending wealth</summary><p>Start with $100 and apply +5%, -2%, and +6.8%. Wealth is $100 &times; 1.05 &times; 0.98 &times; 1.068 = $109.89 after rounding to cents. Preserve full precision in the artifact and round only for display.</p></details>
+    <details><summary>Error diagnosis: "the command ran, so the study is reproducible"</summary><p>A command can run against different data, defaults, code, or package versions. Reproducibility requires resolved inputs, a frozen contract, identity records, complete outputs, and verification of the real path.</p></details>
+    <details><summary>Cumulative recall from Chapters 1-5</summary><p>The sealed trade path must preserve market-or-cash positions, total and cash returns, costs, wealth inputs, and data definitions. A hash can protect a price-index proxy exactly while Chapter 5 still tells us it is not the paper's total-return series.</p></details>
+    <details><summary>Advisor explanation</summary><p>"Our run name binds config, data manifest, and Git revision. The inventory detects file changes, while the verifier recomputes accounting, metrics, and the claim from detailed paths. This establishes internal computational integrity, not exact data parity or scientific truth."</p></details>
+  </section>
+
+  <section class="chapter-section" id="advisor">
+    <div class="eyebrow">How to explain this to your advisor</div>
+    <div class="advisor">
+      <p><strong>Short version:</strong> "I treat a reported metric as the end of an evidence chain. The frozen contract, exact data manifest, code revision, detailed trades, inventory, and independent recomputation must agree."</p>
+      <p><strong>Important qualification:</strong> "A sealed error is still an error. Integrity controls let us detect drift and audit calculations; semantic validity and causal research design require separate evidence."</p>
+    </div>
+  </section>
+
+  <footer class="chapter-footer">
+    <p><strong>Next:</strong> Chapter 7 follows information through time and shows how rolling windows, train-only scaling, signal delay, costs, and common samples prevent a backtest from seeing the future.</p>
+    <p><a href="05-data-parity-proxy-replication.html">Back to Chapter 5</a> · <a href="index.html">Review the course map</a></p>
+  </footer>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const lab = document.getElementById("seal-lab");
+  const locks = [...lab.querySelectorAll("[data-lock]")];
+  function render() {
+    const failed = locks.filter((lock) => !lock.checked).map((lock) => lock.dataset.lock);
+    document.getElementById("seal-status").textContent = failed.length ? "Verification rejected" : "Internally verifiable";
+    document.getElementById("seal-explanation").textContent = failed.length
+      ? `Failed locks: ${failed.join(", ")}. Do not use the stored claim.`
+      : "All five locks pass. Scientific interpretation still requires separate protocol review.";
+    document.getElementById("seal-progress").value = locks.length - failed.length;
+  }
+  locks.forEach((lock) => lock.addEventListener("input", render));
+  lab.addEventListener("course:reset", render);
+  render();
+});
+</script>
+</body>
+</html>
