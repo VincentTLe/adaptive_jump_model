@@ -119,6 +119,9 @@ input[type="number"] {
 .lab-output { min-height: 92px; padding: 16px; background: #101319; border-top: 3px solid var(--green); }
 .control-grid > div > .label { display: block; margin-bottom: 6px; }
 progress { width: 100%; }
+.check-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 20px 0; }
+.check-row { display: flex; gap: 10px; align-items: start; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: #101319; }
+.check-row input { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 4px; accent-color: var(--green); }
 .chart-wrap { position: relative; width: 100%; min-height: 280px; margin-top: 18px; }
 .fallback-table { margin-top: 16px; }
 .enhanced-only { display: none; }
@@ -185,7 +188,7 @@ summary { cursor: pointer; color: var(--amber); font-weight: 700; }
   .course-nav { grid-template-columns: 1fr 1fr; }
   .course-nav > :nth-child(2) { display: none; }
   .example-grid, .concept-grid, .concept-grid.three, .metric-grid, .metric-grid.three,
-  .control-grid, .timeline { grid-template-columns: 1fr; }
+  .control-grid, .timeline, .check-grid { grid-template-columns: 1fr; }
   .state-strip { grid-template-columns: repeat(5, 1fr); }
   .lab-header { display: block; }
   .lab-header .button { margin-top: 12px; }
