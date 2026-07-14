@@ -3,7 +3,7 @@
 ## Identity
 
 - `task_id`: `live-research-monitor-001`
-- `status`: `complete`
+- `status`: `CODE_COMPLETE`
 - `target_branch`: `cleanup/research-protocol`
 - `starting_ref`: `d525c0d5f979a970e21735e31b9bb4c5043f4b8d`
 - `primary_class`: `ENGINEERING / SMOKE`
@@ -125,12 +125,13 @@ paper-hash, and frozen-run verification where relevant. UI milestones require
 real Chromium checks at 1440x900 and 390x844. No scientific run, data fetch,
 extension, or claim is authorized by this task.
 
-## Completed Outcome
+## Code-Complete Outcome And Remaining Acceptance
 
-- The canonical CLI now exposes a loopback-only live monitor with one durable
-  worker, a reorderable queue, cancellation, identity-bound checkpoints,
-  exact resume, append-only events, resource telemetry, REST, and reconnectable
-  SSE.
+- The canonical CLI now exposes a loopback-only monitor implementation with one
+  durable worker, a reorderable queue, cancellation, identity-bound
+  checkpoints, append-only events, resource telemetry, REST, and reconnectable
+  SSE. These paths are code-tested but have not completed the canonical
+  operational acceptance described below.
 - The English interface provides Live, Queue, Replay, Compare, and Evidence
   views. It exposes precomputed features, model states, selected candidates,
   validation surfaces, delayed positions, boundary gates, event history, and
@@ -139,16 +140,25 @@ extension, or claim is authorized by this task.
   CSRF and origin checks, restrictive security headers, outcome locks, and an
   append-only mutation audit fail closed. Deployment templates pin the checked
   `cloudflared` release and keep all account credentials outside Git.
-- Real Chromium acceptance passed at 1440x900 and 390x844, including owner and
-  viewer behavior, queue actions, replay controls, chart pixels, locked
-  evidence, JavaScript-disabled fallback, and horizontal-overflow checks.
-- Final acceptance passed with 261 tests, Ruff lint and format checks, lock and
-  package checks, wheel/sdist builds, and a clean-archive install. The paper
-  SHA-256, archive immutability, protected research files, frozen v7 verifier,
-  and frozen JM-4000 verifier all remained unchanged and valid.
+- Chromium tests passed at 1440x900 and 390x844 against controlled preview
+  services, including simulated owner/viewer behavior, queue actions, replay
+  controls, chart pixels, locked evidence, JavaScript-disabled fallback, and
+  horizontal-overflow checks. Those tests did not run a canonical scientific
+  subprocess or authenticate through a real Cloudflare account.
+- Code-level verification passed with 261 tests, Ruff lint and format checks,
+  lock and package checks, wheel/sdist builds, and a clean-archive install. The
+  paper SHA-256, archive immutability, protected research files, frozen v7
+  verifier, and frozen JM-4000 verifier all remained unchanged and valid.
 - No scientific experiment, data download, post-2023 access, adaptive run, or
   scientific claim occurred. The v7 proxy non-replication and the JM-4000
   boundary failure remain the only frozen research conclusions.
+
+Operational acceptance remains incomplete. It requires a separately frozen
+`ENGINEERING / SMOKE` study to run through the production monitor, including
+cancel, checkpoint, resume, canonical verification, and evidence-hash parity
+with a direct CLI run. Only after that passes may a real Cloudflare deployment
+be tested with owner and viewer accounts. Until those gates pass, this task is
+`CODE_COMPLETE`, not `EXPERIMENT_COMPLETE` or `CLAIM_READY`.
 
 Authenticated remote activation is intentionally an external deployment step:
 the owner must supply the Cloudflare account, hostname, audience, tunnel

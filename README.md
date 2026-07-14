@@ -32,16 +32,21 @@ begin in 2007-2009 rather than 1990. The audited local report is generated at:
 artifacts/reports/fixed-baselines-8adb330565d6-3636939b525d-e9614112b234/report.html
 ```
 
-The authenticated live monitor is now part of the active engineering stack. It
-can queue only code-registered `FROZEN` studies, streams protocol-safe runtime
-events, and verifier-gates sealed outcomes. It does not authorize a new study,
-download data, or change any scientific result.
+The live-monitor implementation is **CODE_COMPLETE**, not operationally
+accepted. Its components and controlled browser preview are tested, but no
+canonical study has yet completed through the production monitor and no real
+Cloudflare owner/viewer deployment has been accepted. The production catalog is
+currently empty because no code-registered study ends in `FROZEN`. A separately
+frozen `ENGINEERING / SMOKE` acceptance must pass before this monitor is treated
+as an operational research control center.
 
 Only `src/adaptive_jump/` is active source code. Everything under `archive/` is
 frozen provenance and must not be imported or used as a second research stack.
 The active CLI workflows are `fetch`, `run`, `verify`, `report`, and `monitor`;
-archived scripts are unsupported. No post-2023 data has been downloaded or
-evaluated.
+archived scripts are unsupported. A separately authorized source audit inspected
+public candidate series through July 2026. It was not an extension experiment
+and produced no extension claim, but those dates are no longer untouched
+prospective evidence. The frozen v7 model run itself remains capped at 2023.
 
 ## Reproduce The Environment
 
@@ -107,9 +112,11 @@ Verify a completed or boundary-failed run without trusting its stored metrics:
   --run artifacts/fixed-baselines/<run_id>
 ```
 
-`verify` checks identity locks and every inventory hash, validates the complete
-boundary surface, recomputes accounting and metrics from all trade CSVs, and
-reconstructs the claim.
+`verify` checks identity locks and every inventoried hash, validates the complete
+boundary surface, recomputes accounting and metrics from stored trade CSVs, and
+reconstructs the claim. The current schema-1 verifier does not refit models or
+prove the full source-to-feature-to-state-to-signal chain; that deeper verifier
+is a required scientific-audit milestone before v8.
 
 Generate the deterministic English report only after verification succeeds:
 
