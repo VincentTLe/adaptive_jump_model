@@ -109,7 +109,8 @@ tbody tr:last-child td { border-bottom: 0; }
 .session { flex-direction: column; gap: 3px; align-items: flex-end; text-align: right; }
 .view-tabs { padding-inline: 12px; }
 main { padding: 20px 14px 45px; }
-.view-heading { align-items: flex-start; }
+.view-heading { flex-wrap: wrap; align-items: flex-start; }
+.view-heading select { max-width: 100%; }
 .view h1 { font-size: 24px; }
 .summary-strip { grid-template-columns: 1fr; }
 .summary-strip div { border-right: 0; }
