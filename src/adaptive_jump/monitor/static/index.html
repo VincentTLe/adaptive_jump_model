@@ -30,7 +30,7 @@
       </dl>
       <div class="workspace-grid">
         <div class="workspace-main">
-          <section class="panel" aria-labelledby="stage-title"><div class="panel-heading"><h2 id="stage-title">Stage progress</h2><span id="eta">ETA unavailable</span></div><ol id="stage-track" class="stage-track"><li class="pending">Data</li><li class="pending">HMM</li><li class="pending">Fixed JM</li><li class="pending">Selection</li><li class="pending">Verification</li></ol></section>
+          <section class="panel" aria-labelledby="stage-title"><div class="panel-heading"><h2 id="stage-title">Stage progress</h2><span id="eta">ETA unavailable</span></div><ol id="stage-track" class="stage-track"><li data-stage="data" class="pending">Data</li><li data-stage="hmm" class="pending">HMM</li><li data-stage="fixed_jm" class="pending">Fixed JM</li><li data-stage="selection" class="pending">Selection</li><li data-stage="verification" class="pending">Verification</li></ol></section>
           <section class="panel" aria-labelledby="feature-title"><div class="panel-heading"><h2 id="feature-title">Causal features</h2><span id="feature-date">No model date</span></div><div class="feature-grid"><div><span>DD-10</span><strong id="feature-dd">--</strong></div><div><span>Sortino-20</span><strong id="feature-s20">--</strong></div><div><span>Sortino-60</span><strong id="feature-s60">--</strong></div><div><span>Excess return</span><strong id="feature-return">--</strong></div></div></section>
           <section class="panel" aria-labelledby="state-title"><div class="panel-heading"><h2 id="state-title">Model decisions</h2><span id="selected-candidate">Candidate unavailable</span></div><div class="table-wrap"><table><thead><tr><th>Model</th><th>Candidate</th><th>State</th><th>Signal</th><th>Delay</th></tr></thead><tbody id="state-body"><tr><td colspan="5">No decision events</td></tr></tbody></table></div></section>
           <section class="panel chart-panel" aria-labelledby="resource-title"><div class="panel-heading"><h2 id="resource-title">Resource history</h2><span id="resource-latest">No samples</span></div><div id="resource-chart" class="chart" role="img" aria-label="Worker CPU and memory history"></div><div id="resource-fallback" class="fallback">CPU and memory samples will appear here.</div></section>
@@ -63,5 +63,6 @@
     </section>
   </main>
   <noscript><p class="noscript">JavaScript is required for authenticated live data. The static monitor structure remains available.</p></noscript>
+  <script src="/assets/app.js" defer></script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,6 +45,18 @@ def test_monitor_shell_is_packaged_accessible_and_csp_compatible() -> None:
     assert "Adaptive Jump Research Monitor" in html
     views = ("live", "queue", "replay", "compare", "evidence")
     assert all(f'data-view="{view}"' in html for view in views)
-    assert "<script" not in html and "<style" not in html
+    scripts = re.findall(r"<script([^>]*)>", html)
+    assert scripts and all("src=" in script for script in scripts)
+    assert "<style" not in html
     assert "@media (max-width: 600px)" in css
     assert "linear-gradient" not in css
+
+
+def test_monitor_browser_code_uses_server_contract_without_inline_data() -> None:
+    script = (ROOT / "src/adaptive_jump/monitor/static/app.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert all(path in script for path in ("/api/session", "/api/studies", "/api/jobs"))
+    assert "EventSource" in script and "research_event" in script
+    assert "innerHTML" not in script and "localStorage" not in script
