@@ -9,10 +9,17 @@ from adaptive_jump.monitor.queue import (
     load_frozen_studies,
 )
 
+ROOT = Path(__file__).resolve().parents[1]
 STUDIES = {
     "study-a": StudyDefinition("study-a", "replication"),
     "study-b": StudyDefinition("study-b", "train-window-sensitivity"),
 }
+
+
+def test_project_catalog_contains_only_the_frozen_engineering_replay() -> None:
+    frozen = load_frozen_studies(ROOT / "research/experiment_registry.jsonl")
+    assert tuple(frozen) == ("monitor-local-acceptance-001",)
+    assert frozen["monitor-local-acceptance-001"].cli_study == "replication"
 
 
 def test_catalog_requires_registration_and_latest_frozen_state(tmp_path: Path) -> None:

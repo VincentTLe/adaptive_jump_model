@@ -174,6 +174,22 @@ def emit_event(observer: EventObserver | None, **values: Any) -> None:
         observer(ResearchEvent(**values))
 
 
+def emit_artifact_verified(
+    observer: EventObserver | None, receipt: Mapping[str, Any]
+) -> None:
+    """Publish only the safe identity fields from a verifier receipt."""
+    payload = {key: receipt.get(key) for key in ("run_id", "status")}
+    if any(not isinstance(value, str) or not value for value in payload.values()):
+        raise EventError("verifier receipt identity is invalid")
+    emit_event(
+        observer,
+        kind="artifact_verified",
+        stage="verification",
+        visibility="decision",
+        payload=payload,
+    )
+
+
 def bind_event_context(
     observer: EventObserver | None,
     *,

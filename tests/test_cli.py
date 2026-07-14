@@ -80,34 +80,52 @@ def test_window_study_cli_uses_frozen_spec_without_manifest(
 ) -> None:
     expected = ROOT / "artifacts/window-fixture"
     calls = []
+    events = []
 
-    def observer(_event):
-        return None
+    def observer(event):
+        events.append(event)
+
+    def verify(artifact):
+        assert artifact == expected
+        return {"run_id": "window-fixture", "status": "boundary_failed"}
 
     def fake_run(config, spec, observer):
         calls.append((config, spec, observer))
         return expected
 
     monkeypatch.setattr("adaptive_jump.cli.run_window_sensitivity", fake_run)
+    monkeypatch.setattr("adaptive_jump.cli._artifacts.verify_run", verify)
     monkeypatch.setattr(
         "adaptive_jump.cli.child_observer_from_environment", lambda: observer
     )
-
-    assert (
-        main(
-            [
-                "run",
-                "--study",
-                "train-window-sensitivity",
-                "--config",
-                str(ROOT / "research.toml"),
-            ]
-        )
-        == 0
-    )
+    arguments = [
+        "run",
+        "--study",
+        "train-window-sensitivity",
+        "--config",
+        str(ROOT / "research.toml"),
+    ]
+    assert main(arguments) == 0
     assert Path(capsys.readouterr().out.strip()) == expected
     assert calls[0][1].challenger_window == 4000
     assert calls[0][2] is observer
+    assert events[0].kind == "artifact_verified"
+    assert events[0].visibility == "decision"
+    assert events[0].payload == {
+        "run_id": "window-fixture",
+        "status": "boundary_failed",
+    }
+
+    def reject(_artifact):
+        raise ArtifactError("verification failed")
+
+    events.clear()
+    monkeypatch.setattr("adaptive_jump.cli._artifacts.verify_run", reject)
+    assert main(arguments) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "verification failed" in captured.err
+    assert events == []
 
 
 def test_window_study_cli_rejects_manifest_override(capsys) -> None:

@@ -35,10 +35,10 @@ artifacts/reports/fixed-baselines-8adb330565d6-3636939b525d-e9614112b234/report.
 The live-monitor implementation is **CODE_COMPLETE**, not operationally
 accepted. Its components and controlled browser preview are tested, but no
 canonical study has yet completed through the production monitor and no real
-Cloudflare owner/viewer deployment has been accepted. The production catalog is
-currently empty because no code-registered study ends in `FROZEN`. A separately
-frozen `ENGINEERING / SMOKE` acceptance must pass before this monitor is treated
-as an operational research control center.
+Cloudflare owner/viewer deployment has been accepted. The production catalog
+contains only the frozen `monitor-local-acceptance-001` engineering replay. It
+must pass before this monitor is treated as an operational research control
+center.
 
 Only `src/adaptive_jump/` is active source code. Everything under `archive/` is
 frozen provenance and must not be imported or used as a second research stack.

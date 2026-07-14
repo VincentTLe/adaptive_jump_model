@@ -27,7 +27,7 @@ from adaptive_jump.monitor.child_events import (
     ChildEventError,
     child_observer_from_environment,
 )
-from adaptive_jump.monitor.events import EventObserver
+from adaptive_jump.monitor.events import EventObserver, emit_artifact_verified
 from adaptive_jump.reporting import build_report
 from adaptive_jump.walkforward import (
     BaselineStudy,
@@ -477,6 +477,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 artifact = run_window_sensitivity(
                     config, load_window_spec(spec_path, config), observer
                 )
+            emit_artifact_verified(observer, _artifacts.verify_run(artifact))
             print(artifact)
             return 0
         if arguments.command == "verify":

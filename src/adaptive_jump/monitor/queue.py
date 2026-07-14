@@ -33,6 +33,9 @@ REGISTERED_STUDIES = {
     "jm-train-window-sensitivity-001": StudyDefinition(
         "jm-train-window-sensitivity-001", "train-window-sensitivity"
     ),
+    "monitor-local-acceptance-001": StudyDefinition(
+        "monitor-local-acceptance-001", "replication"
+    ),
 }
 
 
