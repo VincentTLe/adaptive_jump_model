@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A beginner introduction to money, risky assets, cash, equity indices, and the 0/1 allocation used in the Shu paper.">
+  <title>Chapter 1: Money, Assets, And Cash</title>
+  <link rel="stylesheet" href="course.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/mml-chtml.js" integrity="sha384-GYAeDZjH9w23NyL4cfS+ZrgWmGvta6VNs4p+/vtuF+RWe30fQhmP8pHbzRmlwmAK" crossorigin="anonymous"></script>
+  <script defer src="course.js"></script>
+</head>
+<body>
+<main class="course-shell">
+  <nav class="course-nav" aria-label="Course navigation">
+    <a href="index.html">Course home</a>
+    <span>Part I · Chapter 1 of 14</span>
+    <a href="02-prices-dividends-returns.html">Next: prices and returns</a>
+  </nav>
+
+  <header class="chapter-header">
+    <div class="part-label">Part I · Money, Returns, And Risk</div>
+    <h1>Money, Assets, And Cash</h1>
+    <p class="lead">What does it actually mean when a model says, “leave the market and move to cash”?</p>
+    <div class="chapter-meta"><span>Beginner level</span><span>No mathematics required</span><span>One interactive allocation lab</span></div>
+  </header>
+
+  <section class="chapter-section" id="question">
+    <div class="eyebrow">The opening question</div>
+    <h2>You have $100 tonight. Where can it go?</h2>
+    <p>Imagine that you have exactly $100 and must choose where to keep it for one day. You could buy part of a broad stock-market investment, keep part in a short-term cash-like investment, or divide the money between the two. This simple choice is the economic heart of the entire project. The Hidden Markov Model and Jump Model will eventually produce complicated-looking state sequences, but those states matter only because they control this ordinary allocation decision.</p>
+    <figure class="concept-illustration" id="part-one-concept-illustration" aria-labelledby="part-one-concept-title">
+      <span class="teaching-label">Concept illustration - not data or evidence</span>
+      <h3 id="part-one-concept-title">One pool of wealth can be redirected, but every route has a tradeoff</h3>
+      <img src="assets/part-i-market-cash-path.webp" width="1400" height="788" loading="eager" decoding="async" alt="A mechanical switch redirects one stack of wealth from a changing market rail to a steady cash rail as the scene moves through calm conditions, a loss, and a recovery.">
+      <figcaption class="visual-caption">Read left to right. The gold stack at entry and the stack later on the cash rail are sequential snapshots of the same wealth, not two portfolios. The lower rail protects it while the red market path falls, but the cash rail does not climb with the later green recovery.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> moving to cash changes exposure. It can avoid a market loss and also miss a market rebound; the switch itself creates no return.</div>
+    </figure>
+    <p>Suppose you put all $100 in the market. If the market gains 5%, your wealth becomes $105. If it loses 5%, your wealth becomes $95. Now suppose a cash investment earns 0.02% for the day. Your $100 becomes $100.02. The cash gain is tiny, but its value is much more stable. The market offers more opportunity and more uncertainty; cash offers less opportunity and less uncertainty.</p>
+    <figure class="teaching-figure" id="hundred-dollar-choice-figure" data-visual-type="static" aria-labelledby="hundred-dollar-choice-title">
+      <span class="teaching-label">Teaching example</span><h3 id="hundred-dollar-choice-title">The same $100 can take one of two binary positions</h3>
+      <div class="visual-stage compact"><svg viewBox="0 0 440 260" role="img" aria-labelledby="hundred-dollar-choice-svg-title hundred-dollar-choice-svg-desc"><title id="hundred-dollar-choice-svg-title">One hundred dollars choosing between market and cash</title><desc id="hundred-dollar-choice-svg-desc">Starting wealth of one hundred dollars branches to either full risky market exposure, position one, or full cash exposure, position zero.</desc><rect class="diagram-warning" x="145" y="20" width="150" height="54" rx="8"/><text x="220" y="53" font-size="22" font-weight="700" text-anchor="middle">Starting wealth $100</text><path class="diagram-link" d="M220 74 V100 M220 100 L110 126 M220 100 L330 126"/><path d="M110 126 L120 116 L123 132 Z" fill="#aab3bf"/><path d="M330 126 L317 117 L317 133 Z" fill="#aab3bf"/><rect class="diagram-low" x="25" y="132" width="170" height="82" rx="8"/><rect class="diagram-cash" x="245" y="132" width="170" height="82" rx="8"/><text x="110" y="164" font-size="21" font-weight="700" text-anchor="middle">Market position 1</text><text x="110" y="192" font-size="17" text-anchor="middle">full risky exposure</text><text x="330" y="164" font-size="21" font-weight="700" text-anchor="middle">Cash position 0</text><text x="330" y="192" font-size="17" text-anchor="middle">cash-side return</text><text x="220" y="244" font-size="16" text-anchor="middle">one portfolio, one held position</text></svg></div>
+      <figcaption class="visual-caption">The paper's strategy later restricts the market weight to exactly 1 or 0. The mixed 60/40 portfolio below is a teaching bridge for weighted-return arithmetic, not an allowed paper position.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> position 0 means the wealth remains invested on the cash side; it does not mean the portfolio disappears.</div>
+    </figure>
+    <div class="example-grid">
+      <article class="worked-example">
+        <div class="label">Market rises 5%</div>
+        <span class="big-number">$100 → $105</span>
+        <p>You receive the full market gain because every dollar was exposed to the market.</p>
+      </article>
+      <article class="worked-example failure">
+        <div class="label">Market falls 5%</div>
+        <span class="big-number">$100 → $95</span>
+        <p>The same exposure that created upside also creates loss. “Risky” does not mean “bad”; it means the outcome is uncertain.</p>
+      </article>
+    </div>
+    <div class="remember"><strong>One idea to remember</strong>A regime model does not create money by itself. It only supplies a signal that decides whether the strategy holds the risky market asset or the safer cash asset.</div>
+  </section>
+
+  <section class="chapter-section" id="vocabulary">
+    <div class="eyebrow">Build the vocabulary</div>
+    <h2>Six words that must be clear</h2>
+    <p><span class="term">Money</span> is the unit in which wealth is measured. In this course we use dollars in toy examples because “$100” is easy to picture. The paper does not convert every market to dollars. It evaluates the United States in US dollars, Germany in its local currency, and Japan in Japanese yen. That choice avoids mixing market performance with exchange-rate movements.</p>
+    <p>An <span class="term">asset</span> is something that can hold or change economic value. A stock, a government bill, a bank deposit, a bond, a house, and a commodity can all be assets. The project studies only a deliberately narrow choice: one broad equity-market asset and one local cash-like asset for each country.</p>
+    <p><span class="term">Equity</span> means ownership. A share of stock represents a small ownership claim on a company. An <span class="term">equity index</span> combines many stocks into one numerical measure. The S&amp;P 500, DAX, and Nikkei 225 are indices. You cannot place a paper index certificate in a wallet, but an index return describes the performance of a portfolio designed to follow those constituent stocks.</p>
+    <p>An index and an investable fund are related but not identical. The index is a rule and a calculated series: it specifies which securities are represented and how their values are combined. An index fund or exchange-traded fund is a real vehicle that attempts to track that rule. A fund may have management fees, taxes, trading frictions, tracking error, and operational constraints that are absent from an ideal index series. The paper studies index returns because the goal is to compare regime signals on a clean market benchmark. That does not mean a real investor would receive every reported index return exactly.</p>
+    <p>A <span class="term">risky asset</span> is an asset whose future value is uncertain. “Risky” does not assert that the value will fall. It says that multiple outcomes are possible and that losses can be meaningful. In the paper, the local equity index is the risky asset.</p>
+    <p>A <span class="term">risk-free asset</span> is a theoretical or practical benchmark whose short-horizon return is treated as known with very low default risk. No real investment is free from every possible risk. Researchers use short-term government bills as an approximation because their repayment horizon is short and sovereign default risk is usually treated as negligible for the experiment. In the current project, some free data sources are weaker proxies, which Chapter 5 will examine carefully.</p>
+    <p><span class="term">Cash</span> is used in this course as convenient shorthand for the risk-free side of the strategy. It does not mean paper notes sitting idle under a mattress. The paper's cash side earns the local three-month Treasury-bill return. Therefore, moving to cash does not mean earning exactly zero.</p>
+    <p><span class="term">Wealth</span> is the current dollar value of what you own; a <span class="term">return</span> is the change in wealth relative to a starting value. If wealth moves from $100 to $105, the dollar gain is $5 and the return is 5%. Keeping these concepts separate matters because model evaluation combines returns across thousands of days, while a human usually imagines a dollar balance. The same 5% return means a $5 gain on $100 but a $500 gain on $10,000. Returns make different starting wealth levels comparable; wealth shows the economic path experienced by the investor.</p>
+    <div class="concept-grid three">
+      <div class="panel"><h3>Market</h3><p>Higher uncertain return. Position value is <strong>1</strong>.</p></div>
+      <div class="panel"><h3>Cash</h3><p>Lower, steadier return. Position value is <strong>0</strong>.</p></div>
+      <div class="panel"><h3>Signal</h3><p>A model instruction that eventually determines which position is held.</p></div>
+    </div>
+  </section>
+
+  <section class="chapter-section" id="worked-example">
+    <div class="eyebrow">Worked example</div>
+    <h2>Divide $100 between market and cash</h2>
+    <p>Before studying the paper's all-or-nothing strategy, consider an ordinary mixed portfolio. Put $60 in the market and $40 in cash. Suppose the market gains 10% and cash gains 2% over the chosen period. The market part grows from $60 to $66. The cash part grows from $40 to $40.80. Add the two ending values and the portfolio finishes at $106.80.</p>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Part</th><th>Starting amount</th><th>Return</th><th>Ending amount</th></tr></thead>
+        <tbody>
+          <tr><td>Market</td><td>$60.00</td><td>10%</td><td>$66.00</td></tr>
+          <tr><td>Cash</td><td>$40.00</td><td>2%</td><td>$40.80</td></tr>
+          <tr><td>Total</td><td>$100.00</td><td>6.8%</td><td>$106.80</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The portfolio return is not the simple average of 10% and 2%. A simple average would give 6%, but that would pretend that the two assets received equal amounts. The correct result is a <span class="term">weighted return</span>: 60% of the portfolio receives the market return and 40% receives the cash return. That produces 6.8%.</p>
+
+    <div class="lab" id="allocation-lab">
+      <div class="lab-header">
+        <div><h3>Allocation laboratory</h3><p>Change the allocation and the two toy returns. All values are deterministic teaching inputs.</p></div>
+        <button class="button" type="button" data-reset>Reset</button>
+      </div>
+      <form>
+        <div class="control-grid">
+          <div>
+            <label for="starting-wealth">Starting wealth</label>
+            <input id="starting-wealth" type="number" min="1" max="1000000" step="1" value="100">
+          </div>
+          <div>
+            <label for="market-weight">Market allocation: <output id="market-weight-output" for="market-weight">60%</output></label>
+            <input id="market-weight" type="range" min="0" max="100" value="60" data-output="market-weight-output" data-suffix="%">
+          </div>
+          <div>
+            <label for="market-return">Market return: <output id="market-return-output" for="market-return">10%</output></label>
+            <input id="market-return" type="range" min="-20" max="20" value="10" data-output="market-return-output" data-suffix="%">
+          </div>
+          <div>
+            <label for="cash-return">Cash return: <output id="cash-return-output" for="cash-return">2%</output></label>
+            <input id="cash-return" type="range" min="-2" max="10" value="2" data-output="cash-return-output" data-suffix="%">
+          </div>
+        </div>
+      </form>
+      <div class="lab-output" aria-live="polite">
+        <span class="label">Ending wealth</span>
+        <strong class="big-number" id="ending-wealth">$106.80</strong>
+        <span id="allocation-explanation">The market contributes $6.00 and cash contributes $0.80.</span>
+      </div>
+      <figure class="teaching-figure" id="allocation-wealth-figure" data-visual-type="interactive" aria-labelledby="allocation-wealth-title">
+        <span class="teaching-label">Teaching example</span><h3 id="allocation-wealth-title">Starting wealth becomes one stacked ending-wealth bar</h3>
+        <div class="visual-stage compact"><svg id="allocation-wealth-bars" viewBox="0 0 440 300" role="img" aria-label="Before wealth 100 dollars; after wealth 106 dollars and 80 cents, made of a 66 dollar market sleeve and a 40 dollar and 80 cent cash sleeve"><line class="diagram-link" x1="32" y1="240" x2="408" y2="240"/><rect id="allocation-before-bar" class="diagram-unavailable" x="65" y="90" width="110" height="150"/><rect id="allocation-after-cash" class="diagram-cash" x="265" y="179" width="110" height="61"/><rect id="allocation-after-market" class="diagram-low" x="265" y="80" width="110" height="99"/><text id="allocation-before-value" x="120" y="78" font-size="19" font-weight="700" text-anchor="middle">$100.00</text><text id="allocation-after-value" x="320" y="68" font-size="19" font-weight="700" text-anchor="middle">$106.80</text><text x="120" y="270" font-size="18" text-anchor="middle">Before</text><text x="320" y="270" font-size="18" text-anchor="middle">After</text></svg></div>
+        <div class="visual-legend"><span><i class="legend-swatch" style="color:#75b8ff"></i>Market sleeve: <strong id="allocation-market-sleeve">$66.00</strong></span><span><i class="legend-swatch" style="color:#63d59a"></i>Cash sleeve: <strong id="allocation-cash-sleeve">$40.80</strong></span></div>
+        <figcaption class="visual-caption">Move any control. The gray bar is starting wealth; the stacked blue and green bar is ending market wealth plus ending cash wealth. Bar height uses a common scale on each render.</figcaption>
+        <div class="what-to-notice"><strong>What to notice:</strong> allocation weights apply before each sleeve earns its own return. Ending wealth is the sum of sleeve values, not an unweighted average of returns.</div>
+      </figure>
+      <div class="control-grid" aria-label="Allocation split">
+        <div><span class="label">Market share</span><progress id="market-progress" max="100" value="60">60%</progress></div>
+        <div><span class="label">Cash share</span><progress id="cash-progress" max="100" value="40">40%</progress></div>
+      </div>
+      <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The complete 60/40 calculation remains in the table above.</p></noscript>
+    </div>
+
+    <h3>A common failure: confusing amount with return</h3>
+    <p>Suppose someone says, “Cash earned 2, so the portfolio ends at $108.” This confuses a 2% return with two dollars applied to the whole portfolio. Only $40 was in cash, so 2% applies to $40 and contributes $0.80. Units protect us from this mistake: dollars multiply percentages to produce dollar gains. A percentage by itself is not a dollar amount.</p>
+  </section>
+
+  <section class="chapter-section" id="strategy">
+    <div class="eyebrow">From a mixed portfolio to the paper</div>
+    <h2>Why does the paper use only 0 or 1?</h2>
+    <p>The Shu, Yu, and Mulvey paper studies a <span class="term">0/1 strategy</span>. The number represents the fraction invested in the risky index. A position of 1 means 100% market and 0% cash. A position of 0 means 0% market and 100% cash. Values such as 0.60 are excluded from the strategy. This restriction is intentional, not a claim that real investors must always act in all-or-nothing fashion.</p>
+    <p>A binary strategy isolates the economic value of regime identification. If the portfolio also optimized many partial weights, several assets, leverage, and diversification, it would become difficult to tell whether performance came from the regime model or from the portfolio optimizer. By switching between only two positions, the experiment asks a cleaner question: did the model identify unfavorable periods well enough that leaving the market helped after delay and transaction costs?</p>
+    <p><span class="term">Exposure</span> describes how much of the portfolio is affected by an asset's return. Position 1 gives full market exposure. Position 0 removes market exposure but does not remove every economic risk: the cash instrument still has a return definition, and inflation can reduce purchasing power. <span class="term">Leverage</span> in the paper's metric table is the average risky weight through time. If a strategy holds the market on three quarters of its measured days and cash on one quarter, its average risky exposure is approximately 75%. This describes behavior; by itself it does not tell us whether the timing was skillful.</p>
+    <p>Leaving the market also creates an <span class="term">opportunity cost</span>. If the model moves to cash before a crash, it may avoid a large loss. If it remains in cash during a rebound, it misses a gain. Avoiding bad days and missing good days are two sides of the same switch. This is why a chart showing only protected crashes would be incomplete evidence. The full path, including quiet periods and rapid recoveries, must be evaluated on dates that were not used to choose the model.</p>
+    <figure class="teaching-figure" id="protection-opportunity-figure" data-visual-type="static" aria-labelledby="protection-opportunity-title">
+      <span class="teaching-label">Teaching example</span><h3 id="protection-opportunity-title">Protection during a loss and opportunity cost during a rebound are one tradeoff</h3>
+      <div class="visual-stage compact"><svg viewBox="0 0 440 300" role="img" aria-labelledby="protection-opportunity-svg-title protection-opportunity-svg-desc"><title id="protection-opportunity-svg-title">Market and cash wealth on separate loss and rebound days</title><desc id="protection-opportunity-svg-desc">On a five percent market loss day, market wealth is 95 dollars while cash is 100 dollars and two cents. On a five percent rebound day, market wealth is 105 dollars while cash remains 100 dollars and two cents.</desc><text x="110" y="28" font-size="20" font-weight="700" text-anchor="middle">Loss day</text><text x="330" y="28" font-size="20" font-weight="700" text-anchor="middle">Rebound day</text><path class="diagram-link" stroke-dasharray="5 4" d="M20 70 H200 M240 70 H420"/><text x="24" y="62" font-size="14">$100 start</text><text x="244" y="62" font-size="14">$100 start</text><rect class="diagram-high" x="45" y="78" width="55" height="152"/><rect class="diagram-cash" x="125" y="70" width="55" height="160"/><rect class="diagram-low" x="265" y="62" width="55" height="168"/><rect class="diagram-cash" x="345" y="70" width="55" height="160"/><text x="72" y="252" font-size="15" text-anchor="middle">market</text><text x="152" y="252" font-size="15" text-anchor="middle">cash</text><text x="292" y="252" font-size="15" text-anchor="middle">market</text><text x="372" y="252" font-size="15" text-anchor="middle">cash</text><text x="72" y="99" font-size="15" text-anchor="middle">$95</text><text x="152" y="92" font-size="15" text-anchor="middle">$100.02</text><text x="292" y="84" font-size="15" text-anchor="middle">$105</text><text x="372" y="92" font-size="15" text-anchor="middle">$100.02</text><text x="110" y="282" font-size="15" text-anchor="middle">cash protects $5.02</text><text x="330" y="282" font-size="15" text-anchor="middle">cash misses $4.98</text></svg></div>
+      <figcaption class="visual-caption">These are two separate one-day scenarios using the chapter's existing +5%, -5%, and +0.02% toy returns. They are arithmetic examples, not a sequential strategy path or empirical result.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> reporting only the left panel would hide the cost of defensive timing. A complete backtest must include both kinds of interval.</div>
+    </figure>
+    <div class="timeline">
+      <div><strong>State 0</strong><span>Favorable regime</span><span>Signal requests market</span></div>
+      <div><strong>Position 1</strong><span>100% risky index</span><span>Earn market return</span></div>
+      <div><strong>State 1</strong><span>Unfavorable regime</span><span>Signal requests cash</span></div>
+      <div><strong>Position 0</strong><span>100% cash side</span><span>Earn cash return</span></div>
+    </div>
+    <p>State labels are conventions. In this project, state 0 is favorable and state 1 is unfavorable, while the portfolio position uses 1 for market and 0 for cash. Those numbers point in opposite directions. A state value of 1 therefore leads to a position value of 0. This is a frequent source of bugs, so every later chapter will name both the state and economic position instead of relying on a bare number.</p>
+    <p>There are four distinct objects in the full chain. First, market observations exist. Second, the model converts past observations into an inferred state. Third, the strategy translates that state into a requested signal. Fourth, execution delay converts the old signal into today's held position. Only the held position earns today's return. Treating those four objects as if they were one column can accidentally give a model money before its signal was available. Chapter 7 will draw the complete daily timeline and show why the distinction changes a backtest.</p>
+  </section>
+
+  <section class="chapter-section" id="mathematics">
+    <div class="eyebrow">Layered mathematics</div>
+    <h2>Write the allocation in one equation</h2>
+    <p>Let the starting wealth be multiplied by one plus the portfolio return. The portfolio return is the market return weighted by the market fraction, plus the cash return weighted by the remaining fraction.</p>
+    <div class="formula" aria-label="One-period portfolio wealth equation">
+      <math display="block">
+        <msub><mi>W</mi><mn>1</mn></msub>
+        <mo>=</mo>
+        <msub><mi>W</mi><mn>0</mn></msub>
+        <mo>[</mo>
+        <mi>w</mi><mo>(</mo><mn>1</mn><mo>+</mo><msub><mi>r</mi><mi>m</mi></msub><mo>)</mo>
+        <mo>+</mo>
+        <mo>(</mo><mn>1</mn><mo>−</mo><mi>w</mi><mo>)</mo>
+        <mo>(</mo><mn>1</mn><mo>+</mo><msub><mi>r</mi><mi>f</mi></msub><mo>)</mo>
+        <mo>]</mo>
+      </math>
+    </div>
+    <div class="table-wrap">
+      <table class="symbol-table">
+        <thead><tr><th>Symbol</th><th>Meaning</th><th>Unit in the example</th></tr></thead>
+        <tbody>
+          <tr><td><math><msub><mi>W</mi><mn>0</mn></msub></math></td><td>Wealth before the period</td><td>Dollars</td></tr>
+          <tr><td><math><msub><mi>W</mi><mn>1</mn></msub></math></td><td>Wealth after the period</td><td>Dollars</td></tr>
+          <tr><td><math><mi>w</mi></math></td><td>Fraction allocated to the market, between 0 and 1</td><td>No unit</td></tr>
+          <tr><td><math><msub><mi>r</mi><mi>m</mi></msub></math></td><td>Market return over the period</td><td>Decimal return</td></tr>
+          <tr><td><math><msub><mi>r</mi><mi>f</mi></msub></math></td><td>Cash or risk-free return over the period</td><td>Decimal return</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <details class="deep-explanation">
+      <summary>Derive the $106.80 result step by step</summary>
+      <p>Use <math><msub><mi>W</mi><mn>0</mn></msub><mo>=</mo><mn>100</mn></math>, <math><mi>w</mi><mo>=</mo><mn>0.60</mn></math>, <math><msub><mi>r</mi><mi>m</mi></msub><mo>=</mo><mn>0.10</mn></math>, and <math><msub><mi>r</mi><mi>f</mi></msub><mo>=</mo><mn>0.02</mn></math>. The market growth factor is 1.10 and the cash growth factor is 1.02. The weighted growth factor is <math><mn>0.60</mn><mo>×</mo><mn>1.10</mn><mo>+</mo><mn>0.40</mn><mo>×</mo><mn>1.02</mn><mo>=</mo><mn>1.068</mn></math>. Multiply $100 by 1.068 to obtain $106.80.</p>
+    </details>
+    <p>For the paper's binary strategy, <math><mi>w</mi></math> can only be 0 or 1. If <math><mi>w</mi><mo>=</mo><mn>1</mn></math>, the cash term disappears and ending wealth follows the market. If <math><mi>w</mi><mo>=</mo><mn>0</mn></math>, the market term disappears and ending wealth follows cash. Later, transaction cost will be subtracted whenever the position changes.</p>
+  </section>
+
+  <section class="chapter-section" id="paper-connection">
+    <div class="eyebrow">Paper connection</div>
+    <h2>What the paper is testing</h2>
+    <p>Section 3.1 of <a href="../../2402.05272v3.pdf">Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3</a> defines the regime-switching investment strategy. It allocates 100% to the risky equity index when the inferred regime is favorable and 100% to the local risk-free asset when the regime is unfavorable. The authors deliberately use this simple rule to evaluate the financial value of the regime-identification signal.</p>
+    <p>The paper compares three routes. Buy-and-hold always keeps position 1. The HMM route converts an HMM state into position 0 or 1. The Jump Model route converts a JM state into position 0 or 1. The paper reports that the JM-guided route improves downside-risk and risk-adjusted metrics across its three markets. That is a claim about the complete protocol, data, timing, costs, and selected models together—not a theorem that every Jump Model must beat buy-and-hold.</p>
+    <div class="evidence"><strong>Paper statement</strong>The 0/1 strategy is a test vehicle for regime identification. It is not presented as a complete personal investment plan, and this course does not provide investment advice.</div>
+  </section>
+
+  <section class="chapter-section" id="project-connection">
+    <div class="eyebrow">Project connection</div>
+    <h2>Where this idea lives in the code</h2>
+    <p>The frozen configuration records <code>signal_risky_value = 1</code> and <code>signal_cash_value = 0</code> under <code>[backtest]</code> in <a href="../../research.toml">research.toml</a>. The accounting implementation is <a href="../../src/adaptive_jump/backtest.py"><code>apply_signal()</code> in <code>src/adaptive_jump/backtest.py</code></a>. Its central calculation is deliberately direct:</p>
+    <pre><code>gross_return = (
+    position * equity_simple
+    + (1.0 - position) * cash_return
+)</code></pre>
+    <p>This is the return form of the wealth equation above. The function also validates that positions are binary, applies the execution delay, calculates one-way turnover, subtracts transaction cost, and writes a trade path. A completed run stores those daily columns in each market's sealed <code>trades/*.csv</code> files. The independent verifier recalculates the same accounting instead of trusting the stored metric table.</p>
+    <p>The short excerpt is not a second implementation. It points to the exact active function. Chapters 7 and 12 will explain why timing and costs must be applied before any strategy comparison.</p>
+  </section>
+
+  <section class="chapter-section" id="evidence-limitations">
+    <div class="eyebrow">Evidence and limits</div>
+    <h2>What have we learned—and not learned?</h2>
+    <div class="concept-grid">
+      <div class="panel"><h3>Established by definition</h3><p>A position of 1 earns the market return. A position of 0 earns the cash return. A mixed position earns a weighted combination before costs.</p></div>
+      <div class="panel"><h3>Not established</h3><p>We have not shown that a model can identify regimes, that switching improves performance, or that the project's proxy data match the paper.</p></div>
+    </div>
+    <div class="limitation"><strong>Scientific boundary</strong>The allocation lab uses invented returns to teach arithmetic. Moving its sliders is not a backtest, an estimate, a forecast, or evidence for the paper's claim.</div>
+    <p>A strategy can reduce loss simply by spending less time in the market, but it may also miss gains. A fair evaluation must compare return and risk together, include the cash return, charge trading costs, enforce realistic delay, and measure every competitor on common dates. Those requirements explain why the rest of the course exists.</p>
+    <p>The binary design is also not a recommendation about personal suitability. A real investor may have taxes, liabilities, a required spending schedule, multiple currencies, restrictions on turnover, or an inability to move an entire portfolio at one closing price. The paper intentionally sets those questions aside to study regime identification. A scientifically useful simplification narrows the question; it does not claim that omitted details are unimportant in every application.</p>
+  </section>
+
+  <section class="chapter-section" id="practice">
+    <div class="eyebrow">Retrieval practice</div>
+    <h2>Check that you can use the idea</h2>
+    <div class="quiz">
+      <h3>Recall</h3>
+      <p>In this project, what does portfolio position 0 mean?</p>
+      <div class="quiz-options">
+        <button class="button" type="button" data-choice data-correct="false" data-feedback-incorrect="State 0 is favorable, but portfolio position 0 means cash. Keep state and position conventions separate.">A favorable state invested in the market</button>
+        <button class="button" type="button" data-choice data-correct="true" data-feedback-correct="Correct. Position 0 means 0% in the risky index and 100% in cash.">Zero market exposure and full cash exposure</button>
+        <button class="button" type="button" data-choice data-correct="false">The portfolio has no money</button>
+      </div>
+      <output class="quiz-feedback">Choose an answer, then check the explanation.</output>
+      <button class="button" type="button" data-reset>Reset</button>
+    </div>
+    <details><summary>Calculation: $80 market, $20 cash</summary><p><strong>Question:</strong> Market gains 5% and cash gains 1%. What is ending wealth? <strong>Answer:</strong> The market becomes $84 and cash becomes $20.20, so total wealth is $104.20. The portfolio return is 4.2%.</p></details>
+    <details><summary>Error diagnosis: “risk-free means no risk exists”</summary><p>The phrase is a modeling approximation. Short-term government bills may have low default and price risk over the chosen horizon, but inflation, reinvestment, liquidity, currency, measurement, and sovereign risks do not vanish. State the instrument and convention instead of treating “risk-free” as literal perfection.</p></details>
+    <details><summary>Advisor explanation</summary><p>Try first: “The paper uses a deliberately simple switch. In a favorable inferred state, the strategy holds the local equity index; in an unfavorable state, it holds a local short-term cash proxy. This isolates whether regime identification adds economic value before introducing a complicated portfolio optimizer.”</p></details>
+  </section>
+
+  <section class="chapter-section" id="advisor">
+    <div class="eyebrow">How to explain this to your advisor</div>
+    <div class="advisor">
+      <p><strong>Short version:</strong> “Every model output eventually becomes one binary economic decision: market or cash. The simplicity is intentional because it lets us test regime identification without hiding the result inside a complex allocation model.”</p>
+      <p><strong>Important qualification:</strong> “A good state label is not enough. The signal must remain useful after causal timing, cash returns, trading delay, costs, and out-of-sample selection.”</p>
+    </div>
+  </section>
+
+  <footer class="chapter-footer">
+    <p><strong>Next:</strong> Chapter 2 separates price changes, dividends, simple returns, log returns, and excess returns. That distinction is essential because two files with the same index name can describe different investments.</p>
+    <p><a href="index.html">Return to the course map</a> · <a href="02-prices-dividends-returns.html">Continue to Chapter 2</a></p>
+  </footer>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const lab = document.getElementById("allocation-lab");
+  const inputs = {
+    wealth: document.getElementById("starting-wealth"),
+    weight: document.getElementById("market-weight"),
+    market: document.getElementById("market-return"),
+    cash: document.getElementById("cash-return"),
+  };
+  function render() {
+    const wealth = Math.max(0, Number(inputs.wealth.value) || 0);
+    const weight = Number(inputs.weight.value) / 100;
+    const marketReturn = Number(inputs.market.value) / 100;
+    const cashReturn = Number(inputs.cash.value) / 100;
+    const marketGain = wealth * weight * marketReturn;
+    const cashGain = wealth * (1 - weight) * cashReturn;
+    const marketEnd = wealth * weight + marketGain;
+    const cashEnd = wealth * (1 - weight) + cashGain;
+    const ending = marketEnd + cashEnd;
+    document.getElementById("ending-wealth").textContent = Course.money(ending);
+    document.getElementById("allocation-explanation").textContent =
+      `The market contributes ${Course.money(marketGain)} and cash contributes ${Course.money(cashGain)}.`;
+    document.getElementById("market-progress").value = weight * 100;
+    document.getElementById("cash-progress").value = (1 - weight) * 100;
+    const scale = 160 / Math.max(wealth, ending, 1);
+    const beforeHeight = wealth * scale;
+    const marketHeight = marketEnd * scale;
+    const cashHeight = cashEnd * scale;
+    const beforeBar = document.getElementById("allocation-before-bar");
+    const marketBar = document.getElementById("allocation-after-market");
+    const cashBar = document.getElementById("allocation-after-cash");
+    beforeBar.setAttribute("y", String(240 - beforeHeight));
+    beforeBar.setAttribute("height", String(beforeHeight));
+    cashBar.setAttribute("y", String(240 - cashHeight));
+    cashBar.setAttribute("height", String(cashHeight));
+    marketBar.setAttribute("y", String(240 - cashHeight - marketHeight));
+    marketBar.setAttribute("height", String(marketHeight));
+    const beforeLabelY = Math.max(25, 230 - beforeHeight);
+    const afterLabelY = Math.max(25, 230 - marketHeight - cashHeight);
+    document.getElementById("allocation-before-value").setAttribute("y", String(beforeLabelY));
+    document.getElementById("allocation-after-value").setAttribute("y", String(afterLabelY));
+    document.getElementById("allocation-before-value").textContent = Course.money(wealth);
+    document.getElementById("allocation-after-value").textContent = Course.money(ending);
+    document.getElementById("allocation-market-sleeve").textContent = Course.money(marketEnd);
+    document.getElementById("allocation-cash-sleeve").textContent = Course.money(cashEnd);
+    document.getElementById("allocation-wealth-bars").setAttribute(
+      "aria-label",
+      `Before wealth ${Course.money(wealth)}; after wealth ${Course.money(ending)}, made of market sleeve ${Course.money(marketEnd)} and cash sleeve ${Course.money(cashEnd)}`,
+    );
+  }
+  Object.values(inputs).forEach((input) => input.addEventListener("input", render));
+  lab.addEventListener("course:reset", render);
+  render();
+});
+</script>
+</body>
+</html>

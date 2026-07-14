@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Adaptive Jump Research Monitor</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2314b87a'/%3E%3Cpath d='M6 22h5l3-12 4 15 3-9h5' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span><div><strong>Adaptive Jump</strong><span>Research monitor</span></div></div>
+    <div class="session"><span id="connection" class="status-dot">Connecting</span><span id="identity">Authenticated session pending</span></div>
+  </header>
+  <nav class="view-tabs" aria-label="Monitor views">
+    <button class="active" data-view="live" aria-current="page">Live</button>
+    <button data-view="queue">Queue</button>
+    <button data-view="replay">Replay</button>
+    <button data-view="compare">Compare</button>
+    <button data-view="evidence">Evidence</button>
+  </nav>
+  <div id="error-banner" class="error-banner" role="alert" hidden></div>
+  <main id="main">
+    <section id="view-live" class="view active" aria-labelledby="live-title">
+      <div class="view-heading"><div><p class="eyebrow">Current execution</p><h1 id="live-title">Live study</h1></div><span id="live-status" class="status-pill idle">Idle</span></div>
+      <dl class="summary-strip">
+        <div><dt>Study</dt><dd id="summary-study">No active job</dd></div><div><dt>Stage</dt><dd id="summary-stage">Waiting</dd></div><div><dt>Progress</dt><dd id="summary-progress">0 / 0</dd></div><div><dt>Elapsed</dt><dd id="summary-elapsed">00:00:00</dd></div><div><dt>Memory</dt><dd id="summary-memory">0 MB</dd></div>
+      </dl>
+      <div class="workspace-grid">
+        <div class="workspace-main">
+          <section class="panel" aria-labelledby="stage-title"><div class="panel-heading"><h2 id="stage-title">Stage progress</h2><span id="eta">ETA unavailable</span></div><ol id="stage-track" class="stage-track"><li data-stage="data" class="pending">Data</li><li data-stage="hmm" class="pending">HMM</li><li data-stage="fixed_jm" class="pending">Fixed JM</li><li data-stage="selection" class="pending">Selection</li><li data-stage="verification" class="pending">Verification</li></ol></section>
+          <section class="panel" aria-labelledby="feature-title"><div class="panel-heading"><h2 id="feature-title">Causal features</h2><span id="feature-date">No model date</span></div><div class="feature-grid"><div><span>DD-10</span><strong id="feature-dd">--</strong></div><div><span>Sortino-20</span><strong id="feature-s20">--</strong></div><div><span>Sortino-60</span><strong id="feature-s60">--</strong></div><div><span>Excess return</span><strong id="feature-return">--</strong></div></div></section>
+          <section class="panel" aria-labelledby="state-title"><div class="panel-heading"><h2 id="state-title">Model decisions</h2><span id="selected-candidate">Candidate unavailable</span></div><div class="table-wrap"><table><thead><tr><th>Model</th><th>Candidate</th><th>State</th><th>Signal</th><th>Scheduled return</th></tr></thead><tbody id="state-body"><tr><td colspan="5">No decision events</td></tr></tbody></table></div></section>
+          <section class="panel" aria-labelledby="selection-title"><div class="panel-heading"><h2 id="selection-title">Selection diagnostics</h2><span id="selection-context">No selection event</span></div><div class="diagnostic-grid"><div><h3>Current CV surface</h3><div class="table-wrap"><table><thead><tr><th>Candidate</th><th>Validation Sharpe</th><th>Valid returns</th><th>Eligible</th><th>Selected</th></tr></thead><tbody id="cv-body"><tr><td colspan="5">No validation surface</td></tr></tbody></table></div></div><div><h3>Boundary gates</h3><div class="table-wrap"><table><thead><tr><th>Market / model</th><th>Delay</th><th>Selected</th><th>Gate</th></tr></thead><tbody id="live-boundary-body"><tr><td colspan="4">No boundary events</td></tr></tbody></table></div></div></div></section>
+          <section class="panel chart-panel" aria-labelledby="resource-title"><div class="panel-heading"><h2 id="resource-title">Resource history</h2><span id="resource-latest">No samples</span></div><div id="resource-chart" class="chart" role="img" aria-label="Worker CPU and memory history"></div><div id="resource-fallback" class="fallback">CPU and memory samples will appear here.</div></section>
+        </div>
+        <aside class="event-rail panel" aria-labelledby="event-title"><div class="panel-heading"><h2 id="event-title">Event journal</h2><span id="event-count">0 events</span></div><ol id="event-list" class="event-list"><li>Waiting for the first runtime event.</li></ol></aside>
+      </div>
+    </section>
+
+    <section id="view-queue" class="view" aria-labelledby="queue-title" hidden>
+      <div class="view-heading"><div><p class="eyebrow">Persistent control state</p><h1 id="queue-title">Research queue</h1></div><span id="queue-count" class="status-pill idle">0 queued</span></div>
+      <form id="enqueue-form" class="command-bar"><label for="study-select">Frozen study</label><select id="study-select" disabled><option>No FROZEN studies available</option></select><button type="submit" disabled>Enqueue</button></form>
+      <section class="panel"><div class="panel-heading"><h2>Queued and completed jobs</h2><span>One heavy worker</span></div><ol id="queue-list" class="queue-list"><li class="empty">No jobs recorded</li></ol></section>
+    </section>
+
+    <section id="view-replay" class="view" aria-labelledby="replay-title" hidden>
+      <div class="view-heading"><div><p class="eyebrow">Append-only runtime history</p><h1 id="replay-title">Event replay</h1></div><select id="replay-job" aria-label="Replay job"><option>No jobs</option></select></div>
+      <div class="replay-controls" role="group" aria-label="Replay controls"><button data-replay="previous" title="Previous event" aria-label="Previous event">&#9664;</button><button data-replay="play" title="Play replay" aria-label="Play replay">&#9654;</button><button data-replay="pause" title="Pause replay" aria-label="Pause replay">&#10074;&#10074;</button><button data-replay="next" title="Next event" aria-label="Next event">&#9654;&#10074;</button><button data-replay="reset" title="Reset replay" aria-label="Reset replay">&#8634;</button><input id="replay-range" type="range" min="0" max="0" value="0" aria-label="Replay position"><output id="replay-position">0 / 0</output></div>
+      <section class="panel replay-frame"><div class="panel-heading"><h2 id="replay-kind">No event selected</h2><span id="replay-time">--</span></div><pre id="replay-payload">{}</pre></section>
+    </section>
+
+    <section id="view-compare" class="view" aria-labelledby="compare-title" hidden>
+      <div class="view-heading"><div><p class="eyebrow">Verified sealed artifacts</p><h1 id="compare-title">Study comparison</h1></div><span id="compare-status" class="status-pill pending">Verification pending</span></div>
+      <div class="workspace-grid"><section class="panel chart-panel"><div class="panel-heading"><h2>Sharpe by market</h2><span>Primary delay</span></div><div id="comparison-chart" class="chart" role="img" aria-label="Verified Sharpe comparison by market"></div><div id="comparison-fallback" class="fallback">Verified outcome data has not opened.</div></section><section class="panel"><div class="panel-heading"><h2>Protocol outcomes</h2><span>Separate evidence gates</span></div><div class="table-wrap"><table><thead><tr><th>Study</th><th>Status</th><th>Metrics</th><th>Claim</th></tr></thead><tbody id="comparison-body"><tr><td colspan="4">Verification pending</td></tr></tbody></table></div></section></div>
+    </section>
+
+    <section id="view-evidence" class="view" aria-labelledby="evidence-title" hidden>
+      <div class="view-heading"><div><p class="eyebrow">Verifier-gated access</p><h1 id="evidence-title">Evidence register</h1></div><span id="evidence-count" class="status-pill idle">0 runs</span></div>
+      <div id="evidence-runs" class="run-selector" role="list"></div>
+      <dl class="summary-strip receipt-strip"><div><dt>Status</dt><dd id="receipt-status">Not verified</dd></div><div><dt>Inventory</dt><dd id="receipt-files">--</dd></div><div><dt>Boundaries</dt><dd id="receipt-boundaries">--</dd></div><div><dt>Metrics</dt><dd id="receipt-metrics">Locked</dd></div><div><dt>Max difference</dt><dd id="receipt-difference">--</dd></div></dl>
+      <section class="panel"><div class="panel-heading"><h2 id="evidence-run-title">Select a sealed run</h2><span id="evidence-lock">Outcome state unknown</span></div><div class="table-wrap"><table><thead><tr><th>Market</th><th>Model</th><th>Delay</th><th>Upper candidate</th><th>Selected</th><th>Gate</th></tr></thead><tbody id="boundary-body"><tr><td colspan="6">No verified boundary rows</td></tr></tbody></table></div></section>
+    </section>
+  </main>
+  <noscript><p class="noscript">JavaScript is required for authenticated live data. The static monitor structure remains available.</p></noscript>
+  <script src="/assets/vendor/echarts/echarts.min.js" defer></script>
+  <script src="/assets/charts.js" defer></script>
+  <script src="/assets/diagnostics.js" defer></script>
+  <script src="/assets/evidence.js" defer></script>
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>

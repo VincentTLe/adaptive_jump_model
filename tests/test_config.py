@@ -13,9 +13,9 @@ def test_load_frozen_proxy_contract() -> None:
 
     assert (
         config.sha256
-        == "553ff3fc0969eb9515fba546f135ad207c0578f0b2d2f812affc41c872101337"
+        == "8adb330565d64f8ed6edd986f0422dbba72585eda4efd34b0c1b41b95450d81b"
     )
-    assert config.config_id == "shu-proxy-replication-v5"
+    assert config.config_id == "shu-proxy-replication-v7"
     assert config.replication_cutoff.isoformat() == "2023-12-31"
     assert [market.id for market in config.markets] == ["us", "de", "jp"]
     assert [market.equity.source_id for market in config.markets] == [
@@ -35,6 +35,7 @@ def test_load_frozen_proxy_contract() -> None:
     assert config.selection_protocol.validation_years == 8
     assert config.jm_protocol.lambda_grid[-1] == 1200
     assert config.hmm_protocol.seeds == tuple(range(10))
+    assert config.hmm_protocol.smoothing_grid[-1] == 2560
     assert config.metrics_protocol.expected_shortfall_quantile == 0.05
 
 
@@ -98,6 +99,12 @@ def test_load_frozen_proxy_contract() -> None:
             "HMM seeds must be 0 through 9",
         ),
         (
+            "smoothing_grid = [0, 2, 4, 6, 8, 10, 20, 40, 80, 160, 320, "
+            "640, 1280, 2560]",
+            "smoothing_grid = [0, 2, 4, 6, 8, 10, 20]",
+            "invalid HMM smoothing grid",
+        ),
+        (
             'convergence_rule = "abs_final_delta_lt_tol"',
             'convergence_rule = "monitor_property_only"',
             "convergence_rule violates the frozen protocol",
@@ -111,6 +118,12 @@ def test_load_frozen_proxy_contract() -> None:
             "volatility_ddof = 1",
             "volatility_ddof = 0",
             "metrics must use 252 periods and sample volatility",
+        ),
+        (
+            'comparison_sample = "per_market_delay_intersection_'
+            'of_complete_metric_rows"',
+            'comparison_sample = "model_specific_available_rows"',
+            "invalid metric definition",
         ),
     ],
 )

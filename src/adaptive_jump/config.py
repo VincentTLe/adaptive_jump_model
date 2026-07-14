@@ -202,9 +202,7 @@ def load_config(path: str | Path) -> ResearchConfig:
     )
 
     config_id = document.get("config_id")
-    _require(
-        isinstance(config_id, str) and config_id, "config_id must be a non-empty string"
-    )
+    _require(isinstance(config_id, str) and config_id, "config_id must be non-empty")
     return ResearchConfig(
         path=config_path,
         sha256=hashlib.sha256(payload).hexdigest(),
@@ -380,7 +378,8 @@ def _jm_protocol(row: dict[str, Any]) -> JMProtocol:
 def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
     grid = row.get("smoothing_grid")
     seeds = row.get("seeds")
-    _require(grid == [0, 2, 4, 6, 8, 10, 20], "invalid HMM smoothing grid")
+    expected_grid = [0, 2, 4, 6, 8, 10, 20, 40, 80, 160, 320, 640, 1280, 2560]
+    _require(grid == expected_grid, "invalid HMM smoothing grid")
     _require(seeds == list(range(10)), "HMM seeds must be 0 through 9")
     _require(_integer(row, "n_init") == len(seeds), "HMM n_init must match seeds")
     _fixed(row, "implementation", "hmmlearn.GaussianHMM")
@@ -425,6 +424,7 @@ def _selection_protocol(row: dict[str, Any]) -> SelectionProtocol:
 
 def _metrics_protocol(row: dict[str, Any]) -> MetricsProtocol:
     expected = {
+        "comparison_sample": "per_market_delay_intersection_of_complete_metric_rows",
         "sharpe_numerator": "mean_strategy_minus_cash",
         "sharpe_denominator": "strategy_return_volatility",
         "cagr": "compound_252_over_n",

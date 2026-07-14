@@ -1,0 +1,112 @@
+SUBJECT
+
+Replication request: data identifiers and implementation details for arXiv:2402.05272
+
+
+RECIPIENTS
+
+Yizhan Shu <yizhans@princeton.edu>
+Chenyu Yu <chenyu@princeton.edu>
+John M. Mulvey <mulvey@princeton.edu>
+
+
+EMAIL
+
+Dear Dr. Shu, Dr. Yu, and Professor Mulvey,
+
+I am working on an independent replication of your paper, "Downside Risk
+Reduction Using Regime-Switching Signals: A Statistical Jump Model Approach."
+My immediate goal is to reproduce the fixed Jump Model and HMM results before
+testing any model extension.
+
+I implemented the published daily protocol for the S&P 500, DAX, and Nikkei:
+trailing 3,000-day windows, semiannual Jump Model refits, daily HMM refits with
+10 deterministic initializations, monthly hyperparameter selection using an
+eight-year online validation period, a two-day execution delay, and 10 basis
+points per one-way trade.
+
+I do not have access to the Bloomberg total-return series or the Global
+Financial Data three-month Treasury-bill series used in the paper. I therefore
+ran a clearly labeled proxy replication using free public data. The run passes
+all internal protocol and artifact checks, but it does not reproduce the
+paper's directional ordering across all three markets. I am treating this as a
+proxy non-replication, not as evidence against the paper, because important
+data definitions and several implementation details remain uncertain.
+
+Could you please share any of the following information that is available?
+
+1. The exact Bloomberg tickers and fields for the three equity total-return
+   series, including whether each series is gross or net of withholding tax.
+2. The exact Global Financial Data identifiers for the local three-month
+   Treasury-bill series.
+3. The convention used to convert quoted bill yields into daily cash returns,
+   including day count, compounding, lag, and missing-value treatment.
+4. The complete Jump Model lambda grid and HMM median-filter grid used for the
+   reported tables.
+5. Tie-breaking, initialization, convergence, state-labeling, and missing-data
+   conventions not fully specified in the paper.
+6. If possible, code, processed return series, or checksums that would let an
+   independent researcher verify data parity.
+
+I would be glad to share my frozen configuration, source audit, and verified
+proxy report. I will report positive, negative, or null replication outcomes
+and will distinguish exact replication from proxy evidence.
+
+Thank you for your time and for making the research available.
+
+Best regards,
+
+[Your name]
+[Institution or program, if applicable]
+[Contact information]
+
+
+ATTACHMENT / FOLLOW-UP CHECKLIST
+
+Data identity
+- S&P 500 Bloomberg ticker and field:
+- DAX Bloomberg ticker and field:
+- Nikkei Bloomberg ticker and field:
+- Price index or total-return index:
+- Gross or net total return:
+- Local currency convention:
+- Market-calendar and timezone convention:
+- First and last observation used:
+
+Risk-free series
+- United States GFD identifier:
+- Germany GFD identifier:
+- Japan GFD identifier:
+- Yield quotation type:
+- Day-count convention:
+- Daily-return conversion formula:
+- Information-availability lag:
+- Weekend/holiday treatment:
+- Missing-value treatment:
+
+Model and validation protocol
+- Jump Model lambda grid:
+- HMM median-filter grid:
+- Numerical tie-breaking rule:
+- Jump Model initialization and random seed:
+- HMM initialization and random seeds:
+- HMM convergence acceptance rule:
+- Regime label ordering rule:
+- Hyperparameter review dates:
+- Validation Sharpe definition:
+
+Backtest details
+- Signal-to-return timing convention:
+- Meaning of the stated two-day delay:
+- Transaction-cost application:
+- Cash-return timing convention:
+- Annualization factor:
+- Maximum-drawdown convention:
+
+Parity material, if shareable
+- Source code or pseudocode:
+- Processed input files:
+- File checksums:
+- Expected intermediate row counts:
+- Expected selected-parameter history:
+- Expected regime-state history:

@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A beginner guide to volatility, downside deviation, drawdown, expected shortfall, Sharpe, Sortino, and Calmar metrics.">
+  <title>Chapter 3: Risk And Downside Losses</title>
+  <link rel="stylesheet" href="course.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/mml-chtml.js" integrity="sha384-GYAeDZjH9w23NyL4cfS+ZrgWmGvta6VNs4p+/vtuF+RWe30fQhmP8pHbzRmlwmAK" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+  <script defer src="course.js"></script>
+</head>
+<body>
+<main class="course-shell">
+  <nav class="course-nav" aria-label="Course navigation">
+    <a href="02-prices-dividends-returns.html">Previous: prices and returns</a>
+    <span>Part I · Chapter 3 of 14</span>
+    <a href="04-market-regimes-persistence.html">Next: market regimes</a>
+  </nav>
+
+  <header class="chapter-header">
+    <div class="part-label">Part I · Money, Returns, And Risk</div>
+    <h1>Risk And Downside Losses</h1>
+    <p class="lead">Can two investments reach the same destination while giving their owners completely different experiences?</p>
+    <div class="chapter-meta"><span>Beginner level</span><span>Builds on compounding</span><span>Interactive drawdown laboratory</span></div>
+  </header>
+
+  <section class="chapter-section" id="question">
+    <div class="eyebrow">The opening question</div>
+    <h2>Both paths end at $103. Are they equally risky?</h2>
+    <p>Investor A starts with $100 and sees wealth move gently through $101 and $102 before reaching $103. Investor B also starts with $100 and finishes at $103, but first rises to $120, crashes to $80, and then recovers. Their final gains are equal. Their paths are not.</p>
+    <figure class="teaching-figure" id="same-endpoint-paths-figure" data-visual-type="static" aria-labelledby="same-endpoint-paths-title">
+      <span class="teaching-label">Teaching example</span><h3 id="same-endpoint-paths-title">One endpoint hides two very different journeys</h3>
+      <div class="visual-stage compact"><svg viewBox="0 0 440 280" role="img" aria-labelledby="same-endpoint-paths-svg-title same-endpoint-paths-svg-desc"><title id="same-endpoint-paths-svg-title">Steady and turbulent wealth paths with the same endpoint</title><desc id="same-endpoint-paths-svg-desc">A steady path moves from 100 through 101 and 102 to 103 dollars. A turbulent path moves from 100 to 120, down to 80, and back to the same 103 dollar endpoint.</desc><line class="diagram-link" x1="40" y1="42" x2="40" y2="236"/><line class="diagram-link" x1="40" y1="140" x2="420" y2="140" stroke-dasharray="5 5"/><text x="4" y="48" font-size="15">$120</text><text x="4" y="145" font-size="15">$100</text><text x="12" y="237" font-size="15">$80</text><path d="M40 140 L165 135 L290 130 L415 125" fill="none" stroke="#75b8ff" stroke-width="4"/><path d="M40 140 L165 45 L290 235 L415 125" fill="none" stroke="#ff8585" stroke-width="4" stroke-dasharray="8 5"/><g fill="#75b8ff"><circle cx="40" cy="140" r="6"/><circle cx="165" cy="135" r="6"/><circle cx="290" cy="130" r="6"/><circle cx="415" cy="125" r="6"/></g><g fill="#ff8585"><rect x="159" y="39" width="12" height="12"/><rect x="284" y="229" width="12" height="12"/><rect x="409" y="119" width="12" height="12"/></g><text x="40" y="264" font-size="15" text-anchor="middle">Start</text><text x="165" y="264" font-size="15" text-anchor="middle">Step 1</text><text x="290" y="264" font-size="15" text-anchor="middle">Step 2</text><text x="415" y="264" font-size="15" text-anchor="middle">End</text><text x="245" y="22" font-size="15" fill="#75b8ff">steady, solid circles</text><text x="245" y="42" font-size="15" fill="#ff8585">turbulent, dashed squares</text><text x="404" y="111" font-size="15" text-anchor="end">both $103</text></svg></div>
+      <figcaption class="visual-caption">Both lines use the same dollar scale and finish at $103. Shape and line pattern repeat the color meaning: solid circles mark the steady path; dashed squares mark the turbulent path.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> the endpoint records the same 3% gain, but only the red path contains a one-third fall from $120 to $80.</div>
+    </figure>
+    <div class="example-grid">
+      <article class="worked-example">
+        <div class="label">Path A · steady</div>
+        <span class="big-number">$100 → $101 → $102 → $103</span>
+        <p>Small changes, no fall from a previous peak, and a calm experience.</p>
+      </article>
+      <article class="worked-example failure">
+        <div class="label">Path B · turbulent</div>
+        <span class="big-number">$100 → $120 → $80 → $103</span>
+        <p>A one-third loss from the $120 peak occurs before the same final wealth is reached.</p>
+      </article>
+    </div>
+    <p>If we inspect only starting and ending wealth, the paths look equivalent. A person living through Path B may face panic, a margin call, a forced sale, or a spending need while wealth is depressed. Risk metrics summarize aspects of the journey that final return cannot show.</p>
+    <div class="remember"><strong>One idea to remember</strong>Return describes reward; risk describes uncertainty and harmful paths. No single number captures every form of risk, so each metric must be tied to the question it answers.</div>
+  </section>
+
+  <section class="chapter-section" id="vocabulary">
+    <div class="eyebrow">Build the vocabulary</div>
+    <h2>Risk is not only one thing</h2>
+    <p><span class="term">Uncertainty</span> means that more than one future outcome is possible. <span class="term">Risk</span> adds concern about consequences, especially losses or failure to meet an objective. In finance, the word is often used for measurable variability, but an investor may also care about liquidity, inflation, default, currency, legal, operational, and model risk.</p>
+    <p><span class="term">Volatility</span> measures how widely returns vary around their average. Both positive and negative surprises contribute. A large positive day raises measured volatility even though the investor gained money. Volatility is useful because unstable returns make future wealth less predictable, but it does not distinguish welcome upside from painful downside.</p>
+    <p><span class="term">Downside risk</span> focuses on unfavorable outcomes. The paper uses this phrase for the danger of losses during adverse market regimes. It is not the same as a company-level “downside beta” factor. In this course, context will always state whether downside refers to negative returns, drawdowns, expected shortfall, or the paper's broader goal.</p>
+    <p>A <span class="term">peak</span> is the highest wealth reached so far. A <span class="term">drawdown</span> is the percentage decline from that running peak to current wealth. <span class="term">Maximum drawdown</span>, abbreviated MDD, is the worst such decline in the measured path. It remembers order: a loss before a peak and the same loss after a peak can produce different drawdown histories.</p>
+    <p>A <span class="term">tail loss</span> is an unusually bad outcome in the lower part of the return distribution. <span class="term">Expected shortfall</span> averages returns in a specified worst fraction, such as the worst 5%. It asks how bad returns were after entering the tail, not merely where the tail threshold begins.</p>
+    <p>Every risk statement also needs a <span class="term">horizon</span>. Daily volatility, annual wealth drawdown, and a ten-year probability of failing to meet spending needs are different objects. An asset may look stable from day to day yet lose purchasing power slowly, or look volatile daily while remaining suitable for a long-horizon investor. This project measures daily return paths and annualizes selected summaries; it does not convert them into a complete personal risk assessment.</p>
+    <div class="concept-grid three">
+      <div class="panel"><h3>Variability</h3><p>Volatility treats large moves in either direction as dispersion.</p></div>
+      <div class="panel"><h3>Depth</h3><p>Maximum drawdown measures the deepest peak-to-trough loss.</p></div>
+      <div class="panel"><h3>Tail</h3><p>Expected shortfall summarizes the worst return observations.</p></div>
+    </div>
+  </section>
+
+  <section class="chapter-section" id="volatility">
+    <div class="eyebrow">Worked example one</div>
+    <h2>Same average, different volatility</h2>
+    <p>Compare four daily returns. Series A is 0%, 0%, 0%, 0%. Series B is +2%, −2%, +2%, −2%. Both have an arithmetic average of 0%. Series A never moves, while Series B repeatedly moves two percentage points away from the average. Its volatility is positive.</p>
+    <p>The first step is to subtract the average return from each observation. These differences are called <span class="term">deviations</span>. Squaring them prevents positive and negative deviations from cancelling and places more weight on large moves. Average the squared deviations to obtain a variance, then take the square root to return to return units.</p>
+    <div class="formula" aria-label="Sample volatility formula">
+      <math display="block">
+        <mi>s</mi><mo>=</mo>
+        <msqrt>
+          <mfrac>
+            <mrow><munderover><mo>∑</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><msup><mrow><mo>(</mo><msub><mi>r</mi><mi>t</mi></msub><mo>−</mo><mover><mi>r</mi><mo>¯</mo></mover><mo>)</mo></mrow><mn>2</mn></msup></mrow>
+            <mrow><mi>n</mi><mo>−</mo><mn>1</mn></mrow>
+          </mfrac>
+        </msqrt>
+      </math>
+    </div>
+    <div class="table-wrap">
+      <table class="symbol-table">
+        <thead><tr><th>Symbol</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><math><msub><mi>r</mi><mi>t</mi></msub></math></td><td>Return observation at index <math><mi>t</mi></math></td></tr>
+          <tr><td><math><mover><mi>r</mi><mo>¯</mo></mover></math></td><td>Arithmetic average of the measured returns</td></tr>
+          <tr><td><math><mi>n</mi></math></td><td>Number of valid observations</td></tr>
+          <tr><td><math><mi>s</mi></math></td><td>Sample standard deviation of returns</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The frozen project uses sample standard deviation with denominator <math><mi>n</mi><mo>−</mo><mn>1</mn></math>, recorded as <code>volatility_ddof = 1</code>. Daily volatility is multiplied by the square root of 252 to report an annualized value. This scaling is a convention based on approximately 252 trading periods per year and assumptions about aggregation; it does not guarantee that tomorrow behaves independently like yesterday.</p>
+    <p>The square-root-of-time rule is exact only under restrictive behavior such as independent returns with stable variance. Financial returns can cluster: calm days tend to follow calm periods and turbulent days can arrive together. The paper and project still use the conventional annualization because comparable reporting requires a declared rule. Honest use means naming the convention and avoiding the claim that annualization has removed time dependence.</p>
+    <h3>A common failure: “high volatility means bad return”</h3>
+    <p>Volatility measures dispersion, not direction. A sequence of unexpectedly large gains can have high volatility. Conversely, a steady small loss can have low volatility while consistently destroying wealth. This is one reason the paper combines risk and return features rather than labeling regimes from volatility alone in the Jump Model.</p>
+  </section>
+
+  <section class="chapter-section" id="drawdown-lab">
+    <div class="eyebrow">Interactive worked example</div>
+    <h2>Create a crash and recovery</h2>
+    <p>The toy path starts at $100, gains 5%, experiences a shock, then receives a recovery return and a final 5% gain. Move the shock and recovery controls. Maximum drawdown changes when wealth falls below its previous peak; ending return can improve while the historical drawdown remains recorded.</p>
+    <div class="lab" id="risk-lab">
+      <div class="lab-header">
+        <div><h3>Wealth-path laboratory</h3><p>Deterministic toy returns; no market observations are loaded.</p></div>
+        <button class="button" type="button" data-reset>Reset</button>
+      </div>
+      <form>
+        <div class="control-grid">
+          <div>
+            <label for="shock-return">Shock return: <output id="shock-output" for="shock-return">−20%</output></label>
+            <input id="shock-return" type="range" min="-50" max="10" value="-20" data-output="shock-output" data-suffix="%">
+          </div>
+          <div>
+            <label for="recovery-return">Recovery return: <output id="recovery-output" for="recovery-return">15%</output></label>
+            <input id="recovery-return" type="range" min="-10" max="60" value="15" data-output="recovery-output" data-suffix="%">
+          </div>
+        </div>
+      </form>
+      <div class="metric-grid three">
+        <div class="panel"><span class="label">Ending wealth</span><strong class="big-number" id="risk-ending">$101.43</strong></div>
+        <div class="panel"><span class="label">Total return</span><strong class="big-number" id="risk-total">1.43%</strong></div>
+        <div class="panel"><span class="label">Maximum drawdown</span><strong class="big-number" id="risk-mdd">−20.00%</strong></div>
+      </div>
+      <figure class="teaching-figure" id="wealth-peak-drawdown-figure" data-visual-type="interactive" aria-labelledby="wealth-peak-drawdown-title">
+        <span class="teaching-label">Teaching example</span><h3 id="wealth-peak-drawdown-title">Wealth, its running peak, and drawdown move together</h3>
+        <div class="chart-wrap visual-enhancement"><canvas id="wealth-chart" role="img" aria-label="Toy wealth path, running peak, and drawdown"></canvas></div>
+        <div class="table-wrap visual-fallback"><table class="data-table"><thead><tr><th>Step</th><th>Return</th><th>Wealth</th><th>Running peak</th><th>Drawdown</th></tr></thead><tbody id="risk-table-body"><tr><td>Start</td><td>—</td><td>$100.00</td><td>$100.00</td><td>0.00%</td></tr><tr><td>Initial gain</td><td>5.00%</td><td>$105.00</td><td>$105.00</td><td>0.00%</td></tr><tr><td>Shock</td><td>−20.00%</td><td>$84.00</td><td>$105.00</td><td>−20.00%</td></tr><tr><td>Recovery</td><td>15.00%</td><td>$96.60</td><td>$105.00</td><td>−8.00%</td></tr><tr><td>Final gain</td><td>5.00%</td><td>$101.43</td><td>$105.00</td><td>−3.40%</td></tr></tbody></table></div>
+        <div class="visual-legend"><span><i class="legend-swatch" style="color:#63d59a"></i>Wealth, left axis</span><span><i class="legend-swatch" style="color:#f0bd64"></i>Running peak, left axis</span><span><i class="legend-swatch" style="color:#ff8585"></i>Drawdown, right axis</span></div>
+        <figcaption class="visual-caption">Move the shock or recovery slider. Wealth and peak use dollars on the left axis; drawdown uses percent on the right axis. If Chart.js is unavailable, the exact five-row calculation remains visible.</figcaption>
+        <div class="what-to-notice"><strong>What to notice:</strong> recovery raises wealth, but the running peak stays at $105 until wealth exceeds it. Drawdown therefore remains negative during an incomplete recovery.</div>
+      </figure>
+      <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The default path and complete drawdown calculation remain in the table.</p></noscript>
+    </div>
+    <p>When the default shock is −20%, wealth falls from the $105 peak to $84. Drawdown is $84 divided by $105 minus one, exactly −20%. A 15% recovery acts on $84, not on the old peak, so it reaches $96.60. Recovering fully from a 20% loss requires a 25% gain because $84 must gain $21 to return to $105.</p>
+    <p>Maximum drawdown records depth but not <span class="term">duration</span>. One portfolio may recover from a 20% drawdown in a week; another may remain below its peak for years. Both can report the same MDD. The paper's metric table emphasizes depth, while its cumulative paths help the reader see timing and recovery. A future research question about investor endurance would need an explicit duration or time-under-water metric rather than silently reading duration into MDD.</p>
+    <h3>A common failure: measuring loss from the original $100</h3>
+    <p>At the shock, wealth is $84, which is 16% below the original $100. Maximum drawdown is nevertheless 20% because the relevant reference is the running $105 peak. Drawdown answers “how far below the best wealth seen so far?” It does not answer “how far below the initial deposit?”</p>
+  </section>
+
+  <section class="chapter-section" id="downside-deviation">
+    <div class="eyebrow">Downside-only variability</div>
+    <h2>Downside deviation ignores positive returns</h2>
+    <p>The Jump Model uses downside deviation as a feature. First replace every positive excess return with zero while keeping negative excess returns. Square those downside observations, calculate an average—with exponential weights in the real feature—and take a square root. Large negative returns receive more influence because they are squared.</p>
+    <div class="formula" aria-label="Downside deviation idea">
+      <math display="block">
+        <mi>DD</mi><mo>=</mo>
+        <msqrt><mi>E</mi><mo>[</mo><msup><mi>R</mi><mn>2</mn></msup><mn>1</mn><mo>{</mo><mi>R</mi><mo>&lt;</mo><mn>0</mn><mo>}</mo><mo>]</mo></msqrt>
+      </math>
+    </div>
+    <p><math><mi>R</mi></math> is excess return. The indicator <math><mn>1</mn><mo>{</mo><mi>R</mi><mo>&lt;</mo><mn>0</mn><mo>}</mo></math> equals one for a negative observation and zero otherwise. The expectation <math><mi>E</mi></math> means an average under the chosen weighting scheme. Chapter 8 will explain exponential weighting and the 10-day half-life.</p>
+    <p>Downside deviation is not drawdown. It summarizes negative return magnitudes without tracking a running wealth peak. Two return sequences with the same negative values in different order can have the same downside deviation but different drawdown paths. Each metric preserves different information.</p>
+  </section>
+
+  <section class="chapter-section" id="risk-adjusted-metrics">
+    <div class="eyebrow">Reward relative to risk</div>
+    <h2>Sharpe, Sortino, and Calmar answer different questions</h2>
+    <p>A raw return does not reveal how unstable or painful the path was. A <span class="term">risk-adjusted metric</span> places a reward measure over a risk measure. Higher values are usually preferred, but only when numerator, denominator, period, sample, and cash convention are identical.</p>
+    <div class="metric-grid three">
+      <div class="panel"><h3>Sharpe ratio</h3><p>Average excess return divided by strategy-return volatility. It penalizes upside and downside variability.</p></div>
+      <div class="panel"><h3>Sortino ratio</h3><p>Average excess return divided by downside deviation. It focuses the denominator on harmful moves.</p></div>
+      <div class="panel"><h3>Calmar ratio</h3><p>Annualized excess reward divided by the absolute maximum drawdown. It uses the worst wealth-path decline.</p></div>
+    </div>
+    <div class="formula" aria-label="Frozen annualized Sharpe definition">
+      <math display="block">
+        <mi>Sharpe</mi><mo>=</mo>
+        <msqrt><mn>252</mn></msqrt>
+        <mfrac>
+          <mrow><mi>mean</mi><mo>(</mo><msub><mi>r</mi><mi>strategy</mi></msub><mo>−</mo><msub><mi>r</mi><mi>cash</mi></msub><mo>)</mo></mrow>
+          <mrow><mi>std</mi><mo>(</mo><msub><mi>r</mi><mi>strategy</mi></msub><mo>)</mo></mrow>
+        </mfrac>
+      </math>
+    </div>
+    <p>This is the project's exact frozen Sharpe definition. Some sources use the standard deviation of excess returns instead. The two may be close when cash changes slowly, but they are not definitionally identical. A replication must match the chosen convention rather than selecting whichever version gives a better result.</p>
+    <p>A ratio can become unstable when its denominator is near zero. Calmar is undefined when no negative drawdown exists under the project convention. Sortino is missing when downside deviation is zero. A high ratio based on very few observations may be unreliable. Metrics require validation, sufficient sample size, and uncertainty analysis; ranking rounded values is not enough for a scientific claim.</p>
+  </section>
+
+  <section class="chapter-section" id="expected-shortfall">
+    <div class="eyebrow">The lower tail</div>
+    <h2>Expected shortfall looks beyond a cutoff</h2>
+    <p>Sort daily strategy returns from worst to best. The 5% quantile marks a threshold near the worst twentieth of observations. Expected shortfall at 5% averages returns at or below that threshold. If the worst observations are −10%, −6%, and −5%, their average says more about tail severity than merely reporting that the cutoff is −5%.</p>
+    <p>Expected shortfall is sensitive to sample size and extreme observations. With few observations, “worst 5%” contains very few days. Historical expected shortfall also describes the observed sample; it is not a guarantee that future losses cannot be worse. The paper reports this measure as one view of downside protection, not as a maximum possible loss.</p>
+    <p>Quantile conventions can also differ when the desired percentile lies between observed ranks. Software may interpolate, choose a neighboring order statistic, or include a different number of tied observations. The frozen implementation first calculates the pandas 5% threshold and then averages every strategy return at or below it. That exact rule must be held constant across models; changing interpolation after seeing results would be another hidden degree of freedom.</p>
+    <figure class="teaching-figure" id="risk-metric-lens-figure" data-visual-type="interactive" aria-labelledby="risk-metric-lens-title">
+      <span class="teaching-label">Teaching example</span><h3 id="risk-metric-lens-title">Change the metric, not the four returns</h3>
+      <div class="visual-stage compact"><svg id="risk-metric-lens" viewBox="0 0 440 300" role="img" aria-label="Volatility lens: all four returns contribute to sample volatility of 2.31 percent"><title>Four-return risk metric lens</title><desc>Four returns alternate between positive two percent and negative two percent. Controls change which observations each risk metric uses and how they are aggregated.</desc><text id="metric-lens-heading" x="20" y="28" font-size="18" font-weight="700">Volatility: every move counts</text><line class="diagram-link" x1="40" y1="55" x2="40" y2="230"/><line class="diagram-link" x1="40" y1="145" x2="420" y2="145"/><text x="3" y="82" font-size="15">+2%</text><text x="14" y="150" font-size="15">0%</text><text x="3" y="219" font-size="15">−2%</text><rect data-metric-bar data-value="0.02" class="diagram-low" x="70" y="75" width="50" height="70" data-animate/><rect data-metric-bar data-value="-0.02" class="diagram-high" x="160" y="145" width="50" height="70" data-animate/><rect data-metric-bar data-value="0.02" class="diagram-low" x="250" y="75" width="50" height="70" data-animate/><rect data-metric-bar data-value="-0.02" class="diagram-high" x="340" y="145" width="50" height="70" data-animate/><g font-size="16" font-weight="700" text-anchor="middle"><text x="95" y="105">+2%</text><text x="185" y="187">−2%</text><text x="275" y="105">+2%</text><text x="365" y="187">−2%</text></g><g font-size="15" text-anchor="middle"><text x="95" y="247">Day 1</text><text x="185" y="247">Day 2</text><text x="275" y="247">Day 3</text><text x="365" y="247">Day 4</text></g><line id="metric-lens-threshold" x1="40" y1="215" x2="420" y2="215" stroke="#f0bd64" stroke-width="3" stroke-dasharray="6 4" opacity="0" data-animate/><text id="metric-lens-svg-note" x="220" y="282" font-size="15" text-anchor="middle">Mean 0%; all four deviations enter.</text></svg></div>
+      <div class="stepper-controls" role="group" aria-label="Choose a risk metric"><button class="button" type="button" data-metric="volatility" aria-pressed="true" style="border-color:#63d59a;background:#11251b">Volatility</button><button class="button" type="button" data-metric="downside" aria-pressed="false">Downside deviation</button><button class="button" type="button" data-metric="shortfall" aria-pressed="false">Expected shortfall</button><button class="button" type="button" data-metric-reset>Reset</button></div>
+      <div class="lab-output" aria-live="polite"><span class="label" id="metric-lens-result-label">Sample volatility</span><strong class="big-number" id="metric-lens-result">2.31%</strong><span id="metric-lens-detail">All four deviations from the 0% mean enter; the sample denominator is n − 1.</span></div>
+      <figcaption class="visual-caption">The return sequence is always +2%, −2%, +2%, −2%. Select a lens to change the selection and aggregation rule, never the observations themselves.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> volatility counts gains and losses; downside deviation zeros the gains; 5% expected shortfall averages the tied worst returns at the tail threshold.</div>
+    </figure>
+  </section>
+
+  <section class="chapter-section" id="paper-connection">
+    <div class="eyebrow">Paper connection</div>
+    <h2>Downside-risk reduction is the paper's primary motivation</h2>
+    <p>The abstract and Section 1 of <a href="../../2402.05272v3.pdf">Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3</a> frame the strategy as a way to reduce exposure during anticipated unfavorable regimes. Section 2 describes deep historical losses in the three equity indices. Section 3.4.1 chooses downside deviation and Sortino features because investors care differently about downside losses and upside gains.</p>
+    <p>Table 4 reports return, volatility, Sharpe, maximum drawdown, Calmar, expected shortfall, turnover, and leverage for buy-and-hold, HMM, and JM strategies. The paper's argument is a pattern across several metrics and markets, not one favorable cell. Figures 5 and 6 connect inferred bear regimes to cumulative excess-return paths and reveal both protected drawdowns and signal latency.</p>
+    <div class="evidence"><strong>Paper interpretation</strong>The authors report that JM-guided switching improves downside and risk-adjusted metrics relative to their HMM and buy-and-hold comparisons. This is an empirical finding under their data and protocol, not a mathematical consequence of adding a jump penalty.</div>
+  </section>
+
+  <section class="chapter-section" id="project-connection">
+    <div class="eyebrow">Project connection</div>
+    <h2>Where the frozen metrics are computed</h2>
+    <p>The active implementation is <a href="../../src/adaptive_jump/backtest.py"><code>performance_metrics()</code> in <code>src/adaptive_jump/backtest.py</code></a>. It compounds strategy returns into wealth, calculates the running peak and drawdown, annualizes sample volatility, subtracts aligned cash in the Sharpe numerator, and computes the remaining frozen metrics.</p>
+    <pre><code>wealth = cumprod(1.0 + strategy_return)
+peaks = maximum_accumulate([1.0, *wealth])
+drawdowns = [1.0, *wealth] / peaks - 1.0
+maximum_drawdown = min(drawdowns)</code></pre>
+    <p>The exact conventions are locked under <code>[metrics]</code> in <a href="../../research.toml">research.toml</a>. The independent run verifier reloads each daily trade path and recomputes metrics. The English generated report displays those verified results. This chapter deliberately contains no copied project result table.</p>
+  </section>
+
+  <section class="chapter-section" id="evidence-limitations">
+    <div class="eyebrow">Evidence and limits</div>
+    <h2>A metric is a lens, not a verdict</h2>
+    <div class="concept-grid">
+      <div class="panel"><h3>Established here</h3><p>Return paths with the same endpoint can have different volatility, drawdown, downside deviation, and tail behavior.</p></div>
+      <div class="panel"><h3>Not established</h3><p>No toy path demonstrates that HMM or JM switching reduces real risk, survives costs, or generalizes beyond its sample.</p></div>
+    </div>
+    <div class="limitation"><strong>Scientific boundary</strong>The interactive path is invented and user-controlled. It teaches metric mechanics only. Changing sliders until a path looks attractive would be visual cherry-picking, not research.</div>
+    <p>Metrics also omit experiences that may matter: recovery time, sequence risk around withdrawals, intraday losses hidden by daily closes, taxes, and capacity. A protocol must choose metrics before inspecting the result and report unfavorable values rather than switching definitions afterward.</p>
+    <p>Metric comparisons also require a common sample. If one model has missing early signals and is measured only during a later calm period, comparing its Sharpe with a buy-and-hold value measured through an earlier crisis confounds model and dates. The v7 protocol intersects complete metric rows for every model within each market and delay before calculating the table. This does not guarantee a successful replication, but it makes the comparison population coherent.</p>
+  </section>
+
+  <section class="chapter-section" id="practice">
+    <div class="eyebrow">Retrieval practice</div>
+    <h2>Choose the metric that matches the question</h2>
+    <div class="quiz">
+      <h3>Recall</h3>
+      <p>Which metric directly uses the running wealth peak?</p>
+      <div class="quiz-options">
+        <button class="button" type="button" data-choice data-correct="false">Volatility</button>
+        <button class="button" type="button" data-choice data-correct="true" data-feedback-correct="Correct. Drawdown compares current wealth with the highest wealth previously reached.">Maximum drawdown</button>
+        <button class="button" type="button" data-choice data-correct="false">Average return</button>
+      </div>
+      <output class="quiz-feedback">Choose an answer, then check the explanation.</output>
+      <button class="button" type="button" data-reset>Reset</button>
+    </div>
+    <details class="deep-explanation"><summary>Calculation: recover from a 25% drawdown</summary><p>Wealth falls from $100 to $75. Returning to $100 requires a $25 gain on a $75 base: 25 / 75 = 33.33%. The recovery percentage is larger than the loss percentage.</p></details>
+    <details><summary>Error diagnosis: “lower volatility proves better timing”</summary><p>A strategy can lower volatility simply by holding cash more often. To evaluate timing, compare return, risk, leverage, costs, and suitable baselines on the same dates. Lower exposure alone is not proof of predictive or identification skill.</p></details>
+    <details><summary>Cumulative recall from Chapters 1–2</summary><p>The held position controls simple strategy return. Market return must include the declared distribution treatment; cash must be aligned to the same period; compounded returns create the wealth path from which drawdown is measured.</p></details>
+    <details><summary>Advisor explanation</summary><p>“The paper does not define success only as higher return. Its motivation is downside protection, so I must compare volatility, maximum drawdown, expected shortfall, and risk-adjusted reward under one frozen metric convention.”</p></details>
+  </section>
+
+  <section class="chapter-section" id="advisor">
+    <div class="eyebrow">How to explain this to your advisor</div>
+    <div class="advisor">
+      <p><strong>Short version:</strong> “Ending return hides the path. Volatility measures dispersion, drawdown measures the deepest fall from a previous peak, and expected shortfall measures average tail severity. The paper evaluates all three.”</p>
+      <p><strong>Important qualification:</strong> “Risk reduction can come from lower market exposure rather than superior timing, so leverage, cash return, costs, and reward metrics must be reported together.”</p>
+    </div>
+  </section>
+
+  <footer class="chapter-footer">
+    <p><strong>Next:</strong> Chapter 4 explains what a market regime is, why persistence matters, and why the paper identifies the present instead of claiming to predict tomorrow's exact return.</p>
+    <p><a href="02-prices-dividends-returns.html">Back to Chapter 2</a> · <a href="index.html">Course home</a> · <a href="04-market-regimes-persistence.html">Continue to Chapter 4</a></p>
+  </footer>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const lab = document.getElementById("risk-lab");
+  const shock = document.getElementById("shock-return");
+  const recovery = document.getElementById("recovery-return");
+  const canvas = document.getElementById("wealth-chart");
+  let chart = null;
+  function render() {
+    const returns = [0.05, Number(shock.value) / 100, Number(recovery.value) / 100, 0.05];
+    const labels = ["Start", "Initial gain", "Shock", "Recovery", "Final gain"];
+    const wealth = [100];
+    returns.forEach((value) => wealth.push(wealth.at(-1) * (1 + value)));
+    const peaks = wealth.map((value, index) => Math.max(...wealth.slice(0, index + 1)));
+    const drawdowns = wealth.map((value, index) => value / peaks[index] - 1);
+    const mdd = Math.min(...drawdowns);
+    document.getElementById("risk-ending").textContent = Course.money(wealth.at(-1));
+    document.getElementById("risk-total").textContent = Course.percent(wealth.at(-1) / 100 - 1, 2);
+    document.getElementById("risk-mdd").textContent = Course.percent(mdd, 2);
+    document.getElementById("risk-table-body").innerHTML = labels.map((label, index) => {
+      const periodReturn = index === 0 ? "—" : Course.percent(returns[index - 1], 2);
+      return `<tr><td>${label}</td><td>${periodReturn}</td><td>${Course.money(wealth[index])}</td><td>${Course.money(peaks[index])}</td><td>${Course.percent(drawdowns[index], 2)}</td></tr>`;
+    }).join("");
+    canvas.setAttribute("aria-label", `Toy wealth ends at ${Course.money(wealth.at(-1))} with maximum drawdown ${Course.percent(mdd, 2)}`);
+    if (!window.Chart) return;
+    if (chart) chart.destroy();
+    chart = new Chart(canvas, {
+      type: "line",
+      data: { labels, datasets: [
+        { label: "Wealth ($)", data: wealth, yAxisID: "y", borderColor: Course.palette.cash, backgroundColor: Course.palette.cash, tension: 0 },
+        { label: "Running peak ($)", data: peaks, yAxisID: "y", borderColor: Course.palette.uncertainty, borderDash: [6, 4], pointRadius: 0, tension: 0 },
+        { label: "Drawdown (%)", data: drawdowns.map((value) => 100 * value), yAxisID: "y1", borderColor: Course.palette.high, backgroundColor: Course.palette.high, pointStyle: "rectRot", tension: 0 },
+      ] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: Course.palette.unavailable }, grid: { color: "#343b46" } }, y: { position: "left", ticks: { color: Course.palette.unavailable }, grid: { color: "#343b46" }, title: { display: true, text: "Wealth ($)", color: Course.palette.unavailable } }, y1: { position: "right", max: 0, suggestedMin: 100 * mdd - 5, ticks: { color: Course.palette.unavailable, callback: (value) => `${value}%` }, grid: { drawOnChartArea: false }, title: { display: true, text: "Drawdown (%)", color: Course.palette.unavailable } } } },
+    });
+    canvas.parentElement.classList.add("is-ready");
+  }
+  [shock, recovery].forEach((input) => input.addEventListener("input", render));
+  lab.addEventListener("course:reset", render);
+  render();
+
+  const metricReturns = [0.02, -0.02, 0.02, -0.02];
+  const metricMean = metricReturns.reduce((sum, value) => sum + value, 0) / metricReturns.length;
+  const volatility = Math.sqrt(metricReturns.reduce((sum, value) => sum + (value - metricMean) ** 2, 0) / (metricReturns.length - 1));
+  const downside = Math.sqrt(metricReturns.reduce((sum, value) => sum + Math.min(value, 0) ** 2, 0) / metricReturns.length);
+  const tailThreshold = Math.min(...metricReturns);
+  const tail = metricReturns.filter((value) => value <= tailThreshold);
+  const shortfall = tail.reduce((sum, value) => sum + value, 0) / tail.length;
+  const metricFigure = document.getElementById("risk-metric-lens-figure");
+  const metricBars = [...metricFigure.querySelectorAll("[data-metric-bar]")];
+  const metricViews = {
+    volatility: { heading: "Volatility: every move counts", label: "Sample volatility", value: volatility, detail: "All four deviations from the 0% mean enter; the sample denominator is n − 1.", note: "Mean 0%; all four deviations enter.", selected: () => true, tail: false },
+    downside: { heading: "Downside deviation: gains become zero", label: "Downside deviation", value: downside, detail: "Negative returns are squared; gains become zero; the average still uses all four days.", note: "Only Day 2 and Day 4 retain negative magnitudes.", selected: (value) => value < 0, tail: false },
+    shortfall: { heading: "Expected shortfall: average the 5% tail", label: "Expected shortfall at 5%", value: shortfall, detail: "Both tied returns at or below the −2% threshold enter the tail average.", note: "Day 2 and Day 4 tie at the −2% tail threshold.", selected: (value) => value <= tailThreshold, tail: true },
+  };
+  function renderMetric(metric) {
+    const view = metricViews[metric];
+    metricFigure.querySelectorAll("[data-metric]").forEach((button) => {
+      const active = button.dataset.metric === metric;
+      button.setAttribute("aria-pressed", String(active));
+      button.style.borderColor = active ? Course.palette.cash : "";
+      button.style.background = active ? "#11251b" : "";
+    });
+    metricBars.forEach((bar) => { bar.style.opacity = view.selected(Number(bar.dataset.value)) ? "1" : "0.22"; });
+    document.getElementById("metric-lens-heading").textContent = view.heading;
+    document.getElementById("metric-lens-result-label").textContent = view.label;
+    document.getElementById("metric-lens-result").textContent = Course.percent(view.value, 2);
+    document.getElementById("metric-lens-detail").textContent = view.detail;
+    document.getElementById("metric-lens-svg-note").textContent = view.note;
+    document.getElementById("metric-lens-threshold").style.opacity = view.tail ? "1" : "0";
+    document.getElementById("risk-metric-lens").setAttribute("aria-label", `${view.label}: ${Course.percent(view.value, 2)} for returns plus 2, minus 2, plus 2, minus 2 percent`);
+  }
+  metricFigure.querySelectorAll("[data-metric]").forEach((button) => button.addEventListener("click", () => renderMetric(button.dataset.metric)));
+  metricFigure.querySelector("[data-metric-reset]").addEventListener("click", () => renderMetric("volatility"));
+  renderMetric("volatility");
+});
+</script>
+</body>
+</html>

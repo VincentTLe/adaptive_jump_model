@@ -1,0 +1,7 @@
+tunnel: TUNNEL_UUID
+credentials-file: /home/tle/.cloudflared/TUNNEL_UUID.json
+
+ingress:
+  - hostname: monitor.example.com
+    service: http://127.0.0.1:8765
+  - service: http_status:404

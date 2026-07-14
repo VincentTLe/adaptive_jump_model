@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A beginner guide to causal backtests, rolling windows, leakage, signal timing, delay, transaction costs, and fair samples.">
+  <title>Chapter 7: Backtesting Without Seeing The Future</title>
+  <link rel="stylesheet" href="course.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/mml-chtml.js" integrity="sha384-GYAeDZjH9w23NyL4cfS+ZrgWmGvta6VNs4p+/vtuF+RWe30fQhmP8pHbzRmlwmAK" crossorigin="anonymous"></script>
+  <script defer src="course.js"></script>
+</head>
+<body>
+<main class="course-shell">
+  <nav class="course-nav" aria-label="Course navigation">
+    <a href="06-reproducibility-sealed-evidence.html">Previous: sealed evidence</a>
+    <span>Part II · Chapter 7 of 14</span>
+    <a href="08-returns-to-model-features.html">Next: model features</a>
+  </nav>
+
+  <header class="chapter-header">
+    <div class="part-label">Part II · Honest Research</div>
+    <h1>Backtesting Without Seeing The Future</h1>
+    <p class="lead">At the moment a strategy acts, which observations and decisions could really have existed?</p>
+    <div class="chapter-meta"><span>Beginner level</span><span>Causal timing laboratory</span><span>Paper Sections 3.1 and 4.1</span></div>
+  </header>
+
+  <section class="chapter-section" id="question">
+    <div class="eyebrow">The opening question</div>
+    <h2>Can Monday's signal protect you from a return already earned?</h2>
+    <p>You hold $100 in the market. A model uses Monday's closing value and produces a cash signal after Monday closes. Tuesday's market return is -10%. A cheating backtest applies the cash position to Tuesday as if the order existed before Monday's close. It reports about $99.90 after a 10-basis-point switch cost. But the signal was not available soon enough for that position.</p>
+    <p>Under the paper's one-day trading delay, the Monday end-of-day signal can be executed only at the end of Tuesday and applies starting Wednesday. Your portfolio remains in the market for Tuesday, so $100 becomes $90. If Wednesday is the first cash day and the one-way switch costs 0.10%, the switch removes nine cents from the $90 portfolio, leaving $89.91 before any cash return. Honest timing produces a very different path.</p>
+    <figure class="teaching-figure" id="causal-clock-figure" data-visual-type="static" aria-labelledby="causal-clock-title">
+      <span class="teaching-label">Teaching example</span><h3 id="causal-clock-title">An end-of-day signal crosses three boundaries before it can earn a return</h3>
+      <svg viewBox="0 0 720 100" role="img" aria-labelledby="causal-clock-svg-title causal-clock-svg-desc" fill="currentColor" style="display:block;width:100%;height:auto;color:var(--text)"><title id="causal-clock-svg-title">Causal clock from end of day t to the return at t plus two</title><desc id="causal-clock-svg-desc">Three connected points mark observation and decision at t, execution after t plus one, and the first controlled return at t plus two.</desc><path class="diagram-link" d="M70 50 H650"/><path d="M658 50 L642 40 L642 60 Z" fill="#aab3bf"/><circle cx="120" cy="50" r="10" fill="#75b8ff"/><circle cx="360" cy="50" r="10" fill="#f0bd64"/><circle cx="600" cy="50" r="10" fill="#63d59a"/><text x="120" y="38" font-size="28" font-weight="700" text-anchor="middle">t</text><text x="360" y="38" font-size="28" font-weight="700" text-anchor="middle">t+1</text><text x="600" y="38" font-size="28" font-weight="700" text-anchor="middle">t+2</text><text x="120" y="88" font-size="24" text-anchor="middle">decide</text><text x="360" y="88" font-size="24" text-anchor="middle">execute</text><text x="600" y="88" font-size="24" text-anchor="middle">earn</text></svg>
+      <div class="concept-grid three">
+        <div class="panel"><h4>End of t</h4><p>The close becomes observable. Features and state are computed, so the signal exists only after the close. It cannot change a return that has already finished.</p></div>
+        <div class="panel"><h4>Day t+1</h4><p>The old position still earns the return while the one-day delay continues. The order executes after this close, so the new position is not active yet.</p></div>
+        <div class="panel"><h4>Day t+2</h4><p>The new position is now held and its first return interval begins. Any switch cost is recorded on this first causally controlled return.</p></div>
+      </div>
+      <figcaption class="visual-caption">The clock separates observation, decision, execution, and earned return. With the paper's one-day operational delay, the signal formed after the close at <math><mi>t</mi></math> first controls the return at <math><mi>t</mi><mo>+</mo><mn>2</mn></math>.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> Tuesday's old position is not an implementation accident. It is the unavoidable consequence of waiting until Monday's close to observe and decide, then executing only after Tuesday's close.</div>
+    </figure>
+    <div class="example-grid">
+      <article class="worked-example failure">
+        <h3>Impossible same-close backtest</h3>
+        <span class="big-number">About $99.90</span>
+        <p>The Monday-close signal is applied before Tuesday's loss even though it did not exist when that position had to be chosen.</p>
+      </article>
+      <article class="worked-example">
+        <h3>Causal one-day delay</h3>
+        <span class="big-number">$100 &rarr; $90 &rarr; $89.91</span>
+        <p>Tuesday remains market-exposed. Cash starts Wednesday, and the switch cost is charged when the position changes.</p>
+      </article>
+    </div>
+    <p>This is not a minor implementation detail. A strategy is a timeline of information and action. If any future price, future state, future scaler, future model choice, or unavailable close influences an earlier position, the measured return is not an out-of-sample result that could have occurred.</p>
+    <div class="remember"><strong>The idea to remember</strong>For every return, write four timestamps: when the observation became available, when the decision was made, when the position could be executed, and which later return interval that position earned. If the order is impossible, the backtest is invalid.</div>
+  </section>
+
+  <section class="chapter-section" id="vocabulary">
+    <div class="eyebrow">Words before notation</div>
+    <h2>Name each boundary before calculating performance</h2>
+    <div class="concept-grid">
+      <div class="panel"><h3>Observation time</h3><p>When an input value can be known. A date printed on a series is not enough if the value is published later.</p></div>
+      <div class="panel"><h3>Decision time</h3><p>When the model and frozen rule turn available inputs into a signal or hyperparameter choice.</p></div>
+      <div class="panel"><h3>Execution time</h3><p>When the requested position can actually be established after calculation and operational delay.</p></div>
+      <div class="panel"><h3>Earned interval</h3><p>The return period controlled by the executed position. It must begin after execution, never before it.</p></div>
+      <div class="panel"><h3>Leakage</h3><p>Any use of information from after a decision to improve that decision, directly or through preprocessing, labels, selection, or evaluation.</p></div>
+      <div class="panel"><h3>Walk-forward</h3><p>A procedure that repeatedly trains on the past, makes the next permitted decision, advances time, and never revises old outputs using future observations.</p></div>
+    </div>
+    <p>A <span class="term">training window</span> supplies observations used to estimate model parameters. A <span class="term">validation window</span> uses later but still historical observations to choose among candidate hyperparameters. An <span class="term">outer test</span> evaluates the selected procedure on observations that did not select it. A <span class="term">locked confirmation period</span> remains untouched until the complete hypothesis and pipeline are frozen.</p>
+    <p><span class="term">Rolling</span> means a fixed-length window moves forward, dropping old observations as new ones arrive. <span class="term">Expanding</span> means the start stays fixed while the window grows. Neither is automatically better; the paper and implementation must agree. A <span class="term">refit cadence</span> states how often parameters are estimated again. Online inference can occur daily even if a model is refitted less frequently.</p>
+    <p><span class="term">Scaling</span> transforms features to a common center and spread. If a scaler uses the whole dataset, future crashes change the mean and standard deviation applied to past observations. That is leakage even if the model itself receives rows in date order. Train-only preprocessing means each decision uses a scaler fitted only on its permitted historical window.</p>
+    <p><span class="term">Prefix invariance</span> is a causal test: append future rows and verify that all previously emitted states, choices, and positions remain unchanged. <span class="term">Common sample</span> means competing models are compared on identical eligible dates. A model should not receive a better score merely because its missing rows remove difficult periods.</p>
+    <p><span class="term">One-way turnover</span> is the absolute change in portfolio position. Moving from fully invested, position 1, to cash, position 0, creates turnover 1. A cost quoted in <span class="term">basis points</span> uses 10,000 basis points per unit return: 10 bps equals 0.001 or 0.10%. A later return cannot repay a cost that the backtest forgot to charge.</p>
+    <p><span class="term">Selection fairness</span> compares complete pipelines rather than isolated fitted models. Two methods can share outer dates while one searches many more variants, receives more restarts, or was repeatedly redesigned after seeing outcomes. Nested time-series selection and an untouched outer comparison help account for that advantage. A <span class="term">grid-boundary check</span> asks whether the largest candidate is selected too often. If it is, the search range may be inadequate; the frozen project stops before opening OOS metrics rather than expanding the grid after seeing performance.</p>
+  </section>
+
+  <section class="chapter-section" id="causal-workflow">
+    <div class="eyebrow">Worked example two</div>
+    <h2>Walk one decision through the research clock</h2>
+    <div class="timeline">
+      <div><strong>Observe at t</strong><span>Market close and causally available cash data</span><span>No future rows</span></div>
+      <div><strong>Decide after t</strong><span>Compute features and terminal state</span><span>Frozen model rule</span></div>
+      <div><strong>Execute after delay</strong><span>One-day delay ends at t+1</span><span>Position changes</span></div>
+      <div><strong>Earn from t+2</strong><span>New position receives return</span><span>Cost charged on switch</span></div>
+    </div>
+    <figure class="teaching-figure" id="trailing-window-scrubber-figure" data-visual-type="interactive" aria-labelledby="trailing-window-scrubber-title">
+      <span class="teaching-label">Teaching example</span><h3 id="trailing-window-scrubber-title">Move the decision date without letting future rows enter the training window</h3>
+      <div class="visual-enhancement" id="trailing-window-visual">
+        <div class="lab-header"><div><p>A five-row teaching window stands in for the frozen 3,000-complete-row training window.</p></div><button class="button" type="button" id="window-reset">Reset</button></div>
+        <form><label for="window-decision-day">Decision made after: <output id="window-decision-output" for="window-decision-day">Day 8</output></label><input id="window-decision-day" type="range" min="5" max="12" value="8" data-output="window-decision-output" data-prefix="Day "></form>
+        <div class="metric-grid three"><div class="panel"><span class="label">Active trailing window</span><strong class="big-number" id="window-range">Days 4-8</strong></div><div class="panel"><span class="label">Rows fit and scaled</span><strong class="big-number">5</strong></div><div class="panel"><span class="label">Future rows unavailable</span><strong class="big-number" id="future-row-count">4</strong></div></div>
+        <div class="state-strip model-strip" id="window-row-strip" aria-label="Twelve teaching rows around the decision date"></div>
+        <div class="state-legend"><span><i class="state-day normal"></i> older row outside trailing window</span><span><i class="state-day low-state"></i> row used at this decision</span><span><i class="state-day normal" style="border-style:dashed"></i> future row unavailable</span></div>
+      </div>
+      <div class="table-wrap visual-fallback"><table class="data-table"><thead><tr><th>Default teaching date</th><th>Knowable rows</th><th>Unavailable rows</th></tr></thead><tbody><tr><td>Decision after Day 8</td><td>Five-row trailing window uses Days 4-8</td><td>Days 9-12 remain future information</td></tr></tbody></table></div>
+      <figcaption class="visual-caption">This scrubber uses twelve labeled teaching rows and a five-row window only so every boundary can be counted by eye. In the frozen experiment, model fitting and feature scaling use the trailing 3,000 complete rows available at each eligible decision.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> advancing the decision adds one newly knowable row and drops one old row. It never changes an earlier window, and no dashed future row can influence the current scaler or fit.</div>
+    </figure>
+    <p>Now add model selection. At a month-end decision, each candidate smoothing value is evaluated over the trailing validation window using only online states that would have existed then. Candidate strategy returns use the same delay, cash convention, and transaction cost as the later test. The best eligible candidate is chosen by the frozen tie rule and used for the following month after its own delay.</p>
+    <p>A common shortcut computes all candidate states across the full sample, chooses the candidate with the best final Sharpe ratio, and then draws an apparently historical strategy. Every early position now depends on years of future returns. Calling the rows "out of sample" does not fix selection performed on the same outcomes.</p>
+    <h3>A common failure: fitting one scaler before splitting time</h3>
+    <p>Suppose ten calm historical observations have values near zero and a future crash has value -20. A full-sample mean and standard deviation include that crash. Past calm values are transformed relative to information that had not happened, possibly changing cluster distances and states. The correct process fits the scaler inside each trailing training window and transforms that same window for the current decision.</p>
+    <p>Another failure maps anonymous state labels using test returns. State 0 and state 1 have no built-in economic meaning. The risky-versus-cash mapping must be learned from training information and then frozen for the associated outer period. Choosing the label that produced the better test return is another form of outcome leakage.</p>
+  </section>
+
+  <section class="chapter-section" id="timing-lab-section">
+    <div class="eyebrow">Interactive teaching visual</div>
+    <h2>Move the delay and watch protection arrive later</h2>
+    <p>A cash signal exists at the end of teaching Day 0. The next four days have the same adverse market return; cash earns zero in this deliberately small example. Change delay, market return, and one-way cost. The lab models entry only, not a complete strategy or market experiment.</p>
+    <div class="lab" id="timing-lab">
+      <div class="lab-header">
+        <div><h3>Causal backtest timeline</h3><p>Eight deterministic days after one end-of-day cash signal.</p></div>
+        <button class="button" type="button" data-reset>Reset</button>
+      </div>
+      <form><div class="control-grid three-controls">
+        <div><label for="backtest-delay">Trading delay: <output id="backtest-delay-output" for="backtest-delay">1 day</output></label><input id="backtest-delay" type="range" min="0" max="5" value="1" data-output="backtest-delay-output" data-singular=" day" data-plural=" days"></div>
+        <div><label for="adverse-return">Adverse daily return: <output id="adverse-return-output" for="adverse-return">-2%</output></label><input id="adverse-return" type="range" min="-5" max="0" value="-2" data-output="adverse-return-output" data-suffix="%"></div>
+        <div><label for="switch-cost">One-way cost: <output id="switch-cost-output" for="switch-cost">10 bps</output></label><input id="switch-cost" type="range" min="0" max="50" step="5" value="10" data-output="switch-cost-output" data-suffix=" bps"></div>
+      </div></form>
+      <div class="metric-grid three">
+        <div class="panel"><span class="label">First cash return</span><strong class="big-number" id="first-cash-day">Day 2</strong></div>
+        <div class="panel"><span class="label">Adverse days still held</span><strong class="big-number" id="missed-adverse-days">1</strong></div>
+        <div class="panel"><span class="label">Ending toy wealth</span><strong class="big-number" id="timing-wealth">$97.90</strong></div>
+      </div>
+      <figure class="teaching-figure" id="delayed-net-return-lanes-figure" data-visual-type="interactive" aria-labelledby="delayed-net-return-lanes-title">
+        <span class="teaching-label">Teaching example</span><h3 id="delayed-net-return-lanes-title">Trace one cash request through signal, position, turnover, cost, and wealth</h3>
+        <div class="visual-enhancement" id="timing-lanes">
+          <span class="label">1. Requested signal available after Day 0</span><div class="state-strip backtest-strip" id="signal-lane" aria-label="Requested cash signal lane"></div>
+          <span class="label">2. Held position that earns each return</span><div class="state-strip backtest-strip" id="position-lane" aria-label="Held market or cash position lane"></div>
+          <span class="label">3. One-way turnover and transaction cost</span><div class="state-strip backtest-strip" id="turnover-lane" aria-label="Turnover and transaction cost lane"></div>
+          <span class="label">4. Ending wealth after each daily net return</span><div class="state-strip backtest-strip" id="wealth-lane" aria-label="Daily ending wealth lane"></div>
+          <div class="state-legend"><span><i class="state-day adverse-missed"></i> adverse return while market held</span><span><i class="state-day adverse-protected"></i> adverse return while cash held</span><span><i class="state-day normal"></i> later cash day in this entry-only example</span><span><i class="state-day low-state"></i> market position</span><span><i class="state-day" style="border-color:#63d59a;background:#111b17"></i> cash signal or position</span></div>
+        </div>
+        <div class="table-wrap visual-fallback"><table class="data-table"><thead><tr><th>Default input</th><th>Value</th><th>Consequence</th></tr></thead><tbody><tr><td>Signal</td><td>End of Day 0</td><td>It cannot control a return before Day 1.</td></tr><tr><td>One-day delay</td><td>Offset of two return rows</td><td>Cash starts Day 2, so Day 1 remains exposed.</td></tr><tr><td>Cost</td><td>10 bps once</td><td>The switch subtracts 0.10% on the first cash day.</td></tr></tbody></table></div>
+        <figcaption class="visual-caption">Every lane refers to the same eight teaching days. The cash request exists throughout, but the held position changes only after the selected delay. Turnover equals one only on that switch day, when the chosen basis-point cost reduces the net return and wealth.</figcaption>
+        <div class="what-to-notice"><strong>What to notice:</strong> the signal lane can say cash while the position lane still says market. Wealth follows the position and net return, not the requested signal by itself.</div>
+      </figure>
+      <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The complete default timing and cost interpretation remains in the table.</p></noscript>
+    </div>
+    <p>With the default -2% return, Day 1 changes $100 to $98. The Day 2 switch costs 0.10% of current wealth, so the toy path ends at $97.902, displayed as $97.90. The adverse market returns on Days 2-4 are avoided. This does not prove the signal is useful: an exit signal, rebounds, false alarms, cash returns, and every other date are absent from the toy example.</p>
+  </section>
+
+  <section class="chapter-section" id="paper-connection">
+    <div class="eyebrow">Connection to the named paper</div>
+    <h2>The paper explicitly delays the signal</h2>
+    <p>Section 3.1 of <a href="../../2402.05272v3.pdf">Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3</a> says an ideal end-of-day-<math><mi>t</mi></math> signal might be applied on <math><mi>t</mi><mo>+</mo><mn>1</mn></math>, but assumes a one-day operational delay. A changed allocation is executed at the end of <math><mi>t</mi><mo>+</mo><mn>1</mn></math> and applies starting <math><mi>t</mi><mo>+</mo><mn>2</mn></math>.</p>
+    <p>Section 3.4.3 selects JM jump penalty or HMM smoothing monthly using strategy Sharpe over an eight-year online validation lookback. The validation strategy includes the same one-day delay and a 10-basis-point one-way transaction cost. The paper says the selected hyperparameter is itself applied with delay. Twelve years of training history plus eight years of validation history make 1990 the stated out-of-sample start when data begin in 1970.</p>
+    <p>Section 4 evaluates each market independently from 1990 through 2023. Section 4.1 and Table 5 test delays of 1, 5, and 10 days, corresponding to signals applied to returns at <math><mi>t</mi><mo>+</mo><mn>2</mn></math>, <math><mi>t</mi><mo>+</mo><mn>6</mn></math>, and <math><mi>t</mi><mo>+</mo><mn>11</mn></math>. The same delay is used in validation and testing so smoothing selection reflects the operational scenario.</p>
+  </section>
+
+  <section class="chapter-section" id="project-connection">
+    <div class="eyebrow">Connection to this project</div>
+    <h2>The causal rule is explicit and tested</h2>
+    <p>The frozen timing and cost settings live in <a href="../../research.toml"><code>research.toml</code></a>: primary delay 1, signal-to-return offset 2, robustness delays 1/5/10, one-way cost 10 bps, and no cost for the initial allocation. The config validator rejects a primary offset that is not delay plus one.</p>
+    <p><a href="../../src/adaptive_jump/backtest.py"><code>src/adaptive_jump/backtest.py</code></a> implements the accounting only after the theory. The essential lines are short:</p>
+    <pre><code>position = signal.shift(delay_trading_days + 1)
+gross = position * equity_return + (1 - position) * cash_return
+turnover = abs(position - previous_position)
+strategy_return = gross - turnover * cost_bps / 10_000</code></pre>
+    <p><a href="../../src/adaptive_jump/walkforward.py"><code>src/adaptive_jump/walkforward.py</code></a> creates candidate strategy returns with that same delay and cost before monthly selection. It scores only dates inside the trailing eight-calendar-year validation window through the decision date. Tests append altered future data and require past features, choices, and backtest rows to remain unchanged.</p>
+    <p>When metrics are opened, all three models for one market and delay are intersected onto identical complete dates. The verifier later rejects trade paths whose delayed positions do not equal the earlier signals, whose turnover differs from position changes, or whose gross and net returns fail the accounting identity. These are implementation checks, not evidence that the chosen model is economically correct.</p>
+    <p>The first eligible proxy OOS date is also computed rather than assumed. It must occur after the 3,000th complete feature observation plus eight calendar years of validation history and cannot precede the requested start. This shifts the paper's nominal 1990 boundary when free-source coverage is shorter, preserving chronology while requiring the proxy-replication label from Chapter 5.</p>
+  </section>
+
+  <section class="chapter-section" id="mathematics">
+    <div class="eyebrow">Mathematical layer</div>
+    <h2>Turn an end-of-day signal into a later net return</h2>
+    <div class="formula"><math display="block"><msub><mi>p</mi><mrow><mi>t</mi><mo>+</mo><mi>d</mi><mo>+</mo><mn>1</mn></mrow></msub><mo>=</mo><msub><mi>q</mi><mi>t</mi></msub></math><math display="block"><msubsup><mi>r</mi><mi>u</mi><mi>gross</mi></msubsup><mo>=</mo><msub><mi>p</mi><mi>u</mi></msub><msubsup><mi>r</mi><mi>u</mi><mi>market</mi></msubsup><mo>+</mo><mo>(</mo><mn>1</mn><mo>&minus;</mo><msub><mi>p</mi><mi>u</mi></msub><mo>)</mo><msubsup><mi>r</mi><mi>u</mi><mi>cash</mi></msubsup></math><math display="block"><msubsup><mi>r</mi><mi>u</mi><mi>net</mi></msubsup><mo>=</mo><msubsup><mi>r</mi><mi>u</mi><mi>gross</mi></msubsup><mo>&minus;</mo><mo>|</mo><msub><mi>p</mi><mi>u</mi></msub><mo>&minus;</mo><msub><mi>p</mi><mrow><mi>u</mi><mo>&minus;</mo><mn>1</mn></mrow></msub><mo>|</mo><mfrac><mi>c</mi><mn>10000</mn></mfrac></math></div>
+    <div class="table-wrap"><table class="symbol-table"><thead><tr><th>Symbol</th><th>Meaning</th><th>Unit or convention</th></tr></thead><tbody><tr><td><math><mi>t</mi></math></td><td>Signal decision date index</td><td>Trading observation</td></tr><tr><td><math><mi>d</mi></math></td><td>Operational trading delay</td><td>Non-negative trading days</td></tr><tr><td><math><msub><mi>q</mi><mi>t</mi></msub></math></td><td>End-of-day requested signal</td><td>1 market, 0 cash</td></tr><tr><td><math><msub><mi>p</mi><mi>u</mi></msub></math></td><td>Position that earns return at index <math><mi>u</mi></math></td><td>1 market, 0 cash</td></tr><tr><td><math><msubsup><mi>r</mi><mi>u</mi><mi>market</mi></msubsup></math></td><td>Simple total market return</td><td>Decimal per observation</td></tr><tr><td><math><msubsup><mi>r</mi><mi>u</mi><mi>cash</mi></msubsup></math></td><td>Aligned simple cash return</td><td>Decimal per observation</td></tr><tr><td><math><mi>c</mi></math></td><td>One-way cost</td><td>Basis points</td></tr></tbody></table></div>
+    <p>The first equation is the chronology rule. A delay of zero still shifts by one row because an end-of-day signal cannot earn the return that just ended. A delay of one shifts by two rows. The second equation chooses market or cash return using the position. The third subtracts cost only when the binary position changes.</p>
+    <p>For the opening example, <math><msub><mi>q</mi><mi>Monday</mi></msub><mo>=</mo><mn>0</mn></math> requests cash and <math><mi>d</mi><mo>=</mo><mn>1</mn></math>. Therefore cash position 0 first controls Wednesday's return. Tuesday position remains 1 and earns -10%, taking wealth to $90. Wednesday turnover is <math><mo>|</mo><mn>0</mn><mo>&minus;</mo><mn>1</mn><mo>|</mo><mo>=</mo><mn>1</mn></math>; 10 bps equals 0.001, so the cost is $90 &times; 0.001 = $0.09.</p>
+    <p>Fair model comparison adds one more operation. For model date sets <math><msub><mi>S</mi><mn>1</mn></msub><mo>,</mo><msub><mi>S</mi><mn>2</mn></msub><mo>,</mo><msub><mi>S</mi><mn>3</mn></msub></math>, evaluate all models on <math><mi>S</mi><mo>=</mo><msub><mi>S</mi><mn>1</mn></msub><mo>&cap;</mo><msub><mi>S</mi><mn>2</mn></msub><mo>&cap;</mo><msub><mi>S</mi><mn>3</mn></msub></math>. The intersection removes model-specific date advantages. It may shorten the sample, so the resulting start and observation count must be reported.</p>
+  </section>
+
+  <section class="chapter-section" id="evidence-limitations">
+    <div class="eyebrow">Evidence and limitations</div>
+    <h2>Causal code is necessary, not sufficient</h2>
+    <div class="concept-grid">
+      <div class="panel"><h3>What tests establish</h3><p>Frozen offset, cost arithmetic, future-prefix invariance, trailing selection, binary positions, common dates, and recomputable trade identities behave as implemented.</p></div>
+      <div class="panel"><h3>What tests do not establish</h3><p>That delay and cost assumptions match every investor, that proxies match the paper, or that a regime signal has stable future economic value.</p></div>
+    </div>
+    <div class="evidence"><strong>Empirical boundary</strong>The v7 evidence through 2023 was produced under the frozen causal pipeline and should be read from its verified generated report. No metric is copied or recalculated in this lesson.</div>
+    <div class="limitation"><strong>Confirmation boundary</strong>A pointwise causal OOS path can still be overused. Repeatedly viewing it while changing features, grids, or models turns it into development evidence. A new confirmatory claim requires a genuinely untouched period or another prospective design.</div>
+    <p>Real trading adds bid-ask spreads, market impact, taxes, order size, execution uncertainty, and operational constraints beyond a fixed 10-basis-point scenario. The paper's cost and delay assumptions make the comparison more realistic than a frictionless same-close backtest, but they do not make it production-ready.</p>
+  </section>
+
+  <section class="chapter-section" id="practice">
+    <div class="eyebrow">Retrieval practice</div>
+    <h2>Audit the clock before reading the Sharpe ratio</h2>
+    <div class="quiz">
+      <h3>Recall</h3><p>An end-of-day-<math><mi>t</mi></math> signal has a one-day trading delay. Which return can the new position first earn?</p>
+      <div class="quiz-options"><button class="button" type="button" data-choice data-correct="false">The return ending at t</button><button class="button" type="button" data-choice data-correct="false">The return at t+1</button><button class="button" type="button" data-choice data-correct="true" data-feedback-correct="Correct. The signal is executed at the end of t+1 and applies starting with the t+2 return.">The return at t+2</button></div>
+      <output class="quiz-feedback">Choose an answer, then check the explanation.</output><button class="button" type="button" data-reset>Reset</button>
+    </div>
+    <details class="deep-explanation"><summary>Calculation: one-way switch cost</summary><p>A $250 portfolio moves from position 1 to 0 with a 10-bps one-way cost. Turnover is 1 and the cost rate is 10 / 10,000 = 0.001, so the cost is $0.25. A later move back to 1 incurs another one-way cost.</p></details>
+    <details><summary>Error diagnosis: full-sample standardization</summary><p>Future observations affect the center and scale assigned to past features. Fit the scaler only on each permitted trailing training window, then transform observations used for that decision.</p></details>
+    <details><summary>Cumulative recall from Chapters 1-6</summary><p>The delayed position chooses market or cash returns from Chapters 1-2, producing the risk path from Chapter 3. Regime persistence from Chapter 4 can help only after delay. Chapter 5 fixes data meaning, while Chapter 6 preserves every detailed path needed to audit timing.</p></details>
+    <details><summary>Advisor explanation</summary><p>"For a signal at end of t, our one-day delay shifts the position to t+2. Validation uses the same delay and costs as testing, preprocessing is fitted on trailing history only, future rows cannot alter past decisions, and models are scored on common dates."</p></details>
+  </section>
+
+  <section class="chapter-section" id="advisor">
+    <div class="eyebrow">How to explain this to your advisor</div>
+    <div class="advisor"><p><strong>Short version:</strong> "I audit information time before performance. Every feature, model fit, candidate choice, state label, position, cost, and return must be available in causal order."</p><p><strong>Important qualification:</strong> "Passing leakage and accounting tests validates the evaluation machinery. It does not prove the model is useful, the proxy data match the paper, or the inspected sample remains confirmatory."</p></div>
+  </section>
+
+  <footer class="chapter-footer">
+    <p><strong>Part II complete:</strong> You can now distinguish matching data definitions, sealed computational evidence, and a causal walk-forward backtest. Part III builds the features and models that operate inside this research protocol.</p>
+    <p><a href="06-reproducibility-sealed-evidence.html">Back to Chapter 6</a> · <a href="08-returns-to-model-features.html">Continue to Chapter 8</a> · <a href="index.html">Course map</a></p>
+  </footer>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const windowDecision = document.getElementById("window-decision-day");
+  const windowVisual = document.getElementById("trailing-window-visual");
+  const windowRows = document.getElementById("window-row-strip");
+  function renderWindow() {
+    const decision = Number(windowDecision.value);
+    const start = decision - 4;
+    document.getElementById("window-range").textContent = `Days ${start}-${decision}`;
+    document.getElementById("future-row-count").textContent = String(12 - decision);
+    windowRows.innerHTML = Array.from({ length: 12 }, (_, index) => {
+      const day = index + 1;
+      const status = day > decision ? "future" : day < start ? "older" : "active";
+      const kind = status === "active" ? "low-state" : "normal";
+      const style = status === "future" ? ' style="border-style:dashed"' : "";
+      const label = status === "active" ? "used" : status === "future" ? "future" : "past";
+      return `<span class="state-day ${kind}" data-status="${status}" title="Day ${day}: ${label}"${style}><b>${day}</b><small>${label}</small></span>`;
+    }).join("");
+    windowRows.setAttribute("aria-label", `Decision after Day ${decision}; active trailing window Days ${start} through ${decision}; ${12 - decision} future rows unavailable`);
+    windowVisual.classList.add("is-ready");
+  }
+  windowDecision.addEventListener("input", renderWindow);
+  document.getElementById("window-reset").addEventListener("click", () => {
+    windowDecision.value = "8";
+    windowDecision.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  renderWindow();
+
+  const lab = document.getElementById("timing-lab");
+  const delay = document.getElementById("backtest-delay");
+  const adverse = document.getElementById("adverse-return");
+  const cost = document.getElementById("switch-cost");
+  const timingLanes = document.getElementById("timing-lanes");
+  const laneRoots = {
+    signal: document.getElementById("signal-lane"),
+    position: document.getElementById("position-lane"),
+    turnover: document.getElementById("turnover-lane"),
+    wealth: document.getElementById("wealth-lane"),
+  };
+  function writeLane(root, cells, summary) {
+    root.innerHTML = cells.map((cell) => `<span class="state-day ${cell.kind}" data-status="${cell.status}" title="${cell.title}"${cell.style ? ` style="${cell.style}"` : ""}><b>${cell.text}</b><small>${cell.detail}</small></span>`).join("");
+    root.setAttribute("aria-label", summary);
+  }
+  function render() {
+    const firstCash = Number(delay.value) + 1;
+    const missed = Math.min(4, firstCash - 1);
+    const marketReturn = Number(adverse.value) / 100;
+    const costBps = Number(cost.value);
+    let wealth = 100;
+    const days = Array.from({ length: 8 }, (_, index) => {
+      const day = index + 1;
+      const adverseDay = day <= 4;
+      const marketHeld = day < firstCash;
+      const turnover = day === firstCash ? 1 : 0;
+      const grossReturn = adverseDay && marketHeld ? marketReturn : 0;
+      const netReturn = grossReturn - turnover * costBps / 10000;
+      wealth *= 1 + netReturn;
+      return { day, adverseDay, marketHeld, turnover, wealth };
+    });
+    document.getElementById("first-cash-day").textContent = `Day ${firstCash}`;
+    document.getElementById("missed-adverse-days").textContent = String(missed);
+    document.getElementById("timing-wealth").textContent = Course.money(wealth);
+    writeLane(laneRoots.signal, days.map(({ day }) => ({ kind: "", status: "cash-signal", style: "border-color:#63d59a;background:#111b17", title: `Day ${day}: requested signal is cash`, text: "0", detail: `D${day}` })), "The requested signal is cash on all eight teaching days after Day 0");
+    writeLane(laneRoots.position, days.map(({ day, marketHeld }) => ({ kind: marketHeld ? "low-state" : "", status: marketHeld ? "market" : "cash", style: marketHeld ? "" : "border-color:#63d59a;background:#111b17", title: `Day ${day}: ${marketHeld ? "market" : "cash"} position earns the return`, text: marketHeld ? "M" : "C", detail: `D${day}` })), `Market is held through Day ${firstCash - 1}; cash starts Day ${firstCash}`);
+    writeLane(laneRoots.turnover, days.map(({ day, turnover }) => ({ kind: turnover ? "adverse-protected" : "normal", status: turnover ? "switch" : "none", title: `Day ${day}: one-way turnover ${turnover}`, text: String(turnover), detail: turnover ? `${costBps} bps` : "none" })), `One-way turnover equals one on Day ${firstCash} and zero otherwise`);
+    writeLane(laneRoots.wealth, days.map(({ day, adverseDay, marketHeld, wealth: dayWealth }) => ({ kind: adverseDay ? (marketHeld ? "adverse-missed" : "adverse-protected") : "normal", status: adverseDay ? (marketHeld ? "market-loss" : "cash-protected") : "flat", style: "font-size:.8rem", title: `End of Day ${day}: wealth ${Course.money(dayWealth)}`, text: Course.money(dayWealth), detail: `D${day}` })), `Ending toy wealth after Day 8 is ${Course.money(wealth)}`);
+    timingLanes.classList.add("is-ready");
+  }
+  [delay, adverse, cost].forEach((input) => input.addEventListener("input", render));
+  lab.addEventListener("course:reset", render);
+  render();
+});
+</script>
+</body>
+</html>

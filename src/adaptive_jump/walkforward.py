@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
+from functools import partial
 
 import numpy as np
 import pandas as pd
@@ -40,6 +42,18 @@ class SelectionResult:
 
 
 @dataclass(frozen=True)
+class SelectionProgress:
+    """Causal monthly choices and CV rows completed so far."""
+
+    choices: pd.DataFrame
+    surface: pd.DataFrame
+
+
+SelectionLoader = Callable[[str, int], SelectionProgress | None]
+SelectionSaver = Callable[[str, int, SelectionProgress], None]
+
+
+@dataclass(frozen=True)
 class BoundaryDiagnostic:
     """Upper-grid selection frequency before metrics are opened."""
 
@@ -68,10 +82,15 @@ def build_baseline_study(
     config: ResearchConfig,
     *,
     oos_start: date,
+    precomputed_jm: FixedJMResult | None = None,
     precomputed_hmm: HMMResult | None = None,
+    selection_initial: SelectionLoader | None = None,
+    selection_progress: SelectionSaver | None = None,
 ) -> BaselineStudy:
     """Build all baseline choices and boundary checks without OOS metrics."""
-    jm = fixed_jm_states(frame, config.model_protocol, config.jm_protocol)
+    jm = precomputed_jm or fixed_jm_states(
+        frame, config.model_protocol, config.jm_protocol
+    )
     hmm = precomputed_hmm or hmm_states(
         frame, config.model_protocol, config.hmm_protocol
     )
@@ -88,6 +107,14 @@ def build_baseline_study(
     metrics = config.metrics_protocol
     for delay in backtest.robustness_delays:
         for model_name, candidate_states in candidates.items():
+            initial = (
+                selection_initial(model_name, delay) if selection_initial else None
+            )
+            save = (
+                partial(selection_progress, model_name, delay)
+                if selection_progress
+                else None
+            )
             selection = select_monthly_candidate(
                 returns,
                 candidate_states,
@@ -96,6 +123,8 @@ def build_baseline_study(
                 one_way_cost_bps=backtest.one_way_cost_bps,
                 periods_per_year=metrics.periods_per_year,
                 volatility_ddof=metrics.volatility_ddof,
+                initial=initial,
+                progress=save,
             )
             selections[model_name][delay] = selection
             diagnostic = boundary_diagnostic(
@@ -163,9 +192,25 @@ def baseline_paths(
                 delay_trading_days=delay,
                 one_way_cost_bps=config.backtest_protocol.one_way_cost_bps,
             )
-        output[delay] = {
+        oos_paths = {
             model_name: path.loc[oos].reset_index(drop=True)
             for model_name, path in paths.items()
+        }
+        metric_columns = [
+            "cash_return",
+            "position",
+            "one_way_turnover",
+            "strategy_return",
+        ]
+        complete = pd.concat(
+            [path[metric_columns].notna().all(axis=1) for path in oos_paths.values()],
+            axis=1,
+        ).all(axis=1)
+        if not complete.any():
+            raise WalkForwardError("no common OOS metric rows")
+        output[delay] = {
+            model_name: path.loc[complete].reset_index(drop=True)
+            for model_name, path in oos_paths.items()
         }
     return output
 
@@ -179,8 +224,13 @@ def select_monthly_candidate(
     one_way_cost_bps: float,
     periods_per_year: int = 252,
     volatility_ddof: int = 1,
+    initial: SelectionProgress | None = None,
+    checkpoint_every: int = 12,
+    progress: Callable[[SelectionProgress], None] | None = None,
 ) -> SelectionResult:
     """Select a state path monthly using only trailing validation returns."""
+    if checkpoint_every < 1:
+        raise WalkForwardError("selection checkpoint interval must be positive")
     prepared, states = _align_selection_inputs(returns, candidate_states)
     dates = pd.DatetimeIndex(prepared["date"])
     candidates = tuple(sorted(float(value) for value in states.columns))
@@ -201,17 +251,25 @@ def select_monthly_candidate(
     choices: list[dict[str, object]] = []
     surface: list[dict[str, object]] = []
     selection_started = False
+    decision_dates = pd.DatetimeIndex([])
     if first_complete is not None:
         earliest = first_complete + pd.DateOffset(years=protocol.validation_years)
-        for decision_date in _month_end_dates(dates):
-            if decision_date < earliest:
-                continue
+        decision_dates = _month_end_dates(dates)
+        decision_dates = decision_dates[decision_dates >= earliest]
+    completed = 0
+    if initial is not None:
+        choices, surface, completed, selection_started = _resume_selection(
+            initial, decision_dates, candidates
+        )
+    if first_complete is not None:
+        cash_return = prepared.set_index("date")["cash_return"]
+        for decision_date in decision_dates[completed:]:
             selected = _score_decision(
                 decision_date,
                 candidates,
                 states,
                 candidate_returns,
-                prepared.set_index("date")["cash_return"],
+                cash_return,
                 protocol,
                 periods_per_year,
                 volatility_ddof,
@@ -222,9 +280,21 @@ def select_monthly_candidate(
                     raise WalkForwardError(
                         f"no eligible candidate on {decision_date.date()}"
                     )
-                continue
-            selection_started = True
-            choices.append({"decision_date": decision_date, "selected": selected})
+            else:
+                selection_started = True
+                choices.append({"decision_date": decision_date, "selected": selected})
+            completed += 1
+            if progress is not None and (
+                completed % checkpoint_every == 0 or completed == len(decision_dates)
+            ):
+                progress(
+                    SelectionProgress(
+                        pd.DataFrame.from_records(
+                            choices, columns=["decision_date", "selected"]
+                        ),
+                        pd.DataFrame.from_records(surface),
+                    )
+                )
 
     choice_frame = pd.DataFrame.from_records(
         choices, columns=["decision_date", "selected"]
@@ -235,6 +305,53 @@ def select_monthly_candidate(
         choices=choice_frame,
         surface=pd.DataFrame.from_records(surface),
         candidate_returns=candidate_returns,
+    )
+
+
+def _resume_selection(
+    initial: SelectionProgress,
+    decision_dates: pd.DatetimeIndex,
+    candidates: tuple[float, ...],
+) -> tuple[list[dict[str, object]], list[dict[str, object]], int, bool]:
+    choices, surface = initial.choices.copy(), initial.surface.copy()
+    if tuple(choices.columns) != ("decision_date", "selected") or tuple(
+        surface.columns
+    ) != ("decision_date", "candidate", "valid_returns", "sharpe", "eligible"):
+        raise WalkForwardError("selection checkpoint schema is invalid")
+    if not candidates:
+        if not choices.empty or not surface.empty:
+            raise WalkForwardError("selection checkpoint has no candidate grid")
+        return [], [], 0, False
+    if len(surface) % len(candidates):
+        raise WalkForwardError("selection checkpoint contains a partial CV month")
+    completed = len(surface) // len(candidates)
+    if completed > len(decision_dates):
+        raise WalkForwardError("selection checkpoint exceeds the decision calendar")
+    try:
+        surface_dates = pd.to_datetime(surface["decision_date"], errors="raise")
+        surface_candidates = pd.to_numeric(surface["candidate"], errors="raise")
+        choice_dates = pd.DatetimeIndex(
+            pd.to_datetime(choices["decision_date"], errors="raise")
+        )
+        selected = pd.to_numeric(choices["selected"], errors="raise")
+    except (TypeError, ValueError) as exc:
+        raise WalkForwardError("selection checkpoint values are invalid") from exc
+    expected_dates = decision_dates[:completed]
+    expected = pd.MultiIndex.from_product([expected_dates, candidates])
+    observed = pd.MultiIndex.from_arrays([surface_dates, surface_candidates])
+    if not observed.equals(expected):
+        raise WalkForwardError("selection checkpoint is not a causal CV prefix")
+    if not selected.isin(candidates).all():
+        raise WalkForwardError("selection checkpoint choice is outside the grid")
+    if not choices.empty:
+        first = expected_dates.get_indexer([choice_dates[0]])[0]
+        if first < 0 or not choice_dates.equals(expected_dates[first:]):
+            raise WalkForwardError("selection checkpoint choices are not contiguous")
+    return (
+        choices.to_dict("records"),
+        surface.to_dict("records"),
+        completed,
+        not choices.empty,
     )
 
 

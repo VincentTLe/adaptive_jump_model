@@ -16,6 +16,7 @@ from adaptive_jump.config import (
 )
 from adaptive_jump.models import FixedJMResult, HMMResult
 from adaptive_jump.walkforward import (
+    SelectionProgress,
     WalkForwardError,
     baseline_paths,
     boundary_diagnostic,
@@ -133,6 +134,113 @@ def test_future_changes_do_not_change_past_selection() -> None:
     )
 
 
+def test_monthly_selection_resumes_exactly_from_causal_prefix() -> None:
+    returns, states = _inputs()
+    captured: list[SelectionProgress] = []
+
+    def interrupt(result: SelectionProgress) -> None:
+        captured.append(result)
+        raise RuntimeError("simulated interruption")
+
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        select_monthly_candidate(
+            returns,
+            states,
+            _selection(),
+            delay_trading_days=1,
+            one_way_cost_bps=10,
+            checkpoint_every=2,
+            progress=interrupt,
+        )
+    resumed = select_monthly_candidate(
+        returns,
+        states,
+        _selection(),
+        delay_trading_days=1,
+        one_way_cost_bps=10,
+        initial=captured[0],
+    )
+    uninterrupted = select_monthly_candidate(
+        returns,
+        states,
+        _selection(),
+        delay_trading_days=1,
+        one_way_cost_bps=10,
+    )
+
+    pd.testing.assert_frame_equal(resumed.choices, uninterrupted.choices)
+    pd.testing.assert_frame_equal(resumed.surface, uninterrupted.surface)
+    pd.testing.assert_frame_equal(
+        resumed.candidate_returns, uninterrupted.candidate_returns
+    )
+    pd.testing.assert_series_equal(resumed.signal, uninterrupted.signal)
+    assert captured[0].surface["decision_date"].nunique() == 2
+
+
+def test_monthly_selection_rejects_partial_checkpoint_month() -> None:
+    returns, states = _inputs()
+    captured: list[SelectionProgress] = []
+
+    def capture(result: SelectionProgress) -> None:
+        captured.append(result)
+
+    select_monthly_candidate(
+        returns,
+        states,
+        _selection(),
+        delay_trading_days=1,
+        one_way_cost_bps=10,
+        checkpoint_every=2,
+        progress=capture,
+    )
+    broken = SelectionProgress(
+        captured[0].choices, captured[0].surface.iloc[:-1].copy()
+    )
+    noncausal_surface = captured[0].surface.copy()
+    noncausal_surface.loc[0, "candidate"] = 5.0
+    noncausal = SelectionProgress(captured[0].choices, noncausal_surface)
+    outside_choices = captured[0].choices.copy()
+    outside_choices.loc[0, "selected"] = 999.0
+    outside = SelectionProgress(outside_choices, captured[0].surface)
+
+    with pytest.raises(WalkForwardError, match="partial CV month"):
+        select_monthly_candidate(
+            returns,
+            states,
+            _selection(),
+            delay_trading_days=1,
+            one_way_cost_bps=10,
+            initial=broken,
+        )
+    with pytest.raises(WalkForwardError, match="causal CV prefix"):
+        select_monthly_candidate(
+            returns,
+            states,
+            _selection(),
+            delay_trading_days=1,
+            one_way_cost_bps=10,
+            initial=noncausal,
+        )
+    with pytest.raises(WalkForwardError, match="outside the grid"):
+        select_monthly_candidate(
+            returns,
+            states,
+            _selection(),
+            delay_trading_days=1,
+            one_way_cost_bps=10,
+            initial=outside,
+        )
+    with pytest.raises(WalkForwardError, match="interval must be positive"):
+        select_monthly_candidate(
+            returns,
+            states,
+            _selection(),
+            delay_trading_days=1,
+            one_way_cost_bps=10,
+            checkpoint_every=0,
+        )
+
+
 def test_boundary_frequency_uses_only_oos_months() -> None:
     choices = pd.DataFrame(
         {
@@ -178,11 +286,11 @@ def test_baseline_integration_keeps_metrics_sealed_until_boundaries_pass(
     hmm_state = pd.Series(np.arange(len(dates)) % 2, index=dates, dtype=float)
     monkeypatch.setattr(
         "adaptive_jump.walkforward.fixed_jm_states",
-        lambda *_: FixedJMResult(jm_states, pd.DataFrame()),
+        lambda *_: pytest.fail("precomputed JM was ignored"),
     )
     monkeypatch.setattr(
         "adaptive_jump.walkforward.hmm_states",
-        lambda *_: HMMResult(hmm_state, pd.DataFrame()),
+        lambda *_: pytest.fail("precomputed HMM was ignored"),
     )
     config = load_config(Path(__file__).resolve().parents[1] / "research.toml")
     config = replace(
@@ -193,17 +301,47 @@ def test_baseline_integration_keeps_metrics_sealed_until_boundaries_pass(
         selection_protocol=SelectionProtocol(1, 20, 1e-12, 1.0),
         backtest_protocol=BacktestProtocol(1, 2, (1, 5), 10, False),
     )
+    loaded: list[tuple[str, int]] = []
+    saved: list[tuple[str, int]] = []
 
-    study = build_baseline_study(frame, config, oos_start=date(2021, 2, 1))
+    def load_selection(model_name: str, delay: int) -> None:
+        loaded.append((model_name, delay))
+
+    def save_selection(
+        model_name: str, delay: int, _progress: SelectionProgress
+    ) -> None:
+        saved.append((model_name, delay))
+
+    study = build_baseline_study(
+        frame,
+        config,
+        oos_start=date(2021, 2, 1),
+        precomputed_jm=FixedJMResult(jm_states, pd.DataFrame()),
+        precomputed_hmm=HMMResult(hmm_state, pd.DataFrame()),
+        selection_initial=load_selection,
+        selection_progress=save_selection,
+    )
     metrics = open_baseline_metrics(frame, study, config)
 
     assert len(study.boundaries) == 4
+    expected_callbacks = {
+        (model, delay) for model in ("fixed_jm", "hmm") for delay in (1, 5)
+    }
+    assert set(loaded) == expected_callbacks
+    assert set(saved) == expected_callbacks
     assert study.boundaries["passed"].all()
     assert len(metrics) == 6
+    for _, rows in metrics.groupby("delay"):
+        assert rows["start"].nunique() == 1
+        assert rows["end"].nunique() == 1
+        assert rows["observations"].nunique() == 1
     sealed = replace(study, boundaries=study.boundaries.assign(passed=False))
     with pytest.raises(WalkForwardError, match="metrics are sealed"):
         open_baseline_metrics(frame, sealed, config)
     paths = baseline_paths(frame, study, config)
+    for models in paths.values():
+        dates = [path["date"].reset_index(drop=True) for path in models.values()]
+        assert all(dates[0].equals(other) for other in dates[1:])
     jm_path = paths[1]["fixed_jm"]
     assert (
         jm_path.loc[jm_path["strategy_return"].notna(), "transaction_cost"]

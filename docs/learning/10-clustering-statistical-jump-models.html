@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A beginner guide to clustering, centroids, squared distance, state paths, jump penalties, coordinate descent, and the paper's statistical Jump Model.">
+  <title>Chapter 10: Clustering And Statistical Jump Models</title>
+  <link rel="stylesheet" href="course.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/mml-chtml.js" integrity="sha384-GYAeDZjH9w23NyL4cfS+ZrgWmGvta6VNs4p+/vtuF+RWe30fQhmP8pHbzRmlwmAK" crossorigin="anonymous"></script>
+  <script defer src="course.js"></script>
+</head>
+<body>
+<main class="course-shell">
+  <nav class="course-nav" aria-label="Course navigation">
+    <a href="09-hidden-markov-models.html">Previous: Hidden Markov Models</a>
+    <span>Part III &middot; Chapter 10 of 14</span>
+    <a href="11-dynamic-programming-online-inference.html">Next: dynamic programming</a>
+  </nav>
+
+  <header class="chapter-header">
+    <div class="part-label">Part III &middot; Features And Models</div>
+    <h1>Clustering And Statistical Jump Models</h1>
+    <p class="lead">How can we group similar market conditions while explicitly charging the model for changing its mind?</p>
+    <div class="chapter-meta"><span>Beginner to intermediate</span><span>Jump-penalty laboratory</span><span>Paper Equation (1)</span></div>
+  </header>
+
+  <section class="chapter-section" id="question">
+    <div class="eyebrow">The opening question</div>
+    <h2>Should a model move your $100 after every ambiguous day?</h2>
+    <p>You have $100 and a binary allocation rule: state 0 means hold the market; state 1 means hold cash after the required delay. Suppose today's three features look slightly more like a bear pattern than a bull pattern, but tomorrow looks slightly more bullish again. A nearest-pattern rule switches to cash and back. Even before judging returns, that fragile sequence creates two trades and two opportunities for timing error.</p>
+    <div class="example-grid">
+      <article class="worked-example failure"><h3>A common failure: pointwise labels</h3><span class="big-number">0 &rarr; 1 &rarr; 0</span><p>Each day chooses its nearest center independently. Tiny feature movements can create two state jumps around one ambiguous observation.</p></article>
+      <article class="worked-example"><h3>Persistent path</h3><span class="big-number">0 &rarr; 0 &rarr; 0</span><p>A jump model accepts a slightly worse fit on the middle day when avoiding two state changes reduces the full path objective.</p></article>
+    </div>
+    <p>A statistical Jump Model, abbreviated JM, begins with clustering. It represents each state by a feature centroid and measures how far each day's standardized feature vector lies from each centroid. It then adds time: every change between consecutive state labels incurs a fixed nonnegative jump penalty.</p>
+    <p>The penalty is not a brokerage fee and is not subtracted from portfolio wealth. It is regularization inside the model objective. Its purpose is to express a preference for persistent state sequences. Actual transaction costs enter later in validation and backtesting. Keeping these two costs separate prevents a common conceptual error.</p>
+    <figure class="teaching-figure" id="jm-objective-anatomy-figure" data-visual-type="static" aria-labelledby="jm-objective-anatomy-title">
+      <span class="teaching-label">Teaching example</span><h3 id="jm-objective-anatomy-title">The objective keeps model fit and persistence in separate accounts</h3>
+      <div class="visual-stage compact"><svg viewBox="0 0 440 330" role="img" aria-labelledby="jm-objective-svg-title jm-objective-svg-desc"><title id="jm-objective-svg-title">Jump Model objective anatomy</title><desc id="jm-objective-svg-desc">Feature-to-centroid distance loss and lambda times the number of state switches add to the total model objective.</desc><rect class="diagram-low" x="35" y="30" width="370" height="72" rx="10"/><text x="64" y="62" font-size="21" font-weight="700">Feature mismatch</text><text x="64" y="88" font-size="17">half squared distance to assigned centroid</text><text x="208" y="132" font-size="30">+</text><rect class="diagram-warning" x="35" y="148" width="370" height="72" rx="10"/><text x="64" y="180" font-size="21" font-weight="700">Persistence cost</text><text x="64" y="206" font-size="17">lambda x number of state changes</text><text x="208" y="250" font-size="30">=</text><rect class="diagram-verified" x="92" y="266" width="256" height="50" rx="10"/><text x="136" y="298" font-size="21" font-weight="700">Total objective</text></svg></div>
+      <figcaption class="visual-caption">The first account asks whether each row resembles its assigned state. The second asks how often the path changes. Transaction cost and portfolio return are not part of this equation.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> lambda can change state labels without changing any feature observation.</div>
+    </figure>
+    <div class="remember"><strong>The idea to remember</strong>A Jump Model balances two debts. It pays feature-distance loss when a day is assigned to an ill-fitting centroid, and it pays <math><mi>&lambda;</mi></math> whenever the hidden state changes. The optimal path minimizes their sum, so a switch occurs only when better data fit is worth its persistence cost.</div>
+  </section>
+
+  <section class="chapter-section" id="vocabulary">
+    <div class="eyebrow">Words before notation</div>
+    <h2>Translate clustering into a time-series objective</h2>
+    <div class="concept-grid three">
+      <div class="panel"><h3>Feature vector</h3><p>One row containing the standardized DD-10, Sortino-20, and Sortino-60 values for a date. It is a point in three-dimensional feature space.</p></div>
+      <div class="panel"><h3>Cluster</h3><p>A collection of feature rows assigned to one representative state. Clustering is unsupervised: no observed bull/bear answer is supplied during fitting.</p></div>
+      <div class="panel"><h3>Centroid</h3><p>The representative center of one cluster. With squared Euclidean loss, updating a centroid means averaging rows assigned to that state.</p></div>
+      <div class="panel"><h3>Distance loss</h3><p>Half the squared Euclidean distance from a feature vector to its assigned centroid. Lower means the centroid describes that row better.</p></div>
+      <div class="panel"><h3>Jump penalty</h3><p>A fixed model-objective cost <math><mi>&lambda;</mi><mo>&ge;</mo><mn>0</mn></math> paid whenever consecutive state labels differ.</p></div>
+      <div class="panel"><h3>Regularization</h3><p>A preference added to data fit to control model behavior. Here it discourages unnecessary state changes without forbidding them.</p></div>
+    </div>
+    <details class="deep-explanation"><summary>Deep explanation: geometry, paths, optimization, and labels</summary>
+    <p><span class="term">Euclidean distance</span> is ordinary straight-line distance. For three standardized coordinates, squared distance adds the squared coordinate differences. Squaring makes large mismatches matter more and removes signs. The factor one half simplifies some derivations but does not change which path is best if all other objective terms use the declared scale.</p>
+    <p><span class="term">Standardized</span> matters because distance depends on units. If DD were numerically one hundred times larger than a Sortino coordinate, it could dominate clustering merely because of representation. Chapter 8 showed that each trailing training window centers and scales its three feature columns before JM fitting.</p>
+    <p><span class="term">k-means</span> alternates between assigning each row to its nearest centroid and updating centroids from assigned rows. It ignores order. Shuffling dates leaves the pointwise clustering objective unchanged. The discrete JM becomes k-means when <math><mi>&lambda;</mi><mo>=</mo><mn>0</mn></math>, because changing states is free.</p>
+    <p>A <span class="term">state path</span> is the ordered label sequence <math><msub><mi>s</mi><mn>0</mn></msub><mo>,</mo><mo>&hellip;</mo><mo>,</mo><msub><mi>s</mi><mrow><mi>T</mi><mo>&minus;</mo><mn>1</mn></mrow></msub></math>. The <span class="term">indicator</span> <math><mn>1</mn><mo>{</mo><msub><mi>s</mi><mrow><mi>t</mi><mo>&minus;</mo><mn>1</mn></mrow></msub><mo>&ne;</mo><msub><mi>s</mi><mi>t</mi></msub><mo>}</mo></math> equals one when a jump occurs and zero otherwise. Summing indicators counts path switches.</p>
+    <p><span class="term">Coordinate descent</span> solves one block of variables while holding another block fixed, then alternates. With labels fixed, update centroids. With centroids fixed, find the best ordered labels. The second problem is solved exactly by dynamic programming; Chapter 11 opens that algorithm line by line.</p>
+    <p>The complete joint problem is still <span class="term">non-convex</span>. Coordinate descent can settle at different local solutions from different initial centroids. The implementation uses multiple initializations and keeps the fit with lowest final objective. This reduces initialization sensitivity but does not prove the global minimum was found.</p>
+    <p><span class="term">Anonymous labels</span> have no economic meaning. After fitting, the reference library orders states using training-period returns. With <code>sort_by="cumret"</code>, the state with higher cumulative excess return becomes state 0, interpreted as bull/risky, and the other becomes state 1, interpreted as bear/cash. The mapping uses training information, not later strategy results.</p>
+    </details>
+  </section>
+
+  <section class="chapter-section" id="worked-jm">
+    <div class="eyebrow">Worked example two</div>
+    <h2>Compare a noisy path with a smoother path</h2>
+    <p>Use one invented standardized feature coordinate over eight days: -1.4, -1.1, +0.6, -0.4, +0.8, +1.2, -0.2, and -1.0. Fix state-0 centroid at -1 and state-1 centroid at +1. At <math><mi>&lambda;</mi><mo>=</mo><mn>0</mn></math>, every day chooses the closer center, producing 0, 0, 1, 0, 1, 1, 0, 0: four switches.</p>
+    <p>Now set <math><mi>&lambda;</mi><mo>=</mo><mn>0.5</mn></math>. The optimal path becomes 0, 0, 1, 1, 1, 1, 0, 0. Day 4 at -0.4 fits centroid -1 better by distance, but making that one-day detour would require a switch into state 0 and another switch out. The saved distance loss is not large enough to justify both penalties.</p>
+    <p>For the smoother path, data loss is 1.50 and two switches cost 1.00, giving total objective 2.50. At a sufficiently large penalty, the optimum becomes all state 0. That path fits several positive observations poorly but pays no transition cost. More persistence is therefore not automatically better; an excessive penalty can erase meaningful changes.</p>
+    <h3>A common failure: treat <math><mi>&lambda;</mi></math> as a probability</h3>
+    <p>The jump penalty can be 5, 70, or 1,200 in the standardized objective. It is not restricted to the interval from zero to one and should not be read as "70% persistent." HMM transition entries are probabilities. JM <math><mi>&lambda;</mi></math> is an objective-scale cost whose behavioral meaning depends on feature scaling, centroid distances, and the data sequence.</p>
+    <p>Another failure labels the red cluster "bear" because it visually contains a crash in a final chart. Correct state ordering is part of fitting and must use only the associated training returns. Relabeling after viewing out-of-sample performance can reverse signals until a preferred result appears.</p>
+  </section>
+
+  <section class="chapter-section" id="jm-lab-section">
+    <div class="eyebrow">Interactive teaching visual</div>
+    <h2>Raise the penalty and watch isolated states disappear</h2>
+    <p>The centroids and eight toy observations are fixed except for Day 4. The lab computes the exact minimum path for those fixed centroids. It does not perform coordinate-descent fitting and uses no market data.</p>
+    <div class="lab" id="jm-lab">
+      <div class="lab-header"><div><h3>Fixed-centroid Jump Model</h3><p>State 0 center = -1; state 1 center = +1.</p></div><button class="button" type="button" data-reset>Reset</button></div>
+      <form><div class="control-grid">
+        <div><label for="jm-penalty">Jump penalty: <output id="jm-penalty-output" for="jm-penalty">0.50</output></label><input id="jm-penalty" type="range" min="0" max="3" step="0.25" value="0.5" data-output="jm-penalty-output" data-digits="2"></div>
+        <div><label for="jm-day-four">Day 4 feature: <output id="jm-day-four-output" for="jm-day-four">-0.4</output></label><input id="jm-day-four" type="range" min="-1.5" max="1.5" step="0.1" value="-0.4" data-output="jm-day-four-output" data-digits="1"></div>
+      </div></form>
+      <figure class="teaching-figure" id="jm-feature-space-figure" data-visual-type="interactive" aria-labelledby="jm-feature-space-title">
+        <span class="teaching-label">Teaching example</span><h3 id="jm-feature-space-title">Each observation sits between two fixed centroids</h3>
+        <div class="visual-stage compact"><svg id="jm-feature-space" viewBox="0 0 440 360" role="img" aria-label="Eight toy observations positioned between centroids minus one and plus one"><line class="diagram-link" x1="80" y1="36" x2="410" y2="36"/><line x1="142" y1="28" x2="142" y2="330" stroke="#75b8ff" stroke-width="3"/><line x1="348" y1="28" x2="348" y2="330" stroke="#ff8585" stroke-width="3"/><text x="103" y="22" font-size="16">state 0 center -1</text><text x="304" y="22" font-size="16">state 1 center +1</text><g font-size="16"><text x="24" y="68">D1</text><text x="24" y="103">D2</text><text x="24" y="138">D3</text><text x="24" y="173">D4</text><text x="24" y="208">D5</text><text x="24" y="243">D6</text><text x="24" y="278">D7</text><text x="24" y="313">D8</text></g><g id="jm-observation-points"><circle id="jm-point-0" cx="101" cy="62" r="9" fill="#75b8ff"/><circle id="jm-point-1" cx="132" cy="97" r="9" fill="#75b8ff"/><circle id="jm-point-2" cx="307" cy="132" r="9" fill="#ff8585"/><circle id="jm-point-3" cx="204" cy="167" r="11" fill="#ff8585" stroke="#f0bd64" stroke-width="4"/><circle id="jm-point-4" cx="328" cy="202" r="9" fill="#ff8585"/><circle id="jm-point-5" cx="369" cy="237" r="9" fill="#ff8585"/><circle id="jm-point-6" cx="224" cy="272" r="9" fill="#75b8ff"/><circle id="jm-point-7" cx="142" cy="307" r="9" fill="#75b8ff"/></g><text x="74" y="350" font-size="15">-1.6</text><text x="239" y="350" font-size="15">0</text><text x="398" y="350" font-size="15">+1.6</text></svg></div>
+        <figcaption class="visual-caption">Move Day 4. Horizontal position is feature value; color is the state chosen by the complete optimal path. Day 4 can remain red even while sitting left of zero because two surrounding switches may cost more.</figcaption>
+      </figure>
+      <figure class="teaching-figure" id="jm-objective-response-figure" data-visual-type="interactive" aria-labelledby="jm-objective-response-title">
+      <span class="teaching-label">Teaching example</span><h3 id="jm-objective-response-title">Distance and switching add to one visible total</h3>
+      <div class="visual-stage compact"><svg id="jm-objective-bars" viewBox="0 0 440 300" role="img" aria-label="Default objective contains distance loss 1.50 and penalty cost 1.00"><text x="30" y="55" font-size="19" font-weight="700">Objective composition</text><rect x="55" y="92" width="330" height="64" fill="#20242a"/><rect id="jm-distance-bar" x="55" y="92" width="198" height="64" fill="#75b8ff" data-animate/><rect id="jm-switch-bar" x="253" y="92" width="132" height="64" fill="#f0bd64" data-animate/><text id="jm-distance-bar-label" x="68" y="130" font-size="18">distance 1.50</text><text id="jm-switch-bar-label" x="264" y="130" font-size="18">switch 1.00</text><text id="jm-total-bar-label" x="134" y="207" font-size="24" font-weight="700">total = 2.50</text><text x="82" y="260" font-size="17">blue: fit the data</text><text x="258" y="260" font-size="17">amber: avoid jumps</text></svg></div>
+      <div class="metric-grid three">
+        <div class="panel"><span class="label">Distance loss</span><strong class="big-number" id="jm-data-loss">1.50</strong></div>
+        <div class="panel"><span class="label">Penalty cost</span><strong class="big-number" id="jm-penalty-cost">1.00</strong></div>
+        <div class="panel"><span class="label">Total objective</span><strong class="big-number" id="jm-objective">2.50</strong></div>
+      </div>
+      <div class="state-strip backtest-strip" id="jm-path" aria-label="Default state path: 0, 0, 1, 1, 1, 1, 0, 0"><span class="state-day low-state"><b>Day 1</b><small>state 0</small></span><span class="state-day low-state"><b>Day 2</b><small>state 0</small></span><span class="state-day high-state"><b>Day 3</b><small>state 1</small></span><span class="state-day high-state"><b>Day 4</b><small>state 1</small></span><span class="state-day high-state"><b>Day 5</b><small>state 1</small></span><span class="state-day high-state"><b>Day 6</b><small>state 1</small></span><span class="state-day low-state"><b>Day 7</b><small>state 0</small></span><span class="state-day low-state"><b>Day 8</b><small>state 0</small></span></div>
+      <figcaption class="visual-caption">Raise lambda. The amber cost per switch grows, but the number of switches can fall at discrete thresholds. The blue and amber widths always show their shares of the current total.</figcaption>
+      </figure>
+      <div class="table-wrap fallback-table"><table class="data-table"><thead><tr><th>Setting</th><th>Optimal toy path</th><th>Switches</th><th>Lesson</th></tr></thead><tbody><tr><td><math><mi>&lambda;</mi><mo>=</mo><mn>0</mn></math></td><td>0 0 1 0 1 1 0 0</td><td>4</td><td>Pointwise nearest-centroid assignment</td></tr><tr><td><math><mi>&lambda;</mi><mo>=</mo><mn>0.5</mn></math></td><td>0 0 1 1 1 1 0 0</td><td>2</td><td>One-day detour is removed</td></tr><tr><td><math><mi>&lambda;</mi><mo>=</mo><mn>3</mn></math></td><td>0 0 0 0 0 0 0 0</td><td>0</td><td>Persistence overwhelms the second cluster</td></tr></tbody></table></div>
+      <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The table preserves the three default comparisons. At <math><mi>&lambda;</mi><mo>=</mo><mn>0.5</mn></math>, distance 1.50 plus penalty 1.00 gives objective 2.50.</p></noscript>
+    </div>
+    <p>Use the slider slowly. The path changes at thresholds rather than continuously because labels are discrete. The objective itself is compared across complete candidate paths. A small increase in <math><mi>&lambda;</mi></math> can leave every label unchanged until another path becomes cheaper.</p>
+  </section>
+
+  <section class="chapter-section" id="paper-connection">
+    <div class="eyebrow">Connection to the named paper</div>
+    <h2>Equation (1) makes persistence explicit</h2>
+    <p>Section 3.4 of <a href="../../2402.05272v3.pdf">Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3</a> defines a two-state statistical JM over the three standardized features from Chapter 8. Equation (1) adds scaled squared Euclidean feature loss and a fixed penalty for every adjacent state change. The authors identify state 0 as bull using higher training-period cumulative excess return and state 1 as bear.</p>
+    <p>The paper explains that zero penalty reduces the model to k-means, while higher penalties produce fewer transitions and can eventually place all observations in one cluster. Coordinate descent alternates centroid and state-sequence optimization. Ten initializations are run and the lowest objective fit is retained. Section 3.4.1 updates centroids every six months on a rolling 3,000-day window.</p>
+    <p>Figure 3 visualizes fitted feature centroids by regime for one illustrative fixed penalty. Table 3 compares online state-switch frequency under several fixed penalties. Section 3.4.3 does not declare one universally correct penalty: it selects among candidates monthly using an eight-year online strategy validation. Chapter 12 will separate model fitting from that outer hyperparameter choice.</p>
+    <p>The paper also discusses continuous and sparse JM variants and possible broader features. They are related literature, not components of Equation (1)'s discrete two-state replication baseline.</p>
+    <figure class="source-lens" id="paper-figure-three-lens" data-paper-figure="3" data-paper-page="12" aria-labelledby="paper-figure-three-lens-title">
+      <span class="teaching-label">Paper reading guide - original schematic</span>
+      <h3 id="paper-figure-three-lens-title">Figure 3 follows six centroid coordinates through rolling JM fits</h3>
+      <div class="source-lens-flow">
+        <div class="source-lens-step"><svg viewBox="0 0 240 130" role="img" aria-label="A three-thousand-row window advances to a six-month refit date"><rect class="diagram-node" x="12" y="42" width="18" height="30"/><rect class="diagram-node" x="35" y="42" width="18" height="30"/><rect class="diagram-node" x="58" y="42" width="18" height="30"/><rect class="diagram-node" x="81" y="42" width="18" height="30"/><rect class="diagram-node" x="104" y="42" width="18" height="30"/><rect class="diagram-node" x="127" y="42" width="18" height="30"/><rect class="diagram-warning" x="150" y="36" width="28" height="42"/><path class="diagram-link" d="M12 88 L178 88 M12 82 L12 94 M178 82 L178 94 M184 57 L225 57"/><path d="M225 57 L215 51 L215 63 Z" fill="#aab3bf"/><text x="95" y="112" font-size="17" text-anchor="middle">3,000 rows</text><text x="198" y="43" font-size="15" text-anchor="middle">+6 months</text></svg><h4>1. Reach a refit date</h4><p>The training window ends at each plotted date, then advances to the next six-month refit.</p></div>
+        <div class="source-lens-step"><svg viewBox="0 0 240 130" role="img" aria-label="Two centroids fitted in a three-feature space with a fixed jump penalty"><path class="diagram-link" d="M24 104 L24 24 M24 104 L218 104 M24 104 L78 58"/><circle cx="67" cy="83" r="5" fill="#75b8ff"/><circle cx="84" cy="72" r="5" fill="#75b8ff"/><circle cx="98" cy="88" r="5" fill="#75b8ff"/><circle cx="79" cy="81" r="12" fill="#75b8ff"/><circle cx="158" cy="48" r="5" fill="#ff8585"/><circle cx="180" cy="59" r="5" fill="#ff8585"/><circle cx="171" cy="37" r="5" fill="#ff8585"/><circle cx="170" cy="49" r="12" fill="#ff8585"/><text x="79" y="122" font-size="15" text-anchor="middle">bull center</text><text x="170" y="24" font-size="15" text-anchor="middle">bear center</text></svg><h4>2. Fit two centers</h4><p>JM uses fixed <math><mi>&lambda;</mi><mo>=</mo><mn>50</mn></math> to estimate one three-coordinate centroid for each regime.</p></div>
+        <div class="source-lens-step"><svg viewBox="0 0 240 130" role="img" aria-label="Three feature rows each containing bull and bear centroid coordinates"><text x="12" y="26" font-size="15">DD-10</text><line class="diagram-link" x1="104" y1="22" x2="226" y2="22"/><circle cx="132" cy="22" r="7" fill="#75b8ff"/><circle cx="199" cy="22" r="7" fill="#ff8585"/><text x="12" y="62" font-size="15">Sortino-20</text><line class="diagram-link" x1="104" y1="58" x2="226" y2="58"/><circle cx="186" cy="58" r="7" fill="#75b8ff"/><circle cx="124" cy="58" r="7" fill="#ff8585"/><text x="12" y="98" font-size="15">Sortino-60</text><line class="diagram-link" x1="104" y1="94" x2="226" y2="94"/><circle cx="174" cy="94" r="7" fill="#75b8ff"/><circle cx="137" cy="94" r="7" fill="#ff8585"/><text x="120" y="124" font-size="14" text-anchor="middle">presentation-scaled coordinates</text></svg><h4>3. Plot three coordinates</h4><p>Each feature panel receives one bull coordinate and one bear coordinate from the same fit.</p></div>
+      </div>
+      <figcaption class="visual-caption"><a href="../../2402.05272v3.pdf#page=12">Figure 3 on PDF page 12</a> reports rolling S&amp;P 500 JM centroids for 1982-2023 using a fixed jump penalty of 50. The paper annualizes the displayed features and applies its stated square-root-of-two scaling. This guide copies none of its dates, values, or empirical curves; the marker positions above are schematic only.</figcaption>
+      <div class="what-to-notice"><strong>What to notice:</strong> one date produces two three-dimensional centers, hence six displayed coordinates. A curve is a centroid coordinate carried across refits, not the observed feature series, inferred state path, allocation, or strategy return.</div>
+    </figure>
+  </section>
+
+  <section class="chapter-section" id="project-connection">
+    <div class="eyebrow">Connection to this project</div>
+    <h2>The active baseline delegates fixed JM behavior upstream</h2>
+    <p><a href="../../src/adaptive_jump/models.py"><code>src/adaptive_jump/models.py</code></a> uses the authors' <code>jumpmodels.JumpModel</code> rather than reimplementing fixed JM fitting. For each frozen candidate penalty it passes two states, ten initializations, deterministic seed 0, tolerance and iteration limits, and <code>sort_by="cumret"</code>. It rejects non-finite objectives and invalid labels.</p>
+    <p>The input window contains exactly 3,000 complete rows of DD-10, Sortino-20, Sortino-60, and excess return. A scaler is fitted on those feature rows. The initial eligible fit and scheduled January/July fits estimate centroids separately for each penalty. Between refits, the most recent fitted scaler and centroids remain fixed.</p>
+    <p>Every day, each candidate model receives the current trailing 3,000 scaled feature rows through upstream <code>predict_online</code>. The adapter validates the returned label vector and retains only its terminal state. Thus semiannual parameter fitting and daily online state inference are different operations.</p>
+    <pre><code>for each scheduled fit and each lambda:
+    fit upstream JumpModel on 3,000 scaled feature rows
+for each eligible day and each lambda:
+    run upstream online DP on the trailing window
+    retain only the terminal state</code></pre>
+    <p>The frozen grid in <a href="../../research.toml"><code>research.toml</code></a> is 0, 5, 15, 35, 70, 150, 300, 600, and 1,200. These are candidates, not values chosen using the current day alone. <a href="../../tests/test_models.py"><code>tests/test_models.py</code></a> checks refit cadence, causal prefix behavior, cumulative-return ordering, and exact agreement between the adapter's terminal state and upstream online DP.</p>
+    <p>A separate time-varying DP implementation exists for the preregistered adaptive extension, but no adaptive experiment is opened in this textbook task. Its fixed-penalty nesting test belongs to Chapter 11's algorithm contract, not evidence that adaptation improves performance.</p>
+  </section>
+
+  <section class="chapter-section" id="mathematics">
+    <div class="eyebrow">Mathematical layer</div>
+    <h2>Read the full objective without skipping a term</h2>
+    <div class="formula"><math display="block"><munder><mo>min</mo><mrow><mi>&Theta;</mi><mo>,</mo><mi>S</mi></mrow></munder><mspace width=".5em"/><munderover><mo>&sum;</mo><mrow><mi>t</mi><mo>=</mo><mn>0</mn></mrow><mrow><mi>T</mi><mo>&minus;</mo><mn>1</mn></mrow></munderover><mfrac><mn>1</mn><mn>2</mn></mfrac><msup><mrow><mo>&Vert;</mo><msub><mi>x</mi><mi>t</mi></msub><mo>&minus;</mo><msub><mi>&theta;</mi><msub><mi>s</mi><mi>t</mi></msub></msub><mo>&Vert;</mo></mrow><mn>2</mn></msup><mo>+</mo><mi>&lambda;</mi><munderover><mo>&sum;</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>T</mi><mo>&minus;</mo><mn>1</mn></mrow></munderover><mn>1</mn><mo>{</mo><msub><mi>s</mi><mrow><mi>t</mi><mo>&minus;</mo><mn>1</mn></mrow></msub><mo>&ne;</mo><msub><mi>s</mi><mi>t</mi></msub><mo>}</mo></math></div>
+    <div class="table-wrap"><table class="symbol-table"><thead><tr><th>Symbol</th><th>Meaning</th><th>Convention</th></tr></thead><tbody><tr><td><math><mi>T</mi></math></td><td>Number of observations in the fitting sequence</td><td>3,000 in the paper/project fit window</td></tr><tr><td><math><msub><mi>x</mi><mi>t</mi></msub></math></td><td>Standardized feature vector for date <math><mi>t</mi></math></td><td>Three coordinates</td></tr><tr><td><math><msub><mi>s</mi><mi>t</mi></msub></math></td><td>Hidden discrete state assigned to date <math><mi>t</mi></math></td><td>0 or 1</td></tr><tr><td><math><msub><mi>&theta;</mi><mi>k</mi></msub></math></td><td>Centroid for state <math><mi>k</mi></math></td><td>Three coordinates</td></tr><tr><td><math><mi>&Theta;</mi></math></td><td>Collection of all centroids</td><td>Model-parameter block</td></tr><tr><td><math><mi>S</mi></math></td><td>Complete ordered state sequence</td><td>State-variable block</td></tr><tr><td><math><mi>&lambda;</mi></math></td><td>Penalty for one state change</td><td>Nonnegative objective units</td></tr></tbody></table></div>
+    <p>The first sum asks every assigned centroid to explain its feature row. If a row equals its centroid, loss is zero. The second sum counts adjacent label changes and multiplies the count by <math><mi>&lambda;</mi></math>. No penalty is paid at the first row because there is no earlier state inside the sequence.</p>
+    <p>Holding <math><mi>S</mi></math> fixed, minimizing squared loss sets each centroid to the mean of rows assigned to it. Holding <math><mi>&Theta;</mi></math> fixed, the best state path can be found recursively because future cost depends on the current ending state, not the complete route used to arrive there. Alternating these two operations cannot increase the objective when implemented correctly, but it may converge to a local solution.</p>
+    <p>For the Day 4 detour in the toy sequence, switching from state 1 to 0 and immediately back saves some distance loss but adds <math><mn>2</mn><mi>&lambda;</mi></math>. The detour disappears when saved loss is no greater than that added penalty. This local comparison builds intuition; the actual optimizer compares complete paths because one state decision can alter later transition costs.</p>
+  </section>
+
+  <section class="chapter-section" id="evidence-limitations">
+    <div class="eyebrow">Evidence and limits</div>
+    <h2>Do not confuse a useful objective with discovered truth</h2>
+    <div class="concept-grid"><div class="panel"><h3>Verified contract</h3><p>Paper, upstream source, config, adapter, and tests agree on scaled squared distance, off-diagonal fixed penalty, two states, multiple starts, cumulative-return ordering, semiannual refits, and online terminal inference.</p></div><div class="panel"><h3>Open empirical question</h3><p>Whether these centroids and persistence choices identify economically useful regimes on each proxy market and remain useful outside the inspected sample.</p></div></div>
+    <div class="evidence"><strong>Evidence boundary</strong>Equation (1) and the cited paper displays establish what the authors specified and reported. The frozen project report separately records proxy behavior. The toy lab establishes neither.</div>
+    <div class="limitation"><strong>Optimization boundary</strong>Coordinate descent plus restarts is not a proof of global optimality. Euclidean distance favors roughly spherical feature clusters, standardization choices affect geometry, and a fixed penalty expresses one symmetric switching preference.</div>
+    <p>A state can be statistically compact without being tradable. A persistent path can miss a fast crash or remain defensive during a rebound. Selecting <math><mi>&lambda;</mi></math> by the same sample used for final reporting would overfit persistence. This is why the paper's online validation and the project's sealed boundary gate are part of the model claim, not optional engineering details.</p>
+  </section>
+
+  <section class="chapter-section" id="practice">
+    <div class="eyebrow">Retrieval practice</div>
+    <h2>Reason from the objective before interpreting a chart</h2>
+    <div class="quiz">
+      <h3>Recall</h3><p>What happens to the discrete JM objective when <math><mi>&lambda;</mi><mo>=</mo><mn>0</mn></math>?</p>
+      <div class="quiz-options"><button class="button" type="button" data-choice data-correct="true" data-feedback-correct="Correct. State changes become free, so assignment reduces to nearest-centroid k-means behavior for fixed centroids.">It reduces to clustering without temporal penalty</button><button class="button" type="button" data-choice data-correct="false">All dates must enter one state</button><button class="button" type="button" data-choice data-correct="false">The penalty becomes a 0% HMM transition probability</button></div>
+      <output class="quiz-feedback">Choose an answer, then check the explanation.</output><button class="button" type="button" data-reset>Reset</button>
+    </div>
+    <details><summary>Calculation: objective of a path</summary><p>If distance losses sum to 7.2, the path changes three times, and <math><mi>&lambda;</mi><mo>=</mo><mn>5</mn></math>, total objective is 7.2 + 3 &times; 5 = 22.2. This is a model objective, not portfolio dollars.</p></details>
+    <details><summary>Error diagnosis: unscaled distance</summary><p>A numerically large feature can dominate Euclidean geometry because of units. Fit the scaler only on the trailing training window, transform its rows, then fit centroids.</p></details>
+    <details><summary>Error diagnosis: use test returns to name states</summary><p>That leaks outcomes into the signal. Order anonymous states by cumulative excess return within the associated training fit, then preserve that mapping.</p></details>
+    <details><summary>Cumulative recall from Chapters 1-9</summary><p>Chapter 8 built the JM feature coordinates. Chapter 9's HMM expresses persistence through transition probabilities and emission likelihood. The JM instead uses centroid distance and an explicit fixed switch penalty. Both infer hidden states and require causal endpoint handling.</p></details>
+    <details><summary>Advisor explanation</summary><p>"Our fixed JM minimizes half squared distance to two feature centroids plus lambda for every state jump. Lambda zero nests k-means. We fit multiple starts semiannually, map states by training cumulative excess return, and run upstream online DP daily to keep only the terminal label."</p></details>
+  </section>
+
+  <section class="chapter-section" id="advisor">
+    <div class="eyebrow">How to explain this to your advisor</div>
+    <div class="advisor"><p><strong>Short version:</strong> "A Jump Model is temporally regularized clustering. It can tolerate a locally imperfect assignment when that produces a better complete state path."</p><p><strong>Important qualification:</strong> "Lambda is an objective penalty, not a probability or transaction cost. The fitted path is a model solution under chosen features and geometry, not an observed market regime or a performance claim."</p></div>
+  </section>
+
+  <footer class="chapter-footer">
+    <p><strong>Next:</strong> Chapter 11 derives the dynamic program that evaluates every relevant path possibility without brute-force enumeration.</p>
+    <p><a href="09-hidden-markov-models.html">Back to Chapter 9</a> &middot; <a href="11-dynamic-programming-online-inference.html">Continue to Chapter 11</a> &middot; <a href="index.html">Course map</a></p>
+  </footer>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const lab = document.getElementById("jm-lab");
+  const penaltyInput = document.getElementById("jm-penalty");
+  const dayFourInput = document.getElementById("jm-day-four");
+  const strip = document.getElementById("jm-path");
+  const featureSpace = document.getElementById("jm-feature-space");
+  const objectiveBars = document.getElementById("jm-objective-bars");
+  const centers = [-1, 1];
+  function render() {
+    const values = [-1.4, -1.1, 0.6, Number(dayFourInput.value), 0.8, 1.2, -0.2, -1.0];
+    const penalty = Number(penaltyInput.value);
+    const loss = values.map((value) => centers.map((center) => 0.5 * (value - center) ** 2));
+    const costs = [loss[0][0], loss[0][1]];
+    const backpointers = [];
+    for (let day = 1; day < values.length; day += 1) {
+      const next = [];
+      const previousStates = [];
+      for (let state = 0; state < 2; state += 1) {
+        const candidates = [costs[0] + (state === 0 ? 0 : penalty), costs[1] + (state === 1 ? 0 : penalty)];
+        const previous = candidates[0] <= candidates[1] ? 0 : 1;
+        next[state] = candidates[previous] + loss[day][state];
+        previousStates[state] = previous;
+      }
+      costs[0] = next[0];
+      costs[1] = next[1];
+      backpointers.push(previousStates);
+    }
+    let state = costs[0] <= costs[1] ? 0 : 1;
+    const path = [state];
+    for (let day = backpointers.length - 1; day >= 0; day -= 1) {
+      state = backpointers[day][state];
+      path.push(state);
+    }
+    path.reverse();
+    const switches = path.slice(1).filter((value, index) => value !== path[index]).length;
+    const dataLoss = path.reduce((total, value, index) => total + loss[index][value], 0);
+    const penaltyCost = switches * penalty;
+    const objective = dataLoss + penaltyCost;
+    document.getElementById("jm-data-loss").textContent = dataLoss.toFixed(2);
+    document.getElementById("jm-penalty-cost").textContent = penaltyCost.toFixed(2);
+    document.getElementById("jm-objective").textContent = objective.toFixed(2);
+    strip.innerHTML = path.map((value, index) => `<span class="state-day ${value === 0 ? "low-state" : "high-state"}"><b>Day ${index + 1}</b><small>state ${value}</small></span>`).join("");
+    strip.setAttribute("aria-label", `Optimal state path: ${path.join(", ")}; ${switches} switches; objective ${objective.toFixed(2)}`);
+    values.forEach((value, index) => {
+      const point = document.getElementById(`jm-point-${index}`);
+      point.setAttribute("cx", String(80 + ((value + 1.6) / 3.2) * 330));
+      point.setAttribute("fill", path[index] === 0 ? Course.palette.low : Course.palette.high);
+    });
+    featureSpace.setAttribute("aria-label", `Eight toy feature values ${values.join(", ")}; optimal states ${path.join(", ")}`);
+    const distanceWidth = objective > 0 ? (dataLoss / objective) * 330 : 0;
+    const switchWidth = objective > 0 ? (penaltyCost / objective) * 330 : 0;
+    document.getElementById("jm-distance-bar").setAttribute("width", String(distanceWidth));
+    document.getElementById("jm-switch-bar").setAttribute("x", String(55 + distanceWidth));
+    document.getElementById("jm-switch-bar").setAttribute("width", String(switchWidth));
+    document.getElementById("jm-distance-bar-label").textContent = `distance ${dataLoss.toFixed(2)}`;
+    document.getElementById("jm-switch-bar-label").textContent = `switch ${penaltyCost.toFixed(2)}`;
+    document.getElementById("jm-total-bar-label").textContent = `total = ${objective.toFixed(2)}`;
+    objectiveBars.setAttribute("aria-label", `Distance loss ${dataLoss.toFixed(2)} plus penalty cost ${penaltyCost.toFixed(2)} equals total objective ${objective.toFixed(2)}`);
+  }
+  [penaltyInput, dayFourInput].forEach((input) => input.addEventListener("input", render));
+  lab.addEventListener("course:reset", render);
+  render();
+});
+</script>
+</body>
+</html>

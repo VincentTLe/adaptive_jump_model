@@ -19,6 +19,8 @@ from sklearn.preprocessing import StandardScaler
 from threadpoolctl import threadpool_limits
 
 from adaptive_jump.config import HMMProtocol, JMProtocol, ModelProtocol
+from adaptive_jump.monitor import model_runtime as runtime
+from adaptive_jump.monitor.events import EventObserver
 
 FEATURE_COLUMNS = ("dd_10", "sortino_20", "sortino_60")
 
@@ -75,8 +77,14 @@ def fixed_jm_states(
     jm_protocol: JMProtocol,
     *,
     feature_columns: tuple[str, ...] = FEATURE_COLUMNS,
+    initial: FixedJMResult | None = None,
+    checkpoint_every: int = 50,
+    progress: Callable[[FixedJMResult], None] | None = None,
+    observer: EventObserver | None = None,
 ) -> FixedJMResult:
     """Generate causal terminal online states for every frozen lambda."""
+    if checkpoint_every < 1:
+        raise ModelError("JM checkpoint interval must be positive")
     complete, all_dates = _complete_model_frame(
         frame, (*feature_columns, "excess_return")
     )
@@ -86,8 +94,40 @@ def fixed_jm_states(
     fit: _FixedJMFit | None = None
     last_anchor: tuple[int, int] | None = None
     records: list[dict[str, object]] = []
-
-    for terminal in range(fit_window - 1, len(complete)):
+    first_terminal = fit_window - 1
+    last_refit_terminal: int | None = None
+    if initial is not None:
+        try:
+            resume = runtime.prepare_fixed_jm_resume(
+                initial.states,
+                initial.refits,
+                complete,
+                all_dates,
+                fit_window,
+                penalties,
+                jm_protocol.refit_months,
+            )
+        except runtime.CheckpointError as exc:
+            raise ModelError(str(exc)) from exc
+        states, records = resume.states, resume.records
+        first_terminal = resume.first_terminal
+        last_refit_terminal = resume.last_refit_terminal
+    total = max(0, len(complete) - fit_window + 1)
+    completed = max(0, first_terminal - fit_window + 1)
+    runtime.emit_fixed_jm_started(observer, fit_window, penalties, completed, total)
+    if last_refit_terminal is not None and first_terminal < len(complete):
+        refit_window = complete.iloc[
+            last_refit_terminal - fit_window + 1 : last_refit_terminal + 1
+        ]
+        fit = _fit_fixed_jm(
+            refit_window,
+            model_protocol,
+            jm_protocol,
+            feature_columns=feature_columns,
+        )
+        refit_date = pd.Timestamp(refit_window.iloc[-1]["date"])
+        last_anchor = (refit_date.year, refit_date.month)
+    for terminal in range(first_terminal, len(complete)):
         window = complete.iloc[terminal - fit_window + 1 : terminal + 1]
         current_date = pd.Timestamp(window.iloc[-1]["date"])
         anchor = (current_date.year, current_date.month)
@@ -101,15 +141,37 @@ def fixed_jm_states(
             )
             last_anchor = anchor
             records.extend(_jm_fit_records(fit, window, current_date))
+            runtime.emit_fixed_jm_refit(
+                observer,
+                current_date.date(),
+                terminal - fit_window + 1,
+                total,
+            )
 
         scaled = fit.scaler.transform(window.loc[:, feature_columns])
         for penalty, fitted_model in fit.models.items():
             states.loc[current_date, penalty] = terminal_online_state(
                 fitted_model, scaled
             )
+        completed = terminal - fit_window + 2
+        runtime.emit_fixed_jm_terminal(
+            observer,
+            current_date.date(),
+            completed,
+            total,
+            [
+                (penalty, int(states.loc[current_date, penalty]))
+                for penalty in penalties
+            ],
+        )
+        if progress is not None and (
+            completed % checkpoint_every == 0 or completed == total
+        ):
+            progress(FixedJMResult(states.copy(), pd.DataFrame.from_records(records)))
 
     states.index.name = "date"
     refits = pd.DataFrame.from_records(records)
+    runtime.emit_stage_completed(observer, "fixed_jm", total)
     return FixedJMResult(states=states, refits=refits)
 
 
@@ -136,6 +198,7 @@ def hmm_states(
     n_jobs: int = 1,
     checkpoint_every: int = 50,
     progress: Callable[[HMMResult], None] | None = None,
+    observer: EventObserver | None = None,
 ) -> HMMResult:
     """Fit the frozen HMM daily and retain each Viterbi terminal state."""
     if n_jobs < 1 or checkpoint_every < 1:
@@ -150,6 +213,15 @@ def hmm_states(
         states = initial.states.copy()
         records = initial.fits.to_dict("records")
         first_terminal += len(records)
+    total = max(0, len(complete) - fit_window + 1)
+    runtime.emit_hmm_started(
+        observer,
+        fit_window,
+        len(hmm_protocol.seeds),
+        n_jobs,
+        len(records),
+        total,
+    )
 
     executor = (
         ProcessPoolExecutor(max_workers=n_jobs, mp_context=get_context("forkserver"))
@@ -181,12 +253,26 @@ def hmm_states(
                 fit_date = pd.Timestamp(window.iloc[-1]["date"])
                 states.loc[fit_date] = fit.terminal_state
                 records.append(_hmm_fit_record(window, fit, fit_date))
+                runtime.emit_hmm_terminal(
+                    observer,
+                    fit_date.date(),
+                    len(records),
+                    total,
+                    fit.terminal_state,
+                    fit.seed,
+                    fit.log_likelihood,
+                    fit.variances,
+                    fit.accepted_starts,
+                    fit.failed_starts,
+                )
             if progress is not None:
                 progress(HMMResult(states.copy(), pd.DataFrame.from_records(records)))
     finally:
         if executor is not None:
             executor.shutdown(cancel_futures=True)
-    return HMMResult(states=states, fits=pd.DataFrame.from_records(records))
+    result = HMMResult(states=states, fits=pd.DataFrame.from_records(records))
+    runtime.emit_stage_completed(observer, "hmm", total)
+    return result
 
 
 def _fit_hmm_task(

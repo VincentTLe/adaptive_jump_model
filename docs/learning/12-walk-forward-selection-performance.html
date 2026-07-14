@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A beginner guide to walk-forward model fitting, online validation, monthly selection, boundary gates, delayed trading, common samples, and performance metrics.">
+  <title>Chapter 12: Walk-Forward Selection And Performance Measurement</title>
+  <link rel="stylesheet" href="course.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/mml-chtml.js" integrity="sha384-GYAeDZjH9w23NyL4cfS+ZrgWmGvta6VNs4p+/vtuF+RWe30fQhmP8pHbzRmlwmAK" crossorigin="anonymous"></script>
+  <script defer src="course.js"></script>
+</head>
+<body>
+<main class="course-shell">
+  <nav class="course-nav" aria-label="Course navigation">
+    <a href="11-dynamic-programming-online-inference.html">Previous: online inference</a>
+    <span>Part III &middot; Chapter 12 of 14</span>
+    <a href="13-guided-reading-shu-yu-mulvey.html">Next: guided paper reading</a>
+  </nav>
+
+  <header class="chapter-header">
+    <div class="part-label">Part III &middot; Features And Models</div>
+    <h1>Walk-Forward Selection And Performance Measurement</h1>
+    <p class="lead">How do we choose a smoothing setting using only the past, then compare complete strategies fairly?</p>
+    <div class="chapter-meta"><span>Intermediate level</span><span>Monthly selection laboratory</span><span>Paper Sections 3.4.3 and 4</span></div>
+  </header>
+
+  <section class="chapter-section" id="question">
+    <div class="eyebrow">The opening question</div>
+    <h2>Which rule was actually available before your $100 moved?</h2>
+    <p>At a month-end, you have $100 and nine candidate JM penalties. Each candidate has produced historical online states using information that would have existed on each date. You turn those states into market-or-cash strategy returns with the frozen delay and transaction cost, score only the trailing eight years, and select one penalty for the next month.</p>
+    <p>Suppose the selected state requests cash. With a one-day trading delay, the request made after day <math><mi>t</mi></math> first controls the return at <math><mi>t</mi><mo>+</mo><mn>2</mn></math>. If the position changes and wealth is still $100, a 10-basis-point one-way cost removes $0.10, leaving $99.90 before that return. Selection, signal, execution, and earned return are four different events.</p>
+    <div class="example-grid">
+      <article class="worked-example"><h3>Causal monthly decision</h3><span class="big-number">Past &rarr; choice &rarr; future</span><p>Trailing validation selects one candidate. The choice is delayed and held forward until a later monthly decision replaces it.</p></article>
+      <article class="worked-example failure"><h3>A common failure: final-sample winner</h3><span class="big-number">Future &rarr; rewritten past</span><p>Choosing the candidate with best 1990-2023 performance and drawing it across 1990 makes every early decision depend on later returns.</p></article>
+    </div>
+    <p>A walk-forward study repeats the same permitted procedure at every decision date. It does not fit once, select once using the final table, or revise old choices. This makes the object under evaluation a complete algorithm: data definitions, features, fitting schedule, online inference, validation objective, tie rule, delay, cost, and metric definitions.</p>
+    <div class="remember"><strong>The idea to remember</strong>Fit parameters on trailing training data, generate candidate states as they would have appeared online, select smoothing on trailing validation strategy returns, apply the selected signal only after its delay, and measure all competitors on the same eligible dates. No later stage may reach backward.</div>
+  </section>
+
+  <section class="chapter-section" id="vocabulary">
+    <div class="eyebrow">Words before notation</div>
+    <h2>Name every layer of the walk-forward clock</h2>
+    <div class="concept-grid three">
+      <div class="panel"><h3>Model parameter</h3><p>A quantity fitted from observations, such as a JM centroid or HMM transition probability.</p></div>
+      <div class="panel"><h3>Hyperparameter</h3><p>A setting outside that fit, such as JM jump penalty <math><mi>&lambda;</mi></math> or HMM filter length <math><mi>k</mi></math>, selected by validation.</p></div>
+      <div class="panel"><h3>Candidate surface</h3><p>The audit table containing every decision date, candidate, valid-return count, validation score, and eligibility flag.</p></div>
+      <div class="panel"><h3>Out of sample</h3><p>A period not used to make the parameter or hyperparameter decision being evaluated at that date.</p></div>
+      <div class="panel"><h3>Boundary gate</h3><p>A pre-metric check that asks whether the upper search-grid value is selected too often, suggesting the grid may be too narrow.</p></div>
+      <div class="panel"><h3>Common sample</h3><p>The identical complete date rows used for every competing strategy within one market and delay comparison.</p></div>
+    </div>
+    <details class="deep-explanation"><summary>Deep explanation: windows, cadences, ties, gates, and final metrics</summary>
+    <p>A <span class="term">training window</span> supplies data for fitted parameters. In the paper protocol it contains 3,000 observations. A <span class="term">validation window</span> comes after enough training history and evaluates candidate complete strategies over the trailing eight calendar years. The outer <span class="term">testing path</span> uses the candidate selected at each historical month-end.</p>
+    <p><span class="term">Cadence</span> means how often an operation occurs. The fixed JM estimates centroids initially and in January/July; its terminal state is inferred daily for every penalty. The HMM is fitted daily. Hyperparameter selection occurs monthly. Strategy returns occur on each eligible trading row. These clocks must not be collapsed into one vague "rolling model."</p>
+    <p>The <span class="term">Sharpe ratio</span> compares average strategy excess return with strategy-return volatility. The project annualizes by multiplying the daily ratio by the square root of 252. Higher is preferred during monthly selection. A score is eligible only with enough paired valid strategy and cash returns, finite Sharpe, and a current candidate state.</p>
+    <p>A <span class="term">numerical tie rule</span> resolves scores equal within a tiny fixed tolerance. The project chooses the lower numeric smoothing candidate: less JM penalty or shorter HMM filter. This prevents arbitrary column order or floating-point noise from deciding the strategy.</p>
+    <p><span class="term">Grid boundary</span> is the largest candidate. If it is selected frequently, an even larger untested value might have been preferred. The project's preregistered check counts upper-bound selections over OOS months. A fraction no greater than 5% passes. Metrics remain sealed until every model-delay boundary check passes.</p>
+    <p><span class="term">Robustness delay</span> repeats the complete validation and test accounting under an operational delay of 1, 5, or 10 trading days. It is invalid to select smoothing under one-day validation and merely shift the final strategy by ten days. Candidate selection must experience the same assumed delay as its test path.</p>
+    <p><span class="term">Turnover</span> is annualized average one-way position change. <span class="term">Leverage</span> is average risky weight, which is the fraction of complete rows in position 1 for this binary strategy. <span class="term">Maximum drawdown</span> is the worst percentage fall in cumulative wealth from its running peak. <span class="term">Expected shortfall</span> averages returns at or below a chosen lower-tail quantile.</p>
+    </details>
+  </section>
+
+  <section class="chapter-section" id="workflow">
+    <div class="eyebrow">The complete workflow</div>
+    <h2>Follow one month from raw history to sealed metrics</h2>
+    <div class="timeline">
+      <div><strong>Fit and infer</strong><span>Trailing 3,000 observations</span><span>One online state per candidate and date</span></div>
+      <div><strong>Validate</strong><span>Trailing eight calendar years</span><span>Same delay, cash, and 10-bps cost</span></div>
+      <div><strong>Select and trade</strong><span>Month-end choice, deterministic tie</span><span>Signal applied after delay</span></div>
+      <div><strong>Gate and measure</strong><span>Upper-bound frequency first</span><span>Common-date OOS metrics second</span></div>
+    </div>
+    <figure class="teaching-figure" id="walkforward-window-figure" data-visual-type="interactive" aria-labelledby="walkforward-window-title">
+      <span class="teaching-label">Teaching example</span><h3 id="walkforward-window-title">Move the decision date without letting any window reach forward</h3>
+      <form><label for="walkforward-year">Toy decision year: <output id="walkforward-year-output" for="walkforward-year">2000</output></label><input id="walkforward-year" type="range" min="1997" max="2003" value="2000" data-output="walkforward-year-output"><button class="button" id="walkforward-reset" type="button">Reset</button></form>
+      <div class="visual-stage"><svg id="walkforward-window" viewBox="0 0 440 300" role="img" aria-label="A trailing 3,000-row fit feeds an eight-year online validation ending at the December 2000 decision, followed by January 2001 out of sample"><defs><marker id="wf-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#f0bd64"/></marker></defs><text x="20" y="26" font-size="15" font-weight="700">One daily fit dependency</text><rect class="diagram-low" x="20" y="42" width="142" height="62" rx="4"/><text x="91" y="68" text-anchor="middle" font-size="15">trailing 3,000 rows</text><text id="wf-fit-end" x="91" y="89" text-anchor="middle" font-size="13">ending Jan 1993</text><path d="M164 73H198" stroke="#f0bd64" stroke-width="3" marker-end="url(#wf-arrow)"/><text x="309" y="20" font-size="13" text-anchor="middle">Daily fits repeat</text><text x="309" y="36" font-size="13" text-anchor="middle">across validation</text><rect class="diagram-warning" x="198" y="42" width="222" height="62" rx="4"/><text x="309" y="68" text-anchor="middle" font-size="15">online state and strategy return</text><text x="309" y="89" text-anchor="middle" font-size="13">created without later rows</text><rect class="diagram-warning" x="34" y="155" width="292" height="66" rx="4"/><text x="180" y="181" text-anchor="middle" font-size="16" font-weight="700">Trailing 8-year validation</text><text id="wf-validation-range" x="180" y="204" text-anchor="middle" font-size="14">Jan 1993 to Dec 2000</text><line x1="326" y1="132" x2="326" y2="242" stroke="#f0bd64" stroke-width="4"/><text id="wf-decision-label" x="326" y="264" text-anchor="middle" font-size="14">Decision: Dec 2000</text><rect class="diagram-cash" x="334" y="155" width="86" height="66" rx="4"/><text x="377" y="181" text-anchor="middle" font-size="15" font-weight="700">OOS</text><text id="wf-oos-label" x="377" y="204" text-anchor="middle" font-size="13">Jan 2001</text><text x="20" y="288" font-size="13">Window widths are schematic, not calendar scale.</text></svg></div>
+      <figcaption class="visual-caption">Drag the year. The decision and all trailing information move together; only the green next-month block lies after the choice. The blue 3,000-row fit is one example of a fit repeated throughout the amber validation history.</figcaption>
+      <p class="what-to-notice"><strong>What to notice:</strong> validation states are already online outputs. A final full-sample state path cannot be substituted for them.</p>
+    </figure>
+    <p>First, create all candidate state histories without using outer outcomes for selection. JM columns correspond to fixed penalties; HMM columns correspond to causal filter lengths applied to daily terminal states. Convert state 0 to risky signal 1 and state 1 to cash signal 0.</p>
+    <p>Second, run each candidate signal through the accounting engine. A one-day delay shifts by two return rows. Gross return mixes equity and cash according to the delayed position. Every later position change pays 10 basis points; the frozen protocol does not charge the first valid allocation. The resulting net candidate returns, not raw state accuracy or in-sample objective, enter validation.</p>
+    <p>Third, on the last complete trading date of each month, score paired candidate and cash returns whose dates are later than the eight-year start boundary and no later than the decision date. Select the highest eligible Sharpe, with the lower-smoothing tie rule. Forward-fill that hyperparameter choice until the next decision and read the corresponding candidate state each day.</p>
+    <p>Fourth, before opening any OOS performance table, count how often each upper-grid value was selected in OOS months for every model and robustness delay. If any gate fails, the study stops; the grid cannot be expanded after inspecting favorable or unfavorable metrics. Only a passing study builds buy-and-hold, HMM, and fixed-JM paths on their intersection of complete metric rows.</p>
+    <figure class="teaching-figure" id="performance-pipeline-figure" data-visual-type="static" aria-labelledby="performance-pipeline-title">
+      <span class="teaching-label">Teaching example</span><h3 id="performance-pipeline-title">One signal must survive six accounting stages before it becomes a metric</h3>
+      <div class="visual-stage"><svg viewBox="0 0 440 300" role="img" aria-label="A six-stage pipeline from selected state through delay, position, gross return, turnover and cost, to comparable metrics"><defs><marker id="pipeline-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#aab3bf"/></marker></defs><g class="diagram-link" marker-end="url(#pipeline-arrow)"><path d="M128 82H157"/><path d="M273 82H302"/><path d="M365 116V166"/><path d="M302 201H273"/><path d="M157 201H128"/></g><g><rect class="diagram-low" x="12" y="48" width="116" height="68" rx="4"/><rect class="diagram-unavailable" x="157" y="48" width="116" height="68" rx="4"/><rect class="diagram-cash" x="302" y="48" width="126" height="68" rx="4"/><rect class="diagram-verified" x="302" y="166" width="126" height="70" rx="4"/><rect class="diagram-warning" x="157" y="166" width="116" height="70" rx="4"/><rect class="diagram-low" x="12" y="166" width="116" height="70" rx="4"/></g><g text-anchor="middle"><text x="70" y="73" font-size="15" font-weight="700">1. Selected state</text><text x="70" y="96" font-size="13">signal at t</text><text x="215" y="73" font-size="15" font-weight="700">2. Delay queue</text><text x="215" y="96" font-size="13">no future shortcut</text><text x="365" y="73" font-size="15" font-weight="700">3. Position</text><text x="365" y="96" font-size="13">market or cash</text><text x="365" y="192" font-size="15" font-weight="700">4. Gross return</text><text x="365" y="215" font-size="13">equity/cash mix</text><text x="215" y="192" font-size="15" font-weight="700">5. Net return</text><text x="215" y="215" font-size="13">turnover + cost</text><text x="70" y="192" font-size="15" font-weight="700">6. Metrics</text><text x="70" y="215" font-size="13">common dates only</text></g><text x="220" y="278" font-size="14" text-anchor="middle">Skipping any arrow changes the strategy being evaluated.</text></svg></div>
+      <figcaption class="visual-caption">A model state is not a return. Delay determines the position date; position determines gross return; position changes determine cost; only complete common rows enter the final comparison.</figcaption>
+    </figure>
+  </section>
+
+  <section class="chapter-section" id="worked-selection">
+    <div class="eyebrow">Worked example two</div>
+    <h2>Resolve a tie before the next month exists</h2>
+    <p>Consider a toy JM grid [5, 35, 70]. Its month-end trailing validation Sharpes are 0.42, 0.58, and 0.58. The best score is tied. The frozen rule selects 35 because it is the smaller smoothing value. Column order cannot change the answer.</p>
+    <p>Now suppose 70 scores 0.59 while 35 remains 0.58. Candidate 70 wins. Because 70 is the toy grid's upper boundary, record an upper-bound selection. If this is the first such choice among 20 OOS months, the fraction is 1/20 = 5% and passes a no-greater-than-5% rule. If one earlier month also selected 70, the fraction becomes 2/20 = 10% and fails.</p>
+    <p>The boundary gate does not say candidate 70 is bad. It says the search may be truncated, so a scientific comparison is not ready to open. Expanding the grid and rerunning before metrics prevents the researcher from choosing a range in response to the performance table.</p>
+    <h3>A common failure: score states instead of tradable paths</h3>
+    <p>A candidate may match a retrospective regime chart yet trade poorly after latency, delay, and costs. The paper deliberately validates financial application performance using online inferred states. The project therefore creates delayed net returns for each candidate before computing Sharpe. This aligns the selection objective with the later strategy.</p>
+    <p>Another failure gives a model its own convenient sample. If HMM is missing difficult dates while JM is complete, separate row sets can make scores incomparable. The outer metric layer intersects complete required rows across buy-and-hold, HMM, and fixed JM for each market-delay comparison.</p>
+  </section>
+
+  <section class="chapter-section" id="selection-lab-section">
+    <div class="eyebrow">Interactive teaching visual</div>
+    <h2>Break a tie, touch the boundary, and watch the gate</h2>
+    <p>This teaching surface uses three invented candidates and 20 toy OOS months. Candidate 5 stays at Sharpe 0.42. Change the other two scores and the number of earlier upper-bound choices. The real grid and evidence are not used.</p>
+    <div class="lab" id="selection-lab">
+      <div class="lab-header"><div><h3>Toy monthly selection surface</h3><p>Grid [5, 35, 70]; exact displayed-score ties choose lower smoothing.</p></div><button class="button" type="button" data-reset>Reset</button></div>
+      <form><div class="control-grid three-controls">
+        <div><label for="score-35">Sharpe for 35: <output id="score-35-output" for="score-35">0.58</output></label><input id="score-35" type="range" min="0.3" max="0.7" step="0.01" value="0.58" data-output="score-35-output" data-digits="2"></div>
+        <div><label for="score-70">Sharpe for 70: <output id="score-70-output" for="score-70">0.58</output></label><input id="score-70" type="range" min="0.3" max="0.7" step="0.01" value="0.58" data-output="score-70-output" data-digits="2"></div>
+        <div><label for="prior-upper">Earlier upper choices: <output id="prior-upper-output" for="prior-upper">0 months</output></label><input id="prior-upper" type="range" min="0" max="4" value="0" data-output="prior-upper-output" data-singular=" month" data-plural=" months"></div>
+      </div></form>
+      <figure class="teaching-figure" id="candidate-surface-figure" data-visual-type="interactive" aria-labelledby="candidate-surface-title">
+        <span class="teaching-label">Teaching example</span><h3 id="candidate-surface-title">The winner and the boundary diagnostic answer different questions</h3>
+        <div class="visual-stage compact"><svg id="candidate-surface" viewBox="0 0 440 300" role="img" aria-label="Candidates 35 and 70 tie at Sharpe 0.58, candidate 35 wins the lower-smoothing tie, and the zero-percent boundary gate passes"><line x1="35" y1="238" x2="285" y2="238" stroke="#aab3bf" stroke-width="2"/><g><rect id="candidate-bar-5" x="55" y="181" width="45" height="57" fill="#aab3bf" data-animate/><rect id="candidate-bar-35" x="130" y="105" width="45" height="133" fill="#aab3bf" stroke="#f0bd64" stroke-width="4" data-animate/><rect id="candidate-bar-70" x="205" y="105" width="45" height="133" fill="#aab3bf" data-animate/></g><g text-anchor="middle"><text id="candidate-score-5" x="77" y="169" font-size="15">0.42</text><text id="candidate-score-35" x="152" y="93" font-size="15">0.58</text><text id="candidate-score-70" x="227" y="93" font-size="15">0.58</text><text x="77" y="260" font-size="14">5</text><text x="152" y="260" font-size="14">35</text><text x="227" y="260" font-size="14">70 upper</text><text x="152" y="286" font-size="13">validation Sharpe</text></g><text id="candidate-selection-note" x="35" y="28" font-size="16" font-weight="700">Selected: 35 by lower tie</text><line x1="350" y1="55" x2="350" y2="238" stroke="#aab3bf" stroke-width="8"/><line x1="328" y1="201" x2="372" y2="201" stroke="#f0bd64" stroke-width="3"/><text x="381" y="205" font-size="13">5%</text><circle id="boundary-marker" cx="350" cy="238" r="11" fill="#63d59a" stroke="#fff" stroke-width="2" data-animate/><text x="350" y="28" font-size="15" text-anchor="middle">upper choices</text><text id="boundary-visual-note" x="350" y="276" font-size="15" text-anchor="middle">0.0%: pass</text></svg></div>
+        <div class="metric-grid three"><div class="panel"><span class="label">Selected penalty</span><strong class="big-number" id="selected-candidate">35</strong></div><div class="panel"><span class="label">Upper-bound frequency</span><strong class="big-number" id="boundary-frequency">0.0%</strong></div><div class="panel"><span class="label">Metric gate</span><strong class="big-number" id="boundary-status">Pass</strong></div></div>
+        <div class="table-wrap"><table class="data-table" aria-label="Toy monthly selection candidates"><thead><tr><th>Candidate</th><th>Validation Sharpe</th><th>Eligible</th><th>Selection status</th></tr></thead><tbody id="selection-rows"><tr><td>5</td><td>0.42</td><td>Yes</td><td>Not selected</td></tr><tr><td>35</td><td>0.58</td><td>Yes</td><td>Selected by lower tie</td></tr><tr><td>70 (upper)</td><td>0.58</td><td>Yes</td><td>Not selected</td></tr></tbody></table></div>
+        <figcaption class="visual-caption">Bars choose this month's candidate; the right meter counts how often the upper grid value wins across 20 toy months. Exactly 5% passes. Above 5%, metrics remain sealed.</figcaption>
+      </figure>
+      <noscript><p class="warning"><strong>Interactive enhancement unavailable</strong>The default surface remains visible: 35 and 70 tie at 0.58, so 35 is selected; zero of 20 months select the upper boundary and the gate passes.</p></noscript>
+    </div>
+    <p>The lab uses exact equality because its displayed decimals are teaching inputs. Production selection uses full-precision Sharpe and a frozen tolerance of <math><msup><mn>10</mn><mrow><mo>&minus;</mo><mn>12</mn></mrow></msup></math>. The gate uses <math><mo>&le;</mo></math>, so exactly 5% passes; a value above 5% fails.</p>
+  </section>
+
+  <section class="chapter-section" id="paper-connection">
+    <div class="eyebrow">Connection to the named paper</div>
+    <h2>Section 3.4.3 selects application performance online</h2>
+    <p>Section 3.4.3 of <a href="../../2402.05272v3.pdf">Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3</a> updates the optimal JM jump penalty monthly. For every candidate, it generates an eight-year sequence of online inferred regimes using the process from Section 3.4.2, applies the 0/1 strategy with one-day delay and a 10-basis-point one-way cost, and selects highest validation Sharpe for the following month.</p>
+    <p>The selected hyperparameter is itself delayed: a choice at the end of day <math><mi>t</mi></math> applies to day <math><mi>t</mi><mo>+</mo><mn>2</mn></math> under the one-day convention. The paper uses the same framework to select HMM filter length. Starting data in 1970 supports about 12 years of training plus eight years of validation before the stated 1990-2023 testing period.</p>
+    <p>Table 4 compares buy-and-hold, HMM, and JM strategies across the three markets using return, volatility, Sharpe, maximum drawdown, Calmar, expected shortfall, turnover, and leverage. Table 5 repeats risk-adjusted return metrics under delays of 1, 5, and 10 days and applies each matching delay during validation. Chapter 13 will read the reported evidence; this chapter defines the machinery.</p>
+  </section>
+
+  <section class="chapter-section" id="project-connection">
+    <div class="eyebrow">Connection to this project</div>
+    <h2>The baseline study seals metrics behind diagnostics</h2>
+    <p><a href="../../src/adaptive_jump/walkforward.py"><code>src/adaptive_jump/walkforward.py</code></a> builds fixed-JM candidate states, daily HMM terminal states, and HMM filter candidates. For each delay and model, it calls one monthly selector. The returned evidence includes selected signal, monthly choices, complete score surface, and every candidate's strategy returns.</p>
+    <p>The selector sorts numeric candidate columns, applies the accounting engine before scoring, waits eight calendar years after the first date on which all candidates are present, requires at least 252 paired valid returns, and uses only dates through each decision. Future changes are tested not to alter past choices or signals.</p>
+    <p>The frozen effective OOS start is computed per proxy market: it cannot precede the requested 1990 date and must follow the 3,000th complete feature row by eight calendar years. Shorter free-source coverage therefore shifts the comparison period rather than silently weakening history. That is one reason the study is labeled proxy replication.</p>
+    <p><a href="../../src/adaptive_jump/backtest.py"><code>src/adaptive_jump/backtest.py</code></a> applies binary positions, delay, local cash, turnover, and cost. <code>open_baseline_metrics</code> refuses to run unless every boundary row passes. It then computes buy-and-hold, HMM, and fixed-JM metrics only on common complete rows for each delay.</p>
+    <p><a href="../../tests/test_walkforward.py"><code>tests/test_walkforward.py</code></a> checks full validation history, ties, unsorted candidates, frozen delay/cost, future-prefix invariance, OOS-only boundary frequency, metric sealing, and common dates. <a href="../../tests/test_backtest.py"><code>tests/test_backtest.py</code></a> checks offsets, costs, benchmark accounting, and metric formulas. Current project values belong in the verified generated report linked from the <a href="../../README.md">README</a>, not copied into this authored lesson.</p>
+  </section>
+
+  <section class="chapter-section" id="mathematics">
+    <div class="eyebrow">Mathematical layer</div>
+    <h2>Define selection and measurement in the same units</h2>
+    <div class="formula"><math display="block"><mi>Sharpe</mi><mo>(</mo><mi>c</mi><mo>)</mo><mo>=</mo><msqrt><mn>252</mn></msqrt><mfrac><mrow><mover><mi>r</mi><mo>&macr;</mo></mover><mo>(</mo><mi>c</mi><mo>)</mo><mo>&minus;</mo><mover><msup><mi>r</mi><mi>cash</mi></msup><mo>&macr;</mo></mover></mrow><mrow><msub><mi>sd</mi><mrow><mi>ddof</mi><mo>=</mo><mn>1</mn></mrow></msub><mo>(</mo><mi>r</mi><mo>(</mo><mi>c</mi><mo>)</mo><mo>)</mo></mrow></mfrac></math><math display="block"><msub><mover><mi>c</mi><mo>^</mo></mover><mi>m</mi></msub><mo>=</mo><munder><mo>min</mo><mi>c</mi></munder><mo>{</mo><mi>c</mi><mo>:</mo><munder><mo>max</mo><mi>q</mi></munder><mi>Sharpe</mi><mo>(</mo><mi>q</mi><mo>)</mo><mo>&minus;</mo><mi>Sharpe</mi><mo>(</mo><mi>c</mi><mo>)</mo><mo>&le;</mo><mi>&epsilon;</mi><mo>}</mo></math><math display="block"><mi>CAGR</mi><mo>=</mo><msup><mrow><munderover><mo>&prod;</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><mo>(</mo><mn>1</mn><mo>+</mo><msub><mi>r</mi><mi>t</mi></msub><mo>)</mo></mrow><mrow><mn>252</mn><mo>/</mo><mi>n</mi></mrow></msup><mo>&minus;</mo><mn>1</mn></math><math display="block"><mi>MDD</mi><mo>=</mo><munder><mo>min</mo><mi>t</mi></munder><mo>(</mo><mfrac><msub><mi>W</mi><mi>t</mi></msub><mrow><munder><mo>max</mo><mrow><mi>u</mi><mo>&le;</mo><mi>t</mi></mrow></munder><msub><mi>W</mi><mi>u</mi></msub></mrow></mfrac><mo>&minus;</mo><mn>1</mn><mo>)</mo></math></div>
+    <div class="table-wrap"><table class="symbol-table"><thead><tr><th>Symbol</th><th>Meaning</th><th>Convention</th></tr></thead><tbody><tr><td><math><mi>c</mi></math></td><td>A candidate JM penalty or HMM filter length</td><td>Numeric grid value</td></tr><tr><td><math><mi>m</mi></math></td><td>Monthly decision index</td><td>Last complete trading date in month</td></tr><tr><td><math><mi>r</mi><mo>(</mo><mi>c</mi><mo>)</mo></math></td><td>Candidate net strategy return after delay and cost</td><td>Daily decimal</td></tr><tr><td><math><mi>&epsilon;</mi></math></td><td>Numerical tie tolerance</td><td><math><msup><mn>10</mn><mrow><mo>&minus;</mo><mn>12</mn></mrow></msup></math></td></tr><tr><td><math><mi>n</mi></math></td><td>Number of common complete metric rows</td><td>Positive integer</td></tr><tr><td><math><msub><mi>W</mi><mi>t</mi></msub></math></td><td>Cumulative wealth through date <math><mi>t</mi></math></td><td>Starts from one before returns</td></tr></tbody></table></div>
+    <p>The first equation uses mean strategy return minus mean cash return in the numerator, but strategy-return volatility in the denominator. Cash variability is not subtracted from the denominator. The same multiplier applies to all candidates at one decision, but using the exact frozen definition preserves parity with final metrics.</p>
+    <p>The second equation writes the tie rule: find best Sharpe, include candidates no more than tolerance below it, then choose the smallest numeric value. The candidate must also satisfy return-count, finite-score, and current-state eligibility checks.</p>
+    <p>CAGR compounds actual net returns. Annualized volatility is sample standard deviation times <math><msqrt><mn>252</mn></msqrt></math>. Calmar uses annualized arithmetic mean excess return divided by absolute MDD in this project. Expected shortfall averages strategy returns at or below the 5% sample quantile. Turnover is mean one-way turnover times 252; leverage is mean binary risky position.</p>
+  </section>
+
+  <section class="chapter-section" id="evidence-limitations">
+    <div class="eyebrow">Evidence and limits</div>
+    <h2>A rigorous backtest is evidence, not certainty</h2>
+    <div class="concept-grid"><div class="panel"><h3>Verified mechanics</h3><p>Tests establish trailing decisions, delay/cost parity, deterministic ties, boundary sealing, common dates, metric identities, and future-prefix invariance on controlled inputs.</p></div><div class="panel"><h3>Unresolved science</h3><p>Proxy definitions, shifted market periods, finite-sample uncertainty, structural change, and future transportability still limit conclusions.</p></div></div>
+    <div class="evidence"><strong>Evidence boundary</strong>The verified v7 report is the source for current through-2023 proxy metrics and conclusion. This chapter does not recalculate or soften that frozen result.</div>
+    <div class="limitation"><strong>Selection limitation</strong>Eight-year validation reduces but does not eliminate overfitting. One observed market history supplies overlapping monthly windows, candidate scores are noisy, and repeatedly redesigning the protocol after reading OOS outcomes consumes their confirmatory value.</div>
+    <p>Metrics answer different questions. Higher CAGR can accompany worse drawdown. Lower volatility can reflect lower leverage rather than superior timing. Sharpe can hide tail shape. Expected shortfall is sample-sensitive. Transaction costs are simplified. A scientific claim must state the primary endpoint in advance and report unfavorable, null, and favorable evidence consistently.</p>
+  </section>
+
+  <section class="chapter-section" id="practice">
+    <div class="eyebrow">Retrieval practice</div>
+    <h2>Audit the complete candidate, not just its score</h2>
+    <div class="quiz">
+      <h3>Recall</h3><p>Two eligible candidates have Sharpes tied within tolerance. Which one does the project select?</p>
+      <div class="quiz-options"><button class="button" type="button" data-choice data-correct="false">Whichever column appears first in the file</button><button class="button" type="button" data-choice data-correct="true" data-feedback-correct="Correct. The lower numeric smoothing value wins: lower lambda for JM or shorter k for HMM.">The lower numeric smoothing candidate</button><button class="button" type="button" data-choice data-correct="false">The upper boundary to maximize persistence</button></div>
+      <output class="quiz-feedback">Choose an answer, then check the explanation.</output><button class="button" type="button" data-reset>Reset</button>
+    </div>
+    <details><summary>Calculation: upper-bound gate</summary><p>The upper candidate is selected in 3 of 80 OOS months. The fraction is 3.75%, which is no greater than 5%, so this diagnostic passes. Passing does not prove the grid or model is scientifically correct.</p></details>
+    <details><summary>Error diagnosis: mismatched validation delay</summary><p>Selecting under one-day delay and testing under ten-day delay evaluates a different candidate procedure. Recompute every candidate validation path with the ten-day assumption before selecting for that robustness run.</p></details>
+    <details><summary>Error diagnosis: unequal metric dates</summary><p>Differences may reflect missing periods rather than models. Intersect complete required rows across all compared strategies within each market and delay, then compute metrics.</p></details>
+    <details><summary>Cumulative recall from Chapters 1-11</summary><p>Data and cash define returns; features summarize causal history; HMM and JM produce candidate states; DP preserves temporal structure; walk-forward selection chooses among complete delayed, costed paths. Every earlier contract now enters the final metric row.</p></details>
+    <details><summary>Advisor explanation</summary><p>"At each month-end we score each candidate's trailing eight-year online strategy with the same delay and cost used OOS, choose highest Sharpe with a lower-smoothing tie, hold that choice forward, require upper-grid diagnostics to pass, and compare B&amp;H, HMM, and JM on common dates."</p></details>
+  </section>
+
+  <section class="chapter-section" id="advisor">
+    <div class="eyebrow">How to explain this to your advisor</div>
+    <div class="advisor"><p><strong>Short version:</strong> "Our unit of comparison is the full causal procedure, not a model fit. Selection sees trailing net strategy returns only; final metrics remain sealed until search-boundary diagnostics pass."</p><p><strong>Important qualification:</strong> "This protocol controls several major leakage and fairness risks. It cannot turn shifted free-source proxies into exact paper data or make one historical backtest definitive future evidence."</p></div>
+  </section>
+
+  <footer class="chapter-footer">
+    <p><strong>Part III complete:</strong> You can now trace returns into features, HMM and JM states, exact online inference, monthly hyperparameter choices, delayed positions, and comparable performance metrics.</p>
+    <p><a href="11-dynamic-programming-online-inference.html">Back to Chapter 11</a> &middot; <a href="13-guided-reading-shu-yu-mulvey.html">Continue to Chapter 13</a> &middot; <a href="index.html">Course map</a></p>
+  </footer>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const timelineYear = document.getElementById("walkforward-year");
+  const lab = document.getElementById("selection-lab");
+  const score35 = document.getElementById("score-35");
+  const score70 = document.getElementById("score-70");
+  const priorUpper = document.getElementById("prior-upper");
+  const rows = document.getElementById("selection-rows");
+  function renderTimeline() {
+    const year = Number(timelineYear.value);
+    document.getElementById("wf-fit-end").textContent = `ending Jan ${year - 7}`;
+    document.getElementById("wf-validation-range").textContent = `Jan ${year - 7} to Dec ${year}`;
+    document.getElementById("wf-decision-label").textContent = `Decision: Dec ${year}`;
+    document.getElementById("wf-oos-label").textContent = `Jan ${year + 1}`;
+    document.getElementById("walkforward-window").setAttribute("aria-label", `A trailing 3,000-row fit feeds eight-year online validation from January ${year - 7} through the December ${year} decision, followed by January ${year + 1} out of sample`);
+  }
+  function render() {
+    const candidates = [{value: 5, score: 0.42}, {value: 35, score: Number(score35.value)}, {value: 70, score: Number(score70.value)}];
+    const best = Math.max(...candidates.map((candidate) => candidate.score));
+    const selected = candidates.filter((candidate) => Math.abs(candidate.score - best) < 1e-12).sort((a, b) => a.value - b.value)[0].value;
+    const upperSelections = Number(priorUpper.value) + (selected === 70 ? 1 : 0);
+    const fraction = upperSelections / 20;
+    const passed = fraction <= 0.05;
+    document.getElementById("selected-candidate").textContent = String(selected);
+    document.getElementById("boundary-frequency").textContent = `${(fraction * 100).toFixed(1)}%`;
+    document.getElementById("boundary-status").textContent = passed ? "Pass" : "Stop";
+    const scoreScale = (score) => 238 - ((score - 0.3) / 0.4) * 190;
+    candidates.forEach((candidate) => {
+      const bar = document.getElementById(`candidate-bar-${candidate.value}`);
+      const top = scoreScale(candidate.score);
+      bar.setAttribute("y", top.toFixed(1));
+      bar.setAttribute("height", (238 - top).toFixed(1));
+      bar.setAttribute("stroke", candidate.value === selected ? "#f0bd64" : "none");
+      bar.setAttribute("stroke-width", candidate.value === selected ? "4" : "0");
+      document.getElementById(`candidate-score-${candidate.value}`).setAttribute("y", String(top - 12));
+      document.getElementById(`candidate-score-${candidate.value}`).textContent = candidate.score.toFixed(2);
+    });
+    const tied = candidates.filter((candidate) => candidate.score === best).length > 1;
+    document.getElementById("candidate-selection-note").textContent = `Selected: ${selected}${tied ? " by lower tie" : ""}`;
+    const markerY = 238 - Math.min(fraction, 0.25) / 0.25 * 183;
+    document.getElementById("boundary-marker").setAttribute("cy", markerY.toFixed(1));
+    document.getElementById("boundary-marker").setAttribute("fill", passed ? "#63d59a" : "#ff8585");
+    document.getElementById("boundary-visual-note").textContent = `${(fraction * 100).toFixed(1)}%: ${passed ? "pass" : "stop"}`;
+    rows.innerHTML = candidates.map((candidate) => {
+      const tied = candidate.score === best && candidates.filter((other) => other.score === best).length > 1;
+      const status = candidate.value === selected ? (tied ? "Selected by lower tie" : "Selected") : "Not selected";
+      return `<tr><td>${candidate.value}${candidate.value === 70 ? " (upper)" : ""}</td><td>${candidate.score.toFixed(2)}</td><td>Yes</td><td>${status}</td></tr>`;
+    }).join("");
+    rows.closest("table").setAttribute("aria-label", `Toy selection chooses ${selected}; upper-bound frequency ${(fraction * 100).toFixed(1)} percent; gate ${passed ? "passes" : "stops"}`);
+    document.getElementById("candidate-surface").setAttribute("aria-label", `Candidate ${selected} is selected${tied ? " by the lower-smoothing tie rule" : ""}; upper-bound frequency ${(fraction * 100).toFixed(1)} percent; gate ${passed ? "passes" : "stops"}`);
+  }
+  timelineYear.addEventListener("input", renderTimeline);
+  document.getElementById("walkforward-reset").addEventListener("click", () => { timelineYear.value = "2000"; timelineYear.dispatchEvent(new Event("input", {bubbles: true})); });
+  [score35, score70, priorUpper].forEach((input) => input.addEventListener("input", render));
+  lab.addEventListener("course:reset", render);
+  renderTimeline();
+  render();
+});
+</script>
+</body>
+</html>
