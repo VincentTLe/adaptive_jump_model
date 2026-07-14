@@ -19,7 +19,8 @@ from sklearn.preprocessing import StandardScaler
 from threadpoolctl import threadpool_limits
 
 from adaptive_jump.config import HMMProtocol, JMProtocol, ModelProtocol
-from adaptive_jump.monitor.events import EventObserver, emit_event
+from adaptive_jump.monitor import model_runtime as runtime
+from adaptive_jump.monitor.events import EventObserver
 
 FEATURE_COLUMNS = ("dd_10", "sortino_20", "sortino_60")
 
@@ -89,14 +90,7 @@ def fixed_jm_states(
     last_anchor: tuple[int, int] | None = None
     records: list[dict[str, object]] = []
     total = max(0, len(complete) - fit_window + 1)
-    emit_event(
-        observer,
-        kind="stage_started",
-        stage="fixed_jm",
-        completed=0,
-        total=total,
-        payload={"fit_window": fit_window, "candidates": list(penalties)},
-    )
+    runtime.emit_fixed_jm_started(observer, fit_window, penalties, 0, total)
 
     for terminal in range(fit_window - 1, len(complete)):
         window = complete.iloc[terminal - fit_window + 1 : terminal + 1]
@@ -112,14 +106,11 @@ def fixed_jm_states(
             )
             last_anchor = anchor
             records.extend(_jm_fit_records(fit, window, current_date))
-            emit_event(
+            runtime.emit_fixed_jm_refit(
                 observer,
-                kind="refit",
-                stage="fixed_jm",
-                visibility="decision",
-                date=current_date.date(),
-                completed=terminal - fit_window + 1,
-                total=total,
+                current_date.date(),
+                terminal - fit_window + 1,
+                total,
             )
 
         scaled = fit.scaler.transform(window.loc[:, feature_columns])
@@ -127,34 +118,20 @@ def fixed_jm_states(
             states.loc[current_date, penalty] = terminal_online_state(
                 fitted_model, scaled
             )
-        emit_event(
+        runtime.emit_fixed_jm_terminal(
             observer,
-            kind="terminal_state",
-            stage="fixed_jm",
-            visibility="decision",
-            date=current_date.date(),
-            completed=terminal - fit_window + 2,
-            total=total,
-            payload={
-                "states": [
-                    {
-                        "candidate": penalty,
-                        "state": int(states.loc[current_date, penalty]),
-                    }
-                    for penalty in penalties
-                ]
-            },
+            current_date.date(),
+            terminal - fit_window + 2,
+            total,
+            [
+                (penalty, int(states.loc[current_date, penalty]))
+                for penalty in penalties
+            ],
         )
 
     states.index.name = "date"
     refits = pd.DataFrame.from_records(records)
-    emit_event(
-        observer,
-        kind="stage_completed",
-        stage="fixed_jm",
-        completed=total,
-        total=total,
-    )
+    runtime.emit_stage_completed(observer, "fixed_jm", total)
     return FixedJMResult(states=states, refits=refits)
 
 
@@ -197,17 +174,13 @@ def hmm_states(
         records = initial.fits.to_dict("records")
         first_terminal += len(records)
     total = max(0, len(complete) - fit_window + 1)
-    emit_event(
+    runtime.emit_hmm_started(
         observer,
-        kind="stage_started",
-        stage="hmm",
-        completed=len(records),
-        total=total,
-        payload={
-            "fit_window": fit_window,
-            "restart_count": len(hmm_protocol.seeds),
-            "workers": n_jobs,
-        },
+        fit_window,
+        len(hmm_protocol.seeds),
+        n_jobs,
+        len(records),
+        total,
     )
 
     executor = (
@@ -240,22 +213,17 @@ def hmm_states(
                 fit_date = pd.Timestamp(window.iloc[-1]["date"])
                 states.loc[fit_date] = fit.terminal_state
                 records.append(_hmm_fit_record(window, fit, fit_date))
-                emit_event(
+                runtime.emit_hmm_terminal(
                     observer,
-                    kind="terminal_state",
-                    stage="hmm",
-                    visibility="decision",
-                    date=fit_date.date(),
-                    completed=len(records),
-                    total=total,
-                    payload={
-                        "state": fit.terminal_state,
-                        "seed": fit.seed,
-                        "log_likelihood": fit.log_likelihood,
-                        "variances": list(fit.variances),
-                        "accepted_starts": fit.accepted_starts,
-                        "failed_starts": list(fit.failed_starts),
-                    },
+                    fit_date.date(),
+                    len(records),
+                    total,
+                    fit.terminal_state,
+                    fit.seed,
+                    fit.log_likelihood,
+                    fit.variances,
+                    fit.accepted_starts,
+                    fit.failed_starts,
                 )
             if progress is not None:
                 progress(HMMResult(states.copy(), pd.DataFrame.from_records(records)))
@@ -263,13 +231,7 @@ def hmm_states(
         if executor is not None:
             executor.shutdown(cancel_futures=True)
     result = HMMResult(states=states, fits=pd.DataFrame.from_records(records))
-    emit_event(
-        observer,
-        kind="stage_completed",
-        stage="hmm",
-        completed=total,
-        total=total,
-    )
+    runtime.emit_stage_completed(observer, "hmm", total)
     return result
 
 
