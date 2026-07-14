@@ -39,9 +39,113 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">65 session(s) · newest first · 2026-07-14 08:26 UTC</p>
+  <p class="sub">73 session(s) · newest first · 2026-07-14 19:26 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-14T19:26:30Z</span><span class="who">codex · GPT-5</span>
+      </div>
+      <p class="goal">Turn the existing workflow comparison into a current advisor brief for the Leahy meeting without changing scientific evidence.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>docs/research-workflow-comparison.html (meeting snapshot, JM-4000 experiment, talking points, monitor boundary, report links)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>real Chromium 1440x900 and 390x844: HTTP 200, required content visible, zero console/page errors, zero horizontal overflow</li><li>visual inspection of full-page desktop and mobile screenshots: no incoherent overlap or clipping</li><li>12 local evidence/report links returned HTTP 200</li><li>uv run pytest -q: 265 passed</li><li>uv run ruff check .: passed; uv run ruff format --check .: 65 files formatted</li><li>uv lock --check: passed; uv pip check: 64 packages compatible</li><li>git diff --cached --check: passed</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>0d018c7b2c4903cb9f33f55f6d244f3482cad97b</code></p></div>
+        <div><span class="lbl">Next step</span><p>Implement the frozen monitor code milestone: canonical run self-verification, safe artifact_verified event, smoke-study registration, and focused tests; stop for review before the long operational replay.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>No model, data, protocol, dependency, artifact, metric, gate, or scientific claim changed. Advisor wording distinguishes proxy non-replication, the JM-4000 boundary failure, unrun adaptive/2026 work, and unaccepted monitor infrastructure.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-14T19:11:37Z</span><span class="who">codex · GPT-5</span>
+      </div>
+      <p class="goal">Audit the exact scientific, monitor, presentation, and dirty-worktree status before proposing urgent work for the Leahy meeting.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><span class="dim">—</span></div>
+        <div><span class="lbl">Verification</span><ul><li>git status: branch matches origin; only .agent/session-log.html and .agent/session-log.jsonl are modified</li><li>both canonical v7 and JM-4000 generated HTML reports exist</li><li>monitor preview at 127.0.0.1:37137 returns HTTP 200, but process inspection confirms it is the controlled Python preview; port 8765 is a generic python http.server, not the production monitor</li><li>git ls-files reports/quick returned zero and git check-ignore confirmed reports/ is ignored</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>uncommitted</code></p></div>
+        <div><span class="lbl">Next step</span><p>Await owner approval for an urgent two-commit bundle: update the existing advisor comparison HTML with current v7, JM-4000, monitor, and roadmap status; then commit append-only handoff metadata so the worktree is clean.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Read-only project audit. Scientific status remains proxy non-replication; JM-4000 stopped at the preregistered boundary gate; adaptive and 2026 experiments have not run. Monitor remains CODE_COMPLETE, not locally operationally accepted or Cloudflare accepted.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-14T19:03:59Z</span><span class="who">codex · GPT-5</span>
+      </div>
+      <p class="goal">Freeze the local monitor operational-acceptance contract without changing research code, data, or claims.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>TASK.md (replace completed monitor task with frozen local acceptance contract)</code></li><li><code>archive/completed-tasks/live-research-monitor-001.md (exact archived copy)</code></li><li><code>research/experiment_registry.jsonl (append one FROZEN engineering row)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>sha256: TASK.md 9757868784fce0cc888d011c1f5e5b6641ccab36af4e6c86319cb2f509586aff; archived TASK matches prior HEAD 1a23cfe0cf7b021f432337f5831945453c4bf9d4700f125dd118fee9a303aeb2</li><li>registry jq validation passed and diff is append-only; load_frozen_studies returned {} before code registration</li><li>uv run pytest -q: 265 passed</li><li>uv run ruff check .: passed; uv run ruff format --check .: 65 files formatted</li><li>uv lock --check: passed; uv pip check: 64 packages compatible</li><li>canonical v7 verifier: complete, 27 metrics, max diff 7.327471962526033e-15; W4000 verifier: boundary_failed, 0 metrics/bootstrap</li><li>paper SHA-256 matched 141e48bd5ccaefe5d2c276a3c8772716b583b1df91517109d54a2452f4cb3af1</li><li>git diff --cached --check passed; remote branch confirmed at commit</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>2869a92f2dd373ce77e882d6ec57de3295316051</code></p></div>
+        <div><span class="lbl">Next step</span><p>After owner review, repair adaptive-jump run to self-verify, emit a safe artifact_verified event, register monitor-local-acceptance-001, and add focused tests in one reviewed code commit.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>No fetch, model run, data change, post-2023 access, adaptive work, runtime artifact, or claim change. Exact whole-inventory parity was corrected before freeze: six Git-bound checkpoint files may differ; all 125 other inventory entries must match. uv run pip check resolved to ambient pip and reported unrelated user-environment packages; the project-scoped uv pip check passed.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-14T18:44:08Z</span><span class="who">codex · GPT-5</span>
+      </div>
+      <p class="goal">Correct two learning-guide statements so checkpoint and monitor evidence are described without overclaim.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>docs/learning/06-reproducibility-sealed-evidence.html (controlled-test versus operational-acceptance boundary)</code></li><li><code>docs/learning/14-paper-legacy-verified-v7.html (complete active CLI list and monitor status)</code></li><li><code>docs/learning/index.html (parser-derived chapter, part, and course word counts)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>learning documentation tests: 22 passed</li><li>real Chromium desktop 1440x900 and mobile 390x844: Full chapter clicked, new text visible, external network blocked, zero page errors, zero horizontal overflow</li><li>full pytest: 265 passed</li><li>Ruff lint and format plus git diff checks: passed</li><li>commit and origin cleanup/research-protocol both resolve to 94b86312d9b528f08ea0d0cb7febe928f5432270</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>94b86312d9b528f08ea0d0cb7febe928f5432270</code></p></div>
+        <div><span class="lbl">Next step</span><p>Define and freeze a separate small ENGINEERING / SMOKE operational-acceptance task before running any canonical subprocess through the production monitor. The plan must specify the registered smoke study, direct-CLI parity baseline, cancel/resume checks, verifier gate, runtime limit, and no scientific claim.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>This documentation-only commit changed no code, dependency, data, experiment, protocol, artifact, gate, metric, or claim. The monitor remains CODE_COMPLETE and not operationally accepted. The first attempted browser assertion checked hidden Visual-path text; final acceptance correctly clicked Full chapter before checking the changed paragraphs. The pre-existing append-only handoff files remain dirty and unstaged.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-14T18:33:33Z</span><span class="who">codex · GPT-5</span>
+      </div>
+      <p class="goal">Add exact identity-bound resume for JM-4000, monthly selection, and bootstrap without changing scientific output.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/window_runner.py (+ run-identity checkpoint wiring and terminal cleanup)</code></li><li><code>src/adaptive_jump/window_study.py (+ optional JM and selection resume callbacks)</code></li><li><code>tests/test_window_runner.py (+ staged interruption, exact reuse, cleanup, and artifact parity)</code></li><li><code>tests/test_window_study.py (+ callback contract coverage)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>pre-change complete/boundary fixture inventory SHA-256 values d14bbd7989f372abcfe7a4eef35b7e3e82e3ccdfb1fe7471c72cbcb49add5e50 and 5ec433c74cc0f30536793c58056c80f8656172ca7565438a63b7a0e70d10905a matched post-change</li><li>focused window tests: 18 passed; interrupted run persisted and resumed exact JM, selection, and bootstrap payloads, then matched uninterrupted inventory bytes</li><li>full pytest: 265 passed</li><li>Ruff lint and format, uv lock, uv pip check, package build, and git diff checks: passed</li><li>clean git archive uv sync --frozen --all-extras and pytest: 265 passed</li><li>frozen v7 verify: complete, 27 metrics, maximum difference 7.327471962526033e-15</li><li>frozen JM-4000 verify: expected boundary_failed, zero metrics/bootstrap</li><li>paper SHA-256 matched 141e48bd5ccaefe5d2c276a3c8772716b583b1df91517109d54a2452f4cb3af1</li><li>protected archive, data, research config, registry, and dependency paths: unchanged</li><li>commit and origin cleanup/research-protocol both resolve to dcb95a6a9441b349359c91cb1ccd04a7452ea0c9</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>dcb95a6a9441b349359c91cb1ccd04a7452ea0c9</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner reviews Phase 3A. Then approve a separate small learning-document correction for the stale Chapter 14 CLI list and a Chapter 6 code-tested checkpoint qualification; operational acceptance still requires a separately frozen ENGINEERING / SMOKE run through the production monitor.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>No new file, dependency, data access, scientific run, model mathematics, protocol, frozen artifact, gate, metric, or claim changed. The learning audit found no claim that the monitor is operationally accepted. Monitor remains CODE_COMPLETE only; checkpoint behavior is code-tested, not yet accepted in a canonical long run or real Cloudflare deployment. The pre-existing append-only handoff files remain dirty and unstaged.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-14T17:35:03Z</span><span class="who">codex · GPT-5</span>
+      </div>
+      <p class="goal">Repair Phase 2 monitor telemetry isolation and subprocess ownership before any operational scientific smoke run.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/monitor/child_events.py (broken child telemetry becomes disabled instead of aborting science)</code></li><li><code>src/adaptive_jump/monitor/worker.py (graceful shutdown, fail-closed interruption, orphan termination, explicit lifecycle ownership)</code></li><li><code>src/adaptive_jump/monitor/server.py (bounded worker shutdown wait)</code></li><li><code>deploy/adaptive-jump-monitor.service and docs/monitor/deployment.md (control-group lifecycle and truthful checkpoint wording)</code></li><li><code>tests/test_monitor_worker.py, tests/test_monitor_server.py, tests/test_monitor_deploy.py (real subprocess regression coverage)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>pre-fix focused regression gate: 5 expected failures reproduced broken pipe, malformed telemetry, detached child, missing supervisor shutdown, and unsafe systemd ownership</li><li>post-fix focused monitor worker/server/deploy suite: 16 passed</li><li>uv run pytest -q: 265 passed</li><li>uv run ruff check . and uv run ruff format --check .: passed</li><li>uv lock --check and uv pip check --python .venv/bin/python: passed</li><li>uv build to /tmp/adaptive-jump-phase2-dist: sdist and wheel built</li><li>clean git archive at commit f1c5f65 with uv sync --frozen --all-extras: 64 packages installed; pytest 265 passed</li><li>frozen v7 verify: complete, 27 metrics, maximum difference 7.327471962526033e-15</li><li>frozen JM-4000 verify: expected boundary_failed, zero metrics/bootstrap</li><li>paper SHA-256 matched 141e48bd5ccaefe5d2c276a3c8772716b583b1df91517109d54a2452f4cb3af1</li><li>archive, data/raw, research configs, registry, and scientific source protected-path diff: clean</li><li>commit and origin cleanup/research-protocol both resolve to f1c5f65c737f46a46db042b88c410747d4bb2562</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>f1c5f65c737f46a46db042b88c410747d4bb2562</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner reviews Phase 2. After separate approval, define the next bounded checkpoint or ENGINEERING/SMOKE milestone; do not claim operational acceptance until one canonical subprocess is run through the monitor and its artifact is verified against CLI behavior.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Branch cleanup/research-protocol started at 2219dec174e026398419cc98c790ffafc5fdfa0e and ended/pushed at f1c5f65c737f46a46db042b88c410747d4bb2562. The two handoff files were already dirty from the preceding append-only entries and remain unstaged as required. No market data, model math, research protocol, frozen artifact, experiment, extension, adaptive run, Cloudflare deployment, or scientific claim changed. Monitor status remains CODE_COMPLETE, not operationally accepted.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-14T17:07:36Z</span><span class="who">codex · GPT-5</span>
+      </div>
+      <p class="goal">Correct the immediately preceding append-only handoff entry&#x27;s full commit SHA.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>.agent/session-log.jsonl (append-only metadata correction)</code></li><li><code>.agent/session-log.html (regenerated handoff view)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>git rev-parse HEAD: 2219dec174e026398419cc98c790ffafc5fdfa0e</li><li>git ls-remote origin cleanup/research-protocol: 2219dec174e026398419cc98c790ffafc5fdfa0e</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>2219dec174e026398419cc98c790ffafc5fdfa0e</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner reviews Phase 0-1. Then freeze the separately approved operational-acceptance task and repair broken event-pipe/process-ownership semantics before any engineering smoke run.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Correction to the immediately preceding entry only: its short SHA 2219dec and push claim were correct, but its manually entered full SHA was wrong. The append-only record is preserved and corrected here. No tracked project source, documentation, registry, scientific evidence, or remote state changed during this correction.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-14T17:07:14Z</span><span class="who">codex · GPT-5</span>
+      </div>
+      <p class="goal">Preserve the 117-commit branch remotely and correct monitor completion, data-access, and verifier-scope claims without rewriting provenance.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>TASK.md (CODE_COMPLETE status and explicit operational acceptance gap)</code></li><li><code>README.md (monitor, post-2023 source-audit, and verifier-scope corrections)</code></li><li><code>research/experiment_registry.jsonl (append-only monitor CODE_COMPLETE correction)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>pre-edit branch preservation: origin/cleanup/research-protocol advanced from 9dae3e4 to 4dad42a without history rewrite</li><li>registry append-only/hash contract: passed; first three rows unchanged and monitor row binds prior TASK.md SHA-256 b03ea615220a9d22233566c22c10a9b808f290d7fc1c49b609a2e0da755c1627</li><li>production frozen-study catalog after correction: {}</li><li>uv run pytest -q: 261 passed</li><li>uv run ruff check . and uv run ruff format --check .: passed</li><li>uv lock --check and uv pip check: passed</li><li>uv build to /tmp/adaptive-jump-build-phase1: sdist and wheel built</li><li>frozen v7 verify: complete, 27 metrics, maximum difference 7.327471962526033e-15</li><li>frozen JM-4000 verify: boundary_failed, zero metrics/bootstrap</li><li>paper SHA-256: 141e48bd5ccaefe5d2c276a3c8772716b583b1df91517109d54a2452f4cb3af1</li><li>archive, research.toml, source, tests, dependency files, and Python pin diff: clean</li><li>git diff --cached --check: passed; commit 2219dec pushed to origin</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>2219decb8c7988b55158476796561e1c2ed4464c</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner reviews Phase 0-1. Then freeze the separately approved operational-acceptance task and repair broken event-pipe/process-ownership semantics before any engineering smoke run.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Branch cleanup/research-protocol started at 4dad42a and ended at 2219dec. Worktree was clean after commit/push; the two required handoff files become dirty and unstaged after this append. No model code, scientific config, data, artifact, experiment, adaptive work, extension, or claim changed.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-14T08:26Z</span><span class="who">codex · GPT-5</span>
