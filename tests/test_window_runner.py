@@ -12,6 +12,10 @@ from adaptive_jump.backtest import apply_signal, buy_and_hold
 from adaptive_jump.config import load_config
 from adaptive_jump.models import FixedJMResult
 from adaptive_jump.walkforward import SelectionResult
+from adaptive_jump.window_evidence import (
+    verify_window_bootstrap,
+    verify_window_metrics,
+)
 from adaptive_jump.window_runner import _verify_parent, run_window_sensitivity
 from adaptive_jump.window_spec import load_window_spec
 from adaptive_jump.window_study import WindowMarketStudy, comparison_metrics
@@ -196,6 +200,41 @@ def test_window_runner_keeps_metrics_closed_after_boundary_failure(
     assert not (run_dir / "metrics.csv").exists()
     assert not list(run_dir.glob("*/trades/*.csv"))
     verify_inventory(run_dir)
+
+
+def test_window_evidence_is_recomputed_and_detects_metric_tampering(
+    tmp_path: Path, monkeypatch
+) -> None:
+    run_dir = _fixture_run(tmp_path, monkeypatch, boundary_passed=True)
+    config = load_config(tmp_path / "research.toml")
+    spec = load_window_spec(
+        tmp_path / "research/jm-train-window-sensitivity.toml", config
+    )
+
+    metrics, paths, metric_difference = verify_window_metrics(run_dir, config, spec)
+    assert len(metrics) == 36
+    assert metric_difference < 1e-12
+
+    stored_bootstrap = pd.read_csv(run_dir / "bootstrap.csv")
+    expected_bootstrap = stored_bootstrap.loc[stored_bootstrap["market"] == "us"].drop(
+        columns="market"
+    )
+    monkeypatch.setattr(
+        "adaptive_jump.window_evidence.bootstrap_rows",
+        lambda *_: expected_bootstrap.copy(),
+    )
+    bootstrap, bootstrap_difference = verify_window_bootstrap(
+        run_dir, paths, config, spec
+    )
+    assert len(bootstrap) == 9
+    assert bootstrap_difference == 0.0
+
+    metrics_path = run_dir / "metrics.csv"
+    tampered = pd.read_csv(metrics_path)
+    tampered.loc[0, "sharpe"] += 1.0
+    tampered.to_csv(metrics_path, index=False)
+    with pytest.raises(ArtifactError, match="evidence mismatch: sharpe"):
+        verify_window_metrics(run_dir, config, spec)
 
 
 def test_parent_verification_rejects_wrong_inventory_hash(
