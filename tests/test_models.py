@@ -102,6 +102,23 @@ def test_fixed_jm_uses_cumulative_return_state_order() -> None:
     assert np.isfinite(first_fit["objective"])
 
 
+def test_fixed_jm_observer_is_output_neutral() -> None:
+    model, jm = _protocols()
+    events = []
+
+    baseline = fixed_jm_states(_frame(), model, jm)
+    observed = fixed_jm_states(_frame(), model, jm, observer=events.append)
+
+    pd.testing.assert_frame_equal(observed.states, baseline.states)
+    pd.testing.assert_frame_equal(observed.refits, baseline.refits)
+    assert events[0].kind == "stage_started"
+    assert events[-1].kind == "stage_completed"
+    terminals = [event for event in events if event.kind == "terminal_state"]
+    assert len(terminals) == 9
+    assert terminals[-1].completed == terminals[-1].total == 9
+    assert terminals[-1].payload["states"] == [{"candidate": 5.0, "state": 1}]
+
+
 def test_rejects_nonfinite_or_malformed_model_inputs() -> None:
     model, jm = _protocols()
     malformed = _frame().drop(columns="dd_10")
@@ -208,6 +225,24 @@ def test_hmm_daily_fit_is_causal(monkeypatch: pytest.MonkeyPatch) -> None:
     after = hmm_states(changed, model, _hmm_protocol()).states
 
     pd.testing.assert_series_equal(before.iloc[:-1], after.iloc[:-1])
+
+
+def test_hmm_observer_is_output_neutral(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("adaptive_jump.models.GaussianHMM", _FakeHMM)
+    model = ModelProtocol(2, 4, 0, 1)
+    frame = _frame(9).rename(columns={"excess_return": "equity_log"})
+    events = []
+
+    baseline = hmm_states(frame, model, _hmm_protocol())
+    observed = hmm_states(frame, model, _hmm_protocol(), observer=events.append)
+
+    pd.testing.assert_series_equal(observed.states, baseline.states)
+    pd.testing.assert_frame_equal(observed.fits, baseline.fits)
+    assert [events[0].kind, events[-1].kind] == ["stage_started", "stage_completed"]
+    terminals = [event for event in events if event.kind == "terminal_state"]
+    assert len(terminals) == 6
+    assert terminals[-1].completed == terminals[-1].total == 6
+    assert terminals[-1].payload["state"] == 1
 
 
 def test_hmm_resumes_from_contiguous_checkpoint(
