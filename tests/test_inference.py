@@ -4,6 +4,7 @@ import pytest
 
 from adaptive_jump.backtest import annualized_excess_sharpe
 from adaptive_jump.inference import (
+    BootstrapProgress,
     InferenceError,
     bootstrap_sharpe_delta,
     stationary_bootstrap_indices,
@@ -66,6 +67,61 @@ def test_bootstrap_is_deterministic_and_preserves_zero_paired_delta() -> None:
     assert first.lower_one_sided == pytest.approx(0.0)
     assert first.confidence_low == pytest.approx(0.0)
     assert first.confidence_high == pytest.approx(0.0)
+
+
+def test_bootstrap_resumes_exactly_from_rng_batch_boundary() -> None:
+    challenger, baseline, cash = _returns()
+    arguments = dict(
+        challenger_return=challenger,
+        baseline_return=baseline,
+        cash_return=cash,
+        replications=125,
+        mean_block_length=12,
+        seed=17,
+        batch_size=25,
+    )
+    captured: list[BootstrapProgress] = []
+
+    def interrupt(current: BootstrapProgress) -> None:
+        captured.append(current)
+        if len(captured) == 2:
+            raise RuntimeError("simulated interruption")
+
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        bootstrap_sharpe_delta(**arguments, progress=interrupt)
+    resumed = bootstrap_sharpe_delta(**arguments, initial=captured[-1])
+    uninterrupted = bootstrap_sharpe_delta(**arguments)
+
+    assert resumed == uninterrupted
+    assert tuple(len(item.draws) for item in captured) == (25, 50)
+
+
+@pytest.mark.parametrize(
+    ("draws", "rng_state", "message"),
+    [
+        (np.zeros(9), np.random.default_rng(1).bit_generator.state, "batch boundary"),
+        (
+            np.concatenate([np.zeros(9), [np.nan]]),
+            np.random.default_rng(1).bit_generator.state,
+            "not finite",
+        ),
+        (np.zeros(10), {}, "RNG state"),
+    ],
+)
+def test_bootstrap_rejects_invalid_checkpoint(draws, rng_state, message) -> None:
+    challenger, baseline, cash = _returns()
+
+    with pytest.raises(InferenceError, match=message):
+        bootstrap_sharpe_delta(
+            challenger,
+            baseline,
+            cash,
+            replications=20,
+            mean_block_length=10,
+            seed=1,
+            batch_size=10,
+            initial=BootstrapProgress(draws, rng_state),
+        )
 
 
 def test_bootstrap_uses_requested_volatility_ddof_in_every_draw() -> None:

@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
+from copy import deepcopy
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -25,6 +28,14 @@ class SharpeDeltaBootstrap:
     confidence_high: float
     replications: int
     mean_block_length: int
+
+
+@dataclass(frozen=True)
+class BootstrapProgress:
+    """Completed draw prefix and RNG state at an exact batch boundary."""
+
+    draws: np.ndarray
+    rng_state: dict[str, Any]
 
 
 def stationary_bootstrap_indices(
@@ -61,6 +72,8 @@ def bootstrap_sharpe_delta(
     periods_per_year: int = 252,
     volatility_ddof: int = 1,
     batch_size: int = 500,
+    initial: BootstrapProgress | None = None,
+    progress: Callable[[BootstrapProgress], None] | None = None,
 ) -> SharpeDeltaBootstrap:
     """Bootstrap challenger-minus-baseline Sharpe on aligned daily rows."""
     if not (
@@ -97,6 +110,10 @@ def bootstrap_sharpe_delta(
     rng = np.random.default_rng(seed)
     draws = np.empty(replications, dtype=float)
     offset = 0
+    if initial is not None:
+        prefix, rng = _resume_bootstrap(initial, replications, batch_size, seed)
+        offset = len(prefix)
+        draws[:offset] = prefix
     while offset < replications:
         size = min(batch_size, replications - offset)
         indices = stationary_bootstrap_indices(
@@ -111,6 +128,13 @@ def bootstrap_sharpe_delta(
         )
         draws[offset : offset + size] = challenger - baseline
         offset += size
+        if progress is not None:
+            progress(
+                BootstrapProgress(
+                    draws=draws[:offset].copy(),
+                    rng_state=deepcopy(rng.bit_generator.state),
+                )
+            )
     if not np.isfinite(draws).all():
         raise InferenceError("bootstrap produced a non-finite Sharpe delta")
 
@@ -124,6 +148,29 @@ def bootstrap_sharpe_delta(
         replications=replications,
         mean_block_length=mean_block_length,
     )
+
+
+def _resume_bootstrap(
+    initial: BootstrapProgress, replications: int, batch_size: int, seed: int
+) -> tuple[np.ndarray, np.random.Generator]:
+    try:
+        prefix = np.asarray(initial.draws, dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise InferenceError("bootstrap checkpoint draws are invalid") from exc
+    if prefix.ndim != 1 or not 1 <= prefix.size <= replications:
+        raise InferenceError("bootstrap checkpoint draw count is invalid")
+    if prefix.size < replications and prefix.size % batch_size:
+        raise InferenceError("bootstrap checkpoint is not at a batch boundary")
+    if not np.isfinite(prefix).all():
+        raise InferenceError("bootstrap checkpoint draws are not finite")
+    if not isinstance(initial.rng_state, dict):
+        raise InferenceError("bootstrap checkpoint RNG state is invalid")
+    rng = np.random.default_rng(seed)
+    try:
+        rng.bit_generator.state = deepcopy(initial.rng_state)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise InferenceError("bootstrap checkpoint RNG state is invalid") from exc
+    return prefix.copy(), rng
 
 
 def _sharpe(
