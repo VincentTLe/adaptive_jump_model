@@ -56,3 +56,6 @@ select = ["B", "E", "F", "I", "UP"]
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["adaptive_jump*"]
+
+[tool.setuptools.package-data]
+"adaptive_jump.monitor" = ["static/*", "static/vendor/echarts/*"]
