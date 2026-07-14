@@ -105,6 +105,13 @@ the graceful lifecycle itself exceeds the deadline.
 
 ## 7. Acceptance And Operations
 
+The local lifecycle acceptance completed on 2026-07-14 using the production
+loopback server, an ephemeral HTTPS JWKS issuer, and real Chromium. Cancel,
+checkpoint reuse, server shutdown, resume, replay, verifier ordering, and
+artifact parity passed. This did not exercise a real Cloudflare account,
+hostname, tunnel, Access policy, OTP flow, or owner/viewer deployment; every
+item below must still pass on the deployed HTTPS hostname.
+
 Open the HTTPS hostname and authenticate with an exact approved email. Confirm:
 
 1. The viewer can read Live, Replay, Compare, and Evidence but cannot mutate.

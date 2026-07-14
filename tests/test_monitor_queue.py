@@ -16,10 +16,9 @@ STUDIES = {
 }
 
 
-def test_project_catalog_contains_only_the_frozen_engineering_replay() -> None:
+def test_project_catalog_is_empty_after_engineering_replay_completion() -> None:
     frozen = load_frozen_studies(ROOT / "research/experiment_registry.jsonl")
-    assert tuple(frozen) == ("monitor-local-acceptance-001",)
-    assert frozen["monitor-local-acceptance-001"].cli_study == "replication"
+    assert frozen == {}
 
 
 def test_catalog_requires_registration_and_latest_frozen_state(tmp_path: Path) -> None:

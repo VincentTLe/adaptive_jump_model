@@ -3,7 +3,7 @@
 ## Identity
 
 - `task_id`: `monitor-local-acceptance-001`
-- `status`: `FROZEN`
+- `status`: `LOCAL_OPERATIONAL_ACCEPTED`
 - `target_branch`: `cleanup/research-protocol`
 - `starting_ref`: `94b86312d9b528f08ea0d0cb7febe928f5432270`
 - `parent_task`: `live-research-monitor-001`
@@ -31,6 +31,34 @@ reference.
 This task does not establish remote operational acceptance. Cloudflare Tunnel
 and Access still require the owner's real hostname, account, audience, tunnel
 credential, and exact owner/viewer email addresses.
+
+## Observed Outcome
+
+Local operational acceptance completed on 2026-07-14. This was an engineering
+replay of already observed through-2023 inputs, not a scientific experiment.
+
+- Chromium enqueued and canceled job `686af0348a5a424c810ad35f51171699`.
+  Its atomic US-HMM checkpoint remained valid at 850 completed fits.
+- Chromium enqueued job `cb450ec8d00d4cae9bb8df7f150b66b2`, which resumed
+  at fit 851, survived a monitor shutdown at fit 2,250, and resumed as attempt
+  2 without restarting the completed prefix.
+- The append-only journal ended with 43,887 unique contiguous events.
+  `artifact_verified` at sequence 43,886 preceded the successful
+  `process_finished` event at sequence 43,887.
+- The independent verifier accepted 125 inventoried files, 18 boundary rows,
+  and 27 metric rows with maximum recomputation difference
+  `7.327471962526033e-15`.
+- All 125 non-checkpoint path/hash entries matched the frozen direct-CLI
+  reference. The reference's six Git-bound checkpoint files were the only
+  excluded entries.
+- Production Chromium passed Live, Queue, Replay, Compare, and Evidence at
+  1440x900 and 390x844, plus a JavaScript-disabled fallback. One mobile Replay
+  overflow found during acceptance was fixed in commit `7fe5eb6` and the full
+  browser matrix then passed with no page errors or horizontal overflow.
+
+The replay reproduced the existing proxy non-replication exactly; it did not
+create a new scientific result. Real Cloudflare Tunnel, Access policy, OTP,
+owner/viewer routing, and ordinary-browser remote access remain unaccepted.
 
 ## Frozen Replay
 

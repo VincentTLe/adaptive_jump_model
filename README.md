@@ -32,13 +32,14 @@ begin in 2007-2009 rather than 1990. The audited local report is generated at:
 artifacts/reports/fixed-baselines-8adb330565d6-3636939b525d-e9614112b234/report.html
 ```
 
-The live-monitor implementation is **CODE_COMPLETE**, not operationally
-accepted. Its components and controlled browser preview are tested, but no
-canonical study has yet completed through the production monitor and no real
-Cloudflare owner/viewer deployment has been accepted. The production catalog
-contains only the frozen `monitor-local-acceptance-001` engineering replay. It
-must pass before this monitor is treated as an operational research control
-center.
+The live monitor is **LOCALLY OPERATIONALLY ACCEPTED**. A real canonical replay
+was enqueued, canceled, checkpointed, interrupted by monitor shutdown, resumed,
+completed, independently verified, and matched all 125 non-checkpoint hashes in
+the direct-CLI reference. Desktop, mobile, replay, charts, and the no-JavaScript
+fallback passed real Chromium acceptance. This validates the local production
+origin and ephemeral Access-JWT harness only. Real Cloudflare Tunnel, Access,
+OTP, owner/viewer routing, and remote-browser deployment remain unaccepted. The
+engineering replay is now complete, so it is no longer queueable.
 
 Only `src/adaptive_jump/` is active source code. Everything under `archive/` is
 frozen provenance and must not be imported or used as a second research stack.
@@ -186,8 +187,8 @@ packages are intentionally not preinstalled.
 4. Period/data attribution is complete; exact paper data remain unavailable.
 5. The 4,000-observation JM sensitivity is complete but stopped at its lambda
    boundary gate; no performance conclusion was opened.
-6. The live monitor is engineering infrastructure; it preserves these frozen
-   boundaries and creates no scientific claim.
+6. The live monitor passed local lifecycle and artifact-parity acceptance; it
+   preserves these frozen boundaries and creates no scientific claim.
 7. Adaptive, grid-expansion, and extension work require a new approved task
    that formally states the next research question.
 
