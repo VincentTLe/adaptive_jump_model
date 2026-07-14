@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import sqlite3
 import uuid
@@ -12,7 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 TERMINAL_STATUSES = frozenset({"canceled", "succeeded", "failed"})
 _IDENTIFIER = re.compile(r"[a-z0-9][a-z0-9-]*\Z")
 
@@ -46,6 +47,9 @@ class Job:
     updated_at: str
     started_at: str | None
     finished_at: str | None
+    process_pid: int | None
+    process_created_at: float | None
+    exit_code: int | None
 
 
 def load_frozen_studies(
@@ -99,7 +103,11 @@ class QueueStore:
         database.parent.mkdir(parents=True, exist_ok=True)
         with self._transaction() as connection:
             version = connection.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, SCHEMA_VERSION):
+            if version == 1:
+                for statement in _MIGRATE_V1:
+                    connection.execute(statement)
+                connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+            elif version not in (0, SCHEMA_VERSION):
                 raise QueueError(f"unsupported queue schema version: {version}")
             connection.executescript(_SCHEMA)
             connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
@@ -114,7 +122,9 @@ class QueueStore:
             ).fetchone()[0]
             job_id = uuid.uuid4().hex
             connection.execute(
-                "INSERT INTO jobs VALUES (?, ?, 'queued', ?, 0, ?, ?, NULL, NULL)",
+                "INSERT INTO jobs (job_id, study_id, status, queue_position, "
+                "attempts, created_at, updated_at) "
+                "VALUES (?, ?, 'queued', ?, 0, ?, ?)",
                 (job_id, study_id, position, now, now),
             )
             return self._job(connection, job_id)
@@ -127,6 +137,18 @@ class QueueStore:
 
     def all_jobs(self) -> tuple[Job, ...]:
         return self._query("SELECT * FROM jobs ORDER BY created_at, job_id")
+
+    def get(self, job_id: str) -> Job:
+        rows = self._query("SELECT * FROM jobs WHERE job_id = ?", (job_id,))
+        if not rows:
+            raise QueueError(f"unknown job: {job_id}")
+        return rows[0]
+
+    def active(self) -> Job | None:
+        rows = self._query(
+            "SELECT * FROM jobs WHERE status IN ('running', 'cancel_requested')"
+        )
+        return rows[0] if rows else None
 
     def reorder(self, job_ids: Sequence[str]) -> tuple[Job, ...]:
         requested = tuple(job_ids)
@@ -171,10 +193,27 @@ class QueueStore:
             connection.execute(
                 "UPDATE jobs SET status = 'running', queue_position = NULL, "
                 "attempts = attempts + 1, updated_at = ?, started_at = ?, "
-                "finished_at = NULL WHERE job_id = ?",
+                "finished_at = NULL, process_pid = NULL, "
+                "process_created_at = NULL, exit_code = NULL WHERE job_id = ?",
                 (now, now, row["job_id"]),
             )
             return self._job(connection, row["job_id"])
+
+    def attach_process(self, job_id: str, pid: int, created_at: float) -> Job:
+        if pid < 1 or created_at <= 0 or not math.isfinite(created_at):
+            raise QueueError("process identity is invalid")
+        with self._transaction() as connection:
+            job = self._job(connection, job_id)
+            if job.status not in {"running", "cancel_requested"}:
+                raise QueueError(f"cannot attach a process to a {job.status} job")
+            if job.process_pid is not None:
+                raise QueueError("job already has a process identity")
+            connection.execute(
+                "UPDATE jobs SET process_pid = ?, process_created_at = ?, "
+                "updated_at = ? WHERE job_id = ?",
+                (pid, float(created_at), _now(), job_id),
+            )
+            return self._job(connection, job_id)
 
     def request_cancel(self, job_id: str) -> Job:
         with self._transaction() as connection:
@@ -193,7 +232,7 @@ class QueueStore:
             )
             return self._job(connection, job_id)
 
-    def finish(self, job_id: str, status: str) -> Job:
+    def finish(self, job_id: str, status: str, exit_code: int | None = None) -> Job:
         if status not in TERMINAL_STATUSES:
             raise QueueError("finish status must be canceled, succeeded, or failed")
         with self._transaction() as connection:
@@ -202,9 +241,9 @@ class QueueStore:
                 raise QueueError(f"cannot finish a {job.status} job")
             now = _now()
             connection.execute(
-                "UPDATE jobs SET status = ?, updated_at = ?, finished_at = ? "
-                "WHERE job_id = ?",
-                (status, now, now, job_id),
+                "UPDATE jobs SET status = ?, updated_at = ?, finished_at = ?, "
+                "exit_code = ? WHERE job_id = ?",
+                (status, now, now, exit_code, job_id),
             )
             return self._job(connection, job_id)
 
@@ -306,10 +345,19 @@ CREATE TABLE IF NOT EXISTS jobs (
     updated_at TEXT NOT NULL,
     started_at TEXT,
     finished_at TEXT,
-    CHECK ((status = 'queued') = (queue_position IS NOT NULL))
+    process_pid INTEGER,
+    process_created_at REAL,
+    exit_code INTEGER,
+    CHECK ((status = 'queued') = (queue_position IS NOT NULL)),
+    CHECK ((process_pid IS NULL) = (process_created_at IS NULL))
 );
 CREATE UNIQUE INDEX IF NOT EXISTS one_queued_position
     ON jobs(queue_position) WHERE status = 'queued';
 CREATE UNIQUE INDEX IF NOT EXISTS one_active_job
     ON jobs((1)) WHERE status IN ('running', 'cancel_requested');
 """
+_MIGRATE_V1 = (
+    "ALTER TABLE jobs ADD COLUMN process_pid INTEGER",
+    "ALTER TABLE jobs ADD COLUMN process_created_at REAL",
+    "ALTER TABLE jobs ADD COLUMN exit_code INTEGER",
+)
