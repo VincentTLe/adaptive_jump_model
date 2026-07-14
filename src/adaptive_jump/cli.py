@@ -22,11 +22,12 @@ from adaptive_jump.data import AcquisitionError, acquire, research_git_sha
 from adaptive_jump.features import effective_oos_start, prepare_market
 from adaptive_jump.models import FixedJMResult, HMMResult, fixed_jm_states, hmm_states
 from adaptive_jump.monitor import checkpoints as checkpoint_store
+from adaptive_jump.monitor import study_runtime
 from adaptive_jump.monitor.child_events import (
     ChildEventError,
     child_observer_from_environment,
 )
-from adaptive_jump.monitor.events import EventObserver, bind_event_context
+from adaptive_jump.monitor.events import EventObserver
 from adaptive_jump.reporting import build_report
 from adaptive_jump.walkforward import (
     BaselineStudy,
@@ -39,13 +40,6 @@ from adaptive_jump.window_runner import run_window_sensitivity
 from adaptive_jump.window_spec import load_window_spec
 
 RunError = _artifacts.ArtifactError
-_directional_gate = _artifacts.directional_gate
-_read_json = _artifacts.read_json
-_sha256 = _artifacts.sha256_file
-_verify_inventory = _artifacts.verify_inventory
-verify_run = _artifacts.verify_run
-_write_inventory = _artifacts.write_inventory
-_write_json = _artifacts.write_json
 
 
 @dataclass(frozen=True)
@@ -75,7 +69,7 @@ def load_frozen_data(
         )
         matching = []
         for candidate in candidates:
-            document = _read_json(candidate)
+            document = _artifacts.read_json(candidate)
             if document.get("config_sha256") == config.sha256:
                 matching.append(candidate)
         if len(matching) != 1:
@@ -89,9 +83,9 @@ def load_frozen_data(
         if not path.is_absolute():
             path = root / path
         path = path.resolve()
-    document = _read_json(path)
+    document = _artifacts.read_json(path)
     _verify_manifest(config, document, root)
-    return FrozenData(path, document, _sha256(path))
+    return FrozenData(path, document, _artifacts.sha256_file(path))
 
 
 def prepare_manifest_market(
@@ -147,7 +141,7 @@ def _verify_manifest(
         path = (root / str(record.get("path", ""))).resolve()
         if not path.is_relative_to(processed) or not path.is_file():
             raise RunError(f"invalid canonical path: {path}")
-        if _sha256(path) != record.get("sha256"):
+        if _artifacts.sha256_file(path) != record.get("sha256"):
             raise RunError(f"canonical hash mismatch: {path}")
         frame = pd.read_csv(path)
         if frame.empty or list(frame.columns) != ["date", "value"]:
@@ -186,22 +180,22 @@ def run_replication(
     checkpoint_root = root / config.artifact_root / ".monitor" / "checkpoints" / run_id
     metadata_path = run_dir / "run.json"
     if metadata_path.exists():
-        metadata = _read_json(metadata_path)
+        metadata = _artifacts.read_json(metadata_path)
         if any(metadata.get(key) != value for key, value in identity.items()):
             raise RunError("existing run identity does not match")
         if (
-            _sha256(run_dir / "config.lock.toml") != config.sha256
-            or _sha256(run_dir / "data-manifest.json") != frozen.sha256
+            _artifacts.sha256_file(run_dir / "config.lock.toml") != config.sha256
+            or _artifacts.sha256_file(run_dir / "data-manifest.json") != frozen.sha256
         ):
             raise RunError("existing run locks do not match")
         if metadata.get("status") in {"complete", "boundary_failed"}:
-            _verify_inventory(run_dir)
+            _artifacts.verify_inventory(run_dir)
             return run_dir
     else:
         run_dir.mkdir(parents=True)
         (run_dir / "config.lock.toml").write_bytes(config.path.read_bytes())
         (run_dir / "data-manifest.json").write_bytes(frozen.path.read_bytes())
-        _write_json(
+        _artifacts.write_json(
             metadata_path,
             {
                 "schema_version": 1,
@@ -260,7 +254,9 @@ def run_replication(
                 n_jobs=HMM_WORKERS,
                 checkpoint_every=MODEL_CHECKPOINT_DAYS,
                 progress=save_hmm_progress,
-                observer=bind_event_context(observer, market=market.id, model="hmm"),
+                observer=study_runtime.model_observer(
+                    observer, market.id, "hmm", market_input.frame
+                ),
             )
             initial_jm = _load_cache(
                 checkpoint_dir / "jm-progress", "fixed_jm", identity, FixedJMResult
@@ -292,8 +288,8 @@ def run_replication(
                 initial=initial_jm,
                 checkpoint_every=MODEL_CHECKPOINT_DAYS,
                 progress=save_jm_progress,
-                observer=bind_event_context(
-                    observer, market=market.id, model="fixed_jm"
+                observer=study_runtime.model_observer(
+                    observer, market.id, "fixed_jm", market_input.frame
                 ),
             )
 
@@ -304,11 +300,16 @@ def run_replication(
                 precomputed_jm=fitted_jm,
                 precomputed_hmm=fitted_hmm,
                 selection_initial=partial(_load_selection, checkpoint_dir, identity),
-                selection_progress=partial(_save_selection, checkpoint_dir, identity),
+                selection_progress=study_runtime.baseline_selection_recorder(
+                    partial(_save_selection, checkpoint_dir, identity),
+                    observer,
+                    market.id,
+                ),
             )
         elif checkpoint.oos_start != market_input.oos_start:
             raise RunError(f"{market.id}: checkpoint OOS start mismatch")
         _write_checkpoint(market_dir, market_input.frame, checkpoint)
+        study_runtime.emit_boundary_rows(observer, checkpoint.boundaries, market.id)
         _write_cache(
             checkpoint_dir / "baseline-study", checkpoint, "baseline_study", identity
         )
@@ -327,7 +328,7 @@ def run_replication(
     )
     boundaries.to_csv(run_dir / "boundaries.csv", index=False)
     if not boundaries["passed"].all():
-        _write_inventory(run_dir)
+        _artifacts.write_inventory(run_dir)
         _finish_run(
             metadata_path,
             status="boundary_failed",
@@ -348,9 +349,9 @@ def run_replication(
                 path.to_csv(trades / f"{model_name}-delay-{delay}.csv", index=False)
     metrics = pd.concat(metric_frames, ignore_index=True)
     metrics.to_csv(run_dir / "metrics.csv", index=False)
-    gate = _directional_gate(metrics, config.backtest_protocol.primary_delay)
-    _write_json(run_dir / "claim.json", gate)
-    _write_inventory(run_dir)
+    gate = _artifacts.directional_gate(metrics, config.backtest_protocol.primary_delay)
+    _artifacts.write_json(run_dir / "claim.json", gate)
+    _artifacts.write_inventory(run_dir)
     _finish_run(
         metadata_path,
         status="complete",
@@ -411,10 +412,10 @@ def _save_selection(root, identity, model_name, delay, result) -> None:
 
 
 def _finish_run(metadata_path: Path, **updates: Any) -> None:
-    metadata = _read_json(metadata_path)
+    metadata = _artifacts.read_json(metadata_path)
     metadata.update(updates)
     metadata["finished_at_utc"] = datetime.now(UTC).isoformat()
-    _write_json(metadata_path, metadata)
+    _artifacts.write_json(metadata_path, metadata)
 
 
 def _package_versions() -> dict[str, str]:
@@ -477,7 +478,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(artifact)
             return 0
         if arguments.command == "verify":
-            print(json.dumps(verify_run(arguments.run), sort_keys=True))
+            print(json.dumps(_artifacts.verify_run(arguments.run), sort_keys=True))
             return 0
         if arguments.command == "report":
             print(build_report(arguments.run))

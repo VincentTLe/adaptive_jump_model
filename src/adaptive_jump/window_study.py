@@ -16,6 +16,7 @@ from adaptive_jump.backtest import performance_metrics
 from adaptive_jump.config import ResearchConfig
 from adaptive_jump.inference import BootstrapProgress, bootstrap_sharpe_delta
 from adaptive_jump.models import FixedJMResult, fixed_jm_states
+from adaptive_jump.monitor import study_runtime
 from adaptive_jump.monitor.events import EventObserver
 from adaptive_jump.walkforward import (
     SelectionResult,
@@ -67,6 +68,9 @@ def build_window_market_study(
     selections: dict[int, SelectionResult] = {}
     rows: list[dict[str, Any]] = []
     for delay in spec.delays:
+        selection_observer = study_runtime.selection_progress_observer(
+            observer, "jm_4000", delay
+        )
         selection = select_monthly_candidate(
             returns,
             jm.states,
@@ -75,6 +79,8 @@ def build_window_market_study(
             one_way_cost_bps=config.backtest_protocol.one_way_cost_bps,
             periods_per_year=config.metrics_protocol.periods_per_year,
             volatility_ddof=config.metrics_protocol.volatility_ddof,
+            checkpoint_every=1 if selection_observer else 12,
+            progress=selection_observer,
         )
         selections[delay] = selection
         diagnostic = boundary_diagnostic(

@@ -25,6 +25,7 @@ from adaptive_jump.data import research_git_sha
 from adaptive_jump.features import effective_oos_start
 from adaptive_jump.inference import BootstrapProgress
 from adaptive_jump.monitor import checkpoints as checkpoint_store
+from adaptive_jump.monitor import study_runtime
 from adaptive_jump.monitor.events import EventObserver, bind_event_context
 from adaptive_jump.window_spec import WindowStudySpec
 from adaptive_jump.window_study import (
@@ -111,10 +112,13 @@ def run_window_sensitivity(
             config,
             spec,
             oos_start=oos_start,
-            observer=bind_event_context(observer, market=market.id, model="jm_4000"),
+            observer=study_runtime.model_observer(
+                observer, market.id, "jm_4000", frame
+            ),
         )
         frames[market.id] = frame
         studies[market.id] = study
+        study_runtime.emit_boundary_rows(observer, study.boundaries, market.id)
         _write_market_evidence(run_dir / market.id, study)
 
     boundaries = pd.concat(
@@ -168,6 +172,12 @@ def run_window_sensitivity(
                 comparison_metrics(paths, config).assign(market=market_id, delay=delay)
             )
             if delay == spec.primary_delay:
+                bootstrap_observer = bind_event_context(
+                    observer,
+                    market=market_id,
+                    model="jm_4000_vs_jm_3000",
+                    delay=delay,
+                )
                 bootstrap_frames.append(
                     bootstrap_rows(
                         paths,
@@ -179,11 +189,15 @@ def run_window_sensitivity(
                             identity,
                             market_id,
                         ),
-                        progress=partial(
-                            _save_bootstrap,
-                            checkpoint_root,
-                            identity,
-                            market_id,
+                        progress=study_runtime.bootstrap_recorder(
+                            partial(
+                                _save_bootstrap,
+                                checkpoint_root,
+                                identity,
+                                market_id,
+                            ),
+                            bootstrap_observer,
+                            spec.bootstrap_replications,
                         ),
                     ).assign(market=market_id)
                 )
