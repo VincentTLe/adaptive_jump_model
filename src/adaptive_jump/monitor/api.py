@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass
 from typing import Annotated, Any
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from adaptive_jump.monitor.audit import AuditStore
@@ -27,6 +27,7 @@ from adaptive_jump.monitor.security import (
     AuthenticationError,
     Principal,
 )
+from adaptive_jump.monitor.sse import StreamError, resume_sequence, stream_job_events
 
 API_PREFIX = "/api"
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
@@ -245,6 +246,38 @@ def create_app(services: MonitorServices) -> FastAPI:
             event.to_dict() for event in replay if event.event.visibility != "outcome"
         ]
         return {"events": visible, "outcomes_locked": True}
+
+    @app.get(f"{API_PREFIX}/jobs/{{job_id}}/stream")
+    async def stream(
+        request: Request,
+        job_id: str,
+        after_sequence: int = Query(default=0, ge=0),
+    ) -> StreamingResponse:
+        try:
+            cursor = resume_sequence(
+                request.headers.get("Last-Event-ID"), after_sequence
+            )
+            await asyncio.to_thread(services.queue.get, job_id)
+            await asyncio.to_thread(services.events.replay, job_id, cursor)
+        except StreamError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except QueueError as exc:
+            raise HTTPException(status_code=404, detail="job stream not found") from exc
+        except EventStoreError as exc:
+            raise HTTPException(
+                status_code=409, detail="job event journal is invalid"
+            ) from exc
+        return StreamingResponse(
+            stream_job_events(
+                services.queue,
+                services.events,
+                job_id,
+                cursor,
+                request.is_disconnected,
+            ),
+            media_type="text/event-stream",
+            headers={"X-Accel-Buffering": "no"},
+        )
 
     @app.get(f"{API_PREFIX}/evidence")
     async def evidence_catalog() -> dict[str, Any]:
