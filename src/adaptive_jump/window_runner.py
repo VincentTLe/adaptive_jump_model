@@ -24,9 +24,11 @@ from adaptive_jump.config import ResearchConfig
 from adaptive_jump.data import research_git_sha
 from adaptive_jump.features import effective_oos_start
 from adaptive_jump.inference import BootstrapProgress
+from adaptive_jump.models import FixedJMResult
 from adaptive_jump.monitor import checkpoints as checkpoint_store
 from adaptive_jump.monitor import study_runtime
 from adaptive_jump.monitor.events import EventObserver, bind_event_context
+from adaptive_jump.walkforward import SelectionProgress
 from adaptive_jump.window_spec import WindowStudySpec
 from adaptive_jump.window_study import (
     COMPARISON_MODELS,
@@ -81,7 +83,7 @@ def run_window_sensitivity(
             from adaptive_jump.window_verifier import verify_window_run
 
             verify_window_run(run_dir)
-            _clear_bootstrap_checkpoints(checkpoint_root)
+            _clear_run_checkpoints(checkpoint_root)
             return run_dir
     else:
         _create_run(
@@ -107,11 +109,26 @@ def run_window_sensitivity(
         )
         if oos_start is None:
             raise ArtifactError(f"{market.id}: JM-4000 has no eligible OOS sample")
+        market_checkpoints = checkpoint_root / market.id
         study = build_window_market_study(
             frame,
             config,
             spec,
             oos_start=oos_start,
+            jm_initial=_load_checkpoint(
+                market_checkpoints / "jm-progress",
+                "fixed_jm",
+                identity,
+                FixedJMResult,
+            ),
+            jm_progress=partial(
+                _save_checkpoint,
+                market_checkpoints / "jm-progress",
+                "fixed_jm",
+                identity,
+            ),
+            selection_initial=partial(_load_selection, market_checkpoints, identity),
+            selection_progress=partial(_save_selection, market_checkpoints, identity),
             observer=study_runtime.model_observer(
                 observer, market.id, "jm_4000", frame
             ),
@@ -137,7 +154,7 @@ def run_window_sensitivity(
             metrics_opened=False,
             conclusion="JM-4000 upper-lambda boundary requires a new experiment",
         )
-        _clear_bootstrap_checkpoints(checkpoint_root)
+        _clear_run_checkpoints(checkpoint_root)
         return run_dir
 
     metric_frames = []
@@ -221,7 +238,7 @@ def run_window_sensitivity(
         metrics_opened=True,
         conclusion=claim["conclusion"],
     )
-    _clear_bootstrap_checkpoints(checkpoint_root)
+    _clear_run_checkpoints(checkpoint_root)
     return run_dir
 
 
@@ -366,31 +383,50 @@ def _write_trade_paths(
         path.to_csv(target / f"{model}-delay-{delay}.csv", index=False)
 
 
-def _load_bootstrap(root, identity, market, block):
-    stem = root / f"bootstrap-{market}-block-{block}"
+def _load_checkpoint(stem, kind, identity, expected):
     try:
-        cached = checkpoint_store.load_checkpoint(
-            stem, kind="bootstrap", identity=identity
-        )
+        cached = checkpoint_store.load_checkpoint(stem, kind=kind, identity=identity)
     except checkpoint_store.CheckpointStoreError as exc:
         raise ArtifactError(str(exc)) from exc
-    if cached is not None and not isinstance(cached, BootstrapProgress):
-        raise ArtifactError(f"invalid bootstrap checkpoint payload: {stem}")
+    if cached is not None and not isinstance(cached, expected):
+        raise ArtifactError(f"invalid {kind} checkpoint payload: {stem}")
     return cached
 
 
-def _save_bootstrap(root, identity, market, block, result) -> None:
-    stem = root / f"bootstrap-{market}-block-{block}"
+def _save_checkpoint(stem, kind, identity, result) -> None:
     try:
-        checkpoint_store.save_checkpoint(
-            stem, result, kind="bootstrap", identity=identity
-        )
+        checkpoint_store.save_checkpoint(stem, result, kind=kind, identity=identity)
     except checkpoint_store.CheckpointStoreError as exc:
         raise ArtifactError(str(exc)) from exc
 
 
-def _clear_bootstrap_checkpoints(root: Path) -> None:
-    for metadata in root.glob("bootstrap-*.json"):
+def _load_selection(root, identity, delay):
+    return _load_checkpoint(
+        root / f"selection-delay-{delay}", "selection", identity, SelectionProgress
+    )
+
+
+def _save_selection(root, identity, delay, result) -> None:
+    _save_checkpoint(root / f"selection-delay-{delay}", "selection", identity, result)
+
+
+def _load_bootstrap(root, identity, market, block):
+    return _load_checkpoint(
+        root / f"bootstrap-{market}-block-{block}",
+        "bootstrap",
+        identity,
+        BootstrapProgress,
+    )
+
+
+def _save_bootstrap(root, identity, market, block, result) -> None:
+    _save_checkpoint(
+        root / f"bootstrap-{market}-block-{block}", "bootstrap", identity, result
+    )
+
+
+def _clear_run_checkpoints(root: Path) -> None:
+    for metadata in root.rglob("*.json"):
         checkpoint_store.clear_checkpoint(metadata.with_suffix(""))
 
 

@@ -9,7 +9,7 @@ from adaptive_jump.backtest import apply_signal, buy_and_hold
 from adaptive_jump.config import load_config
 from adaptive_jump.inference import BootstrapProgress
 from adaptive_jump.models import FixedJMResult
-from adaptive_jump.walkforward import SelectionResult
+from adaptive_jump.walkforward import SelectionProgress, SelectionResult
 from adaptive_jump.window_spec import load_window_spec
 from adaptive_jump.window_study import (
     COMPARISON_MODELS,
@@ -65,17 +65,27 @@ def test_market_study_changes_only_jm_fit_window(monkeypatch) -> None:
         }
     )
     states = pd.DataFrame(0.0, index=dates, columns=config.jm_protocol.lambda_grid)
+    initial_jm = FixedJMResult(states, pd.DataFrame())
+    initial_selection = SelectionProgress(pd.DataFrame(), pd.DataFrame())
     seen_windows = []
     seen_delays = []
+    saved_jm = []
+    saved_selections = []
 
-    def fake_states(_frame, model_protocol, jm_protocol, *, observer=None):
+    def fake_states(
+        _frame, model_protocol, jm_protocol, *, initial, progress, observer=None
+    ):
         seen_windows.append(model_protocol.fit_window)
         assert jm_protocol is config.jm_protocol
+        assert initial is initial_jm
         assert observer is None
-        return FixedJMResult(states, pd.DataFrame())
+        progress(initial_jm)
+        return initial_jm
 
-    def fake_selection(*_args, delay_trading_days, **_kwargs):
+    def fake_selection(*_args, delay_trading_days, initial, progress, **_kwargs):
         seen_delays.append(delay_trading_days)
+        assert initial is initial_selection
+        progress(initial_selection)
         return SelectionResult(
             signal=pd.Series(1.0, index=dates),
             choices=pd.DataFrame({"decision_date": [dates[-1]], "selected": [5.0]}),
@@ -88,10 +98,22 @@ def test_market_study_changes_only_jm_fit_window(monkeypatch) -> None:
         "adaptive_jump.window_study.select_monthly_candidate", fake_selection
     )
 
-    study = build_window_market_study(frame, config, spec, oos_start=dates[0].date())
+    study = build_window_market_study(
+        frame,
+        config,
+        spec,
+        oos_start=dates[0].date(),
+        jm_initial=initial_jm,
+        jm_progress=saved_jm.append,
+        selection_initial=lambda _delay: initial_selection,
+        selection_progress=lambda delay, value: saved_selections.append((delay, value)),
+    )
 
     assert seen_windows == [4000]
     assert tuple(seen_delays) == (1, 5, 10)
+    assert len(saved_jm) == 1 and saved_jm[0] is initial_jm
+    assert [delay for delay, _value in saved_selections] == [1, 5, 10]
+    assert all(value is initial_selection for _delay, value in saved_selections)
     assert study.boundaries["passed"].all()
 
 

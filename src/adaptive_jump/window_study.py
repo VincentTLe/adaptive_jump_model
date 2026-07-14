@@ -19,6 +19,7 @@ from adaptive_jump.models import FixedJMResult, fixed_jm_states
 from adaptive_jump.monitor import study_runtime
 from adaptive_jump.monitor.events import EventObserver
 from adaptive_jump.walkforward import (
+    SelectionProgress,
     SelectionResult,
     boundary_diagnostic,
     select_monthly_candidate,
@@ -59,11 +60,22 @@ def build_window_market_study(
     spec: WindowStudySpec,
     *,
     oos_start: date,
+    jm_initial: FixedJMResult | None = None,
+    jm_progress: Callable[[FixedJMResult], None] | None = None,
+    selection_initial: Callable[[int], SelectionProgress | None] | None = None,
+    selection_progress: Callable[[int, SelectionProgress], None] | None = None,
     observer: EventObserver | None = None,
 ) -> WindowMarketStudy:
     """Fit and select JM-4000 while preserving every parent setting."""
     protocol = replace(config.model_protocol, fit_window=spec.challenger_window)
-    jm = fixed_jm_states(frame, protocol, config.jm_protocol, observer=observer)
+    jm = fixed_jm_states(
+        frame,
+        protocol,
+        config.jm_protocol,
+        initial=jm_initial,
+        progress=jm_progress,
+        observer=observer,
+    )
     returns = frame[["date", "equity_simple", "cash_return"]]
     selections: dict[int, SelectionResult] = {}
     rows: list[dict[str, Any]] = []
@@ -71,6 +83,18 @@ def build_window_market_study(
         selection_observer = study_runtime.selection_progress_observer(
             observer, "jm_4000", delay
         )
+
+        def record_selection(
+            current: SelectionProgress,
+            current_delay: int = delay,
+            event_callback: Callable[[SelectionProgress], None]
+            | None = selection_observer,
+        ) -> None:
+            if selection_progress is not None:
+                selection_progress(current_delay, current)
+            if event_callback is not None:
+                event_callback(current)
+
         selection = select_monthly_candidate(
             returns,
             jm.states,
@@ -80,7 +104,12 @@ def build_window_market_study(
             periods_per_year=config.metrics_protocol.periods_per_year,
             volatility_ddof=config.metrics_protocol.volatility_ddof,
             checkpoint_every=1 if selection_observer else 12,
-            progress=selection_observer,
+            initial=selection_initial(delay) if selection_initial else None,
+            progress=(
+                record_selection
+                if selection_progress is not None or selection_observer is not None
+                else None
+            ),
         )
         selections[delay] = selection
         study_runtime.emit_selected_signal(observer, selection, "jm_4000", delay)

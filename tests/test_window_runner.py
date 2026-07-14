@@ -19,7 +19,7 @@ from adaptive_jump.config import load_config
 from adaptive_jump.inference import BootstrapProgress
 from adaptive_jump.models import FixedJMResult
 from adaptive_jump.reporting import build_report
-from adaptive_jump.walkforward import SelectionResult
+from adaptive_jump.walkforward import SelectionProgress, SelectionResult
 from adaptive_jump.window_evidence import (
     verify_window_bootstrap,
     verify_window_metrics,
@@ -42,7 +42,7 @@ def _fixture_run(
     monkeypatch,
     *,
     boundary_passed: bool,
-    interrupt_bootstrap: bool = False,
+    interrupt_stages: bool = False,
 ) -> Path:
     config_path = tmp_path / "research.toml"
     config_path.write_bytes((ROOT / "research.toml").read_bytes())
@@ -164,9 +164,27 @@ def _fixture_run(
         "adaptive_jump.window_runner.effective_oos_start",
         lambda *_args, **_kwargs: dates[0].date(),
     )
+    study_attempt = 0
+
+    def fake_study(*_args, **kwargs):
+        nonlocal study_attempt
+        if interrupt_stages and study_attempt == 0:
+            kwargs["jm_progress"](study.jm)
+            kwargs["selection_progress"](
+                1, SelectionProgress(selection.choices, selection.surface)
+            )
+            study_attempt += 1
+            raise RuntimeError("simulated model interruption")
+        if interrupt_stages and study_attempt == 1:
+            assert kwargs["jm_initial"].states.equals(study.jm.states)
+            resumed = kwargs["selection_initial"](1)
+            assert resumed.choices.equals(selection.choices)
+            assert resumed.surface.equals(selection.surface)
+        study_attempt += 1
+        return study
+
     monkeypatch.setattr(
-        "adaptive_jump.window_runner.build_window_market_study",
-        lambda *_args, **_kwargs: study,
+        "adaptive_jump.window_runner.build_window_market_study", fake_study
     )
 
     bootstrap_attempt = 0
@@ -174,14 +192,14 @@ def _fixture_run(
 
     def fake_bootstrap(paths, frozen, research_config, *, initial=None, progress=None):
         nonlocal bootstrap_attempt
-        if interrupt_bootstrap and bootstrap_attempt == 0:
+        if interrupt_stages and bootstrap_attempt == 0:
             checkpoint = BootstrapProgress(
                 np.zeros(500), np.random.default_rng(11).bit_generator.state
             )
             progress(frozen.bootstrap_blocks[0], checkpoint)
             bootstrap_attempt += 1
             raise RuntimeError("simulated bootstrap interruption")
-        if interrupt_bootstrap:
+        if interrupt_stages:
             checkpoint = initial(frozen.bootstrap_blocks[0])
             if checkpoint is not None:
                 resumed_progress.append(checkpoint)
@@ -204,16 +222,20 @@ def _fixture_run(
         )
 
     monkeypatch.setattr("adaptive_jump.window_runner.bootstrap_rows", fake_bootstrap)
-    if interrupt_bootstrap:
-        with pytest.raises(RuntimeError, match="bootstrap interruption"):
+    if interrupt_stages:
+        with pytest.raises(RuntimeError, match="model interruption"):
             run_window_sensitivity(config, spec)
         runtime = tmp_path / "artifacts/.monitor/checkpoints"
+        assert len(list(runtime.rglob("jm-progress.json"))) == 1
+        assert len(list(runtime.rglob("selection-delay-1.json"))) == 1
+        with pytest.raises(RuntimeError, match="bootstrap interruption"):
+            run_window_sensitivity(config, spec)
         assert len(list(runtime.rglob("bootstrap-us-block-60.json"))) == 1
         run_dir = run_window_sensitivity(config, spec)
         assert len(resumed_progress) == 1
         assert len(resumed_progress[0].draws) == 500
-        assert not list(runtime.rglob("bootstrap-*.json"))
-        assert not list(runtime.rglob("bootstrap-*.pkl"))
+        assert not list(runtime.rglob("*.json"))
+        assert not list(runtime.rglob("*.pkl"))
         return run_dir
     return run_window_sensitivity(config, spec)
 
@@ -235,17 +257,21 @@ def test_window_runner_seals_complete_four_model_comparison(
     verify_inventory(run_dir)
 
 
-def test_window_runner_resumes_identity_bound_bootstrap_checkpoint(
+def test_window_runner_resumes_identity_bound_stage_checkpoints(
     tmp_path: Path, monkeypatch
 ) -> None:
-    run_dir = _fixture_run(
+    resumed_dir = _fixture_run(
         tmp_path,
         monkeypatch,
         boundary_passed=True,
-        interrupt_bootstrap=True,
+        interrupt_stages=True,
     )
-
-    assert json.loads((run_dir / "run.json").read_text())["status"] == "complete"
+    direct_root = tmp_path / "direct"
+    direct_root.mkdir()
+    direct_dir = _fixture_run(direct_root, monkeypatch, boundary_passed=True)
+    assert (resumed_dir / "inventory.json").read_bytes() == (
+        direct_dir / "inventory.json"
+    ).read_bytes()
 
 
 def test_window_runner_keeps_metrics_closed_after_boundary_failure(
