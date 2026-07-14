@@ -32,10 +32,16 @@ begin in 2007-2009 rather than 1990. The audited local report is generated at:
 artifacts/reports/fixed-baselines-8adb330565d6-3636939b525d-e9614112b234/report.html
 ```
 
+The authenticated live monitor is now part of the active engineering stack. It
+can queue only code-registered `FROZEN` studies, streams protocol-safe runtime
+events, and verifier-gates sealed outcomes. It does not authorize a new study,
+download data, or change any scientific result.
+
 Only `src/adaptive_jump/` is active source code. Everything under `archive/` is
 frozen provenance and must not be imported or used as a second research stack.
-The active CLI workflows are `fetch`, `run`, `verify`, and `report`; archived
-scripts are unsupported. No post-2023 data has been downloaded or evaluated.
+The active CLI workflows are `fetch`, `run`, `verify`, `report`, and `monitor`;
+archived scripts are unsupported. No post-2023 data has been downloaded or
+evaluated.
 
 ## Reproduce The Environment
 
@@ -59,6 +65,15 @@ installs the approved Yahoo Finance acquisition client; it does not authorize
 silently substituting Yahoo data for the paper's Bloomberg/GFD series.
 There is intentionally no `requirements.txt`: adding one would create a second
 dependency source that can drift away from `pyproject.toml` and `uv.lock`.
+
+Install the separately pinned monitoring and browser-test tools only when
+operating or changing the monitor:
+
+```bash
+uv sync --locked --extra data --extra monitor
+uv run playwright install chromium
+uv run python -c "import fastapi, jwt, psutil, uvicorn"
+```
 
 ## Acquire The Frozen Proxy Sources
 
@@ -121,6 +136,21 @@ The completed exploratory window study can be reproduced and checked with:
 This workflow reads the sealed v7 parent artifact and never downloads data.
 Its frozen contract is `research/jm-train-window-sensitivity.toml`.
 
+## Run The Research Monitor
+
+The monitor requires Cloudflare Access and CSRF environment variables. The
+production origin always binds to `127.0.0.1:8765`:
+
+```bash
+.venv/bin/adaptive-jump monitor --config research.toml
+```
+
+Use [`docs/monitor/deployment.md`](docs/monitor/deployment.md) for the pinned
+`cloudflared`, exact-email Access, external secret, systemd, browser, and
+operations procedure. The application retains its SQLite queue, append-only
+event journals, and mutation audit under ignored `artifacts/.monitor/`. It has
+no arbitrary-command, config-edit, upload, or delete interface.
+
 Start with the [beginner learning path](docs/learning/index.html). For a
 research-advisor discussion, use the
 [legacy/current/paper workflow comparison](docs/research-workflow-comparison.html).
@@ -133,8 +163,8 @@ The ready-to-send author request is in
 | --- | --- | --- |
 | Core | NumPy, pandas, SciPy, scikit-learn, hmmlearn, jumpmodels, Matplotlib | Canonical numerical research stack |
 | Data | yfinance, Requests | Optional Yahoo and public-HTTP acquisition clients |
-| Dev | pytest, Ruff | Tests, formatting, and linting |
-| Dashboard | None | Add only with a tested UI calling the canonical runner |
+| Dev | pytest, Ruff, Playwright | Tests, formatting, linting, and real Chromium acceptance |
+| Monitor | FastAPI, Uvicorn, PyJWT/cryptography, psutil, vendored ECharts | Optional authenticated control and observability stack |
 | Audit backtest | None | Add only for an aligned parity check |
 
 `jumpmodels==0.1.1` declares Matplotlib as a runtime dependency, so static
@@ -149,7 +179,9 @@ packages are intentionally not preinstalled.
 4. Period/data attribution is complete; exact paper data remain unavailable.
 5. The 4,000-observation JM sensitivity is complete but stopped at its lambda
    boundary gate; no performance conclusion was opened.
-6. Adaptive, grid-expansion, and extension work require a new approved task
+6. The live monitor is engineering infrastructure; it preserves these frozen
+   boundaries and creates no scientific claim.
+7. Adaptive, grid-expansion, and extension work require a new approved task
    that formally states the next research question.
 
 Raw/processed data belongs under `data/`; run outputs belong under `artifacts/`.

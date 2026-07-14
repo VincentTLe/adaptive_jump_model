@@ -42,3 +42,12 @@ def test_deployment_guide_pins_and_checks_the_official_tunnel_binary() -> None:
     assert "sha256sum --check --strict" in guide
     assert "releases/latest" not in guide
     assert "Simple Browser: Show" in guide
+
+
+def test_readme_documents_the_single_locked_monitor_stack() -> None:
+    readme = (ROOT / "README.md").read_text()
+
+    assert "uv sync --locked --extra data --extra monitor" in readme
+    assert "adaptive-jump monitor --config research.toml" in readme
+    assert "docs/monitor/deployment.md" in readme
+    assert "requirements.txt" in readme and "dependency source" in readme
