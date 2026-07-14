@@ -57,13 +57,14 @@ class MonitorServices:
     request_security: RequestSecurity
 
 
-def create_app(services: MonitorServices) -> FastAPI:
+def create_app(services: MonitorServices, *, lifespan=None) -> FastAPI:
     """Build one dependency-injected app without reading secrets at import time."""
     app = FastAPI(
         title="Adaptive Jump Research Monitor",
         docs_url=None,
         redoc_url=None,
         openapi_url=None,
+        lifespan=lifespan,
     )
     app.state.services = services
 
