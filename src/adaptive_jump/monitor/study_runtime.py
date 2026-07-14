@@ -104,6 +104,54 @@ def emit_boundary_rows(
         )
 
 
+def emit_selected_signal(
+    observer: EventObserver | None,
+    selection: Any,
+    model: str,
+    delay: int,
+    market: str | None = None,
+) -> None:
+    """Expose the latest already-computed signal and its future return offset."""
+    if observer is None:
+        return
+    valid = selection.signal.dropna()
+    choices = selection.choices
+    if valid.empty or choices.empty:
+        return
+    signal = float(valid.iloc[-1])
+    selected = float(choices.iloc[-1]["selected"])
+    if signal not in {0.0, 1.0} or not _finite(selected):
+        return
+    contextual = bind_event_context(observer, market=market, model=model, delay=delay)
+    emit_event(
+        contextual,
+        kind="selected_signal",
+        stage="selection",
+        visibility="decision",
+        date=pd.Timestamp(valid.index[-1]).date(),
+        payload={
+            "decision_date": pd.Timestamp(choices.iloc[-1]["decision_date"])
+            .date()
+            .isoformat(),
+            "selected_candidate": selected,
+            "signal": int(signal),
+            "scheduled_position": int(signal),
+            "effective_return_offset": delay + 1,
+        },
+    )
+
+
+def emit_selected_signals(
+    observer: EventObserver | None,
+    selections: dict[str, dict[int, Any]],
+    market: str,
+) -> None:
+    """Emit one latest signal snapshot for every completed model/delay path."""
+    for model, delays in selections.items():
+        for delay, selection in delays.items():
+            emit_selected_signal(observer, selection, model, delay, market)
+
+
 def bootstrap_recorder(
     saver: Callable[[int, Any], None],
     observer: EventObserver | None,

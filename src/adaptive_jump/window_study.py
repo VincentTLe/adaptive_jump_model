@@ -83,6 +83,7 @@ def build_window_market_study(
             progress=selection_observer,
         )
         selections[delay] = selection
+        study_runtime.emit_selected_signal(observer, selection, "jm_4000", delay)
         diagnostic = boundary_diagnostic(
             selection.choices,
             config.jm_protocol.lambda_grid,

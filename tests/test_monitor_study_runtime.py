@@ -9,9 +9,10 @@ from adaptive_jump.monitor.study_runtime import (
     baseline_selection_recorder,
     bootstrap_recorder,
     emit_boundary_rows,
+    emit_selected_signal,
     model_observer,
 )
-from adaptive_jump.walkforward import SelectionProgress
+from adaptive_jump.walkforward import SelectionProgress, SelectionResult
 
 
 def test_model_observer_adds_only_date_matched_finite_features() -> None:
@@ -111,3 +112,32 @@ def test_boundaries_and_bootstrap_expose_no_outcome_values() -> None:
     assert events[1].completed == 2 and events[1].total == 10_000
     assert events[1].payload == {"mean_block_length": 60}
     assert "draw" not in str(events[1].payload)
+
+
+def test_selected_signal_reports_only_the_precomputed_future_position() -> None:
+    events = []
+    dates = pd.bdate_range("2023-12-27", periods=3)
+    selection = SelectionResult(
+        signal=pd.Series([0.0, 1.0, 1.0], index=dates),
+        choices=pd.DataFrame({"decision_date": [dates[1]], "selected": [35.0]}),
+        surface=pd.DataFrame(),
+        candidate_returns=pd.DataFrame(),
+    )
+
+    emit_selected_signal(events.append, selection, "fixed_jm", 1, "us")
+
+    event = events[0]
+    assert (event.kind, event.market, event.model, event.delay) == (
+        "selected_signal",
+        "us",
+        "fixed_jm",
+        1,
+    )
+    assert event.date == dates[-1].date()
+    assert event.payload == {
+        "decision_date": dates[1].date().isoformat(),
+        "selected_candidate": 35.0,
+        "signal": 1,
+        "scheduled_position": 1,
+        "effective_return_offset": 2,
+    }

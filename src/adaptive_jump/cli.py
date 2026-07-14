@@ -308,6 +308,7 @@ def run_replication(
             )
         elif checkpoint.oos_start != market_input.oos_start:
             raise RunError(f"{market.id}: checkpoint OOS start mismatch")
+        study_runtime.emit_selected_signals(observer, checkpoint.selections, market.id)
         _write_checkpoint(market_dir, market_input.frame, checkpoint)
         study_runtime.emit_boundary_rows(observer, checkpoint.boundaries, market.id)
         _write_cache(
