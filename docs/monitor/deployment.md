@@ -96,9 +96,12 @@ curl --fail http://127.0.0.1:8765/healthz
 sudo systemctl status adaptive-jump-monitor cloudflared
 ```
 
-The unit intentionally uses `KillMode=process`: stopping the web supervisor
-does not silently kill a long-running research child. Restarting the monitor
-recovers the exact child identity; cancel scientific work through the owner UI.
+The unit uses `KillMode=control-group` with a 55-second stop window. The
+supervisor first sends `SIGINT`, preserving the latest completed atomic
+checkpoint, then escalates only if the process does not stop. The queue records
+that run as `interrupted`; the owner must explicitly resume it. Work since the
+last checkpoint may be repeated. Systemd kills the whole control group only if
+the graceful lifecycle itself exceeds the deadline.
 
 ## 7. Acceptance And Operations
 
@@ -109,7 +112,8 @@ Open the HTTPS hostname and authenticate with an exact approved email. Confirm:
    `FROZEN`.
 3. A locked run returns `423` for outcomes and remains labeled locked in the UI.
 4. `ss -ltnp` shows port `8765` only on `127.0.0.1`.
-5. Restarting the monitor preserves queue and event history.
+5. Restarting the monitor preserves queue and event history and terminates any
+   matching leftover process before an interrupted run can be resumed.
 
 For VS Code, run **Simple Browser: Show** from the Command Palette and enter the
 same HTTPS hostname. Do not forward port 8765 publicly; the local origin cannot

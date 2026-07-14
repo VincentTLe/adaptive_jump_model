@@ -30,7 +30,7 @@ _WIRE_FIELDS = {
 
 
 class ChildEventError(RuntimeError):
-    """Raised when the dedicated child event channel is invalid or broken."""
+    """Raised when child event setup or inbound validation is invalid."""
 
 
 def child_observer_from_environment(
@@ -50,16 +50,29 @@ def child_observer_from_environment(
     lock = threading.Lock()
 
     def observe(event: ResearchEvent) -> None:
+        nonlocal descriptor
         encoded = _encode_event(event)
         with lock:
+            if descriptor < 0:
+                return
             view = memoryview(encoded)
             while view:
                 try:
                     written = os.write(descriptor, view)
-                except OSError as exc:
-                    raise ChildEventError("monitor event pipe write failed") from exc
+                except OSError:
+                    try:
+                        os.close(descriptor)
+                    except OSError:
+                        pass
+                    descriptor = -1
+                    return
                 if written < 1:
-                    raise ChildEventError("monitor event pipe write made no progress")
+                    try:
+                        os.close(descriptor)
+                    except OSError:
+                        pass
+                    descriptor = -1
+                    return
                 view = view[written:]
 
     return observe

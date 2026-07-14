@@ -6,6 +6,7 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -17,6 +18,7 @@ from adaptive_jump.monitor.child_events import (
     ChildEventError,
     ParentEventPipe,
 )
+from adaptive_jump.monitor.event_store import EventStoreError
 from adaptive_jump.monitor.events import EventObserver, emit_event
 from adaptive_jump.monitor.queue import Job, QueueStore, StudyDefinition
 
@@ -52,8 +54,21 @@ class ResearchWorker:
             raise WorkerError("worker paths must use the canonical project layout")
         self.poll_seconds = float(poll_seconds)
         self.grace_seconds = tuple(float(value) for value in grace_seconds)
+        self._shutdown = threading.Event()
+        self._pending_event_error: str | None = None
+
+    @property
+    def shutdown_timeout(self) -> float:
+        """Maximum graceful stop time plus polling and scheduling headroom."""
+        return sum(self.grace_seconds) + 5.0 + self.poll_seconds + 1.0
+
+    def request_shutdown(self) -> None:
+        """Ask the active child to stop through the graceful signal path."""
+        self._shutdown.set()
 
     def run_once(self) -> Job | None:
+        if self._shutdown.is_set():
+            return None
         job = self.queue.claim_next()
         if job is None:
             return None
@@ -64,6 +79,8 @@ class ResearchWorker:
             current = self.queue.get(job.job_id)
             if current.status == "cancel_requested":
                 return self.queue.finish(job.job_id, "canceled")
+            if self._shutdown.is_set():
+                return self.queue.recover_abandoned()[0]
             definition = self.queue.studies[job.study_id]
             command = _canonical_command(definition, self.config_path)
             log_path = self.runtime_root / "jobs" / job.job_id / "process.log"
@@ -100,7 +117,7 @@ class ResearchWorker:
                 )
         except (OSError, psutil.Error, WorkerError, ChildEventError) as exc:
             if child is not None:
-                _force_kill(child)
+                self._stop_child(child)
             if event_pipe is not None:
                 try:
                     event_pipe.finish()
@@ -117,7 +134,7 @@ class ResearchWorker:
             return final
         except BaseException:
             if child is not None:
-                _force_kill(child)
+                self._stop_child(child)
             if event_pipe is not None:
                 try:
                     event_pipe.finish()
@@ -127,24 +144,20 @@ class ResearchWorker:
             raise
 
     def recover(self) -> Job | None:
-        """Monitor a matching orphan; otherwise conservatively mark it interrupted."""
+        """Terminate a matching orphan before marking its job interrupted."""
         job = self.queue.active()
         if job is None:
             return None
         self._bind_observer(job.job_id)
         process = _matching_process(job)
-        if process is None:
-            recovered = self.queue.recover_abandoned()
-            return recovered[0]
-        self._emit("process_recovered", {"pid": process.pid})
-        while _same_process_alive(process, job.process_created_at):
-            current = self.queue.get(job.job_id)
-            if current.status == "cancel_requested":
-                self._cancel_group(process.pid, None)
-                break
-            self._sample(process)
-            time.sleep(self.poll_seconds)
+        if process is not None:
+            self._cancel_group(process.pid, None)
         recovered = self.queue.recover_abandoned()
+        if process is not None:
+            self._emit(
+                "orphan_terminated",
+                {"pid": process.pid, "status": recovered[0].status},
+            )
         return recovered[0]
 
     def _monitor_child(
@@ -156,13 +169,23 @@ class ResearchWorker:
         event_pipe: ParentEventPipe | None,
     ) -> Job:
         while child.poll() is None:
+            if self._shutdown.is_set():
+                return self._interrupt(job.job_id, child, event_pipe, "shutdown")
             if event_pipe is not None:
-                event_pipe.check()
+                try:
+                    event_pipe.check()
+                except ChildEventError:
+                    return self._interrupt(
+                        job.job_id, child, event_pipe, "invalid_telemetry"
+                    )
             current = self.queue.get(job.job_id)
             if current.status == "cancel_requested":
                 code = self._cancel_group(child.pid, child)
                 if event_pipe is not None:
-                    event_pipe.finish()
+                    try:
+                        event_pipe.finish()
+                    except ChildEventError:
+                        pass
                 final = self.queue.finish(job.job_id, "canceled", code)
                 self._emit(
                     "process_finished", {"status": "canceled", "exit_code": code}
@@ -173,10 +196,36 @@ class ResearchWorker:
             time.sleep(self.poll_seconds)
         code = child.wait()
         if event_pipe is not None:
-            event_pipe.finish()
+            try:
+                event_pipe.finish()
+            except ChildEventError:
+                return self._interrupt(
+                    job.job_id, child, event_pipe, "invalid_telemetry"
+                )
         status = "succeeded" if code == 0 else "failed"
         final = self.queue.finish(job.job_id, status, code)
         self._emit("process_finished", {"status": status, "exit_code": code})
+        return final
+
+    def _interrupt(
+        self,
+        job_id: str,
+        child: subprocess.Popen[bytes],
+        event_pipe: ParentEventPipe | None,
+        reason: str,
+    ) -> Job:
+        code = self._cancel_group(child.pid, child)
+        if event_pipe is not None:
+            try:
+                event_pipe.finish()
+            except ChildEventError:
+                pass
+        recovered = self.queue.recover_abandoned()
+        final = next(item for item in recovered if item.job_id == job_id)
+        self._emit(
+            "process_finished",
+            {"status": final.status, "exit_code": code, "reason": reason},
+        )
         return final
 
     def _cancel_group(
@@ -189,7 +238,7 @@ class ResearchWorker:
         ):
             if not _group_alive(process_group):
                 break
-            self._emit(
+            self._emit_control(
                 "cancellation_signal",
                 {"signal": sent_signal.name, "grace_seconds": grace},
             )
@@ -207,6 +256,12 @@ class ResearchWorker:
         if _group_alive(process_group):
             raise WorkerError("process group survived SIGKILL")
         return child.wait() if child is not None else None
+
+    def _stop_child(self, child: subprocess.Popen[bytes]) -> None:
+        try:
+            self._cancel_group(child.pid, child)
+        except (OSError, WorkerError):
+            _force_kill(child)
 
     def _sample(self, process: psutil.Process) -> None:
         cpu_percent, rss_bytes, process_count = 0.0, 0, 0
@@ -232,7 +287,16 @@ class ResearchWorker:
             )
 
     def _emit(self, kind: str, payload: dict[str, object]) -> None:
+        if self._pending_event_error is not None:
+            payload = {**payload, "prior_event_error": self._pending_event_error}
+            self._pending_event_error = None
         emit_event(self.observer, kind=kind, stage="worker", payload=payload)
+
+    def _emit_control(self, kind: str, payload: dict[str, object]) -> None:
+        try:
+            self._emit(kind, payload)
+        except (EventStoreError, OSError) as exc:
+            self._pending_event_error = str(exc)
 
     def _bind_observer(self, job_id: str) -> None:
         self.observer = self.observer_factory(job_id) if self.observer_factory else None

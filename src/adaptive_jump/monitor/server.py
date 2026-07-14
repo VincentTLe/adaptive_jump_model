@@ -51,10 +51,15 @@ class WorkerSupervisor:
         self._thread.start()
 
     def stop(self) -> None:
-        """Stop future polling; an active detached child remains recoverable."""
+        """Stop polling and wait for the worker to terminate its active child."""
+        self.worker.request_shutdown()
         self._stop.set()
         if self._thread is not None:
-            self._thread.join(timeout=2)
+            self._thread.join(timeout=self.worker.shutdown_timeout)
+            if self._thread.is_alive():
+                raise MonitorServerError(
+                    "worker did not stop within its shutdown window"
+                )
 
     @property
     def alive(self) -> bool:

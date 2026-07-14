@@ -13,8 +13,8 @@ Environment=PYTHONUNBUFFERED=1
 ExecStart=/home/tle/adaptive_jump_model/.venv/bin/adaptive-jump monitor --config /home/tle/adaptive_jump_model/research.toml
 Restart=on-failure
 RestartSec=5s
-TimeoutStopSec=5s
-KillMode=process
+TimeoutStopSec=55s
+KillMode=control-group
 UMask=0077
 NoNewPrivileges=true
 PrivateTmp=true

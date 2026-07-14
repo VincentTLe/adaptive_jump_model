@@ -1,15 +1,22 @@
+import os
+import signal
+import sys
 import time
 from pathlib import Path
 
+import psutil
 import pytest
 
 from adaptive_jump.monitor import server
+from adaptive_jump.monitor import worker as worker_module
+from adaptive_jump.monitor.queue import QueueStore, StudyDefinition
 from adaptive_jump.monitor.server import (
     MonitorServerError,
     WorkerSupervisor,
     build_monitor_application,
     run_monitor_server,
 )
+from adaptive_jump.monitor.worker import ResearchWorker
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -18,6 +25,14 @@ class _Worker:
     def __init__(self):
         self.recovered = 0
         self.runs = 0
+        self.shutdown_requested = False
+
+    @property
+    def shutdown_timeout(self):
+        return 0.1
+
+    def request_shutdown(self):
+        self.shutdown_requested = True
 
     def recover(self):
         self.recovered += 1
@@ -53,9 +68,101 @@ def test_worker_supervisor_recovers_once_and_polls_one_thread() -> None:
     supervisor.stop()
 
     assert worker.recovered == 1 and worker.runs >= 2
+    assert worker.shutdown_requested
     assert not supervisor.alive and supervisor.failure is None
     with pytest.raises(MonitorServerError, match="already"):
         supervisor.start()
+
+
+def test_supervisor_shutdown_preserves_checkpoint_then_resume_succeeds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = tmp_path / "research.toml"
+    config.write_text("# monitor lifecycle fixture\n")
+    studies = {"study-a": StudyDefinition("study-a", "replication")}
+    queue = QueueStore(tmp_path / "artifacts/.monitor/control.sqlite3", studies)
+    checkpoint = tmp_path / "checkpoint"
+    ready = tmp_path / "ready"
+    resumed = tmp_path / "resumed"
+    code = f"""
+import signal
+import time
+from pathlib import Path
+
+checkpoint = Path({str(checkpoint)!r})
+if checkpoint.exists():
+    Path({str(resumed)!r}).write_text("resumed")
+    raise SystemExit(0)
+
+def stop(_signum, _frame):
+    raise SystemExit(130)
+
+signal.signal(signal.SIGINT, stop)
+checkpoint.write_text("checkpoint")
+Path({str(ready)!r}).write_text("ready")
+while True:
+    time.sleep(0.05)
+"""
+    monkeypatch.setattr(
+        worker_module, "_canonical_command", lambda *_: (sys.executable, "-c", code)
+    )
+    job = queue.enqueue("study-a")
+    worker = ResearchWorker(
+        queue,
+        config,
+        poll_seconds=0.01,
+        grace_seconds=(0.5, 0.1, 0.1),
+    )
+    supervisor = WorkerSupervisor(worker, idle_seconds=0.01)
+
+    supervisor.start()
+    resumed_supervisor: WorkerSupervisor | None = None
+    try:
+        _wait_for(ready.exists)
+        running = queue.get(job.job_id)
+        supervisor.stop()
+
+        interrupted = queue.get(job.job_id)
+        assert interrupted.status == "interrupted"
+        assert checkpoint.read_text() == "checkpoint"
+        assert running.process_pid is not None
+        assert not psutil.pid_exists(running.process_pid)
+
+        queue.resume(job.job_id)
+        resumed_supervisor = WorkerSupervisor(
+            ResearchWorker(queue, config, poll_seconds=0.01), idle_seconds=0.01
+        )
+        resumed_supervisor.start()
+        _wait_for(lambda: queue.get(job.job_id).status == "succeeded")
+        resumed_supervisor.stop()
+
+        final = queue.get(job.job_id)
+        assert resumed.read_text() == "resumed"
+        assert final.status == "succeeded" and final.attempts == 2
+        assert supervisor.failure is None and resumed_supervisor.failure is None
+    finally:
+        worker.request_shutdown()
+        if resumed_supervisor is not None:
+            resumed_supervisor.worker.request_shutdown()
+        active = queue.active()
+        if active is not None and active.process_pid is not None:
+            try:
+                os.killpg(active.process_pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        for current in (supervisor, resumed_supervisor):
+            if current is not None:
+                try:
+                    current.stop()
+                except MonitorServerError:
+                    pass
+
+
+def _wait_for(predicate, timeout: float = 3.0) -> None:
+    deadline = time.monotonic() + timeout
+    while not predicate() and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert predicate()
 
 
 def test_application_uses_canonical_paths_and_frozen_only_catalog(

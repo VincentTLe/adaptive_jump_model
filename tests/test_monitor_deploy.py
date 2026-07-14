@@ -9,7 +9,8 @@ def test_systemd_unit_uses_canonical_loopback_monitor_and_external_secrets() -> 
     assert "User=tle" in unit
     assert "EnvironmentFile=/home/tle/.config/adaptive-jump/monitor.env" in unit
     assert "adaptive-jump monitor --config" in unit
-    assert "KillMode=process" in unit and "UMask=0077" in unit
+    assert "KillMode=control-group" in unit and "TimeoutStopSec=55s" in unit
+    assert "UMask=0077" in unit
     assert "0.0.0.0" not in unit and "ADAPTIVE_JUMP_CSRF_SECRET=" not in unit
 
 
