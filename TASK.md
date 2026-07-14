@@ -3,7 +3,7 @@
 ## Identity
 
 - `task_id`: `jm-train-window-sensitivity-001`
-- `status`: `active`
+- `status`: `complete`
 - `target_branch`: `cleanup/research-protocol`
 - `starting_ref`: `ee1ad542ce2506a97667db186e0391343eabc926`
 - `primary_class`: `EXPLORATORY`
@@ -53,3 +53,18 @@ Before the real run: verify the parent artifact, prove the 3,000-day control
 matches v7, pass focused tests, full pytest, Ruff, lock and package checks. A
 completed negative or mixed result is valid. Stop after report/browser review;
 the separate 2026 extension requires a new approved task.
+
+## Completed Outcome
+
+- Sealed run: `jm-window-cd9ac0b9d7a6-3636939b525d-6c19911401ad`
+- Runtime: 46 minutes 4 seconds; peak resident memory: 213,776 KiB.
+- Independent verification: 51 files and 9 boundary rows verified; zero metric
+  or bootstrap rows were exposed.
+- US delay 1 passed the lambda boundary at 2.05%. US delays 5/10 selected the
+  upper edge in 5.48% of months. Japan selected it in 5.47%-6.25% of months.
+  Germany selected it in 31.51%-37.67% of months.
+- Frozen conclusion: `JM-4000 upper-lambda boundary requires a new experiment`.
+
+The experiment therefore did not estimate the primary Sharpe delta. Expanding
+the lambda grid after seeing this result is forbidden inside this experiment.
+Any grid expansion or 2026 extension requires a separately frozen task.

@@ -13,6 +13,17 @@ metric rows from its trade paths, but fixed JM failed the directional gate in
 all three markets. The result is therefore **proxy non-replication** and
 adaptive-model work remains blocked.
 
+The follow-up exploratory JM-window sensitivity is also complete. It changed
+only the fixed-JM rolling window from 3,000 to 4,000 observations while using
+the exact sealed v7 controls. Its upper-lambda boundary failed in 8 of 9
+market/delay rows, most strongly in Germany, so the fail-closed protocol did
+not expose performance metrics or bootstrap results. This is a valid boundary
+failure, not evidence that JM-4,000 improved or worsened Sharpe. Its report is:
+
+```text
+artifacts/reports/jm-window-cd9ac0b9d7a6-3636939b525d-6c19911401ad/report.html
+```
+
 This does not refute the paper. Free sources could not reproduce the paper's
 1970 warm-up and exact index/risk-free definitions, so the eligible OOS samples
 begin in 2007-2009 rather than 1990. The audited local report is generated at:
@@ -95,6 +106,20 @@ The report is written outside the immutable run at
 `artifacts/reports/<run_id>/report.html`. It can always be regenerated and is
 therefore ignored by Git.
 
+The completed exploratory window study can be reproduced and checked with:
+
+```bash
+.venv/bin/adaptive-jump run \
+  --study train-window-sensitivity --config research.toml
+.venv/bin/adaptive-jump verify \
+  --run artifacts/jm-train-window-sensitivity/<run_id>
+.venv/bin/adaptive-jump report \
+  --run artifacts/jm-train-window-sensitivity/<run_id>
+```
+
+This workflow reads the sealed v7 parent artifact and never downloads data.
+Its frozen contract is `research/jm-train-window-sensitivity.toml`.
+
 Start with the [beginner learning path](docs/learning/index.html). For a
 research-advisor discussion, use the
 [legacy/current/paper workflow comparison](docs/research-workflow-comparison.html).
@@ -121,8 +146,10 @@ packages are intentionally not preinstalled.
 2. The causal fixed JM/HMM/B&H protocol is frozen in `research.toml` v7.
 3. The through-2023 proxy run is complete and classified as non-replication.
 4. Period/data attribution is complete; exact paper data remain unavailable.
-5. Adaptive and extension work stay blocked until a new approved task resolves
-   the fixed-baseline gate or formally changes the research question.
+5. The 4,000-observation JM sensitivity is complete but stopped at its lambda
+   boundary gate; no performance conclusion was opened.
+6. Adaptive, grid-expansion, and extension work require a new approved task
+   that formally states the next research question.
 
 Raw/processed data belongs under `data/`; run outputs belong under `artifacts/`.
 Both locations are ignored by Git. A valid run carries its config and data
