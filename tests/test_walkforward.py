@@ -178,11 +178,11 @@ def test_baseline_integration_keeps_metrics_sealed_until_boundaries_pass(
     hmm_state = pd.Series(np.arange(len(dates)) % 2, index=dates, dtype=float)
     monkeypatch.setattr(
         "adaptive_jump.walkforward.fixed_jm_states",
-        lambda *_: FixedJMResult(jm_states, pd.DataFrame()),
+        lambda *_: pytest.fail("precomputed JM was ignored"),
     )
     monkeypatch.setattr(
         "adaptive_jump.walkforward.hmm_states",
-        lambda *_: HMMResult(hmm_state, pd.DataFrame()),
+        lambda *_: pytest.fail("precomputed HMM was ignored"),
     )
     config = load_config(Path(__file__).resolve().parents[1] / "research.toml")
     config = replace(
@@ -194,7 +194,13 @@ def test_baseline_integration_keeps_metrics_sealed_until_boundaries_pass(
         backtest_protocol=BacktestProtocol(1, 2, (1, 5), 10, False),
     )
 
-    study = build_baseline_study(frame, config, oos_start=date(2021, 2, 1))
+    study = build_baseline_study(
+        frame,
+        config,
+        oos_start=date(2021, 2, 1),
+        precomputed_jm=FixedJMResult(jm_states, pd.DataFrame()),
+        precomputed_hmm=HMMResult(hmm_state, pd.DataFrame()),
+    )
     metrics = open_baseline_metrics(frame, study, config)
 
     assert len(study.boundaries) == 4

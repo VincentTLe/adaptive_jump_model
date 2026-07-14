@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import math
-import pickle
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -44,7 +42,8 @@ from adaptive_jump.artifacts import (
 from adaptive_jump.config import ConfigError, ResearchConfig, load_config
 from adaptive_jump.data import AcquisitionError, acquire, research_git_sha
 from adaptive_jump.features import effective_oos_start, prepare_market
-from adaptive_jump.models import HMMResult, hmm_states
+from adaptive_jump.models import FixedJMResult, HMMResult, fixed_jm_states, hmm_states
+from adaptive_jump.monitor import checkpoints as checkpoint_store
 from adaptive_jump.reporting import build_report
 from adaptive_jump.walkforward import (
     BaselineStudy,
@@ -69,7 +68,7 @@ class MarketInput:
     oos_start: date
 
 
-HMM_WORKERS, HMM_CHECKPOINT_DAYS = 16, 50
+HMM_WORKERS, MODEL_CHECKPOINT_DAYS = 16, 50
 
 
 def load_frozen_data(
@@ -189,6 +188,7 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
         for key in ("config_sha256", "data_manifest_sha256", "git_sha")
     )
     run_dir = root / config.artifact_root / "fixed-baselines" / run_id
+    checkpoint_root = root / config.artifact_root / ".monitor" / "checkpoints" / run_id
     metadata_path = run_dir / "run.json"
     if metadata_path.exists():
         metadata = _read_json(metadata_path)
@@ -226,9 +226,10 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
         market_input = prepare_manifest_market(config, frozen, market.id)
         inputs[market.id] = market_input
         market_dir = run_dir / market.id
-        checkpoint = _load_checkpoint(market_dir, identity)
+        checkpoint_dir = checkpoint_root / market.id
+        checkpoint = _load_checkpoint(checkpoint_dir, identity)
         if checkpoint is None:
-            initial_hmm = _load_hmm_progress(market_dir, identity)
+            initial_hmm = _load_hmm_progress(checkpoint_dir, identity)
             total_hmm_days = max(
                 0,
                 market_input.frame["equity_log"].notna().sum()
@@ -238,11 +239,11 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
 
             def save_hmm_progress(
                 result: HMMResult,
-                target: Path = market_dir / "hmm-progress",
+                target: Path = checkpoint_dir / "hmm-progress",
                 market_id: str = market.id,
                 total: int = total_hmm_days,
             ) -> None:
-                _write_cache(target, result, identity)
+                _write_cache(target, result, "hmm", identity)
                 print(
                     f"{market_id}: HMM {len(result.fits)}/{total}",
                     file=sys.stderr,
@@ -255,19 +256,53 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
                 config.hmm_protocol,
                 initial=initial_hmm,
                 n_jobs=HMM_WORKERS,
-                checkpoint_every=HMM_CHECKPOINT_DAYS,
+                checkpoint_every=MODEL_CHECKPOINT_DAYS,
                 progress=save_hmm_progress,
+            )
+            initial_jm = _load_jm_progress(checkpoint_dir, identity)
+            jm_columns = ("dd_10", "sortino_20", "sortino_60", "excess_return")
+            jm_complete = market_input.frame.loc[:, jm_columns].notna().all(axis=1)
+            total_jm_days = max(
+                0, int(jm_complete.sum()) - config.model_protocol.fit_window + 1
+            )
+
+            def save_jm_progress(
+                result: FixedJMResult,
+                target: Path = checkpoint_dir / "jm-progress",
+                market_id: str = market.id,
+                total: int = total_jm_days,
+            ) -> None:
+                _write_cache(target, result, "fixed_jm", identity)
+                completed = int(result.states.notna().all(axis=1).sum())
+                print(
+                    f"{market_id}: JM {completed}/{total}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+
+            fitted_jm = fixed_jm_states(
+                market_input.frame,
+                config.model_protocol,
+                config.jm_protocol,
+                initial=initial_jm,
+                checkpoint_every=MODEL_CHECKPOINT_DAYS,
+                progress=save_jm_progress,
             )
             checkpoint = build_baseline_study(
                 market_input.frame,
                 config,
                 oos_start=market_input.oos_start,
+                precomputed_jm=fitted_jm,
                 precomputed_hmm=fitted_hmm,
             )
         elif checkpoint.oos_start != market_input.oos_start:
             raise RunError(f"{market.id}: checkpoint OOS start mismatch")
-        _write_checkpoint(market_dir, market_input.frame, checkpoint, identity)
-        _clear_cache(market_dir / "hmm-progress")
+        _write_checkpoint(market_dir, market_input.frame, checkpoint)
+        _write_cache(
+            checkpoint_dir / "baseline-study", checkpoint, "baseline_study", identity
+        )
+        checkpoint_store.clear_checkpoint(checkpoint_dir / "hmm-progress")
+        checkpoint_store.clear_checkpoint(checkpoint_dir / "jm-progress")
         studies[market.id] = checkpoint
 
     boundaries = pd.concat(
@@ -313,10 +348,7 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
 
 
 def _write_checkpoint(
-    market_dir: Path,
-    frame: pd.DataFrame,
-    study: BaselineStudy,
-    identity: dict[str, str],
+    market_dir: Path, frame: pd.DataFrame, study: BaselineStudy
 ) -> None:
     market_dir.mkdir(parents=True, exist_ok=True)
     frame.to_csv(market_dir / "features.csv", index=False)
@@ -334,53 +366,45 @@ def _write_checkpoint(
             selection.surface.to_csv(target / "cv-surface.csv", index=False)
             selection.candidate_returns.to_csv(target / "candidate-returns.csv")
             selection.signal.to_csv(target / "selected-signal.csv", header=True)
-    _write_cache(market_dir / "checkpoint", study, identity)
 
 
 def _load_checkpoint(
     market_dir: Path, identity: dict[str, str]
 ) -> BaselineStudy | None:
-    cached = _load_cache(market_dir / "checkpoint", identity)
+    cached = _load_cache(market_dir / "baseline-study", "baseline_study", identity)
     if cached is not None and not isinstance(cached, BaselineStudy):
         raise RunError(f"invalid checkpoint payload: {market_dir}")
     return cached
 
 
 def _load_hmm_progress(market_dir: Path, identity: dict[str, str]) -> HMMResult | None:
-    cached = _load_cache(market_dir / "hmm-progress", identity)
+    cached = _load_cache(market_dir / "hmm-progress", "hmm", identity)
     if cached is not None and not isinstance(cached, HMMResult):
         raise RunError(f"invalid HMM progress payload: {market_dir}")
     return cached
 
 
-def _write_cache(stem: Path, value: Any, identity: dict[str, str]) -> None:
-    stem.parent.mkdir(parents=True, exist_ok=True)
-    payload = pickle.dumps(value, protocol=5)
-    stem.with_suffix(".pkl").write_bytes(payload)
-    _write_json(
-        stem.with_suffix(".json"),
-        {"payload_sha256": hashlib.sha256(payload).hexdigest(), **identity},
-    )
+def _load_jm_progress(
+    market_dir: Path, identity: dict[str, str]
+) -> FixedJMResult | None:
+    cached = _load_cache(market_dir / "jm-progress", "fixed_jm", identity)
+    if cached is not None and not isinstance(cached, FixedJMResult):
+        raise RunError(f"invalid fixed-JM progress payload: {market_dir}")
+    return cached
 
 
-def _load_cache(stem: Path, identity: dict[str, str]) -> Any:
-    metadata_path = stem.with_suffix(".json")
-    payload_path = stem.with_suffix(".pkl")
-    if not metadata_path.exists() and not payload_path.exists():
-        return None
-    if not metadata_path.exists() or not payload_path.exists():
-        raise RunError(f"incomplete cache: {stem}")
-    metadata = _read_json(metadata_path)
-    if any(metadata.get(key) != value for key, value in identity.items()):
-        raise RunError(f"cache identity mismatch: {stem}")
-    if _sha256(payload_path) != metadata.get("payload_sha256"):
-        raise RunError(f"cache hash mismatch: {stem}")
-    return pickle.loads(payload_path.read_bytes())  # noqa: S301 - local hashed cache
+def _write_cache(stem: Path, value: Any, kind: str, identity: dict[str, str]) -> None:
+    try:
+        checkpoint_store.save_checkpoint(stem, value, kind=kind, identity=identity)
+    except checkpoint_store.CheckpointStoreError as exc:
+        raise RunError(str(exc)) from exc
 
 
-def _clear_cache(stem: Path) -> None:
-    stem.with_suffix(".json").unlink(missing_ok=True)
-    stem.with_suffix(".pkl").unlink(missing_ok=True)
+def _load_cache(stem: Path, kind: str, identity: dict[str, str]) -> Any:
+    try:
+        return checkpoint_store.load_checkpoint(stem, kind=kind, identity=identity)
+    except checkpoint_store.CheckpointStoreError as exc:
+        raise RunError(str(exc)) from exc
 
 
 def _finish_run(metadata_path: Path, **updates: Any) -> None:

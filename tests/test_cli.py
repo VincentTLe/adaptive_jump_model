@@ -259,6 +259,9 @@ def test_replication_runner_writes_and_verifies_complete_artifact(
     assert len(pd.read_csv(run_dir / "metrics.csv")) == 27
     assert json.loads((run_dir / "claim.json").read_text())["passed"] is False
     assert (run_dir / "us/trades/fixed_jm-delay-1.csv").is_file()
+    assert not list(run_dir.rglob("*.pkl"))
+    runtime_root = tmp_path / "artifacts/.monitor/checkpoints"
+    assert len(list(runtime_root.rglob("baseline-study.json"))) == 3
     assert run_replication(config, frozen) == run_dir
     assert main(["verify", "--run", str(run_dir)]) == 0
     receipt = json.loads(capsys.readouterr().out)
@@ -342,6 +345,8 @@ def test_replication_runner_resumes_hmm_progress_after_interruption(
     monkeypatch.setattr("adaptive_jump.cli.hmm_states", interrupted)
     with pytest.raises(RuntimeError, match="interrupted"):
         run_replication(config, frozen)
+    runtime_root = tmp_path / "artifacts/.monitor/checkpoints"
+    assert len(list(runtime_root.rglob("hmm-progress.json"))) == 1
 
     resumed_inputs = []
 
@@ -355,4 +360,47 @@ def test_replication_runner_resumes_hmm_progress_after_interruption(
 
     assert json.loads((run_dir / "run.json").read_text())["status"] == "complete"
     assert isinstance(resumed_inputs[0], HMMResult)
-    assert not (run_dir / "us/hmm-progress.pkl").exists()
+    assert not list(runtime_root.rglob("hmm-progress.json"))
+    assert not list(runtime_root.rglob("hmm-progress.*.pkl"))
+
+
+def test_replication_runner_resumes_fixed_jm_progress_after_interruption(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path, manifest_path = _manifest_fixture(tmp_path)
+    config = load_config(config_path)
+    frozen = load_frozen_data(config, manifest_path)
+    frame, study = _runner_fixture(config)
+    monkeypatch.setattr(
+        "adaptive_jump.cli.prepare_manifest_market",
+        lambda *_: type("Input", (), {"frame": frame, "oos_start": study.oos_start})(),
+    )
+    monkeypatch.setattr(
+        "adaptive_jump.cli.build_baseline_study", lambda *_args, **_kwargs: study
+    )
+    monkeypatch.setattr("adaptive_jump.cli.research_git_sha", lambda _root: "d" * 40)
+
+    def interrupted(*_args, progress, **_kwargs):
+        progress(study.jm)
+        raise RuntimeError("interrupted")
+
+    monkeypatch.setattr("adaptive_jump.cli.fixed_jm_states", interrupted)
+    with pytest.raises(RuntimeError, match="interrupted"):
+        run_replication(config, frozen)
+    runtime_root = tmp_path / "artifacts/.monitor/checkpoints"
+    assert len(list(runtime_root.rglob("jm-progress.json"))) == 1
+
+    resumed_inputs = []
+
+    def resumed(*_args, initial, **_kwargs):
+        if initial is not None:
+            resumed_inputs.append(initial)
+        return initial or study.jm
+
+    monkeypatch.setattr("adaptive_jump.cli.fixed_jm_states", resumed)
+    run_dir = run_replication(config, frozen)
+
+    assert json.loads((run_dir / "run.json").read_text())["status"] == "complete"
+    assert isinstance(resumed_inputs[0], FixedJMResult)
+    assert not list(runtime_root.rglob("jm-progress.json"))
+    assert not list(runtime_root.rglob("jm-progress.*.pkl"))

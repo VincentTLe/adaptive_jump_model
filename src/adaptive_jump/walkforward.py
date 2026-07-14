@@ -68,10 +68,13 @@ def build_baseline_study(
     config: ResearchConfig,
     *,
     oos_start: date,
+    precomputed_jm: FixedJMResult | None = None,
     precomputed_hmm: HMMResult | None = None,
 ) -> BaselineStudy:
     """Build all baseline choices and boundary checks without OOS metrics."""
-    jm = fixed_jm_states(frame, config.model_protocol, config.jm_protocol)
+    jm = precomputed_jm or fixed_jm_states(
+        frame, config.model_protocol, config.jm_protocol
+    )
     hmm = precomputed_hmm or hmm_states(
         frame, config.model_protocol, config.hmm_protocol
     )

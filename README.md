@@ -80,9 +80,10 @@ After one matching fetch manifest exists:
 .venv/bin/adaptive-jump run --study replication --config research.toml
 ```
 
-The full three-market run is computationally expensive, checkpoints HMM
-progress, and only reuses a checkpoint when config, data-manifest, and Git
-hashes all match. The command prints its sealed run directory.
+The full three-market run is computationally expensive and checkpoints HMM and
+fixed-JM progress under ignored `artifacts/.monitor/`. Checkpoints are reused
+only when config, data-manifest, and Git hashes all match.
+The command prints its sealed run directory.
 
 Verify a completed or boundary-failed run without trusting its stored metrics:
 
