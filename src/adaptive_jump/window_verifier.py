@@ -287,13 +287,16 @@ def _verify_refits(path: Path, config: ResearchConfig, spec: WindowStudySpec) ->
     fit_dates = pd.to_datetime(refits["fit_date"], errors="raise")
     starts = pd.to_datetime(refits["training_start"], errors="raise")
     ends = pd.to_datetime(refits["training_end"], errors="raise")
+    unique_fit_dates = pd.DatetimeIndex(fit_dates.drop_duplicates())
+    scheduled_fit_dates = unique_fit_dates[1:]
     if (
         fit_dates.isna().any()
         or starts.isna().any()
         or ends.isna().any()
         or not ends.equals(fit_dates)
         or (starts > ends).any()
-        or not fit_dates.dt.month.isin(config.jm_protocol.refit_months).all()
+        or not scheduled_fit_dates.month.isin(config.jm_protocol.refit_months).all()
+        or scheduled_fit_dates.to_period("M").duplicated().any()
     ):
         raise ArtifactError("JM-4000 refit dates are inconsistent")
     expected = set(config.jm_protocol.lambda_grid)

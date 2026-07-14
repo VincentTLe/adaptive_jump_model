@@ -357,16 +357,21 @@ def test_window_verifier_recomputes_model_evidence_files(tmp_path: Path) -> None
         _read_states(states_path, config), states, check_freq=False
     )
 
+    initial = pd.Timestamp("2019-11-12")
+    scheduled = dates[0]
     refits = pd.DataFrame(
-        {
-            "fit_date": [dates[0]] * len(config.jm_protocol.lambda_grid),
-            "training_start": [pd.Timestamp("2004-01-02")]
-            * len(config.jm_protocol.lambda_grid),
-            "training_end": [dates[0]] * len(config.jm_protocol.lambda_grid),
-            "observations": spec.challenger_window,
-            "lambda": config.jm_protocol.lambda_grid,
-            "objective": 1.0,
-        }
+        [
+            {
+                "fit_date": fit_date,
+                "training_start": fit_date - pd.DateOffset(years=16),
+                "training_end": fit_date,
+                "observations": spec.challenger_window,
+                "lambda": penalty,
+                "objective": 1.0,
+            }
+            for fit_date in (initial, scheduled)
+            for penalty in config.jm_protocol.lambda_grid
+        ]
     )
     refits_path = tmp_path / "jm-4000-refits.csv"
     refits.to_csv(refits_path, index=False)
