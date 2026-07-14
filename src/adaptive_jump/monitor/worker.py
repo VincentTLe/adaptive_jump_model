@@ -12,6 +12,11 @@ from pathlib import Path
 
 import psutil
 
+from adaptive_jump.monitor.child_events import (
+    EVENT_FD_ENV,
+    ChildEventError,
+    ParentEventPipe,
+)
 from adaptive_jump.monitor.events import EventObserver, emit_event
 from adaptive_jump.monitor.queue import Job, QueueStore, StudyDefinition
 
@@ -53,6 +58,7 @@ class ResearchWorker:
         if job is None:
             return None
         child: subprocess.Popen[bytes] | None = None
+        event_pipe: ParentEventPipe | None = None
         try:
             self._bind_observer(job.job_id)
             current = self.queue.get(job.job_id)
@@ -63,13 +69,24 @@ class ResearchWorker:
             log_path = self.runtime_root / "jobs" / job.job_id / "process.log"
             log_path.parent.mkdir(parents=True, exist_ok=True)
             with log_path.open("ab", buffering=0) as log:
+                environment = os.environ.copy()
+                environment.pop(EVENT_FD_ENV, None)
+                pass_fds: tuple[int, ...] = ()
+                if self.observer is not None:
+                    event_pipe = ParentEventPipe(self.observer)
+                    environment[EVENT_FD_ENV] = str(event_pipe.write_fd)
+                    pass_fds = (event_pipe.write_fd,)
                 child = subprocess.Popen(
                     command,
                     cwd=self.root,
                     stdout=log,
                     stderr=subprocess.STDOUT,
                     start_new_session=True,
+                    env=environment,
+                    pass_fds=pass_fds,
                 )
+                if event_pipe is not None:
+                    event_pipe.start()
                 process = psutil.Process(child.pid)
                 created_at = process.create_time()
                 current = self.queue.attach_process(job.job_id, child.pid, created_at)
@@ -78,10 +95,17 @@ class ResearchWorker:
                     {"pid": child.pid, "attempt": current.attempts},
                 )
                 process.cpu_percent(None)
-                return self._monitor_child(current, child, process, created_at)
-        except (OSError, psutil.Error, WorkerError) as exc:
+                return self._monitor_child(
+                    current, child, process, created_at, event_pipe
+                )
+        except (OSError, psutil.Error, WorkerError, ChildEventError) as exc:
             if child is not None:
                 _force_kill(child)
+            if event_pipe is not None:
+                try:
+                    event_pipe.finish()
+                except ChildEventError:
+                    pass
             current = self.queue.get(job.job_id)
             status = "canceled" if current.status == "cancel_requested" else "failed"
             final = self.queue.finish(
@@ -94,6 +118,11 @@ class ResearchWorker:
         except BaseException:
             if child is not None:
                 _force_kill(child)
+            if event_pipe is not None:
+                try:
+                    event_pipe.finish()
+                except ChildEventError:
+                    pass
             self.queue.recover_abandoned()
             raise
 
@@ -124,11 +153,16 @@ class ResearchWorker:
         child: subprocess.Popen[bytes],
         process: psutil.Process,
         created_at: float,
+        event_pipe: ParentEventPipe | None,
     ) -> Job:
         while child.poll() is None:
+            if event_pipe is not None:
+                event_pipe.check()
             current = self.queue.get(job.job_id)
             if current.status == "cancel_requested":
                 code = self._cancel_group(child.pid, child)
+                if event_pipe is not None:
+                    event_pipe.finish()
                 final = self.queue.finish(job.job_id, "canceled", code)
                 self._emit(
                     "process_finished", {"status": "canceled", "exit_code": code}
@@ -138,6 +172,8 @@ class ResearchWorker:
                 self._sample(process)
             time.sleep(self.poll_seconds)
         code = child.wait()
+        if event_pipe is not None:
+            event_pipe.finish()
         status = "succeeded" if code == 0 else "failed"
         final = self.queue.finish(job.job_id, status, code)
         self._emit("process_finished", {"status": status, "exit_code": code})

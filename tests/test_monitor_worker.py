@@ -55,6 +55,61 @@ def test_worker_records_resources(
     assert log.read_text().strip() == "done"
 
 
+def test_worker_forwards_validated_child_events(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    queue, config = _setup(tmp_path)
+    code = (
+        "from adaptive_jump.monitor.child_events import "
+        "child_observer_from_environment; "
+        "from adaptive_jump.monitor.events import ResearchEvent; "
+        "observer=child_observer_from_environment(); "
+        "observer(ResearchEvent('terminal_state','fixed_jm',"
+        "visibility='decision',market='us',payload={'state':1}))"
+    )
+    monkeypatch.setattr(
+        worker_module, "_canonical_command", lambda *_: (sys.executable, "-c", code)
+    )
+    store = EventStore(tmp_path / "artifacts/.monitor")
+    job = queue.enqueue("study-a")
+
+    result = ResearchWorker(queue, config, store.observer, poll_seconds=0.01).run_once()
+
+    forwarded = [
+        item.event
+        for item in store.replay(job.job_id)
+        if item.event.stage == "fixed_jm"
+    ]
+    assert result is not None and result.status == "succeeded"
+    assert forwarded == [
+        ResearchEvent(
+            "terminal_state",
+            "fixed_jm",
+            visibility="decision",
+            market="us",
+            payload={"state": 1},
+        )
+    ]
+
+
+def test_worker_fails_closed_on_malformed_child_event(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    queue, config = _setup(tmp_path)
+    code = (
+        "import os; fd=int(os.environ['ADAPTIVE_JUMP_EVENT_FD']); os.write(fd,b'{}\\n')"
+    )
+    monkeypatch.setattr(
+        worker_module, "_canonical_command", lambda *_: (sys.executable, "-c", code)
+    )
+    store = EventStore(tmp_path / "artifacts/.monitor")
+    queue.enqueue("study-a")
+
+    result = ResearchWorker(queue, config, store.observer, poll_seconds=0.01).run_once()
+
+    assert result is not None and result.status == "failed"
+
+
 def test_worker_escalates_cancellation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
