@@ -16,35 +16,17 @@ from typing import Any
 
 import pandas as pd
 
-from adaptive_jump.artifacts import (
-    ArtifactError as RunError,
-)
-from adaptive_jump.artifacts import (
-    directional_gate as _directional_gate,
-)
-from adaptive_jump.artifacts import (
-    read_json as _read_json,
-)
-from adaptive_jump.artifacts import (
-    sha256_file as _sha256,
-)
-from adaptive_jump.artifacts import (
-    verify_inventory as _verify_inventory,
-)
-from adaptive_jump.artifacts import (
-    verify_run,
-)
-from adaptive_jump.artifacts import (
-    write_inventory as _write_inventory,
-)
-from adaptive_jump.artifacts import (
-    write_json as _write_json,
-)
+from adaptive_jump import artifacts as _artifacts
 from adaptive_jump.config import ConfigError, ResearchConfig, load_config
 from adaptive_jump.data import AcquisitionError, acquire, research_git_sha
 from adaptive_jump.features import effective_oos_start, prepare_market
 from adaptive_jump.models import FixedJMResult, HMMResult, fixed_jm_states, hmm_states
 from adaptive_jump.monitor import checkpoints as checkpoint_store
+from adaptive_jump.monitor.child_events import (
+    ChildEventError,
+    child_observer_from_environment,
+)
+from adaptive_jump.monitor.events import EventObserver, bind_event_context
 from adaptive_jump.reporting import build_report
 from adaptive_jump.walkforward import (
     BaselineStudy,
@@ -55,6 +37,15 @@ from adaptive_jump.walkforward import (
 )
 from adaptive_jump.window_runner import run_window_sensitivity
 from adaptive_jump.window_spec import load_window_spec
+
+RunError = _artifacts.ArtifactError
+_directional_gate = _artifacts.directional_gate
+_read_json = _artifacts.read_json
+_sha256 = _artifacts.sha256_file
+_verify_inventory = _artifacts.verify_inventory
+verify_run = _artifacts.verify_run
+_write_inventory = _artifacts.write_inventory
+_write_json = _artifacts.write_json
 
 
 @dataclass(frozen=True)
@@ -176,7 +167,9 @@ def _verify_manifest(
             raise RunError(f"invalid canonical values: {path}")
 
 
-def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
+def run_replication(
+    config: ResearchConfig, frozen: FrozenData, observer: EventObserver | None = None
+) -> Path:
     """Run or exactly resume the sealed three-market baseline study."""
     root = config.path.parent
     git_sha = research_git_sha(root)
@@ -267,6 +260,7 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
                 n_jobs=HMM_WORKERS,
                 checkpoint_every=MODEL_CHECKPOINT_DAYS,
                 progress=save_hmm_progress,
+                observer=bind_event_context(observer, market=market.id, model="hmm"),
             )
             initial_jm = _load_cache(
                 checkpoint_dir / "jm-progress", "fixed_jm", identity, FixedJMResult
@@ -298,6 +292,9 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
                 initial=initial_jm,
                 checkpoint_every=MODEL_CHECKPOINT_DAYS,
                 progress=save_jm_progress,
+                observer=bind_event_context(
+                    observer, market=market.id, model="fixed_jm"
+                ),
             )
 
             checkpoint = build_baseline_study(
@@ -464,10 +461,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if arguments.command == "run":
             config = load_config(arguments.config)
+            observer = child_observer_from_environment()
             if arguments.study == "replication":
-                artifact = run_replication(
-                    config, load_frozen_data(config, arguments.manifest)
-                )
+                frozen = load_frozen_data(config, arguments.manifest)
+                artifact = run_replication(config, frozen, observer)
             else:
                 if arguments.manifest:
                     raise RunError("--manifest is only valid for replication")
@@ -475,7 +472,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     config.path.parent / "research/jm-train-window-sensitivity.toml"
                 )
                 artifact = run_window_sensitivity(
-                    config, load_window_spec(spec_path, config)
+                    config, load_window_spec(spec_path, config), observer
                 )
             print(artifact)
             return 0
@@ -487,6 +484,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
     except (
         AcquisitionError,
+        ChildEventError,
         ConfigError,
         RunError,
         FileNotFoundError,

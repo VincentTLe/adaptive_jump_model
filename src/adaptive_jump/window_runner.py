@@ -25,6 +25,7 @@ from adaptive_jump.data import research_git_sha
 from adaptive_jump.features import effective_oos_start
 from adaptive_jump.inference import BootstrapProgress
 from adaptive_jump.monitor import checkpoints as checkpoint_store
+from adaptive_jump.monitor.events import EventObserver, bind_event_context
 from adaptive_jump.window_spec import WindowStudySpec
 from adaptive_jump.window_study import (
     COMPARISON_MODELS,
@@ -46,7 +47,11 @@ CONTROL_SCOPE = (
 )
 
 
-def run_window_sensitivity(config: ResearchConfig, spec: WindowStudySpec) -> Path:
+def run_window_sensitivity(
+    config: ResearchConfig,
+    spec: WindowStudySpec,
+    observer: EventObserver | None = None,
+) -> Path:
     """Run JM-4000 against exact sealed v7 controls through 2023."""
     root = config.path.parent
     parent_dir = root / config.artifact_root / "fixed-baselines" / spec.parent_run_id
@@ -101,7 +106,13 @@ def run_window_sensitivity(config: ResearchConfig, spec: WindowStudySpec) -> Pat
         )
         if oos_start is None:
             raise ArtifactError(f"{market.id}: JM-4000 has no eligible OOS sample")
-        study = build_window_market_study(frame, config, spec, oos_start=oos_start)
+        study = build_window_market_study(
+            frame,
+            config,
+            spec,
+            oos_start=oos_start,
+            observer=bind_event_context(observer, market=market.id, model="jm_4000"),
+        )
         frames[market.id] = frame
         studies[market.id] = study
         _write_market_evidence(run_dir / market.id, study)

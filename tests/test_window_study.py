@@ -68,9 +68,10 @@ def test_market_study_changes_only_jm_fit_window(monkeypatch) -> None:
     seen_windows = []
     seen_delays = []
 
-    def fake_states(_frame, model_protocol, jm_protocol):
+    def fake_states(_frame, model_protocol, jm_protocol, *, observer=None):
         seen_windows.append(model_protocol.fit_window)
         assert jm_protocol is config.jm_protocol
+        assert observer is None
         return FixedJMResult(states, pd.DataFrame())
 
     def fake_selection(*_args, delay_trading_days, **_kwargs):

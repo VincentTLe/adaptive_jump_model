@@ -6,6 +6,7 @@ from adaptive_jump.monitor.events import (
     EventError,
     ResearchEvent,
     RuntimeEvent,
+    bind_event_context,
     emit_event,
     null_observer,
 )
@@ -83,3 +84,17 @@ def test_runtime_event_rejects_naive_time_and_wrong_schema() -> None:
 def test_emit_event_skips_construction_when_disabled() -> None:
     emit_event(None, kind="not-valid", stage="not-valid")
     emit_event(null_observer, kind="stage_started", stage="hmm")
+
+
+def test_bound_event_context_is_explicit_and_cannot_be_overwritten() -> None:
+    events = []
+    observer = bind_event_context(events.append, market="us", model="hmm", delay=1)
+    assert observer is not None
+
+    observer(ResearchEvent("terminal_state", "hmm"))
+
+    assert events[0].market == "us"
+    assert events[0].model == "hmm"
+    assert events[0].delay == 1
+    with pytest.raises(EventError, match="conflicts"):
+        observer(ResearchEvent("terminal_state", "hmm", market="jp"))

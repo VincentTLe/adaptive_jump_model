@@ -6,7 +6,7 @@ import json
 import math
 import re
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from typing import Any
 
@@ -172,6 +172,30 @@ def emit_event(observer: EventObserver | None, **values: Any) -> None:
     """Avoid constructing telemetry when monitoring is disabled."""
     if observer is not None:
         observer(ResearchEvent(**values))
+
+
+def bind_event_context(
+    observer: EventObserver | None,
+    *,
+    market: str | None = None,
+    model: str | None = None,
+    delay: int | None = None,
+) -> EventObserver | None:
+    """Attach trusted runner context without overwriting event-owned values."""
+    if observer is None:
+        return None
+
+    def contextual_observer(event: ResearchEvent) -> None:
+        updates: dict[str, Any] = {}
+        for name, value in (("market", market), ("model", model), ("delay", delay)):
+            existing = getattr(event, name)
+            if value is not None and existing not in (None, value):
+                raise EventError(f"event {name} conflicts with bound context")
+            if value is not None and existing is None:
+                updates[name] = value
+        observer(replace(event, **updates))
+
+    return contextual_observer
 
 
 def _require_name(value: object, label: str) -> None:

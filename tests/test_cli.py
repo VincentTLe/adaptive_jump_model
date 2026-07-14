@@ -70,11 +70,17 @@ def test_window_study_cli_uses_frozen_spec_without_manifest(
     expected = ROOT / "artifacts/window-fixture"
     calls = []
 
-    def fake_run(config, spec):
-        calls.append((config, spec))
+    def observer(_event):
+        return None
+
+    def fake_run(config, spec, observer):
+        calls.append((config, spec, observer))
         return expected
 
     monkeypatch.setattr("adaptive_jump.cli.run_window_sensitivity", fake_run)
+    monkeypatch.setattr(
+        "adaptive_jump.cli.child_observer_from_environment", lambda: observer
+    )
 
     assert (
         main(
@@ -90,6 +96,7 @@ def test_window_study_cli_uses_frozen_spec_without_manifest(
     )
     assert Path(capsys.readouterr().out.strip()) == expected
     assert calls[0][1].challenger_window == 4000
+    assert calls[0][2] is observer
 
 
 def test_window_study_cli_rejects_manifest_override(capsys) -> None:

@@ -16,6 +16,7 @@ from adaptive_jump.backtest import performance_metrics
 from adaptive_jump.config import ResearchConfig
 from adaptive_jump.inference import BootstrapProgress, bootstrap_sharpe_delta
 from adaptive_jump.models import FixedJMResult, fixed_jm_states
+from adaptive_jump.monitor.events import EventObserver
 from adaptive_jump.walkforward import (
     SelectionResult,
     boundary_diagnostic,
@@ -57,10 +58,11 @@ def build_window_market_study(
     spec: WindowStudySpec,
     *,
     oos_start: date,
+    observer: EventObserver | None = None,
 ) -> WindowMarketStudy:
     """Fit and select JM-4000 while preserving every parent setting."""
     protocol = replace(config.model_protocol, fit_window=spec.challenger_window)
-    jm = fixed_jm_states(frame, protocol, config.jm_protocol)
+    jm = fixed_jm_states(frame, protocol, config.jm_protocol, observer=observer)
     returns = frame[["date", "equity_simple", "cash_return"]]
     selections: dict[int, SelectionResult] = {}
     rows: list[dict[str, Any]] = []
