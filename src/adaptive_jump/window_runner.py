@@ -159,8 +159,8 @@ def run_window_sensitivity(config: ResearchConfig, spec: WindowStudySpec) -> Pat
     metrics.to_csv(run_dir / "metrics.csv", index=False)
     bootstrap.to_csv(run_dir / "bootstrap.csv", index=False)
     claim = window_claim(
-        metrics,
-        bootstrap,
+        pd.read_csv(run_dir / "metrics.csv"),
+        pd.read_csv(run_dir / "bootstrap.csv"),
         market_ids=tuple(market.id for market in config.markets),
         primary_delay=spec.primary_delay,
         primary_block=spec.bootstrap_blocks[0],

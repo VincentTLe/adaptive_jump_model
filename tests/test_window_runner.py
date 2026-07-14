@@ -7,7 +7,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from adaptive_jump.artifacts import ArtifactError, verify_inventory, write_json
+from adaptive_jump.artifacts import (
+    ArtifactError,
+    verify_inventory,
+    write_inventory,
+    write_json,
+)
 from adaptive_jump.backtest import apply_signal, buy_and_hold
 from adaptive_jump.config import load_config
 from adaptive_jump.models import FixedJMResult
@@ -19,6 +24,12 @@ from adaptive_jump.window_evidence import (
 from adaptive_jump.window_runner import _verify_parent, run_window_sensitivity
 from adaptive_jump.window_spec import load_window_spec
 from adaptive_jump.window_study import WindowMarketStudy, comparison_metrics
+from adaptive_jump.window_verifier import (
+    _read_states,
+    _verify_refits,
+    _verify_selection,
+    verify_window_run,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -235,6 +246,111 @@ def test_window_evidence_is_recomputed_and_detects_metric_tampering(
     tampered.to_csv(metrics_path, index=False)
     with pytest.raises(ArtifactError, match="evidence mismatch: sharpe"):
         verify_window_metrics(run_dir, config, spec)
+
+
+def test_window_verifier_rebuilds_complete_claim(tmp_path: Path, monkeypatch) -> None:
+    run_dir = _fixture_run(tmp_path, monkeypatch, boundary_passed=True)
+    metadata = json.loads((run_dir / "run.json").read_text())
+    config = load_config(tmp_path / "research.toml")
+    spec = load_window_spec(
+        tmp_path / "research/jm-train-window-sensitivity.toml", config
+    )
+    monkeypatch.setattr(
+        "adaptive_jump.window_verifier._verify_identity",
+        lambda _run: (metadata, config, spec, tmp_path / "parent"),
+    )
+    monkeypatch.setattr(
+        "adaptive_jump.window_verifier._verify_model_evidence",
+        lambda *_: pd.read_csv(run_dir / "boundaries.csv"),
+    )
+    monkeypatch.setattr(
+        "adaptive_jump.window_verifier.verify_window_bootstrap",
+        lambda *_: (pd.read_csv(run_dir / "bootstrap.csv"), 0.0),
+    )
+
+    receipt = verify_window_run(run_dir)
+
+    assert receipt["metric_rows"] == 36
+    assert receipt["bootstrap_rows"] == 9
+    claim_path = run_dir / "claim.json"
+    claim = json.loads(claim_path.read_text())
+    claim["positive_markets"] = 99
+    write_json(claim_path, claim)
+    write_inventory(run_dir)
+    with pytest.raises(ArtifactError, match="claim does not match"):
+        verify_window_run(run_dir)
+
+
+def test_window_verifier_accepts_closed_boundary_failure(
+    tmp_path: Path, monkeypatch
+) -> None:
+    run_dir = _fixture_run(tmp_path, monkeypatch, boundary_passed=False)
+    metadata = json.loads((run_dir / "run.json").read_text())
+    config = load_config(tmp_path / "research.toml")
+    spec = load_window_spec(
+        tmp_path / "research/jm-train-window-sensitivity.toml", config
+    )
+    monkeypatch.setattr(
+        "adaptive_jump.window_verifier._verify_identity",
+        lambda _run: (metadata, config, spec, tmp_path / "parent"),
+    )
+    monkeypatch.setattr(
+        "adaptive_jump.window_verifier._verify_model_evidence",
+        lambda *_: pd.read_csv(run_dir / "boundaries.csv"),
+    )
+
+    receipt = verify_window_run(run_dir)
+
+    assert receipt["status"] == "boundary_failed"
+    assert receipt["metric_rows"] == 0
+
+
+def test_window_verifier_recomputes_model_evidence_files(tmp_path: Path) -> None:
+    config = load_config(ROOT / "research.toml")
+    spec = load_window_spec(ROOT / "research/jm-train-window-sensitivity.toml", config)
+    dates = pd.DatetimeIndex(pd.bdate_range("2020-01-02", periods=4), name="date")
+    states = pd.DataFrame(0.0, index=dates, columns=config.jm_protocol.lambda_grid)
+    states_path = tmp_path / "jm-4000-states.csv"
+    states.to_csv(states_path)
+    pd.testing.assert_frame_equal(
+        _read_states(states_path, config), states, check_freq=False
+    )
+
+    refits = pd.DataFrame(
+        {
+            "fit_date": [dates[0]] * len(config.jm_protocol.lambda_grid),
+            "training_start": [pd.Timestamp("2004-01-02")]
+            * len(config.jm_protocol.lambda_grid),
+            "training_end": [dates[0]] * len(config.jm_protocol.lambda_grid),
+            "observations": spec.challenger_window,
+            "lambda": config.jm_protocol.lambda_grid,
+            "objective": 1.0,
+        }
+    )
+    refits_path = tmp_path / "jm-4000-refits.csv"
+    refits.to_csv(refits_path, index=False)
+    _verify_refits(refits_path, config, spec)
+
+    target = tmp_path / "selection"
+    target.mkdir()
+    expected = SelectionResult(
+        signal=pd.Series([np.nan, 1.0, 1.0, 0.0], index=dates, name="selected_signal"),
+        choices=pd.DataFrame({"decision_date": [dates[1]], "selected": [5.0]}),
+        surface=pd.DataFrame(
+            {"decision_date": [dates[1]], "candidate": [5.0], "sharpe": [0.2]}
+        ),
+        candidate_returns=pd.DataFrame({5.0: [np.nan, 0.1, 0.2, 0.3]}, index=dates),
+    )
+    expected.choices.to_csv(target / "choices.csv", index=False)
+    expected.surface.to_csv(target / "cv-surface.csv", index=False)
+    expected.candidate_returns.to_csv(target / "candidate-returns.csv")
+    expected.signal.to_csv(target / "selected-signal.csv", header=True)
+    choices = pd.read_csv(target / "choices.csv")
+    _verify_selection(target, choices, expected)
+
+    choices.loc[0, "selected"] = 15.0
+    with pytest.raises(ArtifactError, match="recomputed choices differs"):
+        _verify_selection(target, choices, expected)
 
 
 def test_parent_verification_rejects_wrong_inventory_hash(
