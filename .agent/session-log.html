@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">73 session(s) · newest first · 2026-07-14 19:26 UTC</p>
+  <p class="sub">74 session(s) · newest first · 2026-07-14 19:36 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-14T19:35:51Z</span><span class="who">codex · GPT-5</span>
+      </div>
+      <p class="goal">Close the monitor verifier gap and register the frozen local engineering replay without running a scientific experiment.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/cli.py (canonical run verifies before output and success)</code></li><li><code>src/adaptive_jump/monitor/events.py (safe artifact_verified event from run identity/status only)</code></li><li><code>src/adaptive_jump/monitor/queue.py (register monitor-local-acceptance-001 as replication replay)</code></li><li><code>tests/test_cli.py (success/failure verifier and event contract)</code></li><li><code>tests/test_monitor_queue.py (real frozen catalog contract)</code></li><li><code>README.md (truthful single-study pending-acceptance status)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>focused verifier/catalog/events tests: 14 passed</li><li>all monitor tests including browser/security/worker/API/SSE: 94 passed</li><li>full workspace pytest: 266 passed</li><li>Ruff lint and format: passed</li><li>uv lock --check and uv pip check: passed; 64 packages compatible</li><li>uv build: sdist and wheel built successfully</li><li>canonical v7 verifier: complete, 27 metrics, max difference 7.327471962526033e-15</li><li>canonical JM-4000 verifier: boundary_failed, zero metrics/bootstrap</li><li>paper SHA-256 matched 141e48bd5ccaefe5d2c276a3c8772716b583b1df91517109d54a2452f4cb3af1; archive/config/dependency paths unchanged</li><li>clean detached worktree uv sync --frozen --all-extras, pytest 266 passed, and uv pip check passed</li><li>production catalog resolved only monitor-local-acceptance-001; commit pushed to origin</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>12fea47b1f28faf0c2b7279ed273b944758fe02c</code></p></div>
+        <div><span class="lbl">Next step</span><p>After review, run the frozen 60-100 minute local operational lifecycle: real monitor, owner auth harness, enqueue, checkpoint cancel/reuse, monitor shutdown/restart/resume, completion, independent verifier, 125-entry parity, and desktop/mobile replay.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>No market fetch, model run, post-2023 access, adaptive work, dependency, protocol, registry, frozen artifact, metric, gate, or scientific claim changed. Monitor remains pending local operational acceptance and Cloudflare remains unaccepted. cli.py was already 503 lines; this milestone added one executable line there and deferred any structural split to a separate task.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-14T19:26:30Z</span><span class="who">codex · GPT-5</span>
