@@ -54,6 +54,7 @@ function activateView(name) {
     view.classList.toggle("active", active);
     view.hidden = !active;
   });
+  window.requestAnimationFrame(() => window.MonitorCharts?.resize());
   if (name !== "replay") pauseReplay();
 }
 function button(label, title, action) {
@@ -235,6 +236,7 @@ function renderLive(job, events) {
   setText("selected-candidate", selected ? `${selected.model} · ${selected.payload.selected_candidate}` : "Candidate unavailable");
   setText("resource-latest", resource ? `CPU ${formatNumber(resource.payload.cpu_percent, 1)}%` : "No samples");
   setText("resource-fallback", resource ? `Latest sample: CPU ${formatNumber(resource.payload.cpu_percent, 1)}%, RSS ${formatNumber(resource.payload.rss_bytes / 1048576, 1)} MB.` : "CPU and memory samples will appear here.");
+  window.MonitorCharts?.resource(events);
   renderStages(events);
   renderDecisions(events);
   renderJournal(events);
@@ -353,6 +355,7 @@ async function init() {
     setText("connection", "Ready");
     renderStudyOptions();
     await refreshJobs();
+    window.MonitorEvidence?.init(request, showError);
     if (state.jobs.length) loadReplay($("replay-job").value).catch(showError);
     window.setInterval(() => refreshJobs().catch(showError), 3000);
   } catch (error) {

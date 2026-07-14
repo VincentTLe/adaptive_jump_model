@@ -47,16 +47,21 @@ def test_monitor_shell_is_packaged_accessible_and_csp_compatible() -> None:
     assert all(f'data-view="{view}"' in html for view in views)
     scripts = re.findall(r"<script([^>]*)>", html)
     assert scripts and all("src=" in script for script in scripts)
+    assert "/assets/vendor/echarts/echarts.min.js" in html
     assert "<style" not in html
     assert "@media (max-width: 600px)" in css
     assert "linear-gradient" not in css
 
 
 def test_monitor_browser_code_uses_server_contract_without_inline_data() -> None:
-    script = (ROOT / "src/adaptive_jump/monitor/static/app.js").read_text(
-        encoding="utf-8"
-    )
+    static = ROOT / "src/adaptive_jump/monitor/static"
+    script = (static / "app.js").read_text(encoding="utf-8")
+    evidence = (static / "evidence.js").read_text(encoding="utf-8")
 
     assert all(path in script for path in ("/api/session", "/api/studies", "/api/jobs"))
     assert "EventSource" in script and "research_event" in script
-    assert "innerHTML" not in script and "localStorage" not in script
+    assert "/api/evidence" in evidence and "metrics_opened" in evidence
+    assert all(
+        "innerHTML" not in code and "localStorage" not in code
+        for code in (script, evidence)
+    )

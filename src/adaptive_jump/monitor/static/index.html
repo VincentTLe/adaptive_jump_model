@@ -59,10 +59,14 @@
     <section id="view-evidence" class="view" aria-labelledby="evidence-title" hidden>
       <div class="view-heading"><div><p class="eyebrow">Verifier-gated access</p><h1 id="evidence-title">Evidence register</h1></div><span id="evidence-count" class="status-pill idle">0 runs</span></div>
       <div id="evidence-runs" class="run-selector" role="list"></div>
+      <dl class="summary-strip receipt-strip"><div><dt>Status</dt><dd id="receipt-status">Not verified</dd></div><div><dt>Inventory</dt><dd id="receipt-files">--</dd></div><div><dt>Boundaries</dt><dd id="receipt-boundaries">--</dd></div><div><dt>Metrics</dt><dd id="receipt-metrics">Locked</dd></div><div><dt>Max difference</dt><dd id="receipt-difference">--</dd></div></dl>
       <section class="panel"><div class="panel-heading"><h2 id="evidence-run-title">Select a sealed run</h2><span id="evidence-lock">Outcome state unknown</span></div><div class="table-wrap"><table><thead><tr><th>Market</th><th>Model</th><th>Delay</th><th>Upper candidate</th><th>Selected</th><th>Gate</th></tr></thead><tbody id="boundary-body"><tr><td colspan="6">No verified boundary rows</td></tr></tbody></table></div></section>
     </section>
   </main>
   <noscript><p class="noscript">JavaScript is required for authenticated live data. The static monitor structure remains available.</p></noscript>
+  <script src="/assets/vendor/echarts/echarts.min.js" defer></script>
+  <script src="/assets/charts.js" defer></script>
+  <script src="/assets/evidence.js" defer></script>
   <script src="/assets/app.js" defer></script>
 </body>
 </html>

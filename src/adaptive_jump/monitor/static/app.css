@@ -38,6 +38,7 @@ main { max-width: 1600px; padding: 26px 28px 50px; margin: 0 auto; }
 .summary-strip div:last-child { border: 0; }
 .summary-strip dt { color: var(--muted); font-size: 11px; text-transform: uppercase; }
 .summary-strip dd { margin: 5px 0 0; overflow-wrap: anywhere; font-weight: 650; }
+.receipt-strip { grid-template-columns: repeat(5, 1fr); }
 .workspace-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 18px; }
 .workspace-main { display: grid; gap: 18px; }
 .panel { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
@@ -85,6 +86,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .replay-frame pre { min-height: 300px; max-height: 560px; padding: 16px; margin: 0; overflow: auto; color: #c9d5df; font: 12px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; }
 .run-selector { display: flex; gap: 8px; margin-bottom: 18px; overflow-x: auto; }
 .run-selector button { text-align: left; white-space: nowrap; }
+.run-selector button.active { color: var(--green); border-color: var(--green); }
 .positive { color: var(--green); }
 .negative { color: var(--red); }
 .warning { color: var(--amber); }
@@ -94,6 +96,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .summary-strip { grid-template-columns: repeat(2, 1fr); }
 .summary-strip div { border-bottom: 1px solid var(--line); }
 .feature-grid { grid-template-columns: repeat(2, 1fr); }
+.receipt-strip { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 600px) { .topbar { min-height: 68px; height: auto; padding: 10px 16px; }
 .session { flex-direction: column; gap: 3px; align-items: flex-end; text-align: right; }
@@ -103,6 +106,7 @@ main { padding: 20px 14px 45px; }
 .view h1 { font-size: 24px; }
 .summary-strip { grid-template-columns: 1fr; }
 .summary-strip div { border-right: 0; }
+.receipt-strip { grid-template-columns: 1fr; }
 .stage-track { grid-template-columns: 1fr; padding: 12px; }
 .stage-track li { min-height: 42px; padding: 11px 8px 8px 32px; border-top: 0; border-left: 3px solid var(--gray); }
 .stage-track li::before { top: 12px; left: 9px; }
