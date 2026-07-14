@@ -23,8 +23,12 @@ MODEL_NAMES = {
 def build_report(run: str | Path) -> Path:
     """Verify one sealed run, then write its deterministic report outside it."""
     run_dir = Path(run).resolve()
-    verification = verify_run(run_dir)
     metadata = read_json(run_dir / "run.json")
+    if metadata.get("study_kind") == "jm_train_window_sensitivity":
+        from adaptive_jump.window_reporting import build_window_report
+
+        return build_window_report(run_dir)
+    verification = verify_run(run_dir)
     manifest = read_json(run_dir / "data-manifest.json")
     config = load_config(run_dir / "config.lock.toml")
     boundaries = pd.read_csv(run_dir / "boundaries.csv")

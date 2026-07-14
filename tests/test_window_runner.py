@@ -17,6 +17,7 @@ from adaptive_jump.artifacts import (
 from adaptive_jump.backtest import apply_signal, buy_and_hold
 from adaptive_jump.config import load_config
 from adaptive_jump.models import FixedJMResult
+from adaptive_jump.reporting import build_report
 from adaptive_jump.walkforward import SelectionResult
 from adaptive_jump.window_evidence import (
     verify_window_bootstrap,
@@ -319,6 +320,30 @@ def test_generic_verifier_dispatches_window_study(tmp_path: Path, monkeypatch) -
     )
 
     assert verify_run(run_dir) == expected
+
+
+def test_window_report_is_english_verified_and_deterministic(
+    tmp_path: Path, monkeypatch
+) -> None:
+    run_dir = _fixture_run(tmp_path, monkeypatch, boundary_passed=True)
+    receipt = {
+        "status": "complete",
+        "inventory_files": 60,
+        "metric_rows": 36,
+        "bootstrap_rows": 9,
+        "maximum_metric_absolute_difference": 0.0,
+    }
+    monkeypatch.setattr("adaptive_jump.window_reporting.verify_run", lambda _: receipt)
+
+    report_path = build_report(run_dir)
+    first = report_path.read_bytes()
+    assert build_report(run_dir).read_bytes() == first
+    report = first.decode()
+    assert '<html lang="en">' in report
+    assert "Does a longer JM training window help?" in report
+    assert "not caused by v7 using a shorter JM window" in report
+    assert "Not 2024&ndash;2026 evidence" in report
+    assert "JM (4,000)" in report
 
 
 def test_window_verifier_recomputes_model_evidence_files(tmp_path: Path) -> None:
