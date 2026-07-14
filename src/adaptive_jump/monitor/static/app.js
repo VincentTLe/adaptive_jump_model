@@ -75,6 +75,11 @@ async function mutate(path, body) {
 function renderStudyOptions() {
   const select = $("study-select");
   select.replaceChildren();
+  if (!state.studies.length) {
+    const option = document.createElement("option");
+    option.textContent = "No FROZEN studies available";
+    select.append(option);
+  }
   state.studies.forEach((study) => {
     const option = document.createElement("option");
     option.value = study.study_id;

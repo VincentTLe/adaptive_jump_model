@@ -369,3 +369,30 @@ def test_monitor_ui_in_real_chromium_desktop_mobile_and_no_js(tmp_path: Path) ->
         _assert_no_horizontal_overflow(fallback)
         no_js.close()
         browser.close()
+
+
+def test_monitor_ui_names_an_empty_study_catalog(tmp_path: Path) -> None:
+    with _monitor_origin(tmp_path) as (origin, _), sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=True)
+        context = browser.new_context(
+            extra_http_headers={"Cf-Access-Jwt-Assertion": "owner-token"}
+        )
+        _block_external(context, origin)
+        page = context.new_page()
+        page.route(
+            f"{origin}/api/studies",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="application/json",
+                body='{"queueable":[]}',
+            ),
+        )
+        page.goto(origin, wait_until="domcontentloaded")
+        page.get_by_role("button", name="Queue").click()
+        expect(page.locator("#study-select")).to_be_disabled()
+        expect(page.locator("#study-select")).to_have_text(
+            "No FROZEN studies available"
+        )
+        expect(page.get_by_role("button", name="Enqueue")).to_be_disabled()
+        context.close()
+        browser.close()
