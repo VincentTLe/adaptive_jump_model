@@ -331,7 +331,7 @@ def _verify_metrics(
     for market in config.markets:
         for delay in config.backtest_protocol.robustness_delays:
             paths = {
-                model: _read_trade_path(
+                model: read_trade_path(
                     run_dir / market.id / "trades" / f"{model}-delay-{delay}.csv",
                     delay,
                     config.backtest_protocol.one_way_cost_bps,
@@ -373,7 +373,7 @@ def _verify_metrics(
     return metrics, maximum_difference
 
 
-def _read_trade_path(path: Path, delay: int, cost_bps: float) -> pd.DataFrame:
+def read_trade_path(path: Path, delay: int, cost_bps: float) -> pd.DataFrame:
     frame = _read_csv(path)
     if tuple(frame.columns) != TRADE_COLUMNS or frame.empty:
         raise ArtifactError(f"invalid trade path schema: {path}")

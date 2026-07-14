@@ -59,8 +59,14 @@ def load_window_spec(path: str | Path, config: ResearchConfig) -> WindowStudySpe
 
     parent = _table(document, "parent")
     parent_config = _safe_relative(parent, "config_path")
+    source_path_matches = (config.path.parent / parent_config).resolve() == config.path
+    sealed_copy_matches = (
+        config.path.name == "config.lock.toml"
+        and spec_path.name == "study.lock.toml"
+        and parent_config == Path("research.toml")
+    )
     _require(
-        (config.path.parent / parent_config).resolve() == config.path,
+        source_path_matches or sealed_copy_matches,
         "parent config path does not identify the loaded config",
     )
     _require(

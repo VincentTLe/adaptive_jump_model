@@ -93,3 +93,16 @@ def test_window_spec_rejects_unsafe_artifact_path(tmp_path: Path) -> None:
 
     with pytest.raises(WindowSpecError, match="safe relative path"):
         load_window_spec(spec_path, load_config(config_path))
+
+
+def test_window_spec_accepts_exactly_named_sealed_lock_copies(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.lock.toml"
+    config_path.write_bytes((ROOT / "research.toml").read_bytes())
+    spec_path = tmp_path / "study.lock.toml"
+    spec_path.write_bytes(
+        (ROOT / "research/jm-train-window-sensitivity.toml").read_bytes()
+    )
+
+    spec = load_window_spec(spec_path, load_config(config_path))
+
+    assert spec.baseline_window == 3000
