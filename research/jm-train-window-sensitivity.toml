@@ -1,0 +1,52 @@
+schema_version = 1
+experiment_id = "jm-train-window-sensitivity-001"
+frozen_at_utc = "2026-07-14T00:10:30Z"
+claim_class = "EXPLORATORY"
+hypothesis = "A 4000-observation fixed-JM window improves Sharpe over the paper's 3000-observation window on all three frozen proxy markets."
+primary_estimand = "sharpe_jm_4000_minus_sharpe_jm_3000"
+extension_access = false
+adaptive_experiment = false
+
+[parent]
+config_path = "research.toml"
+config_sha256 = "8adb330565d64f8ed6edd986f0422dbba72585eda4efd34b0c1b41b95450d81b"
+run_id = "fixed-baselines-8adb330565d6-3636939b525d-e9614112b234"
+run_inventory_sha256 = "08e42044c25ef80e92f4b565034652a6b87fe94de0e9122eee1a418395239d55"
+data_manifest_sha256 = "3636939b525d604c5c4180d7e3abb6192b53b81a068f009ad6ca83a945e53a84"
+data_cutoff = "2023-12-31"
+
+[windows]
+baseline_observations = 3000
+challenger_observations = 4000
+validation_calendar_years = 8
+hmm_observations = 3000
+jm_refit_months = [1, 7]
+online_lookback_equals_fit_window = true
+
+[comparison]
+models = ["buy_and_hold", "hmm_3000", "jm_3000", "jm_4000"]
+primary_delay = 1
+robustness_delays = [1, 5, 10]
+sample = "per_market_delay_intersection_after_challenger_eligibility"
+primary_metric = "annualized_excess_sharpe"
+secondary_metrics = ["maximum_drawdown", "turnover", "cash_fraction", "switch_count"]
+
+[bootstrap]
+method = "paired_stationary_block"
+replications = 10000
+seed = 20260713
+mean_block_length = 60
+sensitivity_block_lengths = [20, 120]
+confidence_level = 0.95
+
+[decision]
+consistent_improvement = "primary_delta_positive_in_all_three_markets"
+mixed = "primary_delta_positive_in_one_or_two_markets"
+not_supported = "primary_delta_positive_in_zero_markets"
+uncertainty_supported = "one_sided_95pct_lower_bound_positive_in_all_three_markets"
+upper_lambda_boundary_fraction_limit = 0.05
+grid_expansion_after_results = false
+
+[storage]
+artifact_subdir = "jm-train-window-sensitivity"
+report_subdir = "reports"
