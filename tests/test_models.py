@@ -5,6 +5,7 @@ from jumpmodels.jump import JumpModel
 
 from adaptive_jump.config import HMMProtocol, JMProtocol, ModelProtocol
 from adaptive_jump.models import (
+    FixedJMResult,
     HMMResult,
     ModelError,
     best_hmm_terminal_fit,
@@ -119,6 +120,98 @@ def test_fixed_jm_observer_is_output_neutral() -> None:
     assert terminals[-1].payload["states"] == [{"candidate": 5.0, "state": 1}]
 
 
+def test_fixed_jm_resumes_exactly_from_causal_checkpoint() -> None:
+    model, jm = _protocols()
+    frame = _frame()
+    captured: list[FixedJMResult] = []
+
+    def interrupt(result: FixedJMResult) -> None:
+        captured.append(result)
+        raise RuntimeError("simulated interruption")
+
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        fixed_jm_states(frame, model, jm, checkpoint_every=3, progress=interrupt)
+    events = []
+    resumed_checkpoints = []
+    resumed = fixed_jm_states(
+        frame,
+        model,
+        jm,
+        initial=captured[0],
+        progress=resumed_checkpoints.append,
+        observer=events.append,
+    )
+    uninterrupted = fixed_jm_states(frame, model, jm)
+
+    pd.testing.assert_frame_equal(resumed.states, uninterrupted.states)
+    pd.testing.assert_frame_equal(resumed.refits, uninterrupted.refits)
+    pd.testing.assert_frame_equal(resumed_checkpoints[-1].states, resumed.states)
+    assert events[0].completed == 3
+    assert sum(event.kind == "terminal_state" for event in events) == 6
+    assert resumed.refits["fit_date"].value_counts().eq(1).all()
+
+
+def test_fixed_jm_accepts_empty_checkpoint() -> None:
+    model, jm = _protocols()
+    frame = _frame()
+    uninterrupted = fixed_jm_states(frame, model, jm)
+    empty = FixedJMResult(
+        pd.DataFrame(
+            pd.NA,
+            index=uninterrupted.states.index,
+            columns=(5,),
+        ),
+        uninterrupted.refits.iloc[:0].copy(),
+    )
+
+    resumed = fixed_jm_states(frame, model, jm, initial=empty)
+    already_complete = fixed_jm_states(frame, model, jm, initial=uninterrupted)
+
+    pd.testing.assert_frame_equal(resumed.states, uninterrupted.states)
+    pd.testing.assert_frame_equal(resumed.refits, uninterrupted.refits)
+    pd.testing.assert_frame_equal(already_complete.states, uninterrupted.states)
+    pd.testing.assert_frame_equal(already_complete.refits, uninterrupted.refits)
+
+
+def test_fixed_jm_rejects_invalid_checkpoint_prefix() -> None:
+    model, jm = _protocols()
+    frame = _frame()
+    complete = fixed_jm_states(frame, model, jm)
+    gapped_states = complete.states.copy()
+    gapped_states.loc[pd.Timestamp("2020-12-30"), 5.0] = np.nan
+    two_jm = JMProtocol((0.0, 5.0), 4, 0, 100, 1e-8, (1, 7))
+    partial_states = fixed_jm_states(frame, model, two_jm).states
+    partial_states.loc[pd.Timestamp("2020-12-30"), 0.0] = np.nan
+
+    with pytest.raises(ModelError, match="contiguous causal prefix"):
+        fixed_jm_states(
+            frame, model, jm, initial=FixedJMResult(gapped_states, complete.refits)
+        )
+    with pytest.raises(ModelError, match="partial candidate row"):
+        fixed_jm_states(
+            frame,
+            model,
+            two_jm,
+            initial=FixedJMResult(partial_states, complete.refits),
+        )
+    with pytest.raises(ModelError, match="refit dates violate the prefix"):
+        fixed_jm_states(
+            frame,
+            model,
+            jm,
+            initial=FixedJMResult(complete.states, complete.refits.iloc[:1]),
+        )
+    with pytest.raises(ModelError, match="refits are incomplete"):
+        fixed_jm_states(
+            frame,
+            model,
+            jm,
+            initial=FixedJMResult(
+                complete.states, complete.refits.drop(columns="objective")
+            ),
+        )
+
+
 def test_rejects_nonfinite_or_malformed_model_inputs() -> None:
     model, jm = _protocols()
     malformed = _frame().drop(columns="dd_10")
@@ -129,6 +222,8 @@ def test_rejects_nonfinite_or_malformed_model_inputs() -> None:
     nonfinite.loc[3, "dd_10"] = np.inf
     with pytest.raises(ModelError, match="must be finite"):
         fixed_jm_states(nonfinite, model, jm)
+    with pytest.raises(ModelError, match="checkpoint interval must be positive"):
+        fixed_jm_states(_frame(), model, jm, checkpoint_every=0)
 
 
 def test_hmm_rejects_bad_restart_and_selects_highest_likelihood(
