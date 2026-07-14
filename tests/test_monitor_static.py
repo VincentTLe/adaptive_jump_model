@@ -34,3 +34,16 @@ def test_vendored_echarts_reports_the_locked_release() -> None:
 
     assert 't.version="6.1.0"' in content
     assert "sourceMappingURL" not in content
+
+
+def test_monitor_shell_is_packaged_accessible_and_csp_compatible() -> None:
+    static = ROOT / "src/adaptive_jump/monitor/static"
+    html = (static / "index.html").read_text(encoding="utf-8")
+    css = (static / "app.css").read_text(encoding="utf-8")
+
+    assert "Adaptive Jump Research Monitor" in html
+    views = ("live", "queue", "replay", "compare", "evidence")
+    assert all(f'data-view="{view}"' in html for view in views)
+    assert "<script" not in html and "<style" not in html
+    assert "@media (max-width: 600px)" in css
+    assert "linear-gradient" not in css

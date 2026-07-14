@@ -5,10 +5,12 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from adaptive_jump.monitor.audit import AuditStore
@@ -67,6 +69,12 @@ def create_app(services: MonitorServices, *, lifespan=None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.services = services
+    static_root = Path(__file__).with_name("static")
+    app.mount("/assets", StaticFiles(directory=static_root), name="monitor-assets")
+
+    @app.get("/", include_in_schema=False)
+    async def index() -> FileResponse:
+        return FileResponse(static_root / "index.html")
 
     @app.middleware("http")
     async def secure_responses(request: Request, call_next):
