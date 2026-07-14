@@ -11,7 +11,7 @@ from adaptive_jump.cli import RunError, load_frozen_data, main, run_replication
 from adaptive_jump.config import load_config
 from adaptive_jump.data import HttpResult
 from adaptive_jump.models import FixedJMResult, HMMResult
-from adaptive_jump.walkforward import BaselineStudy, SelectionResult
+from adaptive_jump.walkforward import BaselineStudy, SelectionProgress, SelectionResult
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -404,3 +404,57 @@ def test_replication_runner_resumes_fixed_jm_progress_after_interruption(
     assert isinstance(resumed_inputs[0], FixedJMResult)
     assert not list(runtime_root.rglob("jm-progress.json"))
     assert not list(runtime_root.rglob("jm-progress.*.pkl"))
+
+
+def test_replication_runner_resumes_monthly_selection_after_interruption(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path, manifest_path = _manifest_fixture(tmp_path)
+    config = load_config(config_path)
+    frozen = load_frozen_data(config, manifest_path)
+    frame, study = _runner_fixture(config)
+    progress = SelectionProgress(
+        choices=pd.DataFrame(
+            {"decision_date": [pd.Timestamp("2021-01-29")], "selected": [0.0]}
+        ),
+        surface=pd.DataFrame(
+            {
+                "decision_date": [pd.Timestamp("2021-01-29")],
+                "candidate": [0.0],
+                "valid_returns": [20],
+                "sharpe": [1.0],
+                "eligible": [True],
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        "adaptive_jump.cli.prepare_manifest_market",
+        lambda *_: type("Input", (), {"frame": frame, "oos_start": study.oos_start})(),
+    )
+    monkeypatch.setattr("adaptive_jump.cli.research_git_sha", lambda _root: "e" * 40)
+
+    def interrupted(*_args, selection_progress, **_kwargs):
+        selection_progress("fixed_jm", 1, progress)
+        raise RuntimeError("interrupted")
+
+    monkeypatch.setattr("adaptive_jump.cli.build_baseline_study", interrupted)
+    with pytest.raises(RuntimeError, match="interrupted"):
+        run_replication(config, frozen)
+    runtime_root = tmp_path / "artifacts/.monitor/checkpoints"
+    assert len(list(runtime_root.rglob("selection-fixed_jm-delay-1.json"))) == 1
+
+    resumed_inputs = []
+
+    def resumed(*_args, selection_initial, **_kwargs):
+        initial = selection_initial("fixed_jm", 1)
+        if initial is not None:
+            resumed_inputs.append(initial)
+        return study
+
+    monkeypatch.setattr("adaptive_jump.cli.build_baseline_study", resumed)
+    run_replication(config, frozen)
+
+    pd.testing.assert_frame_equal(resumed_inputs[0].choices, progress.choices)
+    pd.testing.assert_frame_equal(resumed_inputs[0].surface, progress.surface)
+    assert not list(runtime_root.rglob("selection-*.json"))
+    assert not list(runtime_root.rglob("selection-*.pkl"))

@@ -9,6 +9,7 @@ import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from functools import partial
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
@@ -47,6 +48,7 @@ from adaptive_jump.monitor import checkpoints as checkpoint_store
 from adaptive_jump.reporting import build_report
 from adaptive_jump.walkforward import (
     BaselineStudy,
+    SelectionProgress,
     baseline_paths,
     build_baseline_study,
     open_baseline_metrics,
@@ -227,9 +229,16 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
         inputs[market.id] = market_input
         market_dir = run_dir / market.id
         checkpoint_dir = checkpoint_root / market.id
-        checkpoint = _load_checkpoint(checkpoint_dir, identity)
+        checkpoint = _load_cache(
+            checkpoint_dir / "baseline-study",
+            "baseline_study",
+            identity,
+            BaselineStudy,
+        )
         if checkpoint is None:
-            initial_hmm = _load_hmm_progress(checkpoint_dir, identity)
+            initial_hmm = _load_cache(
+                checkpoint_dir / "hmm-progress", "hmm", identity, HMMResult
+            )
             total_hmm_days = max(
                 0,
                 market_input.frame["equity_log"].notna().sum()
@@ -259,7 +268,9 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
                 checkpoint_every=MODEL_CHECKPOINT_DAYS,
                 progress=save_hmm_progress,
             )
-            initial_jm = _load_jm_progress(checkpoint_dir, identity)
+            initial_jm = _load_cache(
+                checkpoint_dir / "jm-progress", "fixed_jm", identity, FixedJMResult
+            )
             jm_columns = ("dd_10", "sortino_20", "sortino_60", "excess_return")
             jm_complete = market_input.frame.loc[:, jm_columns].notna().all(axis=1)
             total_jm_days = max(
@@ -288,12 +299,15 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
                 checkpoint_every=MODEL_CHECKPOINT_DAYS,
                 progress=save_jm_progress,
             )
+
             checkpoint = build_baseline_study(
                 market_input.frame,
                 config,
                 oos_start=market_input.oos_start,
                 precomputed_jm=fitted_jm,
                 precomputed_hmm=fitted_hmm,
+                selection_initial=partial(_load_selection, checkpoint_dir, identity),
+                selection_progress=partial(_save_selection, checkpoint_dir, identity),
             )
         elif checkpoint.oos_start != market_input.oos_start:
             raise RunError(f"{market.id}: checkpoint OOS start mismatch")
@@ -303,6 +317,8 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
         )
         checkpoint_store.clear_checkpoint(checkpoint_dir / "hmm-progress")
         checkpoint_store.clear_checkpoint(checkpoint_dir / "jm-progress")
+        for metadata in checkpoint_dir.glob("selection-*.json"):
+            checkpoint_store.clear_checkpoint(metadata.with_suffix(""))
         studies[market.id] = checkpoint
 
     boundaries = pd.concat(
@@ -368,31 +384,6 @@ def _write_checkpoint(
             selection.signal.to_csv(target / "selected-signal.csv", header=True)
 
 
-def _load_checkpoint(
-    market_dir: Path, identity: dict[str, str]
-) -> BaselineStudy | None:
-    cached = _load_cache(market_dir / "baseline-study", "baseline_study", identity)
-    if cached is not None and not isinstance(cached, BaselineStudy):
-        raise RunError(f"invalid checkpoint payload: {market_dir}")
-    return cached
-
-
-def _load_hmm_progress(market_dir: Path, identity: dict[str, str]) -> HMMResult | None:
-    cached = _load_cache(market_dir / "hmm-progress", "hmm", identity)
-    if cached is not None and not isinstance(cached, HMMResult):
-        raise RunError(f"invalid HMM progress payload: {market_dir}")
-    return cached
-
-
-def _load_jm_progress(
-    market_dir: Path, identity: dict[str, str]
-) -> FixedJMResult | None:
-    cached = _load_cache(market_dir / "jm-progress", "fixed_jm", identity)
-    if cached is not None and not isinstance(cached, FixedJMResult):
-        raise RunError(f"invalid fixed-JM progress payload: {market_dir}")
-    return cached
-
-
 def _write_cache(stem: Path, value: Any, kind: str, identity: dict[str, str]) -> None:
     try:
         checkpoint_store.save_checkpoint(stem, value, kind=kind, identity=identity)
@@ -400,11 +391,26 @@ def _write_cache(stem: Path, value: Any, kind: str, identity: dict[str, str]) ->
         raise RunError(str(exc)) from exc
 
 
-def _load_cache(stem: Path, kind: str, identity: dict[str, str]) -> Any:
+def _load_cache(
+    stem: Path, kind: str, identity: dict[str, str], expected: type[Any]
+) -> Any:
     try:
-        return checkpoint_store.load_checkpoint(stem, kind=kind, identity=identity)
+        cached = checkpoint_store.load_checkpoint(stem, kind=kind, identity=identity)
     except checkpoint_store.CheckpointStoreError as exc:
         raise RunError(str(exc)) from exc
+    if cached is not None and not isinstance(cached, expected):
+        raise RunError(f"invalid {kind} checkpoint payload: {stem}")
+    return cached
+
+
+def _load_selection(root, identity, model_name, delay):
+    stem = root / f"selection-{model_name}-delay-{delay}"
+    return _load_cache(stem, "selection", identity, SelectionProgress)
+
+
+def _save_selection(root, identity, model_name, delay, result) -> None:
+    stem = root / f"selection-{model_name}-delay-{delay}"
+    _write_cache(stem, result, "selection", identity)
 
 
 def _finish_run(metadata_path: Path, **updates: Any) -> None:
