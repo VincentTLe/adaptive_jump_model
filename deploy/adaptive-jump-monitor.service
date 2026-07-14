@@ -1,0 +1,29 @@
+[Unit]
+Description=Adaptive Jump Research Monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tle
+Group=tle
+WorkingDirectory=/home/tle/adaptive_jump_model
+EnvironmentFile=/home/tle/.config/adaptive-jump/monitor.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/tle/adaptive_jump_model/.venv/bin/adaptive-jump monitor --config /home/tle/adaptive_jump_model/research.toml
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=5s
+KillMode=process
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
