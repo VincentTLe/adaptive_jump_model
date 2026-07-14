@@ -449,6 +449,7 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--run", required=True, help="path to one run directory")
     report = commands.add_parser("report", help="report a verified sealed run")
     report.add_argument("--run", required=True, help="path to one run directory")
+    commands.add_parser("monitor").add_argument("--config", required=True)
     return parser
 
 
@@ -483,6 +484,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         if arguments.command == "report":
             print(build_report(arguments.run))
             return 0
+        if arguments.command == "monitor":
+            from adaptive_jump.monitor.server import run_monitor_server
+
+            return run_monitor_server(arguments.config)
     except (
         AcquisitionError,
         ChildEventError,
@@ -495,4 +500,3 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"adaptive-jump: {exc}", file=sys.stderr)
         return 2
     parser.error(f"unsupported command: {arguments.command}")
-    return 2

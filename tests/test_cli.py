@@ -64,6 +64,17 @@ def test_fetch_cli_reports_missing_config(capsys) -> None:
     assert "missing.toml" in capsys.readouterr().err
 
 
+def test_monitor_cli_delegates_to_the_loopback_server(monkeypatch) -> None:
+    calls = []
+    monkeypatch.setattr(
+        "adaptive_jump.monitor.server.run_monitor_server",
+        lambda config: calls.append(config) or 0,
+    )
+
+    assert main(["monitor", "--config", "research.toml"]) == 0
+    assert calls == ["research.toml"]
+
+
 def test_window_study_cli_uses_frozen_spec_without_manifest(
     monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
