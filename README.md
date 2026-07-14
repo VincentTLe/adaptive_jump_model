@@ -36,10 +36,10 @@ The live monitor is **LOCALLY OPERATIONALLY ACCEPTED**. A real canonical replay
 was enqueued, canceled, checkpointed, interrupted by monitor shutdown, resumed,
 completed, independently verified, and matched all 125 non-checkpoint hashes in
 the direct-CLI reference. Desktop, mobile, replay, charts, and the no-JavaScript
-fallback passed real Chromium acceptance. This validates the local production
-origin and ephemeral Access-JWT harness only. Real Cloudflare Tunnel, Access,
-OTP, owner/viewer routing, and remote-browser deployment remain unaccepted. The
-engineering replay is now complete, so it is no longer queueable.
+fallback passed real Chromium acceptance. The default monitor is now local-first
+and uses browser-native authentication on the loopback origin. Real Cloudflare
+Tunnel, Access, OTP, owner/viewer routing, and remote deployment remain
+unaccepted. The engineering replay is complete, so it is no longer queueable.
 
 Only `src/adaptive_jump/` is active source code. Everything under `archive/` is
 frozen provenance and must not be imported or used as a second research stack.
@@ -146,18 +146,26 @@ Its frozen contract is `research/jm-train-window-sensitivity.toml`.
 
 ## Run The Research Monitor
 
-The monitor requires Cloudflare Access and CSRF environment variables. The
-production origin always binds to `127.0.0.1:8765`:
+Local use requires no authentication environment variables. Start the monitor:
 
 ```bash
 .venv/bin/adaptive-jump monitor --config research.toml
 ```
 
-Use [`docs/monitor/deployment.md`](docs/monitor/deployment.md) for the pinned
-`cloudflared`, exact-email Access, external secret, systemd, browser, and
-operations procedure. The application retains its SQLite queue, append-only
-event journals, and mutation audit under ignored `artifacts/.monitor/`. It has
-no arbitrary-command, config-edit, upload, or delete interface.
+It binds only to `127.0.0.1:8765` and prints the URL, username `owner`, and a new
+random password. Open the printed URL and enter those credentials in the
+browser's sign-in dialog. A cloned repository behaves the same way after the
+locked monitor dependencies are installed.
+
+The application retains its SQLite queue, append-only event journals, and
+mutation audit under ignored `artifacts/.monitor/`. It can enqueue only a study
+whose registry state is `FROZEN`; a separately launched `adaptive-jump run`
+process is not automatically attached to the monitor. It has no
+arbitrary-command, config-edit, upload, or delete interface.
+
+Cloudflare is an optional remote-access deployment. Use
+[`docs/monitor/deployment.md`](docs/monitor/deployment.md) for the pinned tunnel,
+exact-email Access, external secrets, systemd, browser, and operations procedure.
 
 Start with the [beginner learning path](docs/learning/index.html). For a
 research-advisor discussion, use the

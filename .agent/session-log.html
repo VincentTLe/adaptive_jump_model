@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">74 session(s) · newest first · 2026-07-14 19:36 UTC</p>
+  <p class="sub">75 session(s) · newest first · 2026-07-14 22:27 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-14T22:27:28Z</span><span class="who">codex · GPT-5 Codex</span>
+      </div>
+      <p class="goal">Make the experiment monitor local-first so a clean clone can run it in a normal browser without Cloudflare.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>README.md (+local-first usage and scope)</code></li><li><code>deploy/monitor.env.example (+explicit Cloudflare mode)</code></li><li><code>docs/monitor/deployment.md (+optional remote deployment)</code></li><li><code>src/adaptive_jump/monitor/api.py (+authenticator-neutral HTTP protection)</code></li><li><code>src/adaptive_jump/monitor/security.py (+local Basic authenticator)</code></li><li><code>src/adaptive_jump/monitor/server.py (+local default and generated credentials)</code></li><li><code>tests/test_monitor_api.py (+auth contract)</code></li><li><code>tests/test_monitor_browser.py (+real local browser path)</code></li><li><code>tests/test_monitor_deploy.py (+explicit remote mode)</code></li><li><code>tests/test_monitor_security.py (+Basic auth tests)</code></li><li><code>tests/test_monitor_server.py (+local server tests)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>uv run pytest -q: 273 passed</li><li>uv run ruff check .: passed</li><li>uv run ruff format --check .: 65 files already formatted</li><li>uv lock --check: passed</li><li>uv pip check --python .venv/bin/python: 64 packages compatible</li><li>clean-clone uv sync --frozen --all-extras plus pytest: 273 passed</li><li>clean-clone monitor auth: anonymous 401 and authenticated owner session 200</li><li>production Chromium desktop/mobile: authenticated UI, queue/replay/compare/evidence exercised, zero page/console errors and zero horizontal overflow</li><li>git diff --check: passed</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>uncommitted</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner tests http://127.0.0.1:8765 and explicitly approves commit/push; canonical scientific subprocess acceptance still needs a newly frozen ENGINEERING/SMOKE study.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Local mode is the default and Cloudflare is optional. The current generated password is intentionally not logged. No study is currently FROZEN, so enqueue is disabled. A direct adaptive-jump run is not automatically attached to the monitor.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-14T19:35:51Z</span><span class="who">codex · GPT-5</span>

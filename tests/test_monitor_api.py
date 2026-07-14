@@ -14,6 +14,9 @@ from adaptive_jump.monitor.security import AuthenticationError, Principal
 
 
 class _Authenticator:
+    credential_header = "Cf-Access-Jwt-Assertion"
+    challenge = "Cloudflare-Access"
+
     def authenticate(self, assertion):
         if assertion == "owner-token":
             return Principal("owner@example.com", "owner")

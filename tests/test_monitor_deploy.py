@@ -21,6 +21,7 @@ def test_deployment_templates_are_fail_closed_and_secret_free() -> None:
     assert "service: http://127.0.0.1:8765" in tunnel
     assert tunnel.rstrip().endswith("service: http_status:404")
     required = (
+        "ADAPTIVE_JUMP_MONITOR_ACCESS",
         "ADAPTIVE_JUMP_ACCESS_ISSUER",
         "ADAPTIVE_JUMP_ACCESS_AUDIENCE",
         "ADAPTIVE_JUMP_OWNER_EMAIL",
@@ -29,6 +30,7 @@ def test_deployment_templates_are_fail_closed_and_secret_free() -> None:
         "ADAPTIVE_JUMP_CSRF_SECRET",
     )
     assert all(f"{name}=" in environment for name in required)
+    assert "ADAPTIVE_JUMP_MONITOR_ACCESS=cloudflare" in environment
     assert "cloudflareaccess.com" in environment and "example.com" in environment
 
 
@@ -50,5 +52,7 @@ def test_readme_documents_the_single_locked_monitor_stack() -> None:
 
     assert "uv sync --locked --extra data --extra monitor" in readme
     assert "adaptive-jump monitor --config research.toml" in readme
+    assert "Local use requires no authentication environment variables" in readme
+    assert "separately launched `adaptive-jump run`" in readme
     assert "docs/monitor/deployment.md" in readme
     assert "requirements.txt" in readme and "dependency source" in readme

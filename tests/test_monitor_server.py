@@ -10,6 +10,7 @@ import pytest
 from adaptive_jump.monitor import server
 from adaptive_jump.monitor import worker as worker_module
 from adaptive_jump.monitor.queue import QueueStore, StudyDefinition
+from adaptive_jump.monitor.security import AccessAuthenticator, LocalAuthenticator
 from adaptive_jump.monitor.server import (
     MonitorServerError,
     WorkerSupervisor,
@@ -178,7 +179,10 @@ def test_application_uses_canonical_paths_and_frozen_only_catalog(
     )
 
     application = build_monitor_application(
-        config, _environment(), worker_idle_seconds=0.01
+        config,
+        _environment(),
+        access_mode="cloudflare",
+        worker_idle_seconds=0.01,
     )
 
     assert tuple(application.services.queue.studies) == (
@@ -188,22 +192,55 @@ def test_application_uses_canonical_paths_and_frozen_only_catalog(
         tmp_path / "artifacts/.monitor/control.sqlite3"
     )
     assert application.supervisor.alive is False
+    assert isinstance(application.services.authenticator, AccessAuthenticator)
+    assert application.local_password is None
+
+    local = build_monitor_application(
+        config,
+        {},
+        local_password="correct-local-password",
+        worker_idle_seconds=0.01,
+    )
+    assert isinstance(local.services.authenticator, LocalAuthenticator)
+    assert local.local_password == "correct-local-password"
+    assert local.services.request_security.config.public_origin == (
+        "http://127.0.0.1:8765"
+    )
 
 
 def test_server_binds_only_loopback_and_rejects_invalid_setup(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
     captured = {}
-    fake = type("Application", (), {"app": object()})()
-    monkeypatch.setattr(server, "build_monitor_application", lambda _path: fake)
+    access_modes = []
+
+    def fake_build(_path, **values):
+        access_modes.append(values["access_mode"])
+        password = (
+            "generated-local-password" if values["access_mode"] == "local" else None
+        )
+        return type("Application", (), {"app": object(), "local_password": password})()
+
+    monkeypatch.setattr(server, "build_monitor_application", fake_build)
     monkeypatch.setattr(
         server.uvicorn, "run", lambda app, **values: captured.update(values)
     )
 
     assert run_monitor_server(ROOT / "research.toml", 8765) == 0
+    output = capsys.readouterr().out
+    assert "http://127.0.0.1:8765" in output
+    assert "Username: owner" in output and "generated-local-password" in output
+    assert access_modes == ["local"]
     assert captured["host"] == "127.0.0.1" and captured["port"] == 8765
     assert captured["proxy_headers"] is False
+
+    monkeypatch.setenv("ADAPTIVE_JUMP_MONITOR_ACCESS", "cloudflare")
+    assert run_monitor_server(ROOT / "research.toml", 8765) == 0
+    assert access_modes[-1] == "cloudflare"
+    assert capsys.readouterr().out == ""
     with pytest.raises(MonitorServerError, match="port"):
         run_monitor_server(ROOT / "research.toml", 0)
+    with pytest.raises(MonitorServerError, match="access mode"):
+        run_monitor_server(ROOT / "research.toml", access_mode="public")
     with pytest.raises(MonitorServerError, match="research.toml"):
         build_monitor_application(tmp_path / "missing.toml", _environment())

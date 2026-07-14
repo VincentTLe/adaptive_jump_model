@@ -1,8 +1,10 @@
 # Monitor Deployment
 
-This procedure deploys the monitor as a private, authenticated web application.
-The Python origin listens only on `127.0.0.1:8765`; Cloudflare Tunnel is the
-only remote ingress. Runtime files stay under ignored `artifacts/.monitor/`.
+This optional procedure deploys the monitor for authenticated remote access.
+Normal local use needs no Cloudflare account and is documented in the README.
+In Cloudflare mode the Python origin listens only on `127.0.0.1:8765`; the
+tunnel is the only remote ingress. Runtime files stay under ignored
+`artifacts/.monitor/`.
 
 ## 1. Install The Locked Python Environment
 
@@ -79,7 +81,9 @@ install -m 0600 deploy/monitor.env.example /home/tle/.config/adaptive-jump/monit
 openssl rand -base64 48 | tr '+/' '-_' | tr -d '=\n'
 ```
 
-Replace every placeholder in the copied environment file. The public origin
+Replace every placeholder in the copied environment file. Keep
+`ADAPTIVE_JUMP_MONITOR_ACCESS=cloudflare`; without this explicit setting the
+monitor intentionally starts in local mode. The public origin
 must exactly match the HTTPS hostname, with no path or trailing slash. The owner
 email and each comma-separated viewer email must exactly match Access claims.
 Use the final command's output as `ADAPTIVE_JUMP_CSRF_SECRET`.
@@ -123,8 +127,8 @@ Open the HTTPS hostname and authenticate with an exact approved email. Confirm:
    matching leftover process before an interrupted run can be resumed.
 
 For VS Code, run **Simple Browser: Show** from the Command Palette and enter the
-same HTTPS hostname. Do not forward port 8765 publicly; the local origin cannot
-authenticate a browser without Cloudflare's signed assertion header.
+same HTTPS hostname. Do not forward the Cloudflare-mode origin publicly; it
+expects the tunnel to supply a signed Access assertion.
 
 Operational commands:
 

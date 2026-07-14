@@ -16,10 +16,17 @@ from adaptive_jump.monitor.events import ResearchEvent
 from adaptive_jump.monitor.evidence import OutcomeLocked
 from adaptive_jump.monitor.http_security import HttpSecurityConfig, RequestSecurity
 from adaptive_jump.monitor.queue import QueueStore, StudyDefinition
-from adaptive_jump.monitor.security import AuthenticationError, Principal
+from adaptive_jump.monitor.security import (
+    AuthenticationError,
+    LocalAuthenticator,
+    Principal,
+)
 
 
 class _Authenticator:
+    credential_header = "Cf-Access-Jwt-Assertion"
+    challenge = "Cloudflare-Access"
+
     def authenticate(self, assertion):
         if assertion == "owner-token":
             return Principal("owner@example.com", "owner")
@@ -102,7 +109,7 @@ def _free_port() -> int:
 
 
 @contextmanager
-def _monitor_origin(tmp_path: Path):
+def _monitor_origin(tmp_path: Path, authenticator=None):
     port = _free_port()
     origin = f"http://127.0.0.1:{port}"
     runtime = tmp_path / "artifacts/.monitor"
@@ -216,22 +223,26 @@ def _monitor_origin(tmp_path: Path):
         events=events,
         evidence=_Evidence(),
         audit=AuditStore(runtime),
-        authenticator=_Authenticator(),
+        authenticator=authenticator or _Authenticator(),
         request_security=RequestSecurity(
             HttpSecurityConfig(origin, b"x" * 32), nonce_factory=lambda: "fixture"
         ),
     )
+    app = create_app(services)
+
+    @app.get("/healthz")
+    async def health():
+        return {"status": "ok"}
+
     server = uvicorn.Server(
-        uvicorn.Config(
-            create_app(services), host="127.0.0.1", port=port, log_level="error"
-        )
+        uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error")
     )
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         try:
-            with urlopen(origin, timeout=0.2) as response:
+            with urlopen(f"{origin}/healthz", timeout=0.2) as response:
                 if response.status == 200:
                     break
         except OSError:
@@ -358,7 +369,9 @@ def test_monitor_ui_in_real_chromium_desktop_mobile_and_no_js(tmp_path: Path) ->
         viewer.close()
 
         no_js = browser.new_context(
-            viewport={"width": 390, "height": 844}, java_script_enabled=False
+            viewport={"width": 390, "height": 844},
+            java_script_enabled=False,
+            extra_http_headers={"Cf-Access-Jwt-Assertion": "owner-token"},
         )
         _block_external(no_js, origin)
         fallback = no_js.new_page()
@@ -368,6 +381,37 @@ def test_monitor_ui_in_real_chromium_desktop_mobile_and_no_js(tmp_path: Path) ->
         )
         _assert_no_horizontal_overflow(fallback)
         no_js.close()
+        browser.close()
+
+
+def test_local_owner_opens_the_monitor_with_browser_basic_auth(tmp_path: Path) -> None:
+    password = "correct-local-password"
+    authenticator = LocalAuthenticator(password)
+    with (
+        _monitor_origin(tmp_path, authenticator) as (origin, _),
+        sync_playwright() as pw,
+    ):
+        browser = pw.chromium.launch(headless=True)
+
+        anonymous = browser.new_page()
+        response = anonymous.goto(origin)
+        assert response is not None and response.status == 401
+        anonymous.close()
+
+        context = browser.new_context(
+            http_credentials={"username": "owner", "password": password}
+        )
+        _block_external(context, origin)
+        page = context.new_page()
+        errors = _watch_errors(page)
+        response = page.goto(origin, wait_until="domcontentloaded")
+        assert response is not None and response.status == 200
+        expect(page.locator("#identity")).to_have_text("local-owner@localhost · owner")
+        page.get_by_role("button", name="Queue").click()
+        expect(page.get_by_role("button", name="Enqueue")).to_be_enabled()
+        _assert_no_horizontal_overflow(page)
+        assert errors == []
+        context.close()
         browser.close()
 
 

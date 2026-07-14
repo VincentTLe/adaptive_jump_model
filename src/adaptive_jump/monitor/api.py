@@ -24,9 +24,8 @@ from adaptive_jump.monitor.http_security import (
 )
 from adaptive_jump.monitor.queue import QueueError, QueueStore
 from adaptive_jump.monitor.security import (
-    ACCESS_ASSERTION_HEADER,
-    AccessAuthenticator,
     AuthenticationError,
+    Authenticator,
     Principal,
 )
 from adaptive_jump.monitor.sse import StreamError, resume_sequence, stream_job_events
@@ -55,7 +54,7 @@ class MonitorServices:
     events: EventStore
     evidence: EvidenceStore
     audit: AuditStore
-    authenticator: AccessAuthenticator
+    authenticator: Authenticator
     request_security: RequestSecurity
 
 
@@ -78,19 +77,26 @@ def create_app(services: MonitorServices, *, lifespan=None) -> FastAPI:
 
     @app.middleware("http")
     async def secure_responses(request: Request, call_next):
-        if request.url.path.startswith(API_PREFIX):
-            assertion = request.headers.get(ACCESS_ASSERTION_HEADER)
+        if request.url.path == "/healthz":
+            response = await call_next(request)
+        else:
+            credential = request.headers.get(
+                services.authenticator.credential_header, ""
+            )
             try:
-                user = services.authenticator.authenticate(assertion or "")
+                user = services.authenticator.authenticate(credential)
             except AuthenticationError:
                 response = JSONResponse(
                     status_code=401,
                     content={"detail": "authenticated monitor access is required"},
-                    headers={"WWW-Authenticate": "Cloudflare-Access"},
+                    headers={"WWW-Authenticate": services.authenticator.challenge},
                 )
             else:
                 request.state.principal = user
-                if request.method not in _SAFE_METHODS:
+                if (
+                    request.url.path.startswith(API_PREFIX)
+                    and request.method not in _SAFE_METHODS
+                ):
                     try:
                         services.request_security.require_origin(
                             request.headers.get("Origin")
@@ -123,8 +129,6 @@ def create_app(services: MonitorServices, *, lifespan=None) -> FastAPI:
                         response = await call_next(request)
                 else:
                     response = await call_next(request)
-        else:
-            response = await call_next(request)
         for name, value in SECURITY_HEADERS.items():
             response.headers[name] = value
         if request.url.path.startswith(API_PREFIX):
