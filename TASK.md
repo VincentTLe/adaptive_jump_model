@@ -1,70 +1,125 @@
-# Task: JM Training-Window Sensitivity
+# Task: Live Research Monitor
 
 ## Identity
 
-- `task_id`: `jm-train-window-sensitivity-001`
-- `status`: `complete`
+- `task_id`: `live-research-monitor-001`
+- `status`: `active`
 - `target_branch`: `cleanup/research-protocol`
-- `starting_ref`: `ee1ad542ce2506a97667db186e0391343eabc926`
-- `primary_class`: `EXPLORATORY`
-- `parent_run`: `fixed-baselines-8adb330565d6-3636939b525d-e9614112b234`
-- `extension_access`: forbidden
+- `starting_ref`: `d525c0d5f979a970e21735e31b9bb4c5043f4b8d`
+- `primary_class`: `ENGINEERING / SMOKE`
+- `scientific_runs`: forbidden
+- `data_downloads`: forbidden
+- `post_2023_access`: forbidden
 - `adaptive_experiment`: forbidden
-- `experiment_registry`: `research/experiment_registry.jsonl`
 
-The owner approved this task on 2026-07-13. The machine-readable source of
-truth is `research/jm-train-window-sensitivity.toml`.
+The owner approved the implementation plan and its structural dependencies on
+2026-07-13. This task adds operational observability around the canonical daily
+research package. It does not create scientific evidence or change any frozen
+experiment.
 
-## Question And Scope
+## Objective And Success Criteria
 
-Test whether increasing only the fixed JM estimation and online-inference
-window from the paper's 3,000 observations to 4,000 improves out-of-sample
-Sharpe on the frozen v7 free-source proxies through 2023. Keep HMM at 3,000
-observations and preserve every other v7 feature, selection, timing, cost,
-grid, state-label, and metric rule.
+Build one English-language control center that lets the owner queue, observe,
+cancel, resume, replay, and verify registered frozen studies. The advisor may
+inspect the same protocol-safe evidence but cannot mutate any job or queue.
 
-This is a longer-than-paper sensitivity, not a paper replication. It must use
-the exact verified v7 config, data manifest, and baseline artifact. No data may
-be downloaded and no post-2023 value may be read.
+Success requires all of the following:
 
-## Evaluation Contract
+- one active heavy worker with a persistent, reorderable queue;
+- append-only runtime events with reconnectable server-sent streaming;
+- exact checkpoint/resume for long JM, HMM, selection, and bootstrap stages;
+- live features, candidate states, selected lambda, signal, delayed position,
+  CV surface, boundary status, resource usage, and provisional ETA;
+- server-side outcome locks until the canonical verifier and research gate
+  authorize metrics;
+- read-only replay of the completed v7 and JM-4000 artifacts;
+- authenticated remote access through Cloudflare Tunnel and Access;
+- real-browser desktop/mobile acceptance and clean-clone setup instructions.
 
-- Compare B&H, HMM-3000, JM-3000, and JM-4000 on identical dates within each
-  market and delay after JM-4000 becomes eligible.
-- Primary estimand: `Sharpe(JM-4000) - Sharpe(JM-3000)` at delay 1.
-- Secondary evidence: all frozen metrics, cash fraction, switch count,
-  recovery participation, and delays 5/10.
-- Paired stationary bootstrap: 10,000 draws, seed 20260713, mean block 60,
-  sensitivities 20/120, using jointly resampled aligned daily paths.
-- Call improvement consistent only if the primary Sharpe delta is positive in
-  all three markets; otherwise report mixed or no consistent improvement.
-- The 5% upper-lambda boundary gate remains fail-closed. Do not expand the
-  grid after seeing this experiment.
+## Locked Architecture
 
-## Deliverables And Gates
+- Add `adaptive-jump monitor --config research.toml`; keep every existing CLI
+  command and public output compatible.
+- Use FastAPI and Uvicorn for a loopback-only origin, vanilla ES modules for
+  the browser, Apache ECharts vendored for offline charts, SQLite for control
+  state, append-only JSONL for events, and SSE plus REST for communication.
+- Launch scientific work only through the canonical CLI in a subprocess. The
+  monitor must not duplicate model, selection, backtest, metric, or verifier
+  logic.
+- Keep runtime state under ignored `artifacts/.monitor/`. It is operational
+  telemetry, never scientific evidence and never an input to a claim.
+- Accept only code-registered study IDs whose latest registry state is
+  `FROZEN`. Never accept arbitrary commands, paths, config edits, or uploads.
+- Bind only `127.0.0.1`. Cloudflare Tunnel is the sole remote ingress.
+- Validate the Cloudflare Access assertion signature, issuer, audience,
+  algorithm, expiry, and email at the origin. Enforce owner/viewer roles on
+  every API route, not only in the interface.
+- Use exact-email OTP access by default. Secrets, audience IDs, tunnel
+  credentials, and role email addresses remain outside Git.
+- Keep runtime history indefinitely. No delete API or delete control is in
+  scope.
 
-Use the canonical package and CLI, not a parallel script. Store generated data
-only under ignored `artifacts/jm-train-window-sensitivity/`; seal config, parent
-identity, states, refits, CV surfaces, aligned trades, metrics, bootstrap rows,
-claim, and inventory. Generate an English HTML report only after independent
-verification.
+## Approved Dependencies
 
-Before the real run: verify the parent artifact, prove the 3,000-day control
-matches v7, pass focused tests, full pytest, Ruff, lock and package checks. A
-completed negative or mixed result is valid. Stop after report/browser review;
-the separate 2026 extension requires a new approved task.
+The following additions are authorized and must be exact-lockfile pinned:
 
-## Completed Outcome
+- runtime optional group: FastAPI 0.139.0, Uvicorn 0.51.0, PyJWT with its
+  cryptography extra 2.13.0, and psutil 7.2.2;
+- development group: Playwright 1.61.0;
+- browser asset: Apache ECharts 6.1.0, served locally with its license, source
+  URL, release identity, and SHA-256 manifest;
+- deployment binary: `cloudflared`, installed outside the package from an
+  official pinned release after its SHA-256 is checked.
 
-- Sealed run: `jm-window-cd9ac0b9d7a6-3636939b525d-6c19911401ad`
-- Runtime: 46 minutes 4 seconds; peak resident memory: 213,776 KiB.
-- Independent verification: 51 files and 9 boundary rows verified; zero metric
-  or bootstrap rows were exposed.
-- US delay 1 passed the lambda boundary at 2.05%. US delays 5/10 selected the
-  upper edge in 5.48% of months. Japan selected it in 5.47%-6.25% of months.
-  Germany selected it in 31.51%-37.67% of months.
-- Frozen conclusion: `JM-4000 upper-lambda boundary requires a new experiment`.
+Do not add MLflow, Aim, Prefect, a frontend framework, a Node build system,
+Docker, Redis, a second database, or a second research package.
 
-The experiment therefore did not estimate the primary Sharpe delta. Expanding
-the lambda grid after seeing this result is forbidden inside this experiment.
-Any grid expansion or 2026 extension requires a separately frozen task.
+## Scientific And Security Boundaries
+
+- Existing sealed runs remain immutable and are replayed read-only. They must
+  not be rerun under the new instrumentation code SHA.
+- Observer and checkpoint hooks default to no-op. Differential tests must show
+  that uninterrupted result-bearing outputs are unchanged.
+- Features, states, validation choices, signal, scheduled position, and gate
+  diagnostics may be shown during a frozen run. Realized OOS returns, wealth,
+  Sharpe, metrics, bootstrap claims, and claim text remain backend-locked until
+  `metrics_opened=true` and canonical verification succeeds.
+- A boundary failure is a valid terminal research state, not a software error.
+- Missing, expired, wrongly signed, wrong-issuer, or wrong-audience Access
+  assertions fail closed. Viewer mutations return `403`; locked outcomes
+  return `423`.
+- Origin checks, signed CSRF tokens, same-origin CSP, no CORS, path allowlists,
+  and an append-only mutation audit are required before remote deployment.
+
+## Write Boundary
+
+Authorized tracked paths are:
+
+- `TASK.md`, the completed-task archive, `README.md`, `.gitignore`,
+  `pyproject.toml`, and `uv.lock`;
+- `src/adaptive_jump/cli.py`, `models.py`, `walkforward.py`, `inference.py`,
+  `window_runner.py`, and a single new `src/adaptive_jump/monitor/` package;
+- focused monitor/checkpoint tests under `tests/`;
+- authored English monitor documentation under `docs/monitor/` and deployment
+  templates under `deploy/`;
+- the two procedural `.agent/` handoff files under the standing exception.
+
+Do not modify `research.toml`, frozen study TOML, experiment registry, market
+data, sealed artifacts, reports, learning textbook, archive provenance, model
+mathematics, grids, state semantics, costs, delays, metrics, gates, or claims.
+
+## Milestones And Verification
+
+1. Freeze this contract and lock the approved setup dependencies.
+2. Add the event contract and no-op observer with differential tests.
+3. Add identity-bound checkpoints and exact resume tests.
+4. Add the one-worker queue, cancellation, recovery, and resource telemetry.
+5. Add authenticated REST/SSE APIs and server-side scientific locks.
+6. Build the live, replay, comparison, and evidence interface.
+7. Add Cloudflare/systemd deployment and run full acceptance.
+
+Each milestone is one reviewed commit of at most about 400 changed lines and 15
+files. Run focused tests first, then full pytest, Ruff, lock, package, archive,
+paper-hash, and frozen-run verification where relevant. UI milestones require
+real Chromium checks at 1440x900 and 390x844. No scientific run, data fetch,
+extension, or claim is authorized by this task.
