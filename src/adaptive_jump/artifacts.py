@@ -135,9 +135,16 @@ def verify_run(run: str | Path) -> dict[str, Any]:
     run_dir = Path(run).resolve()
     if not run_dir.is_dir():
         raise ArtifactError(f"run directory does not exist: {run_dir}")
+    metadata = read_json(run_dir / "run.json")
+    study_kind = metadata.get("study_kind")
+    if study_kind == "jm_train_window_sensitivity":
+        from adaptive_jump.window_verifier import verify_window_run
+
+        return verify_window_run(run_dir)
+    if study_kind is not None:
+        raise ArtifactError(f"unsupported study kind: {study_kind}")
     verify_inventory(run_dir)
     inventory = read_json(run_dir / "inventory.json").get("files")
-    metadata = read_json(run_dir / "run.json")
     config = _verify_identity(run_dir, metadata)
     boundary_rows = _verify_boundaries(run_dir, metadata, config)
 

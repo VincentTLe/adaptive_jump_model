@@ -10,6 +10,7 @@ import pytest
 from adaptive_jump.artifacts import (
     ArtifactError,
     verify_inventory,
+    verify_run,
     write_inventory,
     write_json,
 )
@@ -303,6 +304,21 @@ def test_window_verifier_accepts_closed_boundary_failure(
 
     assert receipt["status"] == "boundary_failed"
     assert receipt["metric_rows"] == 0
+
+
+def test_generic_verifier_dispatches_window_study(tmp_path: Path, monkeypatch) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    write_json(
+        run_dir / "run.json",
+        {"study_kind": "jm_train_window_sensitivity"},
+    )
+    expected = {"status": "complete", "study_kind": "jm_train_window_sensitivity"}
+    monkeypatch.setattr(
+        "adaptive_jump.window_verifier.verify_window_run", lambda _run: expected
+    )
+
+    assert verify_run(run_dir) == expected
 
 
 def test_window_verifier_recomputes_model_evidence_files(tmp_path: Path) -> None:

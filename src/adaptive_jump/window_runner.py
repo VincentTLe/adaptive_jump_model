@@ -14,7 +14,6 @@ from adaptive_jump.artifacts import (
     ArtifactError,
     read_json,
     sha256_file,
-    verify_inventory,
     verify_run,
     write_inventory,
     write_json,
@@ -69,7 +68,9 @@ def run_window_sensitivity(config: ResearchConfig, spec: WindowStudySpec) -> Pat
             raise ArtifactError("existing JM-window run identity does not match")
         _verify_run_locks(run_dir, config, spec)
         if metadata.get("status") in {"complete", "boundary_failed"}:
-            verify_inventory(run_dir)
+            from adaptive_jump.window_verifier import verify_window_run
+
+            verify_window_run(run_dir)
             return run_dir
     else:
         _create_run(

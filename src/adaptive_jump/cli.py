@@ -52,6 +52,8 @@ from adaptive_jump.walkforward import (
     build_baseline_study,
     open_baseline_metrics,
 )
+from adaptive_jump.window_runner import run_window_sensitivity
+from adaptive_jump.window_spec import load_window_spec
 
 
 @dataclass(frozen=True)
@@ -408,7 +410,11 @@ def build_parser() -> argparse.ArgumentParser:
     fetch = commands.add_parser("fetch", help="acquire the frozen source bundle")
     fetch.add_argument("--config", required=True, help="path to research.toml")
     run = commands.add_parser("run", help="execute a frozen research study")
-    run.add_argument("--study", required=True, choices=["replication"])
+    run.add_argument(
+        "--study",
+        required=True,
+        choices=["replication", "train-window-sensitivity"],
+    )
     run.add_argument("--config", required=True, help="path to research.toml")
     run.add_argument("--manifest", help="exact acquisition manifest path")
     verify = commands.add_parser("verify", help="verify a sealed research run")
@@ -428,9 +434,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if arguments.command == "run":
             config = load_config(arguments.config)
-            artifact = run_replication(
-                config, load_frozen_data(config, arguments.manifest)
-            )
+            if arguments.study == "replication":
+                artifact = run_replication(
+                    config, load_frozen_data(config, arguments.manifest)
+                )
+            else:
+                if arguments.manifest:
+                    raise RunError("--manifest is only valid for replication")
+                spec_path = (
+                    config.path.parent / "research/jm-train-window-sensitivity.toml"
+                )
+                artifact = run_window_sensitivity(
+                    config, load_window_spec(spec_path, config)
+                )
             print(artifact)
             return 0
         if arguments.command == "verify":

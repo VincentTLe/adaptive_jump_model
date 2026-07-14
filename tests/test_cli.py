@@ -64,6 +64,51 @@ def test_fetch_cli_reports_missing_config(capsys) -> None:
     assert "missing.toml" in capsys.readouterr().err
 
 
+def test_window_study_cli_uses_frozen_spec_without_manifest(
+    monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    expected = ROOT / "artifacts/window-fixture"
+    calls = []
+
+    def fake_run(config, spec):
+        calls.append((config, spec))
+        return expected
+
+    monkeypatch.setattr("adaptive_jump.cli.run_window_sensitivity", fake_run)
+
+    assert (
+        main(
+            [
+                "run",
+                "--study",
+                "train-window-sensitivity",
+                "--config",
+                str(ROOT / "research.toml"),
+            ]
+        )
+        == 0
+    )
+    assert Path(capsys.readouterr().out.strip()) == expected
+    assert calls[0][1].challenger_window == 4000
+
+
+def test_window_study_cli_rejects_manifest_override(capsys) -> None:
+    result = main(
+        [
+            "run",
+            "--study",
+            "train-window-sensitivity",
+            "--config",
+            str(ROOT / "research.toml"),
+            "--manifest",
+            "other.json",
+        ]
+    )
+
+    assert result == 2
+    assert "only valid for replication" in capsys.readouterr().err
+
+
 def _manifest_fixture(tmp_path: Path) -> tuple[Path, Path]:
     config_path = tmp_path / "research.toml"
     config_path.write_bytes((ROOT / "research.toml").read_bytes())
