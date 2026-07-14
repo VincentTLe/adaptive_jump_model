@@ -7,12 +7,15 @@ import pytest
 
 from adaptive_jump.backtest import apply_signal, buy_and_hold
 from adaptive_jump.config import load_config
+from adaptive_jump.models import FixedJMResult
+from adaptive_jump.walkforward import SelectionResult
 from adaptive_jump.window_spec import load_window_spec
 from adaptive_jump.window_study import (
     COMPARISON_MODELS,
     WindowStudyError,
     align_comparison_paths,
     bootstrap_rows,
+    build_window_market_study,
     comparison_metrics,
     window_claim,
 )
@@ -48,6 +51,46 @@ def _paths(periods: int = 320) -> dict[str, pd.DataFrame]:
             for model, signal in signals.items()
         },
     }
+
+
+def test_market_study_changes_only_jm_fit_window(monkeypatch) -> None:
+    config, spec = _contract()
+    dates = pd.bdate_range("2020-01-02", periods=4)
+    frame = pd.DataFrame(
+        {
+            "date": dates,
+            "equity_simple": 0.001,
+            "cash_return": 0.0001,
+        }
+    )
+    states = pd.DataFrame(0.0, index=dates, columns=config.jm_protocol.lambda_grid)
+    seen_windows = []
+    seen_delays = []
+
+    def fake_states(_frame, model_protocol, jm_protocol):
+        seen_windows.append(model_protocol.fit_window)
+        assert jm_protocol is config.jm_protocol
+        return FixedJMResult(states, pd.DataFrame())
+
+    def fake_selection(*_args, delay_trading_days, **_kwargs):
+        seen_delays.append(delay_trading_days)
+        return SelectionResult(
+            signal=pd.Series(1.0, index=dates),
+            choices=pd.DataFrame({"decision_date": [dates[-1]], "selected": [5.0]}),
+            surface=pd.DataFrame(),
+            candidate_returns=pd.DataFrame(index=dates),
+        )
+
+    monkeypatch.setattr("adaptive_jump.window_study.fixed_jm_states", fake_states)
+    monkeypatch.setattr(
+        "adaptive_jump.window_study.select_monthly_candidate", fake_selection
+    )
+
+    study = build_window_market_study(frame, config, spec, oos_start=dates[0].date())
+
+    assert seen_windows == [4000]
+    assert tuple(seen_delays) == (1, 5, 10)
+    assert study.boundaries["passed"].all()
 
 
 def test_alignment_uses_identical_complete_post_eligibility_rows() -> None:

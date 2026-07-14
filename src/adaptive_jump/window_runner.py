@@ -272,7 +272,8 @@ def _read_parent_features(parent_dir: Path, market: str, cutoff: date) -> pd.Dat
         raise ArtifactError(f"{market}: parent features are incomplete")
     dates = pd.to_datetime(frame["date"], errors="raise")
     if (
-        dates.duplicated().any()
+        dates.isna().any()
+        or dates.duplicated().any()
         or not dates.is_monotonic_increasing
         or dates.max().date() > cutoff
     ):
