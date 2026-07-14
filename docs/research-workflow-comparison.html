@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>Three Research Workflows: Legacy, Current, and Paper</title>
+  <title>Advisor Brief: Adaptive Jump Model Research Status</title>
   <style>
     :root {
       --bg:#0d1110; --surface:#171d1a; --surface2:#202823; --line:#3a4740;
@@ -83,9 +83,9 @@
 <body>
   <header><div>
     <div class="eyebrow">Adaptive Jump Model Research Audit</div>
-    <h1>Three workflows explain why our result differs from the paper</h1>
-    <p class="lede">This document compares what the old repository actually ran, what the current verified pipeline runs, and what Shu, Yu, and Mulvey describe. It is designed for a discussion with an academic advisor.</p>
-    <div class="answer"><strong>Bottom line:</strong> the legacy result was not a paper replication. The current result is internally reproducible, but it is still a proxy replication with a later test period. Therefore, the current negative result cannot confirm or reject the paper until the original series identifiers and several implementation details are resolved.</div>
+    <h1>What changed, what we tested, and what should happen next</h1>
+    <p class="lede">A meeting brief for discussing the Adaptive Jump Model project after auditing the earlier P0/P1/P2 work, completing a proxy replication, and testing a longer JM training window.</p>
+    <div class="answer"><strong>Bottom line:</strong> the earlier positive-looking outputs were not comparable to the paper. The rebuilt pipeline is reproducible, but its free-source proxies begin too late for an exact replication. Fixed JM did not reproduce the paper's directional ranking on those proxies. A follow-up 4,000-day experiment then reached its preregistered lambda-grid boundary, so it correctly stopped before Sharpe was examined.</div>
     <div class="legend" aria-label="Diagram legend">
       <span class="verified"><i class="dot"></i>Verified or aligned</span>
       <span class="proxy"><i class="dot"></i>Proxy or unresolved</span>
@@ -95,6 +95,20 @@
   </div></header>
 
   <main>
+    <section aria-labelledby="meeting-status">
+      <h2 id="meeting-status">Meeting status in three observations</h2>
+      <div class="outcome">
+        <div><b class="defect">Legacy corrected</b>P0 used a different protocol, P1 extended an unsettled baseline, and the P2 mathematical claim was withdrawn.</div>
+        <div><b class="proxy">0 / 3 markets</b>The verified v7 proxy replication did not pass the paper-inspired directional gate. This does not refute the paper.</div>
+        <div><b class="proxy">8 / 9 boundaries</b>The 4,000-day JM follow-up selected the largest lambda too often, so no new Sharpe or bootstrap result was opened.</div>
+      </div>
+      <div class="finding-grid">
+        <div class="finding good"><strong>What has genuinely advanced</strong><p>Data and protocol choices are frozen before results; signals are causal; runs carry hashes and checkpoints; a verifier independently reconstructs boundaries, accounting, metrics, and claims.</p></div>
+        <div class="finding bad"><strong>What has not happened</strong><p>No adaptive-lambda experiment and no 2024-2026 model extension have run. The live monitor is code-complete but has not passed a canonical operational-acceptance run.</p></div>
+      </div>
+      <div class="callout"><strong>Decisions to ask the advisor:</strong> Should exact replication wait for the authors' series/code? Should the next frozen experiment expand the 4,000-day lambda grid? May adaptive and 2026 work proceed as a separately labelled exploratory proxy study if exact data remain unavailable?</div>
+    </section>
+
     <section>
       <h2>Workflow 1: the archived legacy project</h2>
       <p>The old project contains two successive research directions. Both are preserved for provenance, but neither is active.</p>
@@ -154,6 +168,24 @@
     </section>
 
     <section>
+      <h2>Completed follow-up: test a longer JM training window</h2>
+      <p>This experiment directly tested the proposed explanation that 3,000 observations might be too short. It changed only fixed JM's trailing window from 3,000 to 4,000 observations and retained the sealed v7 data, HMM control, costs, delays, metrics, and gates.</p>
+      <div class="workflow">
+        <div class="node blue"><span class="tag">Hypothesis</span><strong>More history may stabilize JM</strong><p>Compare JM-4,000 with the sealed JM-3,000 control, without changing the paper-shaped benchmark.</p></div>
+        <div class="node green"><span class="tag">Freeze</span><strong>One variable changed</strong><p>The task, grid, primary estimand, tie rules, bootstrap, and stop conditions were fixed before the run.</p></div>
+        <div class="node green"><span class="tag">Run</span><strong>46 minutes, three markets</strong><p>The run produced 51 verified files and nine market-delay boundary rows.</p></div>
+        <div class="node red"><span class="tag">Gate</span><strong>Upper lambda selected</strong><p>The 5% boundary rule failed in 8 of 9 rows, especially Germany at 31.51%-37.67%.</p></div>
+        <div class="node amber"><span class="tag">Result</span><strong>Performance remains sealed</strong><p>Zero metric and bootstrap rows were exposed. A wider grid requires a new frozen experiment.</p></div>
+      </div>
+      <div class="outcome">
+        <div><b class="verified">1 / 9 passed</b>US delay 1 selected the upper edge in only 2.05% of months.</div>
+        <div><b class="defect">8 / 9 failed</b>Other rows reached 5.47%-37.67%, above the preregistered 5% limit.</div>
+        <div><b class="control">No post-hoc Sharpe</b>The gate prevented a favorable or unfavorable performance story after observing the boundary.</div>
+      </div>
+      <div class="callout"><strong>Scientific interpretation:</strong> longer training has been tested, but its performance effect is not yet identified. The observed result says the current lambda grid is inadequate for JM-4,000; it does not say that a longer window helps or hurts returns.</div>
+    </section>
+
+    <section>
       <h2>Workflow 3: the paper as documented</h2>
       <p>This is the strongest reconstruction supported by the paper. Amber text marks information that is not sufficiently disclosed for exact reproduction.</p>
       <div class="workflow">
@@ -206,11 +238,12 @@
 
     <section>
       <h2>A concise explanation for an academic advisor</h2>
-      <div class="quote">"The first repository produced useful model demos, but it did not implement the paper's experiment. We rebuilt the study around a frozen, causal, auditable protocol. That new pipeline is reproducible, yet free data force a later out-of-sample period and proxy definitions. Fixed JM does not reproduce the paper's ranking on those proxies. We therefore report a proxy non-replication, not a contradiction, and we are asking the authors for exact series identifiers and implementation details before testing any adaptive extension."</div>
+      <div class="quote">"At our previous meeting I showed preliminary P0/P1/P2 outputs. I later found that those experiments did not implement the paper's protocol closely enough, so I archived them and rebuilt the study around frozen, causal, auditable rules. The free-source proxy replication did not reproduce the paper's ranking. I then tested the longer-training-window hypothesis, but the lambda grid reached its preregistered boundary in eight of nine cases, so the protocol stopped before performance metrics were examined. I now need to decide whether to obtain the original data, expand that grid in a new experiment, or define adaptive and 2026 work as a separate exploratory proxy study."</div>
       <div class="talk-grid">
-        <div class="talk"><strong>Safe to say</strong><p>The legacy claim was not comparable; current v7 is internally verified; the proxy gate failed; exact reproduction remains unresolved.</p></div>
-        <div class="talk"><strong>Not safe to say</strong><p>The paper is wrong, adaptive JM fails, the models are equivalent, or changing parameters after seeing the result would fix replication.</p></div>
+        <div class="talk"><strong>Safe to say</strong><p>The legacy claim was not comparable; v7 is internally verified; the proxy gate failed; longer training was attempted but reached a selection boundary; exact reproduction remains unresolved.</p></div>
+        <div class="talk"><strong>Not safe to say</strong><p>The paper is wrong, longer training failed on performance, adaptive JM fails, the models are equivalent, or changing parameters after seeing results would repair replication.</p></div>
       </div>
+      <div class="callout"><strong>Monitor status:</strong> present it only as tested engineering infrastructure. It has not yet completed a canonical model subprocess through cancel, restart, resume, verifier, and artifact-parity acceptance; Cloudflare deployment is also pending.</div>
     </section>
 
     <section>
@@ -219,16 +252,21 @@
         <li><a href="../2402.05272v3.pdf">Shu, Yu, and Mulvey paper PDF</a></li>
         <li><a href="../research.toml">Frozen current protocol: research.toml v7</a></li>
         <li><a href="../archive/completed-tasks/fixed-baselines-001.md">Completed v7 task contract</a></li>
+        <li><a href="../archive/completed-tasks/jm-train-window-sensitivity-001.md">Completed 4,000-day task contract</a></li>
+        <li><a href="../TASK.md">Frozen local monitor acceptance task</a></li>
         <li><a href="../archive/pre-audit-daily/docs/HANDOFF_NEW_CHAT.md">Claude-authored pre-audit handoff</a></li>
         <li><a href="../archive/pre-audit-daily/scripts/p0_daily_baseline.py">Archived daily P0 script</a></li>
         <li><a href="../archive/pre-audit-daily/scripts/p1_adaptive_lambda.py">Archived daily P1 script</a></li>
         <li><a href="../archive/pre-audit-daily/scripts/p2_asymmetric.py">Archived withdrawn P2 script</a></li>
         <li><a href="../archive/legacy-minute/README.md">Frozen minute-pipeline status</a></li>
+        <li><a href="../artifacts/reports/fixed-baselines-8adb330565d6-3636939b525d-e9614112b234/report.html">Generated verified v7 report (local)</a></li>
+        <li><a href="../artifacts/reports/jm-window-cd9ac0b9d7a6-3636939b525d-6c19911401ad/report.html">Generated 4,000-day report (local)</a></li>
         <li><code>artifacts/fixed-baselines/fixed-baselines-8adb330565d6-3636939b525d-e9614112b234</code></li>
+        <li><code>artifacts/jm-train-window-sensitivity/jm-window-cd9ac0b9d7a6-3636939b525d-6c19911401ad</code></li>
       </ul>
     </section>
   </main>
 
-  <footer>Evidence frozen through July 12, 2026. This page changes no model, data, metric, gate, or scientific conclusion.</footer>
+  <footer>Meeting brief updated July 14, 2026. It changes no model, data, metric, gate, or scientific conclusion.</footer>
 </body>
 </html>
