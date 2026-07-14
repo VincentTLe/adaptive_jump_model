@@ -176,9 +176,11 @@ function renderDecisions(events) {
   const body = $("state-body");
   body.replaceChildren();
   const rows = new Map();
-  events.filter((event) => event.kind === "terminal_state").forEach((event) => {
-    const states = event.payload.states || [{ candidate: "--", state: event.payload.state }];
-    states.forEach((entry) => rows.set(`${event.market}:${event.model}:${entry.candidate}`, { event, entry }));
+  events.filter((event) => ["terminal_state", "selected_signal"].includes(event.kind)).forEach((event) => {
+    const states = event.kind === "selected_signal"
+      ? [{ candidate: event.payload.selected_candidate, state: 1 - event.payload.signal }]
+      : event.payload.states || [{ candidate: "--", state: event.payload.state }];
+    states.forEach((entry) => rows.set(`${event.market}:${event.model}:${entry.candidate}:${event.delay}`, { event, entry }));
   });
   if (!rows.size) {
     const row = body.insertRow();
@@ -190,7 +192,9 @@ function renderDecisions(events) {
   [...rows.values()].slice(-30).forEach(({ event, entry }) => {
     const row = body.insertRow();
     const signal = Number(entry.state) === 0 ? "Risk asset" : "Cash";
-    [event.model || event.stage, entry.candidate, entry.state, signal, event.delay ?? "--"]
+    const scheduled = event.kind === "selected_signal"
+      ? `t+${event.payload.effective_return_offset}` : "--";
+    [event.model || event.stage, entry.candidate, entry.state, signal, scheduled]
       .forEach((value) => { row.insertCell().textContent = String(value); });
   });
 }
@@ -239,6 +243,7 @@ function renderLive(job, events) {
   window.MonitorCharts?.resource(events);
   renderStages(events);
   renderDecisions(events);
+  window.MonitorDiagnostics?.render(events);
   renderJournal(events);
 }
 function closeStream() {

@@ -146,6 +146,71 @@ def _monitor_origin(tmp_path: Path):
             payload={"cpu_percent": 32.0, "rss_bytes": 268435456, "process_count": 2},
         )
     )
+    observer(
+        ResearchEvent(
+            "selection_checkpoint",
+            "selection",
+            visibility="decision",
+            market="us",
+            model="fixed_jm",
+            delay=1,
+            date=date(2023, 12, 29),
+            payload={
+                "completed_months": 10,
+                "selected_candidate": 35.0,
+                "cv_surface": [
+                    {
+                        "candidate": 5.0,
+                        "valid_returns": 2000,
+                        "sharpe": 0.4,
+                        "eligible": True,
+                    },
+                    {
+                        "candidate": 35.0,
+                        "valid_returns": 2000,
+                        "sharpe": 0.7,
+                        "eligible": True,
+                    },
+                ],
+            },
+        )
+    )
+    observer(
+        ResearchEvent(
+            "selected_signal",
+            "selection",
+            visibility="decision",
+            market="us",
+            model="fixed_jm",
+            delay=1,
+            date=date(2023, 12, 29),
+            payload={
+                "decision_date": "2023-12-29",
+                "selected_candidate": 35.0,
+                "signal": 1,
+                "scheduled_position": 1,
+                "effective_return_offset": 2,
+            },
+        )
+    )
+    observer(
+        ResearchEvent(
+            "boundary_diagnostic",
+            "selection",
+            visibility="decision",
+            market="us",
+            model="fixed_jm",
+            delay=1,
+            payload={
+                "upper_candidate": 1200.0,
+                "selected_months": 6,
+                "total_months": 100,
+                "fraction": 0.06,
+                "limit": 0.05,
+                "passed": False,
+            },
+        )
+    )
     services = MonitorServices(
         queue=queue,
         events=events,
@@ -206,7 +271,13 @@ def _watch_errors(page: Page) -> list[str]:
 
 
 def _assert_no_horizontal_overflow(page: Page) -> None:
-    assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+    overflow = page.evaluate(
+        "() => ({page: document.documentElement.scrollWidth - window.innerWidth, "
+        "elements: [...document.querySelectorAll('body *')]"
+        ".filter(node => node.getBoundingClientRect().right > window.innerWidth + 1)"
+        ".slice(0, 8).map(node => `${node.tagName}.${node.className}`)})"
+    )
+    assert overflow["page"] <= 0, overflow
 
 
 def _assert_canvas_has_pixels(page: Page, selector: str) -> None:
@@ -232,7 +303,11 @@ def test_monitor_ui_in_real_chromium_desktop_mobile_and_no_js(tmp_path: Path) ->
         page.goto(origin, wait_until="domcontentloaded")
         expect(page.locator("#identity")).to_contain_text("owner@example.com · owner")
         expect(page.locator("#summary-study")).to_have_text("study-a")
+        expect(page.locator("#cv-body")).to_contain_text("Selected")
+        expect(page.locator("#state-body")).to_contain_text("t+2")
+        expect(page.locator("#live-boundary-body")).to_contain_text("Expand grid")
         _assert_canvas_has_pixels(page, "#resource-chart canvas")
+        page.screenshot(path=tmp_path / "monitor-live.png", full_page=True)
 
         page.get_by_role("button", name="Queue").click()
         page.get_by_role("button", name="Enqueue").click()
@@ -241,13 +316,13 @@ def test_monitor_ui_in_real_chromium_desktop_mobile_and_no_js(tmp_path: Path) ->
 
         page.get_by_role("button", name="Replay").click()
         page.locator("#replay-job").select_option(active_job_id)
-        expect(page.locator("#replay-position")).to_have_text("1 / 4")
+        expect(page.locator("#replay-position")).to_have_text("1 / 7")
         page.wait_for_timeout(1000)
-        expect(page.locator("#replay-position")).to_have_text("1 / 4")
+        expect(page.locator("#replay-position")).to_have_text("1 / 7")
         page.locator('[data-replay="play"]').click()
-        expect(page.locator("#replay-position")).to_have_text("4 / 4", timeout=5000)
+        expect(page.locator("#replay-position")).to_have_text("7 / 7", timeout=8000)
         page.locator('[data-replay="reset"]').click()
-        expect(page.locator("#replay-position")).to_have_text("1 / 4")
+        expect(page.locator("#replay-position")).to_have_text("1 / 7")
 
         page.get_by_role("button", name="Compare").click()
         expect(page.locator("#compare-status")).to_have_text("2 / 2 verified")

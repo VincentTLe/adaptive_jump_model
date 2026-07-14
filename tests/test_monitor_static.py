@@ -57,11 +57,15 @@ def test_monitor_browser_code_uses_server_contract_without_inline_data() -> None
     static = ROOT / "src/adaptive_jump/monitor/static"
     script = (static / "app.js").read_text(encoding="utf-8")
     evidence = (static / "evidence.js").read_text(encoding="utf-8")
+    diagnostics = (static / "diagnostics.js").read_text(encoding="utf-8")
 
     assert all(path in script for path in ("/api/session", "/api/studies", "/api/jobs"))
     assert "EventSource" in script and "research_event" in script
     assert "/api/evidence" in evidence and "metrics_opened" in evidence
+    assert (
+        "selection_checkpoint" in diagnostics and "boundary_diagnostic" in diagnostics
+    )
     assert all(
         "innerHTML" not in code and "localStorage" not in code
-        for code in (script, evidence)
+        for code in (script, evidence, diagnostics)
     )
