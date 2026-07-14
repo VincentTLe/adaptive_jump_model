@@ -55,16 +55,32 @@ def _app(tmp_path: Path):
     return create_app(services), services
 
 
-def _request(app, path, *, token=None):
+def _request(
+    app,
+    path,
+    *,
+    token=None,
+    method="GET",
+    body=None,
+    origin="https://monitor.example.com",
+    csrf=None,
+):
     parsed = urlsplit(path)
     headers = []
     if token:
         headers.append((b"cf-access-jwt-assertion", token.encode()))
+    if origin:
+        headers.append((b"origin", origin.encode()))
+    if csrf:
+        headers.append((b"x-csrf-token", csrf.encode()))
+    payload = b"" if body is None else json.dumps(body).encode()
+    if body is not None:
+        headers.append((b"content-type", b"application/json"))
     scope = {
         "type": "http",
         "asgi": {"version": "3.0"},
         "http_version": "1.1",
-        "method": "GET",
+        "method": method,
         "scheme": "https",
         "path": parsed.path,
         "raw_path": parsed.path.encode(),
@@ -81,7 +97,11 @@ def _request(app, path, *, token=None):
         nonlocal received
         if not received:
             received = True
-            return {"type": "http.request", "body": b"", "more_body": False}
+            return {
+                "type": "http.request",
+                "body": payload,
+                "more_body": False,
+            }
         return {"type": "http.disconnect"}
 
     async def send(message):
@@ -158,3 +178,115 @@ def test_evidence_outcomes_use_backend_lock_status(tmp_path: Path) -> None:
 
     assert opened[0] == 200 and opened[2]["metrics"][0]["sharpe"] == 0.7
     assert locked[0] == 423 and "locked" in locked[2]["detail"]
+
+
+def test_owner_can_enqueue_reorder_cancel_and_resume_with_csrf(tmp_path: Path) -> None:
+    app, services = _app(tmp_path)
+    csrf = _request(app, "/api/session", token="owner-token")[2]["csrf_token"]
+
+    first = _request(
+        app,
+        "/api/jobs",
+        token="owner-token",
+        method="POST",
+        csrf=csrf,
+        body={"study_id": "study-a"},
+    )
+    second = _request(
+        app,
+        "/api/jobs",
+        token="owner-token",
+        method="POST",
+        csrf=csrf,
+        body={"study_id": "study-a"},
+    )
+    assert first[0] == second[0] == 201
+    reordered = _request(
+        app,
+        "/api/jobs/reorder",
+        token="owner-token",
+        method="POST",
+        csrf=csrf,
+        body={"job_ids": [second[2]["job_id"], first[2]["job_id"]]},
+    )
+    assert reordered[0] == 200
+    assert reordered[2]["jobs"][0]["job_id"] == second[2]["job_id"]
+
+    canceled = _request(
+        app,
+        f"/api/jobs/{first[2]['job_id']}/cancel",
+        token="owner-token",
+        method="POST",
+        csrf=csrf,
+    )
+    assert canceled[2]["status"] == "canceled"
+
+    claimed = services.queue.claim_next()
+    assert claimed is not None
+    services.queue.recover_abandoned()
+    resumed = _request(
+        app,
+        f"/api/jobs/{claimed.job_id}/resume",
+        token="owner-token",
+        method="POST",
+        csrf=csrf,
+    )
+    assert resumed[2]["status"] == "queued"
+    actions = [record.action for record in services.audit.replay()]
+    assert actions.count("authorize_mutation") == 5
+    assert {"enqueue", "reorder", "cancel", "resume"} <= set(actions)
+
+
+def test_viewer_bad_origin_and_bad_csrf_cannot_mutate(tmp_path: Path) -> None:
+    app, services = _app(tmp_path)
+    owner_csrf = _request(app, "/api/session", token="owner-token")[2]["csrf_token"]
+    viewer_csrf = _request(app, "/api/session", token="viewer-token")[2]["csrf_token"]
+    attempts = (
+        {"token": "viewer-token", "csrf": viewer_csrf},
+        {"token": "owner-token", "csrf": owner_csrf, "origin": "https://evil.test"},
+        {"token": "owner-token", "csrf": "bad-token"},
+    )
+    for values in attempts:
+        result = _request(
+            app,
+            "/api/jobs",
+            method="POST",
+            body={"study_id": "study-a"},
+            **values,
+        )
+        assert result[0] == 403
+
+    assert services.queue.all_jobs() == ()
+    audit = services.audit.replay()
+    assert len(audit) == 3
+    assert all(record.outcome == "rejected" for record in audit)
+
+
+def test_queue_conflicts_are_audited_and_no_delete_route_exists(tmp_path: Path) -> None:
+    app, services = _app(tmp_path)
+    csrf = _request(app, "/api/session", token="owner-token")[2]["csrf_token"]
+
+    rejected = _request(
+        app,
+        "/api/jobs",
+        token="owner-token",
+        method="POST",
+        csrf=csrf,
+        body={"study_id": "unknown-study"},
+    )
+    deleted = _request(
+        app,
+        "/api/jobs/not-a-job",
+        token="owner-token",
+        method="DELETE",
+        csrf=csrf,
+    )
+
+    assert rejected[0] == 409
+    assert deleted[0] == 405
+    assert services.queue.all_jobs() == ()
+    records = services.audit.replay()
+    assert any(
+        record.action == "enqueue" and record.outcome == "rejected"
+        for record in records
+    )

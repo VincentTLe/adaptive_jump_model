@@ -3,16 +3,23 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from adaptive_jump.monitor.audit import AuditStore
 from adaptive_jump.monitor.event_store import EventStore, EventStoreError
 from adaptive_jump.monitor.evidence import EvidenceError, EvidenceStore, OutcomeLocked
-from adaptive_jump.monitor.http_security import SECURITY_HEADERS, RequestSecurity
+from adaptive_jump.monitor.http_security import (
+    CSRF_HEADER,
+    SECURITY_HEADERS,
+    RequestSecurity,
+    RequestSecurityError,
+)
 from adaptive_jump.monitor.queue import QueueError, QueueStore
 from adaptive_jump.monitor.security import (
     ACCESS_ASSERTION_HEADER,
@@ -22,6 +29,21 @@ from adaptive_jump.monitor.security import (
 )
 
 API_PREFIX = "/api"
+_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+StudyId = Annotated[
+    str, StringConstraints(pattern=r"^[a-z0-9][a-z0-9-]*$", max_length=100)
+]
+JobId = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{32}$")]
+
+
+class EnqueueRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    study_id: StudyId
+
+
+class ReorderRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    job_ids: Annotated[list[JobId], Field(max_length=1000)]
 
 
 @dataclass(frozen=True)
@@ -58,7 +80,39 @@ def create_app(services: MonitorServices) -> FastAPI:
                 )
             else:
                 request.state.principal = user
-                response = await call_next(request)
+                if request.method not in _SAFE_METHODS:
+                    try:
+                        services.request_security.require_origin(
+                            request.headers.get("Origin")
+                        )
+                        services.request_security.verify_csrf(
+                            request.headers.get(CSRF_HEADER), user.email
+                        )
+                        if user.role != "owner":
+                            raise RequestSecurityError("owner role is required")
+                    except RequestSecurityError:
+                        services.audit.append(
+                            user,
+                            "authorize_mutation",
+                            "api",
+                            "rejected",
+                            {"method": request.method, "path": request.url.path[:300]},
+                        )
+                        response = JSONResponse(
+                            status_code=403,
+                            content={"detail": "mutation authorization failed"},
+                        )
+                    else:
+                        services.audit.append(
+                            user,
+                            "authorize_mutation",
+                            "api",
+                            "accepted",
+                            {"method": request.method, "path": request.url.path[:300]},
+                        )
+                        response = await call_next(request)
+                else:
+                    response = await call_next(request)
         else:
             response = await call_next(request)
         for name, value in SECURITY_HEADERS.items():
@@ -96,6 +150,74 @@ def create_app(services: MonitorServices) -> FastAPI:
     @app.get(f"{API_PREFIX}/jobs")
     async def jobs() -> dict[str, Any]:
         return {"jobs": [asdict(job) for job in services.queue.all_jobs()]}
+
+    def mutate(
+        request: Request,
+        action: str,
+        target: str,
+        operation: Callable[[], Any],
+        details: dict[str, Any],
+    ) -> Any:
+        user: Principal = request.state.principal
+        try:
+            result = operation()
+        except QueueError as exc:
+            services.audit.append(
+                user,
+                action,
+                target,
+                "rejected",
+                {**details, "reason": "queue_state"},
+            )
+            raise HTTPException(
+                status_code=409, detail="queue mutation rejected"
+            ) from exc
+        services.audit.append(user, action, target, "accepted", details)
+        return result
+
+    @app.post(f"{API_PREFIX}/jobs", status_code=201)
+    async def enqueue(request: Request, body: EnqueueRequest) -> dict[str, Any]:
+        result = mutate(
+            request,
+            "enqueue",
+            "queue",
+            lambda: services.queue.enqueue(body.study_id),
+            {"study_id": body.study_id},
+        )
+        return asdict(result)
+
+    @app.post(f"{API_PREFIX}/jobs/reorder")
+    async def reorder(request: Request, body: ReorderRequest) -> dict[str, Any]:
+        result = mutate(
+            request,
+            "reorder",
+            "queue",
+            lambda: services.queue.reorder(body.job_ids),
+            {"job_ids": body.job_ids},
+        )
+        return {"jobs": [asdict(job) for job in result]}
+
+    @app.post(f"{API_PREFIX}/jobs/{{job_id}}/cancel")
+    async def cancel(request: Request, job_id: str) -> dict[str, Any]:
+        result = mutate(
+            request,
+            "cancel",
+            "jobs",
+            lambda: services.queue.request_cancel(job_id),
+            {"job_id": job_id},
+        )
+        return asdict(result)
+
+    @app.post(f"{API_PREFIX}/jobs/{{job_id}}/resume")
+    async def resume(request: Request, job_id: str) -> dict[str, Any]:
+        result = mutate(
+            request,
+            "resume",
+            "jobs",
+            lambda: services.queue.resume(job_id),
+            {"job_id": job_id},
+        )
+        return asdict(result)
 
     @app.get(f"{API_PREFIX}/jobs/{{job_id}}")
     async def job(job_id: str) -> dict[str, Any]:
