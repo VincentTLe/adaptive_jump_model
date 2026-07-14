@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import date
+from functools import partial
 from typing import Any
 
 import numpy as np
@@ -12,7 +14,7 @@ import pandas as pd
 
 from adaptive_jump.backtest import performance_metrics
 from adaptive_jump.config import ResearchConfig
-from adaptive_jump.inference import bootstrap_sharpe_delta
+from adaptive_jump.inference import BootstrapProgress, bootstrap_sharpe_delta
 from adaptive_jump.models import FixedJMResult, fixed_jm_states
 from adaptive_jump.walkforward import (
     SelectionResult,
@@ -164,7 +166,12 @@ def comparison_metrics(
 
 
 def bootstrap_rows(
-    paths: dict[str, pd.DataFrame], spec: WindowStudySpec, config: ResearchConfig
+    paths: dict[str, pd.DataFrame],
+    spec: WindowStudySpec,
+    config: ResearchConfig,
+    *,
+    initial: Callable[[int], BootstrapProgress | None] | None = None,
+    progress: Callable[[int, BootstrapProgress], None] | None = None,
 ) -> pd.DataFrame:
     """Run every preregistered paired stationary-bootstrap block length."""
     if tuple(paths) != COMPARISON_MODELS:
@@ -173,6 +180,8 @@ def bootstrap_rows(
     baseline = paths["jm_3000"]
     rows = []
     for block in spec.bootstrap_blocks:
+        checkpoint = initial(block) if initial else None
+        save = partial(progress, block) if progress else None
         result = bootstrap_sharpe_delta(
             challenger["strategy_return"],
             baseline["strategy_return"],
@@ -183,6 +192,8 @@ def bootstrap_rows(
             confidence_level=spec.confidence_level,
             periods_per_year=config.metrics_protocol.periods_per_year,
             volatility_ddof=config.metrics_protocol.volatility_ddof,
+            initial=checkpoint,
+            progress=save,
         )
         rows.append(
             {

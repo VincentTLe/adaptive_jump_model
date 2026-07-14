@@ -98,7 +98,8 @@ Authorized tracked paths are:
 - `TASK.md`, the completed-task archive, `README.md`, `.gitignore`,
   `pyproject.toml`, and `uv.lock`;
 - `src/adaptive_jump/cli.py`, `models.py`, `walkforward.py`, `inference.py`,
-  `window_runner.py`, and a single new `src/adaptive_jump/monitor/` package;
+  `window_runner.py`, `window_study.py`, and a single new
+  `src/adaptive_jump/monitor/` package;
 - focused monitor/checkpoint tests under `tests/`;
 - authored English monitor documentation under `docs/monitor/` and deployment
   templates under `deploy/`;

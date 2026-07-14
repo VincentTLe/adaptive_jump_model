@@ -16,6 +16,7 @@ from adaptive_jump.artifacts import (
 )
 from adaptive_jump.backtest import apply_signal, buy_and_hold
 from adaptive_jump.config import load_config
+from adaptive_jump.inference import BootstrapProgress
 from adaptive_jump.models import FixedJMResult
 from adaptive_jump.reporting import build_report
 from adaptive_jump.walkforward import SelectionResult
@@ -36,7 +37,13 @@ from adaptive_jump.window_verifier import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _fixture_run(tmp_path: Path, monkeypatch, *, boundary_passed: bool) -> Path:
+def _fixture_run(
+    tmp_path: Path,
+    monkeypatch,
+    *,
+    boundary_passed: bool,
+    interrupt_bootstrap: bool = False,
+) -> Path:
     config_path = tmp_path / "research.toml"
     config_path.write_bytes((ROOT / "research.toml").read_bytes())
     spec_path = tmp_path / "research/jm-train-window-sensitivity.toml"
@@ -162,7 +169,22 @@ def _fixture_run(tmp_path: Path, monkeypatch, *, boundary_passed: bool) -> Path:
         lambda *_args, **_kwargs: study,
     )
 
-    def fake_bootstrap(paths, frozen, research_config):
+    bootstrap_attempt = 0
+    resumed_progress: list[BootstrapProgress] = []
+
+    def fake_bootstrap(paths, frozen, research_config, *, initial=None, progress=None):
+        nonlocal bootstrap_attempt
+        if interrupt_bootstrap and bootstrap_attempt == 0:
+            checkpoint = BootstrapProgress(
+                np.zeros(500), np.random.default_rng(11).bit_generator.state
+            )
+            progress(frozen.bootstrap_blocks[0], checkpoint)
+            bootstrap_attempt += 1
+            raise RuntimeError("simulated bootstrap interruption")
+        if interrupt_bootstrap:
+            checkpoint = initial(frozen.bootstrap_blocks[0])
+            if checkpoint is not None:
+                resumed_progress.append(checkpoint)
         metrics = comparison_metrics(paths, research_config).set_index("model")
         delta = float(
             metrics.loc["jm_4000", "sharpe"] - metrics.loc["jm_3000", "sharpe"]
@@ -182,6 +204,17 @@ def _fixture_run(tmp_path: Path, monkeypatch, *, boundary_passed: bool) -> Path:
         )
 
     monkeypatch.setattr("adaptive_jump.window_runner.bootstrap_rows", fake_bootstrap)
+    if interrupt_bootstrap:
+        with pytest.raises(RuntimeError, match="bootstrap interruption"):
+            run_window_sensitivity(config, spec)
+        runtime = tmp_path / "artifacts/.monitor/checkpoints"
+        assert len(list(runtime.rglob("bootstrap-us-block-60.json"))) == 1
+        run_dir = run_window_sensitivity(config, spec)
+        assert len(resumed_progress) == 1
+        assert len(resumed_progress[0].draws) == 500
+        assert not list(runtime.rglob("bootstrap-*.json"))
+        assert not list(runtime.rglob("bootstrap-*.pkl"))
+        return run_dir
     return run_window_sensitivity(config, spec)
 
 
@@ -200,6 +233,19 @@ def test_window_runner_seals_complete_four_model_comparison(
         json.loads((run_dir / "claim.json").read_text())["claim_class"] == "EXPLORATORY"
     )
     verify_inventory(run_dir)
+
+
+def test_window_runner_resumes_identity_bound_bootstrap_checkpoint(
+    tmp_path: Path, monkeypatch
+) -> None:
+    run_dir = _fixture_run(
+        tmp_path,
+        monkeypatch,
+        boundary_passed=True,
+        interrupt_bootstrap=True,
+    )
+
+    assert json.loads((run_dir / "run.json").read_text())["status"] == "complete"
 
 
 def test_window_runner_keeps_metrics_closed_after_boundary_failure(

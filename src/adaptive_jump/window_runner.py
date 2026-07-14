@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import subprocess
 from datetime import UTC, date, datetime
+from functools import partial
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,8 @@ from adaptive_jump.backtest import apply_signal
 from adaptive_jump.config import ResearchConfig
 from adaptive_jump.data import research_git_sha
 from adaptive_jump.features import effective_oos_start
+from adaptive_jump.inference import BootstrapProgress
+from adaptive_jump.monitor import checkpoints as checkpoint_store
 from adaptive_jump.window_spec import WindowStudySpec
 from adaptive_jump.window_study import (
     COMPARISON_MODELS,
@@ -61,6 +64,7 @@ def run_window_sensitivity(config: ResearchConfig, spec: WindowStudySpec) -> Pat
         identity[key][:12] for key in ("spec_sha256", "data_manifest_sha256", "git_sha")
     )
     run_dir = root / config.artifact_root / spec.artifact_subdir / run_id
+    checkpoint_root = root / config.artifact_root / ".monitor" / "checkpoints" / run_id
     metadata_path = run_dir / "run.json"
     if metadata_path.exists():
         metadata = read_json(metadata_path)
@@ -71,6 +75,7 @@ def run_window_sensitivity(config: ResearchConfig, spec: WindowStudySpec) -> Pat
             from adaptive_jump.window_verifier import verify_window_run
 
             verify_window_run(run_dir)
+            _clear_bootstrap_checkpoints(checkpoint_root)
             return run_dir
     else:
         _create_run(
@@ -117,6 +122,7 @@ def run_window_sensitivity(config: ResearchConfig, spec: WindowStudySpec) -> Pat
             metrics_opened=False,
             conclusion="JM-4000 upper-lambda boundary requires a new experiment",
         )
+        _clear_bootstrap_checkpoints(checkpoint_root)
         return run_dir
 
     metric_frames = []
@@ -152,7 +158,23 @@ def run_window_sensitivity(config: ResearchConfig, spec: WindowStudySpec) -> Pat
             )
             if delay == spec.primary_delay:
                 bootstrap_frames.append(
-                    bootstrap_rows(paths, spec, config).assign(market=market_id)
+                    bootstrap_rows(
+                        paths,
+                        spec,
+                        config,
+                        initial=partial(
+                            _load_bootstrap,
+                            checkpoint_root,
+                            identity,
+                            market_id,
+                        ),
+                        progress=partial(
+                            _save_bootstrap,
+                            checkpoint_root,
+                            identity,
+                            market_id,
+                        ),
+                    ).assign(market=market_id)
                 )
 
     metrics = pd.concat(metric_frames, ignore_index=True)
@@ -174,6 +196,7 @@ def run_window_sensitivity(config: ResearchConfig, spec: WindowStudySpec) -> Pat
         metrics_opened=True,
         conclusion=claim["conclusion"],
     )
+    _clear_bootstrap_checkpoints(checkpoint_root)
     return run_dir
 
 
@@ -316,6 +339,34 @@ def _write_trade_paths(
     target.mkdir(exist_ok=True)
     for model, path in paths.items():
         path.to_csv(target / f"{model}-delay-{delay}.csv", index=False)
+
+
+def _load_bootstrap(root, identity, market, block):
+    stem = root / f"bootstrap-{market}-block-{block}"
+    try:
+        cached = checkpoint_store.load_checkpoint(
+            stem, kind="bootstrap", identity=identity
+        )
+    except checkpoint_store.CheckpointStoreError as exc:
+        raise ArtifactError(str(exc)) from exc
+    if cached is not None and not isinstance(cached, BootstrapProgress):
+        raise ArtifactError(f"invalid bootstrap checkpoint payload: {stem}")
+    return cached
+
+
+def _save_bootstrap(root, identity, market, block, result) -> None:
+    stem = root / f"bootstrap-{market}-block-{block}"
+    try:
+        checkpoint_store.save_checkpoint(
+            stem, result, kind="bootstrap", identity=identity
+        )
+    except checkpoint_store.CheckpointStoreError as exc:
+        raise ArtifactError(str(exc)) from exc
+
+
+def _clear_bootstrap_checkpoints(root: Path) -> None:
+    for metadata in root.glob("bootstrap-*.json"):
+        checkpoint_store.clear_checkpoint(metadata.with_suffix(""))
 
 
 def _finish_run(metadata_path: Path, **updates: Any) -> None:

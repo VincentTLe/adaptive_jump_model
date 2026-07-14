@@ -7,6 +7,7 @@ import pytest
 
 from adaptive_jump.backtest import apply_signal, buy_and_hold
 from adaptive_jump.config import load_config
+from adaptive_jump.inference import BootstrapProgress
 from adaptive_jump.models import FixedJMResult
 from adaptive_jump.walkforward import SelectionResult
 from adaptive_jump.window_spec import load_window_spec
@@ -133,13 +134,23 @@ def test_bootstrap_rows_use_all_frozen_blocks_and_are_deterministic() -> None:
     paths = align_comparison_paths(
         _paths(), oos_start=pd.Timestamp("2020-01-20").date()
     )
+    loaded: list[int] = []
+    saved: list[tuple[int, int]] = []
 
-    first = bootstrap_rows(paths, spec, config)
+    def load(block: int) -> None:
+        loaded.append(block)
+
+    def save(block: int, current: BootstrapProgress) -> None:
+        saved.append((block, len(current.draws)))
+
+    first = bootstrap_rows(paths, spec, config, initial=load, progress=save)
     second = bootstrap_rows(paths, spec, config)
 
     pd.testing.assert_frame_equal(first, second)
     assert tuple(first["block_length"]) == (60, 20, 120)
     assert (first["replications"] == 40).all()
+    assert loaded == [60, 20, 120]
+    assert saved == [(60, 40), (20, 40), (120, 40)]
 
 
 @pytest.mark.parametrize(
