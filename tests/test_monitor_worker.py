@@ -8,6 +8,7 @@ import psutil
 import pytest
 
 from adaptive_jump.monitor import worker as worker_module
+from adaptive_jump.monitor.event_store import EventStore
 from adaptive_jump.monitor.events import ResearchEvent
 from adaptive_jump.monitor.queue import QueueStore, StudyDefinition
 from adaptive_jump.monitor.worker import ResearchWorker
@@ -38,12 +39,13 @@ def test_worker_records_resources(
     assert command[1:] == ("run", "--study", "replication", "--config", str(config))
     helper = (sys.executable, "-c", "import time; print('done'); time.sleep(.08)")
     monkeypatch.setattr(worker_module, "_canonical_command", lambda *_: helper)
-    events: list[ResearchEvent] = []
+    store = EventStore(tmp_path / "artifacts/.monitor")
     job = queue.enqueue("study-a")
-    result = ResearchWorker(queue, config, events.append, poll_seconds=0.01).run_once()
+    result = ResearchWorker(queue, config, store.observer, poll_seconds=0.01).run_once()
+    events = store.replay(job.job_id)
     assert result is not None and result.status == "succeeded" and result.exit_code == 0
     assert result.process_pid and result.process_created_at
-    kinds = {event.kind for event in events}
+    kinds = {runtime.event.kind for runtime in events}
     assert {
         "process_started",
         "resource_sample",
@@ -70,7 +72,11 @@ def test_worker_escalates_cancellation(
     )
     events: list[ResearchEvent] = []
     worker = ResearchWorker(
-        queue, config, events.append, poll_seconds=0.01, grace_seconds=(0.03,) * 3
+        queue,
+        config,
+        lambda _job_id: events.append,
+        poll_seconds=0.01,
+        grace_seconds=(0.03,) * 3,
     )
     job = queue.enqueue("study-a")
     results = []

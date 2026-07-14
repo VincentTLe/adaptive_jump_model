@@ -7,6 +7,7 @@ import signal
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import psutil
@@ -19,12 +20,15 @@ class WorkerError(RuntimeError):
     pass
 
 
+ObserverFactory = Callable[[str], EventObserver]
+
+
 class ResearchWorker:
     def __init__(
         self,
         queue: QueueStore,
         config_path: Path,
-        observer: EventObserver | None = None,
+        observer_factory: ObserverFactory | None = None,
         *,
         poll_seconds: float = 1.0,
         grace_seconds: tuple[float, float, float] = (30.0, 10.0, 5.0),
@@ -33,7 +37,8 @@ class ResearchWorker:
         self.config_path = config_path.resolve()
         self.root = self.config_path.parent
         self.runtime_root = self.root / "artifacts" / ".monitor"
-        self.observer = observer
+        self.observer_factory = observer_factory
+        self.observer: EventObserver | None = None
         if (
             self.config_path.name != "research.toml"
             or not self.config_path.is_file()
@@ -49,6 +54,7 @@ class ResearchWorker:
             return None
         child: subprocess.Popen[bytes] | None = None
         try:
+            self._bind_observer(job.job_id)
             current = self.queue.get(job.job_id)
             if current.status == "cancel_requested":
                 return self.queue.finish(job.job_id, "canceled")
@@ -96,6 +102,7 @@ class ResearchWorker:
         job = self.queue.active()
         if job is None:
             return None
+        self._bind_observer(job.job_id)
         process = _matching_process(job)
         if process is None:
             recovered = self.queue.recover_abandoned()
@@ -190,6 +197,9 @@ class ResearchWorker:
 
     def _emit(self, kind: str, payload: dict[str, object]) -> None:
         emit_event(self.observer, kind=kind, stage="worker", payload=payload)
+
+    def _bind_observer(self, job_id: str) -> None:
+        self.observer = self.observer_factory(job_id) if self.observer_factory else None
 
 
 def _canonical_command(
