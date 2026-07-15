@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">78 session(s) · newest first · 2026-07-15 02:37 UTC</p>
+  <p class="sub">79 session(s) · newest first · 2026-07-15 04:26 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-15T04:26:34Z</span><span class="who">codex · GPT-5 Codex</span>
+      </div>
+      <p class="goal">Replace raw event replay with a human-readable, verifier-bound market replay for the completed canonical monitor job.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/monitor/static/index.html (+market replay layout and Runtime Audit)</code></li><li><code>src/adaptive_jump/monitor/static/app.css (+responsive replay presentation)</code></li><li><code>src/adaptive_jump/monitor/static/app.js (+terminal job status metadata)</code></li><li><code>src/adaptive_jump/monitor/static/charts.js (+OHLC/close, volume, HMM shading, and state lanes)</code></li><li><code>src/adaptive_jump/monitor/static/replay.js (+date playback, market/candidate filters, race guards, audit replay)</code></li><li><code>tests/test_monitor_browser.py (+real browser replay contract)</code></li><li><code>tests/test_monitor_static.py (+static visualization contract)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>Node syntax checks passed; focused static/browser tests: 7 passed</li><li>full workspace pytest: 275 passed; Ruff lint and format passed</li><li>uv lock check and project uv pip check passed; 64 packages compatible</li><li>wheel and sdist built; detached clean worktree with current patch installed from frozen lock and passed 275 tests</li><li>production Chromium on canonical 43,887-event replay: US/DE/JP sources rendered nonblank; rapid DE-to-JP race preserved JP; no fake zero closes; state lanes populated; playback/reset/audit passed; zero page/console errors and zero mobile overflow</li><li>frozen v7 verifier: complete, 27 metrics, maximum difference 7.327471962526033e-15; frozen JM-4000 verifier: expected boundary_failed with zero metrics/bootstrap</li><li>paper SHA-256 matched 141e48bd5ccaefe5d2c276a3c8772716b583b1df91517109d54a2452f4cb3af1; protected research paths unchanged</li><li>production monitor remained healthy on loopback 127.0.0.1:8765</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>0c554d7a0db9b9a6bddf8fb1fec463bf4820aef3</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner reviews Phase 2B. Do not start Phase 2C or a new scientific task without separate approval.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>The replay is for verified completed fixed-baseline jobs, not pre-artifact live charting. Fixed JM lanes show a user-selected constant lambda candidate, not the historical monthly-selected path. US ^SP500TR has no meaningful volume and uses close-line fallback for degenerate candles; DE ^GDAXI and JP ^N225 expose raw Yahoo volume. One ad hoc acceptance probe initially misread the ECharts returned point shape; the corrected probe passed without a project-code change. No model, data, protocol, dependency, artifact, result, gate, or scientific claim changed; no password was logged.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-15T02:37:25Z</span><span class="who">codex · GPT-5 Codex</span>
