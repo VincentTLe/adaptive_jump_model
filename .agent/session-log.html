@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">83 session(s) · newest first · 2026-07-15 07:02 UTC</p>
+  <p class="sub">84 session(s) · newest first · 2026-07-15 07:21 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-15T07:21:42Z</span><span class="who">codex · GPT-5 Codex</span>
+      </div>
+      <p class="goal">Make market exits visually read as sales and audit which replication choices are not disclosed by the Shu paper.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/monitor/static/charts.js (red inverted-triangle Move to cash marker)</code></li><li><code>src/adaptive_jump/monitor/static/app.css (matching replay legend marker)</code></li><li><code>tests/test_monitor_static.py (marker contract regression)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>production authenticated Chromium on canonical job cb450ec8d00d4cae9bb8df7f150b66b2 showed the real 2009-07-14 cash exit as a red inverted triangle on desktop and mobile, with zero console/page errors and zero horizontal overflow</li><li>full workspace pytest: 276 passed; focused Ruff, format, Node syntax, uv lock, and uv pip checks passed</li><li>frozen v7 verifier remained complete with 27 metrics and maximum difference 7.327471962526033e-15</li><li>paper SHA-256 remained 141e48bd5ccaefe5d2c276a3c8772716b583b1df91517109d54a2452f4cb3af1</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>9e0787bf25da64e338d31b60054f18120879f5aa</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner reviews the UI fix and parameter audit. Any grid or protocol sensitivity run must be frozen as a separate scientific task before changing research behavior.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>The paper does not disclose the complete JM lambda or HMM smoothing grids. The project 5% upper-boundary rule is an audit gate, not a paper parameter and not part of model scoring; prior grid expansion can affect results indirectly. No data, model, protocol, artifact, result, gate, metric, dependency, or scientific claim changed. Monitor remains healthy on 127.0.0.1:8765.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-15T07:02:21Z</span><span class="who">codex · GPT-5 Codex</span>
