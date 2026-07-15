@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">76 session(s) · newest first · 2026-07-15 01:24 UTC</p>
+  <p class="sub">77 session(s) · newest first · 2026-07-15 02:03 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-15T02:03:03Z</span><span class="who">codex · GPT-5 Codex</span>
+      </div>
+      <p class="goal">Extract the event replay controller into a bounded module without changing behavior, preparing the approved human market replay.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/monitor/static/replay.js (+)</code></li><li><code>src/adaptive_jump/monitor/static/app.js (- replay controller)</code></li><li><code>src/adaptive_jump/monitor/static/index.html (+ module load)</code></li><li><code>tests/test_monitor_static.py (+ module contract)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>Node syntax checks passed for app.js and replay.js</li><li>focused static/browser tests: 7 passed</li><li>monitor suite: 101 passed</li><li>full workspace pytest: 273 passed</li><li>Ruff lint and format, uv lock check, and uv pip check passed; 64 packages compatible</li><li>production Chromium on canonical 43,887-event replay: loaded in 4.169s, exactly one journal request, controls passed, zero page/console errors and zero horizontal overflow</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>20de1ea1f5861f807b2083d942ba0ac928cfbcaf</code></p></div>
+        <div><span class="lbl">Next step</span><p>After explicit owner approval, implement the human Research Story replay: normalized cumulative excess-return market motion, synchronized JM/HMM state lanes, feature traces, market/model filters, and retain raw JSON under Runtime Audit.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Behavior is intentionally unchanged in this milestone. The production monitor remains available on 127.0.0.1:8765. No model, data, protocol, artifact, result, gate, dependency, or scientific claim changed.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-15T01:24:09Z</span><span class="who">codex · GPT-5 Codex</span>
