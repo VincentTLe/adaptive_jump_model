@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">86 session(s) · newest first · 2026-07-15 09:46 UTC</p>
+  <p class="sub">87 session(s) · newest first · 2026-07-15 10:31 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-15T10:31:01Z</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">Implement the approved pre-OOS persistence-calibration core without running real data or accessing outer performance.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/calibration.py (+)</code></li><li><code>tests/test_calibration.py (+)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>uv run pytest -q: 278 passed</li><li>uv run ruff check .: passed</li><li>uv run ruff format --check .: 67 files formatted</li><li>uv lock --check: passed</li><li>uv pip check: 64 packages compatible</li><li>adaptive-jump verify frozen v7 parent: status complete, maximum metric absolute difference 7.327471962526033e-15</li><li>git diff --cached --check: passed before commit</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>a7ad9fd</code></p></div>
+        <div><span class="lbl">Next step</span><p>After owner review, implement deterministic 16-process JM path generation, raw-HMM-state reuse, serial/parallel equality, and per-candidate checkpoints; still do not inspect outer metrics.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Fail-first tests exposed a JM/HMM numeric-candidate signature collision; fixed by namespacing signatures by model and including dates. Commit pushed to origin/cleanup/research-protocol. Built-in apply_patch was unavailable because bwrap could not configure loopback, so standard unified patches were used; patch temporary files were moved to /tmp.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-15T09:46:57Z</span><span class="who">codex · GPT-5 Codex</span>
