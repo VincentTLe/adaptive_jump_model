@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">81 session(s) · newest first · 2026-07-15 05:12 UTC</p>
+  <p class="sub">82 session(s) · newest first · 2026-07-15 05:44 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-15T05:44:05Z</span><span class="who">codex · GPT-5 Codex</span>
+      </div>
+      <p class="goal">Complete Phase 2C2 by replacing constant-candidate replay with a verifier-bound selected-strategy market story.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/monitor/static/index.html (+model/delay controls, strategy summary, feature chart, frame table)</code></li><li><code>src/adaptive_jump/monitor/static/app.css (+responsive story chart layout)</code></li><li><code>src/adaptive_jump/monitor/static/replay.js (+OHLC/story synchronization, causal playback, cache and race guards)</code></li><li><code>src/adaptive_jump/monitor/static/charts.js (+price, wealth, signal/position, and feature visuals)</code></li><li><code>tests/test_monitor_browser.py (+deterministic story fixture and real browser contract)</code></li><li><code>tests/test_monitor_static.py (+story UI static contract)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>fail-first static/browser run: 2 expected failures before implementation for missing story route and controls</li><li>focused static/browser tests: 7 passed; monitor suite: 104 passed; full workspace: 276 passed</li><li>Node syntax, Ruff lint and format, uv lock, project uv pip check, wheel and sdist build: passed</li><li>production authenticated Chromium: US/DE/JP, Fixed JM/HMM, delays 1/5/10, rapid filter race, playback, reset, and two nonblank charts passed</li><li>production chart used 260 past-only market days; rendered strategy wealth and DD-10 matched verifier-bound endpoint within 1e-9</li><li>desktop 1440x900 and mobile 390x844: zero page/console errors and zero horizontal overflow; screenshots visually inspected</li><li>clean detached worktree installed 64 locked packages and passed 276 tests</li><li>v7 verifier remained complete with 27 metrics and max difference 7.327471962526033e-15; JM-4000 remained boundary_failed with zero metrics/bootstrap</li><li>paper SHA-256 matched 141e48bd5ccaefe5d2c276a3c8772716b583b1df91517109d54a2452f4cb3af1</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>5aae8fbf6eb2752ecc765658707d952c732fbebd</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner reviews Phase 2C2. Freeze and approve a separate task before changing research code, running a new experiment, or adding another monitor feature.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>The UI now shows actual selected trade paths, not a fixed lambda candidate. Fixed-JM features are labeled as inputs; the same features are explicitly context-only for HMM, which fits returns. Raw events remain under Runtime Audit. No model, data, protocol, dependency, artifact, metric, result, gate, or scientific claim changed. Monitor remains healthy on 127.0.0.1:8765 and no password was logged.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-15T05:12:22Z</span><span class="who">codex · GPT-5 Codex</span>
