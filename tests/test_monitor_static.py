@@ -58,6 +58,7 @@ def test_monitor_browser_code_uses_server_contract_without_inline_data() -> None
     script = (static / "app.js").read_text(encoding="utf-8")
     evidence = (static / "evidence.js").read_text(encoding="utf-8")
     diagnostics = (static / "diagnostics.js").read_text(encoding="utf-8")
+    replay = (static / "replay.js").read_text(encoding="utf-8")
 
     assert all(path in script for path in ("/api/session", "/api/studies", "/api/jobs"))
     assert "EventSource" in script and "research_event" in script
@@ -65,7 +66,8 @@ def test_monitor_browser_code_uses_server_contract_without_inline_data() -> None
     assert (
         "selection_checkpoint" in diagnostics and "boundary_diagnostic" in diagnostics
     )
+    assert "MonitorReplay" in replay and "/api/jobs/${jobId}/events" in replay
     assert all(
         "innerHTML" not in code and "localStorage" not in code
-        for code in (script, evidence, diagnostics)
+        for code in (script, evidence, diagnostics, replay)
     )
