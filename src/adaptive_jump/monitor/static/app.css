@@ -110,7 +110,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .legend-buy-hold { background: var(--amber); }
 .legend-cash { background: var(--blue); }
 .legend-enter { background: var(--green); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
-.legend-exit { width: 9px !important; height: 9px !important; background: var(--blue); transform: rotate(45deg); }
+.legend-exit { background: var(--red); clip-path: polygon(0 0, 100% 0, 50% 100%); }
 .runtime-audit { margin-top: 18px; }
 .runtime-audit summary { display: flex; justify-content: space-between; padding: 15px; cursor: pointer; }
 .runtime-audit summary span { color: var(--muted); font-size: 12px; }

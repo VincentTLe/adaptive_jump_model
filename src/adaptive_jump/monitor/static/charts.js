@@ -151,8 +151,8 @@
       },
       {
         name: "Move to cash", type: "scatter", xAxisIndex: 0, yAxisIndex: 0,
-        data: moveToCash, symbol: "diamond", symbolSize: 13,
-        itemStyle: { color: colors.blue, borderColor: colors.text, borderWidth: 1 },
+        data: moveToCash, symbol: "triangle", symbolRotate: 180, symbolSize: 13,
+        itemStyle: { color: colors.red, borderColor: colors.text, borderWidth: 1 },
       },
     );
     if (volume) series.push({

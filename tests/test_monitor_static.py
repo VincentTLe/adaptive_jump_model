@@ -73,6 +73,8 @@ def test_monitor_browser_code_uses_server_contract_without_inline_data() -> None
     assert "MonitorCharts.story" in replay and 'type: "candlestick"' in charts
     assert 'type: "heatmap"' in charts and 'name: "Strategy"' in charts
     assert "replay.index += 1" in replay and 'name: "Enter market"' in charts
+    assert 'name: "Move to cash"' in charts and "symbolRotate: 180" in charts
+    assert "itemStyle: { color: colors.red" in charts
     assert all(
         f'id="{control}"' in html
         for control in (
