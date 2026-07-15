@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">84 session(s) · newest first · 2026-07-15 07:21 UTC</p>
+  <p class="sub">85 session(s) · newest first · 2026-07-15 09:01 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-15T09:01:50Z</span><span class="who">codex · GPT-5 Codex</span>
+      </div>
+      <p class="goal">Freeze the approved exploratory protocol-attribution study that tests whether project-expanded JM/HMM candidate grids changed the frozen v7 relative performance.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>archive/completed-tasks/monitor-local-acceptance-001.md (pure rename of completed task)</code></li><li><code>TASK.md (new frozen attribution contract)</code></li><li><code>research/hyperparameter-grid-attribution.toml (new machine-readable frozen spec)</code></li><li><code>research/experiment_registry.jsonl (append-only FROZEN row)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>spec TOML and all registry JSONL rows parsed; registry hash matched 0e7edadc7c098094f0919000de3e8a55891a1088f9dbc946aa645efc054584b1</li><li>paper, parent config, and parent inventory SHA-256 values matched</li><li>canonical v7 verifier: complete, 18 boundary rows, 27 metric rows, maximum difference 7.327471962526033e-15</li><li>full pytest: 276 passed</li><li>Ruff lint and format checks passed; uv lock and uv pip checks passed</li><li>protected research code, data, dependencies, and artifacts were unchanged</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>ca51baf and c7b4f32 pushed to origin/cleanup/research-protocol</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner reviews milestone 1. Only after approval, implement the minimal runner/verifier/report/tests without refitting models or accessing new data.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>No counterfactual outcome was computed. Table 3 values are explicitly labeled illustrative; the paper does not disclose complete CV grids. JM 300/600/1200, HMM 10 and 40..2560, and the 5% expansion rule are project choices.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-15T07:21:42Z</span><span class="who">codex · GPT-5 Codex</span>
