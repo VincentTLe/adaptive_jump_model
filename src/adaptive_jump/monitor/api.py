@@ -36,6 +36,7 @@ StudyId = Annotated[
     str, StringConstraints(pattern=r"^[a-z0-9][a-z0-9-]*$", max_length=100)
 ]
 JobId = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{32}$")]
+MarketId = Annotated[str, StringConstraints(pattern=r"^[a-z]{2}$")]
 
 
 class EnqueueRequest(BaseModel):
@@ -293,6 +294,40 @@ def create_app(services: MonitorServices, *, lifespan=None) -> FastAPI:
             media_type="text/event-stream",
             headers={"X-Accel-Buffering": "no"},
         )
+
+    @app.get(f"{API_PREFIX}/jobs/{{job_id}}/markets/{{market}}/ohlcv")
+    async def market_data(job_id: JobId, market: MarketId) -> dict[str, Any]:
+        try:
+            job = await asyncio.to_thread(services.queue.get, job_id)
+            replay = await asyncio.to_thread(services.events.replay, job_id, 0)
+        except QueueError as exc:
+            raise HTTPException(status_code=404, detail="job not found") from exc
+        except EventStoreError as exc:
+            raise HTTPException(
+                status_code=409, detail="job event journal is invalid"
+            ) from exc
+        verified = [
+            runtime.event
+            for runtime in replay
+            if runtime.event.kind == "artifact_verified"
+            and runtime.event.stage == "verification"
+            and runtime.event.visibility == "decision"
+        ]
+        if job.status != "succeeded" or job.exit_code != 0 or len(verified) != 1:
+            raise HTTPException(
+                status_code=409,
+                detail="verified market data is unavailable for this job",
+            )
+        identity = verified[0].payload
+        if identity.get("status") not in {"complete", "boundary_failed"}:
+            raise HTTPException(
+                status_code=409,
+                detail="verified market data is unavailable for this job",
+            )
+        result = await asyncio.to_thread(
+            services.evidence.market_data, identity.get("run_id"), market
+        )
+        return {"job_id": job_id, **result}
 
     @app.get(f"{API_PREFIX}/evidence")
     async def evidence_catalog() -> dict[str, Any]:

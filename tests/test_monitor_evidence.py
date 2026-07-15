@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -117,3 +118,80 @@ def test_catalog_reports_missing_ignored_artifacts_without_reading_them(
     )
     with pytest.raises(EvidenceError, match="unavailable"):
         store.evidence("missing-run")
+
+
+def test_market_data_is_bound_to_verified_manifest_and_raw_hash(
+    tmp_path: Path, monkeypatch
+) -> None:
+    run_id = "fixed-baselines-aaaaaaaaaaaa-bbbbbbbbbbbb-cccccccccccc"
+    run_dir = tmp_path / "artifacts/fixed-baselines" / run_id
+    raw_path = tmp_path / "data/raw/acquisition/us_equity.csv"
+    run_dir.mkdir(parents=True)
+    raw_path.parent.mkdir(parents=True)
+    raw_payload = (
+        b"Date,Adj Close,Close,High,Low,Open,Volume\n"
+        b"2023-12-28 00:00:00-05:00,100,100,102,99,101,0\n"
+        b"2023-12-29 00:00:00-05:00,101,101,101,101,101,0\n"
+    )
+    raw_path.write_bytes(raw_payload)
+    (run_dir / "run.json").write_text(
+        json.dumps({"run_id": run_id, "status": "complete"})
+    )
+    (run_dir / "data-manifest.json").write_text(
+        json.dumps(
+            {
+                "sources": [
+                    {
+                        "market": "us",
+                        "kind": "equity",
+                        "provider": "yahoo",
+                        "source_id": "^SP500TR",
+                        "currency": "USD",
+                        "frequency": "daily",
+                        "source_classification": "proxy_candidate",
+                        "deviations": ["short fixture"],
+                        "quality": {"rows": 2, "valid_rows": 2},
+                        "raw": {
+                            "path": "data/raw/acquisition/us_equity.csv",
+                            "bytes": len(raw_payload),
+                            "sha256": hashlib.sha256(raw_payload).hexdigest(),
+                        },
+                    }
+                ]
+            }
+        )
+    )
+    artifacts.write_inventory(run_dir)
+    monkeypatch.setattr(
+        "adaptive_jump.monitor.evidence.artifacts.verify_run",
+        lambda _path: {"run_id": run_id, "status": "complete"},
+    )
+    store = EvidenceStore(tmp_path, {})
+
+    result = store.market_data(run_id, "us")
+
+    assert result["source"]["source_id"] == "^SP500TR"
+    assert result["quality"]["complete_ohlc_rows"] == 2
+    assert result["quality"]["distinct_ohlc_rows"] == 1
+    assert result["quality"]["nonzero_volume_rows"] == 0
+    assert result["rows"][0] == {
+        "date": "2023-12-28",
+        "open": 101.0,
+        "high": 102.0,
+        "low": 99.0,
+        "close": 100.0,
+        "volume": 0,
+    }
+
+    raw_path.write_bytes(raw_payload.replace(b",100,100", b",999,100", 1))
+    with pytest.raises(EvidenceError, match="hash"):
+        store.market_data(run_id, "us")
+
+    raw_path.write_bytes(raw_payload)
+    manifest_path = run_dir / "data-manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["sources"][0]["raw"]["path"] = "../outside.csv"
+    manifest_path.write_text(json.dumps(manifest))
+    artifacts.write_inventory(run_dir)
+    with pytest.raises(EvidenceError, match="outside"):
+        store.market_data(run_id, "us")
