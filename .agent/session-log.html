@@ -39,9 +39,35 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">79 session(s) · newest first · 2026-07-15 04:26 UTC</p>
+  <p class="sub">81 session(s) · newest first · 2026-07-15 05:12 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-15T05:12:22Z</span><span class="who">codex · GPT-5 Codex</span>
+      </div>
+      <p class="goal">Correct the immediately preceding Phase 2C1 handoff metadata without rewriting the append-only log.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>.agent/session-log.jsonl (+correction entry)</code></li><li><code>.agent/session-log.html (regenerated)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>git rev-parse HEAD returned 95084a1dbd41151e6b5114f7a75ccf8f1515881f</li><li>git show -s --format=%s HEAD identifies feat(monitor): serve verified research story</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>95084a1dbd41151e6b5114f7a75ccf8f1515881f</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner reviews Phase 2C1, then separately approves Phase 2C2 UI.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Correction: the preceding entry&#x27;s commit field and manually supplied timestamp are invalid. Its verified task facts remain accurate, but use this entry&#x27;s Git-derived full SHA and timestamp. The earlier line was preserved because the handoff log is append-only.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-15T05:18:00Z</span><span class="who">codex · GPT-5 Codex</span>
+      </div>
+      <p class="goal">Add Phase 2C1 verifier-bound daily research-story evidence for the completed canonical monitor replay.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/monitor/evidence.py (+validated feature, selected trade, wealth, drawdown story loader)</code></li><li><code>src/adaptive_jump/monitor/api.py (+authenticated story endpoint and shared verified-run gate)</code></li><li><code>tests/test_monitor_evidence.py (+accounting, lock, model, and delay regressions)</code></li><li><code>tests/test_monitor_api.py (+job identity and query contract)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>fail-first focused regressions failed before implementation; focused API/evidence suite passed 14 tests</li><li>monitor suite: 104 passed; full workspace: 276 passed</li><li>Ruff lint and format, uv lock, project uv pip check, wheel and sdist build: passed</li><li>production authenticated HTTP: anonymous 401, invalid delay 422, exact US/DE/JP canonical rows, health concurrent in 0.039 seconds</li><li>all 18 market/model/delay canonical loader combinations passed accounting and coverage checks</li><li>clean detached worktree installed 64 locked packages and passed 276 tests</li><li>v7 verifier complete with 27 metrics and max difference 7.327471962526033e-15; JM-4000 verifier boundary_failed with zero metrics/bootstrap</li><li>paper SHA-256 matched 141e48bd5ccaefe5d2c276a3c8772716b583b1df91517109d54a2452f4cb3af1</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>95084a1b1d64154b617a18f956ad136b94d3b00e</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner reviews Phase 2C1, then separately approves Phase 2C2 UI to replace constant-candidate lanes with the actual monthly-selected strategy story.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Phase 2C1 is backend only. Outcome-bearing story data fail closed unless the canonical run is complete and metrics_opened is literal true. No UI, model, data, protocol, dependency, artifact, result, gate, or scientific claim changed. Monitor remains healthy on 127.0.0.1:8765; local password was not logged.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-15T04:26:34Z</span><span class="who">codex · GPT-5 Codex</span>
