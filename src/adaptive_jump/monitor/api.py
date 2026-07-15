@@ -250,7 +250,9 @@ def create_app(services: MonitorServices, *, lifespan=None) -> FastAPI:
         except QueueError as exc:
             raise HTTPException(status_code=404, detail="job events not found") from exc
         try:
-            replay = services.events.replay(job_id, after_sequence)
+            replay = await asyncio.to_thread(
+                services.events.replay, job_id, after_sequence
+            )
         except EventStoreError as exc:
             raise HTTPException(
                 status_code=409, detail="job event journal is invalid"

@@ -320,8 +320,12 @@ function renderReplay() {
 }
 async function loadReplay(jobId) {
   pauseReplay();
-  const payload = await request(`/api/jobs/${jobId}/events`);
-  state.replayEvents = payload.events;
+  if (!state.events.has(jobId)) {
+    setText("replay-position", "Loading events");
+    const payload = await request(`/api/jobs/${jobId}/events`);
+    state.events.set(jobId, payload.events);
+  }
+  state.replayEvents = state.events.get(jobId);
   state.replayIndex = 0;
   renderReplay();
 }

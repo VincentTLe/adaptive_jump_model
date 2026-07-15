@@ -1,5 +1,6 @@
 import asyncio
 import json
+import threading
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -156,6 +157,14 @@ def test_event_api_reconnects_and_keeps_outcomes_server_locked(tmp_path: Path) -
     observer = services.events.observer(job.job_id)
     observer(ResearchEvent("stage_started", "hmm"))
     observer(ResearchEvent("metric_ready", "metrics", visibility="outcome"))
+    replay_thread_ids = []
+    original_replay = services.events.replay
+
+    def replay(*args, **kwargs):
+        replay_thread_ids.append(threading.get_ident())
+        return original_replay(*args, **kwargs)
+
+    services.events.replay = replay
 
     status, _headers, body = _request(
         app,
@@ -171,6 +180,7 @@ def test_event_api_reconnects_and_keeps_outcomes_server_locked(tmp_path: Path) -
         token="owner-token",
     )
     assert status == 200 and body["events"] == []
+    assert replay_thread_ids and set(replay_thread_ids) != {threading.get_ident()}
 
 
 def test_evidence_outcomes_use_backend_lock_status(tmp_path: Path) -> None:

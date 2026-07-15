@@ -388,7 +388,7 @@ def test_local_owner_opens_the_monitor_with_browser_basic_auth(tmp_path: Path) -
     password = "correct-local-password"
     authenticator = LocalAuthenticator(password)
     with (
-        _monitor_origin(tmp_path, authenticator) as (origin, _),
+        _monitor_origin(tmp_path, authenticator) as (origin, active_job_id),
         sync_playwright() as pw,
     ):
         browser = pw.chromium.launch(headless=True)
@@ -403,10 +403,22 @@ def test_local_owner_opens_the_monitor_with_browser_basic_auth(tmp_path: Path) -
         )
         _block_external(context, origin)
         page = context.new_page()
+        event_requests = []
+        page.on(
+            "request",
+            lambda request: (
+                event_requests.append(request.url)
+                if request.url.endswith(f"/api/jobs/{active_job_id}/events")
+                else None
+            ),
+        )
         errors = _watch_errors(page)
         response = page.goto(origin, wait_until="domcontentloaded")
         assert response is not None and response.status == 200
         expect(page.locator("#identity")).to_have_text("local-owner@localhost · owner")
+        page.get_by_role("button", name="Replay").click()
+        expect(page.locator("#replay-position")).to_have_text("1 / 7")
+        assert len(event_requests) == 1
         page.get_by_role("button", name="Queue").click()
         expect(page.get_by_role("button", name="Enqueue")).to_be_enabled()
         _assert_no_horizontal_overflow(page)
