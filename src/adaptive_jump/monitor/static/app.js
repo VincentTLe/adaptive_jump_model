@@ -154,6 +154,7 @@ function renderReplayJobs() {
   state.jobs.slice().reverse().forEach((job) => {
     const option = document.createElement("option");
     option.value = job.job_id;
+    option.dataset.status = job.status;
     option.textContent = `${job.study_id} · ${job.status}`;
     select.append(option);
   });

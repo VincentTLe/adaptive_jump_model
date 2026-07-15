@@ -1,3 +1,4 @@
+import json
 import socket
 import threading
 import time
@@ -100,6 +101,9 @@ class _Evidence:
             "metrics": metrics,
             "claim": {"conclusion": "ENGINEERING fixture conclusion"},
         }
+
+    def market_data(self, _run_id, _market):
+        return json.loads(_market_payload())
 
 
 def _free_port() -> int:
@@ -218,6 +222,15 @@ def _monitor_origin(tmp_path: Path, authenticator=None):
             },
         )
     )
+    observer(
+        ResearchEvent(
+            "artifact_verified",
+            "verification",
+            visibility="decision",
+            payload={"run_id": "fixed-baselines-fixture", "status": "complete"},
+        )
+    )
+    queue.finish(active.job_id, "succeeded", 0)
     services = MonitorServices(
         queue=queue,
         events=events,
@@ -281,6 +294,45 @@ def _watch_errors(page: Page) -> list[str]:
     return errors
 
 
+def _market_payload() -> str:
+    prices = (
+        ("2023-12-25", 100, 102, 99, 101),
+        ("2023-12-26", 101, 103, 100, 102),
+        ("2023-12-27", 102, 104, 101, 103),
+        ("2023-12-28", 103, 104, 101, 102),
+        ("2023-12-29", 102, 103, 99, 100),
+    )
+    rows = [
+        {
+            "date": market_date,
+            "open": open_,
+            "high": high,
+            "low": low,
+            "close": close,
+            "volume": 0,
+        }
+        for market_date, open_, high, low, close in prices
+    ]
+    return json.dumps(
+        {
+            "run_id": "fixed-baselines-fixture",
+            "market": "us",
+            "source": {"provider": "yahoo", "source_id": "^SP500TR", "deviations": []},
+            "coverage": {
+                "first_date": rows[0]["date"],
+                "last_date": rows[-1]["date"],
+                "rows": len(rows),
+            },
+            "quality": {
+                "candles_available": True,
+                "volume_available": False,
+                "distinct_ohlc_rows": 5,
+            },
+            "rows": rows,
+        }
+    )
+
+
 def _assert_no_horizontal_overflow(page: Page) -> None:
     overflow = page.evaluate(
         "() => ({page: document.documentElement.scrollWidth - window.innerWidth, "
@@ -327,13 +379,18 @@ def test_monitor_ui_in_real_chromium_desktop_mobile_and_no_js(tmp_path: Path) ->
 
         page.get_by_role("button", name="Replay").click()
         page.locator("#replay-job").select_option(active_job_id)
-        expect(page.locator("#replay-position")).to_have_text("1 / 7")
+        expect(page.locator("#replay-position")).to_have_text("2023-12-25 · 1 / 5")
+        expect(page.locator("#audit-position")).to_have_text("1 / 8")
+        expect(page.locator("#replay-frame-row")).to_contain_text("--")
+        _assert_canvas_has_pixels(page, "#replay-market-chart canvas")
         page.wait_for_timeout(1000)
-        expect(page.locator("#replay-position")).to_have_text("1 / 7")
+        expect(page.locator("#replay-position")).to_have_text("2023-12-25 · 1 / 5")
         page.locator('[data-replay="play"]').click()
-        expect(page.locator("#replay-position")).to_have_text("7 / 7", timeout=8000)
+        expect(page.locator("#replay-position")).to_have_text(
+            "2023-12-29 · 5 / 5", timeout=8000
+        )
         page.locator('[data-replay="reset"]').click()
-        expect(page.locator("#replay-position")).to_have_text("1 / 7")
+        expect(page.locator("#replay-position")).to_have_text("2023-12-25 · 1 / 5")
 
         page.get_by_role("button", name="Compare").click()
         expect(page.locator("#compare-status")).to_have_text("2 / 2 verified")
@@ -417,7 +474,7 @@ def test_local_owner_opens_the_monitor_with_browser_basic_auth(tmp_path: Path) -
         assert response is not None and response.status == 200
         expect(page.locator("#identity")).to_have_text("local-owner@localhost · owner")
         page.get_by_role("button", name="Replay").click()
-        expect(page.locator("#replay-position")).to_have_text("1 / 7")
+        expect(page.locator("#audit-position")).to_have_text("1 / 8")
         assert len(event_requests) == 1
         page.get_by_role("button", name="Queue").click()
         expect(page.get_by_role("button", name="Enqueue")).to_be_enabled()

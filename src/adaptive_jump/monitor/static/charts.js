@@ -86,11 +86,83 @@
     });
   }
 
+  function highAreas(dates, states) {
+    const areas = [];
+    let start = null;
+    states.forEach((state, index) => {
+      if (state === 1 && start === null) start = index;
+      if (start !== null && (state !== 1 || index === states.length - 1)) {
+        const end = state === 1 && index === states.length - 1 ? index : index - 1;
+        areas.push([{ xAxis: dates[start] }, { xAxis: dates[end] }]);
+        start = null;
+      }
+    });
+    return areas;
+  }
+
+  function finite(value) { return value !== null && value !== "" && Number.isFinite(Number(value)); }
+
+  function market(view) {
+    if (!view.rows.length) return empty("replay-market-chart");
+    const dates = view.rows.map((row) => row.date);
+    const volume = view.volumeAvailable;
+    const laneAxis = volume ? 2 : 1;
+    const grids = volume
+      ? [{ left: 62, right: 42, top: 32, height: "50%" }, { left: 62, right: 42, top: "61%", height: "10%" }, { left: 62, right: 42, top: "78%", height: "13%" }]
+      : [{ left: 62, right: 42, top: 32, height: "62%" }, { left: 62, right: 42, top: "78%", height: "13%" }];
+    const categoryAxis = (gridIndex, labels) => ({
+      type: "category", gridIndex, data: dates, boundaryGap: true,
+      axisLabel: { color: colors.muted, show: labels, hideOverlap: true },
+      axisLine: { lineStyle: { color: colors.line } }, axisTick: { show: false },
+    });
+    const xAxis = [categoryAxis(0, false)];
+    const yAxis = [{ type: "value", scale: true, gridIndex: 0, axisLabel: { color: colors.muted }, splitLine: { lineStyle: { color: colors.line } } }];
+    if (volume) {
+      xAxis.push(categoryAxis(1, false));
+      yAxis.push({ type: "value", gridIndex: 1, axisLabel: { color: colors.muted }, splitLine: { show: false } });
+    }
+    xAxis.push(categoryAxis(laneAxis, true));
+    yAxis.push({ type: "category", gridIndex: laneAxis, data: [view.jmLabel, "HMM"], axisLabel: { color: colors.muted }, axisLine: { lineStyle: { color: colors.line } } });
+    const candles = view.rows.map((row) => {
+      const raw = [row.open, row.close, row.low, row.high];
+      const values = raw.map(Number);
+      return raw.every(finite) && new Set(values).size > 1 ? values : "-";
+    });
+    const series = [];
+    if (view.candlesAvailable) series.push({
+      name: "OHLC", type: "candlestick", xAxisIndex: 0, yAxisIndex: 0, data: candles,
+      itemStyle: { color: colors.green, color0: colors.red, borderColor: colors.green, borderColor0: colors.red },
+    });
+    series.push({
+      name: "Close", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false,
+      connectNulls: false, data: view.rows.map((row) => finite(row.close) ? Number(row.close) : null),
+      lineStyle: { color: colors.amber, width: 1.3 }, itemStyle: { color: colors.amber },
+      markArea: { silent: true, itemStyle: { color: "rgba(255,107,107,0.10)" }, data: highAreas(dates, view.hmm) },
+      markLine: { silent: true, symbol: ["none", "none"], label: { show: false }, lineStyle: { color: colors.text, type: "dashed" }, data: [{ xAxis: view.currentDate }] },
+    });
+    if (volume) series.push({
+      name: "Volume", type: "bar", xAxisIndex: 1, yAxisIndex: 1,
+      data: view.rows.map((row) => finite(row.volume) ? Number(row.volume) : null),
+      itemStyle: { color: colors.muted },
+    });
+    const stateData = [];
+    view.jm.forEach((state, index) => { if (state === 0 || state === 1) stateData.push([index, 0, state]); });
+    view.hmm.forEach((state, index) => { if (state === 0 || state === 1) stateData.push([index, 1, state]); });
+    series.push({
+      name: "State", type: "heatmap", xAxisIndex: laneAxis, yAxisIndex: laneAxis, data: stateData,
+      itemStyle: { color: (item) => item.value[2] === 1 ? colors.red : colors.blue, borderWidth: 0 },
+    });
+    render("replay-market-chart", {
+      ...baseOption(), grid: grids, xAxis, yAxis, series, legend: { show: false },
+      tooltip: { trigger: "axis", backgroundColor: "#171d23", borderColor: colors.line, textStyle: { color: colors.text } },
+    });
+  }
+
   function resize() {
     pending.forEach((option, id) => render(id, option));
     instances.forEach((instance) => instance.resize());
   }
 
   window.addEventListener("resize", resize);
-  window.MonitorCharts = { resource, comparison, resize };
+  window.MonitorCharts = { resource, comparison, market, resize };
 })();
