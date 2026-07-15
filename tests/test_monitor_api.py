@@ -48,6 +48,21 @@ class _Evidence:
             "rows": [{"date": "2023-12-29", "close": 10327.83}],
         }
 
+    def market_story(self, run_id, market, model, delay):
+        if market != "us":
+            raise EvidenceError(f"market is unavailable: {market}")
+        return {
+            "run_id": run_id,
+            "market": market,
+            "model": model,
+            "protocol": {
+                "delay_trading_days": delay,
+                "effective_return_offset": delay + 1,
+                "one_way_cost_bps": 10,
+            },
+            "rows": [{"date": "2023-12-29", "position": 1.0}],
+        }
+
 
 def _app(tmp_path: Path):
     runtime = tmp_path / "artifacts/.monitor"
@@ -203,6 +218,12 @@ def test_market_data_requires_one_verified_completed_job(tmp_path: Path) -> None
         token="viewer-token",
     )
     assert unavailable[0] == 409
+    story_unavailable = _request(
+        app,
+        f"/api/jobs/{job.job_id}/markets/us/story?model=fixed_jm&delay=1",
+        token="viewer-token",
+    )
+    assert story_unavailable[0] == 409
 
     services.queue.claim_next()
     observer = services.events.observer(job.job_id)
@@ -225,6 +246,29 @@ def test_market_data_requires_one_verified_completed_job(tmp_path: Path) -> None
     assert response[2]["job_id"] == job.job_id
     assert response[2]["run_id"] == "verified-run"
     assert response[2]["source"]["source_id"] == "^SP500TR"
+
+    story = _request(
+        app,
+        f"/api/jobs/{job.job_id}/markets/us/story?model=hmm&delay=5",
+        token="viewer-token",
+    )
+    assert story[0] == 200
+    assert story[2]["job_id"] == job.job_id
+    assert story[2]["model"] == "hmm"
+    assert story[2]["protocol"]["effective_return_offset"] == 6
+
+    invalid_story = _request(
+        app,
+        f"/api/jobs/{job.job_id}/markets/us/story?model=p2&delay=2",
+        token="viewer-token",
+    )
+    assert invalid_story[0] == 422
+    invalid_delay = _request(
+        app,
+        f"/api/jobs/{job.job_id}/markets/us/story?model=fixed_jm&delay=2",
+        token="viewer-token",
+    )
+    assert invalid_delay[0] == 422
 
     unknown_market = _request(
         app,

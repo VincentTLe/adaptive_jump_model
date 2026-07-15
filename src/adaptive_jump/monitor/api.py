@@ -6,7 +6,7 @@ import asyncio
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -295,8 +295,7 @@ def create_app(services: MonitorServices, *, lifespan=None) -> FastAPI:
             headers={"X-Accel-Buffering": "no"},
         )
 
-    @app.get(f"{API_PREFIX}/jobs/{{job_id}}/markets/{{market}}/ohlcv")
-    async def market_data(job_id: JobId, market: MarketId) -> dict[str, Any]:
+    async def verified_run_id(job_id: str) -> str:
         try:
             job = await asyncio.to_thread(services.queue.get, job_id)
             replay = await asyncio.to_thread(services.events.replay, job_id, 0)
@@ -324,8 +323,32 @@ def create_app(services: MonitorServices, *, lifespan=None) -> FastAPI:
                 status_code=409,
                 detail="verified market data is unavailable for this job",
             )
+        run_id = identity.get("run_id")
+        if not isinstance(run_id, str):
+            raise HTTPException(
+                status_code=409,
+                detail="verified market data is unavailable for this job",
+            )
+        return run_id
+
+    @app.get(f"{API_PREFIX}/jobs/{{job_id}}/markets/{{market}}/ohlcv")
+    async def market_data(job_id: JobId, market: MarketId) -> dict[str, Any]:
+        run_id = await verified_run_id(job_id)
+        result = await asyncio.to_thread(services.evidence.market_data, run_id, market)
+        return {"job_id": job_id, **result}
+
+    @app.get(f"{API_PREFIX}/jobs/{{job_id}}/markets/{{market}}/story")
+    async def market_story(
+        job_id: JobId,
+        market: MarketId,
+        model: Literal["fixed_jm", "hmm"] = "fixed_jm",
+        delay: int = 1,
+    ) -> dict[str, Any]:
+        if delay not in {1, 5, 10}:
+            raise HTTPException(status_code=422, detail="delay must be 1, 5, or 10")
+        run_id = await verified_run_id(job_id)
         result = await asyncio.to_thread(
-            services.evidence.market_data, identity.get("run_id"), market
+            services.evidence.market_story, run_id, market, model, delay
         )
         return {"job_id": job_id, **result}
 
