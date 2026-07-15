@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">77 session(s) · newest first · 2026-07-15 02:03 UTC</p>
+  <p class="sub">78 session(s) · newest first · 2026-07-15 02:37 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-15T02:37:25Z</span><span class="who">codex · GPT-5 Codex</span>
+      </div>
+      <p class="goal">Add a verifier-bound OHLCV API for the completed canonical replay before building the human market visualization.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/monitor/api.py (+verified-job market route)</code></li><li><code>src/adaptive_jump/monitor/evidence.py (+manifest/hash-bound OHLCV loader and quality profile)</code></li><li><code>tests/test_monitor_api.py (+job/event fail-closed contract)</code></li><li><code>tests/test_monitor_evidence.py (+raw hash and path-containment contract)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>fail-first focused tests: 2 failed before implementation for missing route and loader</li><li>focused monitor API/evidence suite: 13 passed</li><li>monitor suite: 103 passed</li><li>full workspace pytest: 275 passed</li><li>Ruff lint and format, uv lock check, and uv pip check passed; 64 packages compatible</li><li>real canonical loader: US 9,070 rows, DE 9,270 rows, JP 13,829 rows; all run, manifest, byte-count, and SHA-256 gates passed in 1.408 seconds</li><li>production HTTP: authenticated endpoint returned exact job/run/source identities and row counts for all three markets</li><li>production Chromium: authenticated dashboard and US 9,070-row fetch passed with zero page/console errors and zero horizontal overflow</li><li>production monitor health ok and listening only on 127.0.0.1:8765</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>30f6b075d56ba3a0e82cf7fc0ad46b376dc21031</code></p></div>
+        <div><span class="lbl">Next step</span><p>After owner approval, Phase 2B can replace raw replay JSON as the primary view with synchronized candlesticks, JM/HMM state lanes, and a current-date marker while retaining Runtime Audit.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>This API intentionally supports verified completed fixed-baseline jobs only; it does not claim pre-artifact live-job support. US ^SP500TR has no nonzero volume and only 3,691 distinct OHLC candles, so Phase 2B must hide US volume and use close-line fallback for degenerate/missing bars. No model, protocol, data, dependency, artifact, outcome, or scientific claim changed. The regenerated local password is intentionally not logged.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-15T02:03:03Z</span><span class="who">codex · GPT-5 Codex</span>
