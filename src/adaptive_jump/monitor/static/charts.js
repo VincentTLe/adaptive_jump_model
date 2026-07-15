@@ -95,6 +95,8 @@
       return;
     }
     const dates = view.rows.map((row) => row.date);
+    const updateDuration = motion ? Math.min(220, view.frameDuration * 0.6) : 0;
+    const compact = document.getElementById("replay-feature-chart").offsetWidth < 600;
     const storyPoints = view.rows.filter((row) => finite(row.strategy_wealth_100)).length;
     const showStorySymbols = storyPoints < 3;
     const volume = view.volumeAvailable;
@@ -134,6 +136,25 @@
       lineStyle: { color: colors.amber, width: 1.3 }, itemStyle: { color: colors.amber },
       markLine: { silent: true, symbol: ["none", "none"], label: { show: false }, lineStyle: { color: colors.text, type: "dashed" }, data: [{ xAxis: view.currentDate }] },
     });
+    const enterMarket = [];
+    const moveToCash = [];
+    view.rows.forEach((row) => {
+      if (!finite(row.one_way_turnover) || Number(row.one_way_turnover) <= 0 || !finite(row.close)) return;
+      const marker = [row.date, Number(row.close), Number(row.transaction_cost) * 10_000];
+      (Number(row.position) === 1 ? enterMarket : moveToCash).push(marker);
+    });
+    series.push(
+      {
+        name: "Enter market", type: "scatter", xAxisIndex: 0, yAxisIndex: 0,
+        data: enterMarket, symbol: "triangle", symbolSize: 13,
+        itemStyle: { color: colors.green, borderColor: colors.text, borderWidth: 1 },
+      },
+      {
+        name: "Move to cash", type: "scatter", xAxisIndex: 0, yAxisIndex: 0,
+        data: moveToCash, symbol: "diamond", symbolSize: 13,
+        itemStyle: { color: colors.blue, borderColor: colors.text, borderWidth: 1 },
+      },
+    );
     if (volume) series.push({
       name: "Volume", type: "bar", xAxisIndex: 1, yAxisIndex: 1,
       data: view.rows.map((row) => finite(row.volume) ? Number(row.volume) : null),
@@ -163,16 +184,19 @@
       itemStyle: { color: (item) => item.value[2] === 1 ? colors.green : colors.blue, borderWidth: 0 },
     });
     render("replay-market-chart", {
-      ...baseOption(), grid: grids, xAxis, yAxis, series, legend: { show: false },
+      ...baseOption(), animationDurationUpdate: updateDuration, animationEasingUpdate: "linear",
+      grid: grids, xAxis, yAxis, series, legend: { show: false },
       tooltip: { trigger: "axis", backgroundColor: "#171d23", borderColor: colors.line, textStyle: { color: colors.text } },
     });
     render("replay-feature-chart", {
       ...baseOption(),
+      animationDurationUpdate: updateDuration,
+      animationEasingUpdate: "linear",
       grid: { left: 68, right: 55, top: 48, bottom: 38 },
       xAxis: { type: "category", data: dates, boundaryGap: false, axisLabel: { color: colors.muted, hideOverlap: true }, axisLine: { lineStyle: { color: colors.line } } },
       yAxis: [
-        { type: "value", name: "DD-10", axisLabel: { color: colors.muted, formatter: (item) => `${(item * 100).toFixed(1)}%` }, splitLine: { lineStyle: { color: colors.line } } },
-        { type: "value", name: "Sortino", axisLabel: { color: colors.muted }, splitLine: { show: false } },
+        { type: "value", name: compact ? "" : "DD-10", axisLabel: { color: colors.muted, formatter: (item) => `${(item * 100).toFixed(1)}%` }, splitLine: { lineStyle: { color: colors.line } } },
+        { type: "value", name: compact ? "" : "Sortino", axisLabel: { color: colors.muted }, splitLine: { show: false } },
       ],
       series: [
         { name: "DD-10", type: "line", showSymbol: showStorySymbols, connectNulls: false, data: view.rows.map((row) => row.dd_10), lineStyle: { color: colors.red }, itemStyle: { color: colors.red } },

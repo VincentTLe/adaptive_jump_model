@@ -4,12 +4,13 @@
   const $ = (id) => document.getElementById(id);
   const marketNames = { us: "United States", de: "Germany", jp: "Japan" };
   const modelNames = { fixed_jm: "Fixed JM", hmm: "HMM" };
+  const speedIntervals = { 0.5: 1200, 1: 600, 2: 300, 5: 120 };
   const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
   const replay = {
     eventCache: null, marketCache: new Map(), storyCache: new Map(), request: null,
     loadVersion: 0, events: [], jobId: null, market: "us", model: "fixed_jm",
     delay: 1, marketData: null, storyData: null, marketRows: new Map(), marketIndexes: new Map(),
-    start: 0, index: 0, auditIndex: 0, timer: null,
+    speed: 1, start: 0, index: 0, auditIndex: 0, timer: null,
   };
 
   function text(id, value) { $(id).textContent = value; }
@@ -33,7 +34,7 @@
     return Number.isFinite(numeric) ? `$${number.format(numeric)}` : "--";
   }
   function setFiltersDisabled(disabled) {
-    ["replay-market", "replay-model", "replay-delay"].forEach((id) => { $(id).disabled = disabled; });
+    ["replay-market", "replay-model", "replay-delay", "replay-speed"].forEach((id) => { $(id).disabled = disabled; });
   }
   function cached(cache, key, path) {
     if (!cache.has(key)) {
@@ -94,13 +95,26 @@
       rows: visible, currentDate: row.date,
       candlesAvailable: replay.marketData.quality.candles_available,
       volumeAvailable: replay.marketData.quality.volume_available,
+      frameDuration: speedIntervals[replay.speed],
     });
     text("replay-summary-date", row.date);
-    text("replay-summary-model", `${modelNames[data.model]} · delay ${data.protocol.delay_trading_days} · return t+${data.protocol.effective_return_offset}`);
-    text("replay-summary-signal", tradeText(row.signal));
-    text("replay-summary-position", tradeText(row.position));
-    text("replay-summary-wealth", `${money(row.strategy_wealth_100)} · B&H ${money(row.buy_hold_wealth_100)}`);
-    text("replay-context", `Past ${visible.length} market days · ${storyRows.size} ${storyRows.size === 1 ? "strategy day" : "strategy days"} · ${value(data.protocol.one_way_cost_bps)} bps one-way cost`);
+    text("replay-summary-close", value(row.close));
+    text("replay-summary-return", percent(row.equity_simple));
+    text("replay-summary-range", `${value(row.low)} – ${value(row.high)}`);
+    text("replay-summary-volume", replay.marketData.quality.volume_available ? value(row.volume) : "Unavailable");
+    const input = data.model === "fixed_jm"
+      ? `DD-10 ${percent(row.dd_10)} · S20 ${value(row.sortino_20)} · S60 ${value(row.sortino_60)}`
+      : `Total return ${percent(row.equity_simple)}`;
+    const traded = Number(row.one_way_turnover) > 0;
+    const position = traded
+      ? `${row.position === 1 ? "Enter market" : "Move to cash"} · ${value(row.transaction_cost * 10_000)} bps`
+      : `${tradeText(row.position)} · hold`;
+    text("decision-input", input);
+    text("decision-signal", tradeText(row.signal));
+    text("decision-delay", `Applies at t+${data.protocol.effective_return_offset}`);
+    text("decision-position", position);
+    text("decision-outcome", `${percent(row.strategy_return)} · ${money(row.strategy_wealth_100)}`);
+    text("replay-context", `${modelNames[data.model]} · past ${visible.length} market days · ${storyRows.size} ${storyRows.size === 1 ? "strategy day" : "strategy days"}`);
     text("replay-feature-context", data.model === "fixed_jm" ? "Inputs used by Fixed JM" : "Context only · HMM fits returns");
     setFrameRow(row);
     $("replay-range").min = replay.start;
@@ -119,9 +133,8 @@
     text("replay-feature-fallback", message);
     text("replay-source", message);
     text("replay-position", "Strategy data unavailable");
-    ["replay-summary-date", "replay-summary-model", "replay-summary-wealth"].forEach((id) => text(id, "--"));
-    text("replay-summary-signal", "Unavailable");
-    text("replay-summary-position", "Unavailable");
+    ["replay-summary-date", "replay-summary-close", "replay-summary-return", "replay-summary-range", "replay-summary-volume"].forEach((id) => text(id, "--"));
+    ["decision-input", "decision-signal", "decision-delay", "decision-position", "decision-outcome"].forEach((id) => text(id, "Unavailable"));
     const cell = document.createElement("td");
     cell.colSpan = 11;
     cell.textContent = message;
@@ -185,8 +198,20 @@
     $("replay-market").value = replay.market;
     $("replay-model").value = replay.model;
     $("replay-delay").value = replay.delay;
+    $("replay-speed").value = replay.speed;
     setFiltersDisabled(false);
     await loadSelection();
+  }
+
+  function startPlayback() {
+    if (replay.timer || !replay.storyData?.rows.length) return;
+    const last = replay.storyData.rows.length - 1;
+    if (replay.index >= last) return;
+    replay.timer = window.setInterval(() => {
+      replay.index += 1;
+      renderFrame();
+      if (replay.index >= last) pause();
+    }, speedIntervals[replay.speed]);
   }
 
   function act(action) {
@@ -194,13 +219,7 @@
     if (action === "reset") { pause(); replay.index = replay.start; }
     if (action === "previous") { pause(); replay.index -= 1; }
     if (action === "next") { pause(); replay.index += 1; }
-    if (action === "play" && !replay.timer && replay.marketData?.rows.length) {
-      replay.timer = window.setInterval(() => {
-        if (replay.index >= replay.marketData.rows.length - 1) pause();
-        else replay.index = Math.min(replay.index + 5, replay.marketData.rows.length - 1);
-        renderFrame();
-      }, 120);
-    }
+    if (action === "play") startPlayback();
     renderFrame();
   }
 
@@ -211,6 +230,12 @@
     $("replay-market").addEventListener("change", (event) => { replay.market = event.target.value; loadSelection(); });
     $("replay-model").addEventListener("change", (event) => { replay.model = event.target.value; loadSelection(); });
     $("replay-delay").addEventListener("change", (event) => { replay.delay = Number(event.target.value); loadSelection(); });
+    $("replay-speed").addEventListener("change", (event) => {
+      const playing = Boolean(replay.timer);
+      pause();
+      replay.speed = Number(event.target.value);
+      if (playing) startPlayback();
+    });
     $("replay-range").addEventListener("input", (event) => { pause(); replay.index = Number(event.target.value); renderFrame(); });
     $("audit-range").addEventListener("input", (event) => { replay.auditIndex = Number(event.target.value); renderAudit(); });
     document.querySelectorAll("[data-replay]").forEach((control) => {

@@ -106,7 +106,7 @@ class _Evidence:
         return json.loads(_market_payload())
 
     def market_story(self, _run_id, market, model, delay):
-        source_rows = json.loads(_market_payload())["rows"]
+        source_rows = json.loads(_market_payload())["rows"][1:]
         signals = [0, 1, 1, 0, 0]
         positions = [0, 0, 0, 1, 1]
         strategy_wealth = [100.01, 100.02, 100.03, 102.99, 101.96]
@@ -120,6 +120,7 @@ class _Evidence:
                     "dd_10": [0.01, 0.009, 0.008, 0.012, 0.018][index],
                     "sortino_20": [0.2, 0.3, 0.4, 0.1, -0.2][index],
                     "sortino_60": [0.1, 0.15, 0.2, 0.12, 0.0][index],
+                    "equity_simple": [0.01, 0.0099, 0.0098, -0.0097, -0.0196][index],
                     "signal": signals[index],
                     "position": positions[index],
                     "one_way_turnover": 1.0 if index == 3 else 0.0,
@@ -344,6 +345,7 @@ def _watch_errors(page: Page) -> list[str]:
 
 def _market_payload() -> str:
     prices = (
+        ("2023-12-22", 99, 101, 98, 100),
         ("2023-12-25", 100, 102, 99, 101),
         ("2023-12-26", 101, 103, 100, 102),
         ("2023-12-27", 102, 104, 101, 103),
@@ -374,7 +376,7 @@ def _market_payload() -> str:
             "quality": {
                 "candles_available": True,
                 "volume_available": False,
-                "distinct_ohlc_rows": 5,
+                "distinct_ohlc_rows": 6,
             },
             "rows": rows,
         }
@@ -429,29 +431,45 @@ def test_monitor_ui_in_real_chromium_desktop_mobile_and_no_js(tmp_path: Path) ->
         page.locator("#replay-job").select_option(active_job_id)
         expect(page.locator("#replay-position")).to_have_text("2023-12-25 · 1 / 5")
         expect(page.locator("#audit-position")).to_have_text("1 / 8")
-        expect(page.locator("#replay-summary-model")).to_have_text(
-            "Fixed JM · delay 1 · return t+2"
-        )
-        expect(page.locator("#replay-summary-signal")).to_have_text("Cash · 0")
-        expect(page.locator("#replay-summary-position")).to_have_text("Cash · 0")
-        expect(page.locator("#replay-summary-wealth")).to_contain_text("$100.01")
+        expect(page.locator("#replay-summary-close")).to_have_text("101")
+        expect(page.locator("#replay-summary-return")).to_have_text("1%")
+        expect(page.locator("#decision-input")).to_contain_text("DD-10 1%")
+        expect(page.locator("#decision-signal")).to_have_text("Cash · 0")
+        expect(page.locator("#decision-delay")).to_have_text("Applies at t+2")
+        expect(page.locator("#decision-outcome")).to_contain_text("$100.01")
         expect(page.locator("#replay-frame-row")).to_contain_text("100.01")
         _assert_canvas_has_pixels(page, "#replay-market-chart canvas")
         _assert_canvas_has_pixels(page, "#replay-feature-chart canvas")
+        initial_markers = page.evaluate(
+            "() => echarts.getInstanceByDom("
+            "document.getElementById('replay-market-chart')).getOption().series"
+            ".filter(series => ['Enter market', 'Move to cash'].includes(series.name))"
+            ".flatMap(series => series.data)"
+        )
+        assert initial_markers == []
         page.wait_for_timeout(1000)
         expect(page.locator("#replay-position")).to_have_text("2023-12-25 · 1 / 5")
         page.locator("#replay-model").select_option("hmm")
-        expect(page.locator("#replay-summary-model")).to_have_text(
-            "HMM · delay 1 · return t+2"
-        )
+        expect(page.locator("#decision-input")).to_contain_text("Total return 1%")
         page.locator("#replay-delay").select_option("5")
-        expect(page.locator("#replay-summary-model")).to_have_text(
-            "HMM · delay 5 · return t+6"
+        expect(page.locator("#decision-delay")).to_have_text("Applies at t+6")
+        page.locator("#replay-speed").select_option("0.5")
+        page.locator('[data-replay="play"]').click()
+        expect(page.locator("#replay-position")).to_have_text(
+            "2023-12-26 · 2 / 5", timeout=3000
         )
+        page.locator('[data-replay="pause"]').click()
+        page.locator("#replay-speed").select_option("5")
         page.locator('[data-replay="play"]').click()
         expect(page.locator("#replay-position")).to_have_text(
             "2023-12-29 · 5 / 5", timeout=8000
         )
+        trade_markers = page.evaluate(
+            "() => echarts.getInstanceByDom("
+            "document.getElementById('replay-market-chart'))"
+            ".getOption().series.find(series => series.name === 'Enter market').data"
+        )
+        assert len(trade_markers) == 1
         page.locator('[data-replay="reset"]').click()
         expect(page.locator("#replay-position")).to_have_text("2023-12-25 · 1 / 5")
 
