@@ -105,6 +105,54 @@ class _Evidence:
     def market_data(self, _run_id, _market):
         return json.loads(_market_payload())
 
+    def market_story(self, _run_id, market, model, delay):
+        source_rows = json.loads(_market_payload())["rows"]
+        signals = [0, 1, 1, 0, 0]
+        positions = [0, 0, 0, 1, 1]
+        strategy_wealth = [100.01, 100.02, 100.03, 102.99, 101.96]
+        buy_hold_wealth = [101.0, 102.0, 103.0, 102.0, 100.0]
+        rows = []
+        for index, source in enumerate(source_rows):
+            rows.append(
+                {
+                    "date": source["date"],
+                    "excess_return": [0.009, 0.009, 0.009, -0.011, -0.021][index],
+                    "dd_10": [0.01, 0.009, 0.008, 0.012, 0.018][index],
+                    "sortino_20": [0.2, 0.3, 0.4, 0.1, -0.2][index],
+                    "sortino_60": [0.1, 0.15, 0.2, 0.12, 0.0][index],
+                    "signal": signals[index],
+                    "position": positions[index],
+                    "one_way_turnover": 1.0 if index == 3 else 0.0,
+                    "transaction_cost": 0.001 if index == 3 else 0.0,
+                    "strategy_return": [0.0001, 0.0001, 0.0001, 0.029, -0.01][index],
+                    "strategy_wealth_100": strategy_wealth[index],
+                    "strategy_drawdown": strategy_wealth[index]
+                    / max(strategy_wealth[: index + 1])
+                    - 1,
+                    "buy_hold_return": [0.01, 0.0099, 0.0098, -0.0097, -0.0196][index],
+                    "buy_hold_wealth_100": buy_hold_wealth[index],
+                    "buy_hold_drawdown": buy_hold_wealth[index]
+                    / max(buy_hold_wealth[: index + 1])
+                    - 1,
+                }
+            )
+        return {
+            "run_id": "fixed-baselines-fixture",
+            "market": market,
+            "model": model,
+            "protocol": {
+                "delay_trading_days": delay,
+                "effective_return_offset": delay + 1,
+                "one_way_cost_bps": 10,
+            },
+            "coverage": {
+                "first_date": rows[0]["date"],
+                "last_date": rows[-1]["date"],
+                "rows": len(rows),
+            },
+            "rows": rows,
+        }
+
 
 def _free_port() -> int:
     with socket.socket() as listener:
@@ -344,12 +392,12 @@ def _assert_no_horizontal_overflow(page: Page) -> None:
 
 
 def _assert_canvas_has_pixels(page: Page, selector: str) -> None:
-    canvas = page.locator(selector)
-    expect(canvas).to_be_visible()
-    assert canvas.evaluate(
-        "c => c.width > 10 && c.height > 10 && "
+    canvases = page.locator(selector)
+    expect(canvases.first).to_be_visible()
+    assert canvases.evaluate_all(
+        "items => items.some(c => c.width > 10 && c.height > 10 && "
         "Array.from(c.getContext('2d').getImageData(0,0,c.width,c.height).data)"
-        ".some((value,index) => index % 4 === 3 && value > 0)"
+        ".some((value,index) => index % 4 === 3 && value > 0))"
     )
 
 
@@ -381,10 +429,25 @@ def test_monitor_ui_in_real_chromium_desktop_mobile_and_no_js(tmp_path: Path) ->
         page.locator("#replay-job").select_option(active_job_id)
         expect(page.locator("#replay-position")).to_have_text("2023-12-25 · 1 / 5")
         expect(page.locator("#audit-position")).to_have_text("1 / 8")
-        expect(page.locator("#replay-frame-row")).to_contain_text("--")
+        expect(page.locator("#replay-summary-model")).to_have_text(
+            "Fixed JM · delay 1 · return t+2"
+        )
+        expect(page.locator("#replay-summary-signal")).to_have_text("Cash · 0")
+        expect(page.locator("#replay-summary-position")).to_have_text("Cash · 0")
+        expect(page.locator("#replay-summary-wealth")).to_contain_text("$100.01")
+        expect(page.locator("#replay-frame-row")).to_contain_text("100.01")
         _assert_canvas_has_pixels(page, "#replay-market-chart canvas")
+        _assert_canvas_has_pixels(page, "#replay-feature-chart canvas")
         page.wait_for_timeout(1000)
         expect(page.locator("#replay-position")).to_have_text("2023-12-25 · 1 / 5")
+        page.locator("#replay-model").select_option("hmm")
+        expect(page.locator("#replay-summary-model")).to_have_text(
+            "HMM · delay 1 · return t+2"
+        )
+        page.locator("#replay-delay").select_option("5")
+        expect(page.locator("#replay-summary-model")).to_have_text(
+            "HMM · delay 5 · return t+6"
+        )
         page.locator('[data-replay="play"]').click()
         expect(page.locator("#replay-position")).to_have_text(
             "2023-12-29 · 5 / 5", timeout=8000

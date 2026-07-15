@@ -69,8 +69,14 @@ def test_monitor_browser_code_uses_server_contract_without_inline_data() -> None
         "selection_checkpoint" in diagnostics and "boundary_diagnostic" in diagnostics
     )
     assert "MonitorReplay" in replay and "/api/jobs/${jobId}/events" in replay
-    assert "/markets/${market}/ohlcv" in replay and "MonitorCharts.market" in replay
-    assert 'type: "candlestick"' in charts and 'type: "heatmap"' in charts
+    assert "/markets/${market}/ohlcv" in replay and "/story?model=" in replay
+    assert "MonitorCharts.story" in replay and 'type: "candlestick"' in charts
+    assert 'type: "heatmap"' in charts and 'name: "Strategy"' in charts
+    assert all(
+        f'id="{control}"' in html
+        for control in ("replay-model", "replay-delay", "replay-feature-chart")
+    )
+    assert 'id="replay-candidate"' not in html
     assert 'id="runtime-audit"' in html and 'id="replay-market-chart"' in html
     assert all(
         "innerHTML" not in code and "localStorage" not in code

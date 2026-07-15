@@ -86,30 +86,23 @@
     });
   }
 
-  function highAreas(dates, states) {
-    const areas = [];
-    let start = null;
-    states.forEach((state, index) => {
-      if (state === 1 && start === null) start = index;
-      if (start !== null && (state !== 1 || index === states.length - 1)) {
-        const end = state === 1 && index === states.length - 1 ? index : index - 1;
-        areas.push([{ xAxis: dates[start] }, { xAxis: dates[end] }]);
-        start = null;
-      }
-    });
-    return areas;
-  }
-
   function finite(value) { return value !== null && value !== "" && Number.isFinite(Number(value)); }
 
-  function market(view) {
-    if (!view.rows.length) return empty("replay-market-chart");
+  function story(view) {
+    if (!view.rows.length) {
+      empty("replay-market-chart");
+      empty("replay-feature-chart");
+      return;
+    }
     const dates = view.rows.map((row) => row.date);
+    const storyPoints = view.rows.filter((row) => finite(row.strategy_wealth_100)).length;
+    const showStorySymbols = storyPoints < 3;
     const volume = view.volumeAvailable;
-    const laneAxis = volume ? 2 : 1;
+    const wealthAxis = volume ? 2 : 1;
+    const laneAxis = volume ? 3 : 2;
     const grids = volume
-      ? [{ left: 62, right: 42, top: 32, height: "50%" }, { left: 62, right: 42, top: "61%", height: "10%" }, { left: 62, right: 42, top: "78%", height: "13%" }]
-      : [{ left: 62, right: 42, top: 32, height: "62%" }, { left: 62, right: 42, top: "78%", height: "13%" }];
+      ? [{ left: 68, right: 42, top: 34, height: "35%" }, { left: 68, right: 42, top: "44%", height: "8%" }, { left: 68, right: 42, top: "58%", height: "18%" }, { left: 68, right: 42, top: "82%", height: "11%" }]
+      : [{ left: 68, right: 42, top: 34, height: "44%" }, { left: 68, right: 42, top: "57%", height: "19%" }, { left: 68, right: 42, top: "82%", height: "11%" }];
     const categoryAxis = (gridIndex, labels) => ({
       type: "category", gridIndex, data: dates, boundaryGap: true,
       axisLabel: { color: colors.muted, show: labels, hideOverlap: true },
@@ -121,8 +114,10 @@
       xAxis.push(categoryAxis(1, false));
       yAxis.push({ type: "value", gridIndex: 1, axisLabel: { color: colors.muted }, splitLine: { show: false } });
     }
+    xAxis.push(categoryAxis(wealthAxis, false));
+    yAxis.push({ type: "value", name: "Wealth", scale: true, gridIndex: wealthAxis, axisLabel: { color: colors.muted }, splitLine: { lineStyle: { color: colors.line } } });
     xAxis.push(categoryAxis(laneAxis, true));
-    yAxis.push({ type: "category", gridIndex: laneAxis, data: [view.jmLabel, "HMM"], axisLabel: { color: colors.muted }, axisLine: { lineStyle: { color: colors.line } } });
+    yAxis.push({ type: "category", gridIndex: laneAxis, data: ["Position", "Signal"], axisLabel: { color: colors.muted }, axisLine: { lineStyle: { color: colors.line } } });
     const candles = view.rows.map((row) => {
       const raw = [row.open, row.close, row.low, row.high];
       const values = raw.map(Number);
@@ -137,7 +132,6 @@
       name: "Close", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false,
       connectNulls: false, data: view.rows.map((row) => finite(row.close) ? Number(row.close) : null),
       lineStyle: { color: colors.amber, width: 1.3 }, itemStyle: { color: colors.amber },
-      markArea: { silent: true, itemStyle: { color: "rgba(255,107,107,0.10)" }, data: highAreas(dates, view.hmm) },
       markLine: { silent: true, symbol: ["none", "none"], label: { show: false }, lineStyle: { color: colors.text, type: "dashed" }, data: [{ xAxis: view.currentDate }] },
     });
     if (volume) series.push({
@@ -145,16 +139,46 @@
       data: view.rows.map((row) => finite(row.volume) ? Number(row.volume) : null),
       itemStyle: { color: colors.muted },
     });
+    series.push(
+      {
+        name: "Strategy", type: "line", xAxisIndex: wealthAxis, yAxisIndex: wealthAxis,
+        showSymbol: showStorySymbols, connectNulls: false,
+        data: view.rows.map((row) => finite(row.strategy_wealth_100) ? Number(row.strategy_wealth_100) : null),
+        lineStyle: { color: colors.green, width: 2 }, itemStyle: { color: colors.green },
+      },
+      {
+        name: "Buy & hold", type: "line", xAxisIndex: wealthAxis, yAxisIndex: wealthAxis,
+        showSymbol: showStorySymbols, connectNulls: false,
+        data: view.rows.map((row) => finite(row.buy_hold_wealth_100) ? Number(row.buy_hold_wealth_100) : null),
+        lineStyle: { color: colors.amber, width: 1.5 }, itemStyle: { color: colors.amber },
+      },
+    );
     const stateData = [];
-    view.jm.forEach((state, index) => { if (state === 0 || state === 1) stateData.push([index, 0, state]); });
-    view.hmm.forEach((state, index) => { if (state === 0 || state === 1) stateData.push([index, 1, state]); });
+    view.rows.forEach((row, index) => {
+      if (row.position === 0 || row.position === 1) stateData.push([index, 0, row.position]);
+      if (row.signal === 0 || row.signal === 1) stateData.push([index, 1, row.signal]);
+    });
     series.push({
       name: "State", type: "heatmap", xAxisIndex: laneAxis, yAxisIndex: laneAxis, data: stateData,
-      itemStyle: { color: (item) => item.value[2] === 1 ? colors.red : colors.blue, borderWidth: 0 },
+      itemStyle: { color: (item) => item.value[2] === 1 ? colors.green : colors.blue, borderWidth: 0 },
     });
     render("replay-market-chart", {
       ...baseOption(), grid: grids, xAxis, yAxis, series, legend: { show: false },
       tooltip: { trigger: "axis", backgroundColor: "#171d23", borderColor: colors.line, textStyle: { color: colors.text } },
+    });
+    render("replay-feature-chart", {
+      ...baseOption(),
+      grid: { left: 68, right: 55, top: 48, bottom: 38 },
+      xAxis: { type: "category", data: dates, boundaryGap: false, axisLabel: { color: colors.muted, hideOverlap: true }, axisLine: { lineStyle: { color: colors.line } } },
+      yAxis: [
+        { type: "value", name: "DD-10", axisLabel: { color: colors.muted, formatter: (item) => `${(item * 100).toFixed(1)}%` }, splitLine: { lineStyle: { color: colors.line } } },
+        { type: "value", name: "Sortino", axisLabel: { color: colors.muted }, splitLine: { show: false } },
+      ],
+      series: [
+        { name: "DD-10", type: "line", showSymbol: showStorySymbols, connectNulls: false, data: view.rows.map((row) => row.dd_10), lineStyle: { color: colors.red }, itemStyle: { color: colors.red } },
+        { name: "Sortino-20", type: "line", yAxisIndex: 1, showSymbol: showStorySymbols, connectNulls: false, data: view.rows.map((row) => row.sortino_20), lineStyle: { color: colors.blue }, itemStyle: { color: colors.blue } },
+        { name: "Sortino-60", type: "line", yAxisIndex: 1, showSymbol: showStorySymbols, connectNulls: false, data: view.rows.map((row) => row.sortino_60), lineStyle: { color: colors.amber }, itemStyle: { color: colors.amber }, markLine: { silent: true, symbol: ["none", "none"], label: { show: false }, data: [{ yAxis: 0 }, { xAxis: view.currentDate }] } },
+      ],
     });
   }
 
@@ -164,5 +188,5 @@
   }
 
   window.addEventListener("resize", resize);
-  window.MonitorCharts = { resource, comparison, market, resize };
+  window.MonitorCharts = { resource, comparison, story, resize };
 })();

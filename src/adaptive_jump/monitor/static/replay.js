@@ -3,24 +3,44 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const marketNames = { us: "United States", de: "Germany", jp: "Japan" };
+  const modelNames = { fixed_jm: "Fixed JM", hmm: "HMM" };
   const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
   const replay = {
-    eventCache: null, marketCache: new Map(), request: null, loadVersion: 0,
-    events: [], jobId: null, market: "us", marketData: null, models: null,
-    candidate: null, start: 0, index: 0, auditIndex: 0, timer: null,
+    eventCache: null, marketCache: new Map(), storyCache: new Map(), request: null,
+    loadVersion: 0, events: [], jobId: null, market: "us", model: "fixed_jm",
+    delay: 1, marketData: null, storyData: null, marketRows: new Map(), marketIndexes: new Map(),
+    start: 0, index: 0, auditIndex: 0, timer: null,
   };
 
   function text(id, value) { $(id).textContent = value; }
   function pause() { window.clearInterval(replay.timer); replay.timer = null; }
-  function stateText(state) {
-    if (state === 0) return "0 · low";
-    if (state === 1) return "1 · high";
+  function tradeText(state) {
+    if (state === 0) return "Cash · 0";
+    if (state === 1) return "Market · 1";
     return "Unavailable";
   }
   function value(numberValue) {
     if (numberValue === null || numberValue === "") return "--";
     const numeric = Number(numberValue);
     return Number.isFinite(numeric) ? number.format(numeric) : "--";
+  }
+  function percent(numberValue) {
+    const numeric = Number(numberValue);
+    return Number.isFinite(numeric) ? `${number.format(numeric * 100)}%` : "--";
+  }
+  function money(numberValue) {
+    const numeric = Number(numberValue);
+    return Number.isFinite(numeric) ? `$${number.format(numeric)}` : "--";
+  }
+  function setFiltersDisabled(disabled) {
+    ["replay-market", "replay-model", "replay-delay"].forEach((id) => { $(id).disabled = disabled; });
+  }
+  function cached(cache, key, path) {
+    if (!cache.has(key)) {
+      const pending = replay.request(path).catch((error) => { cache.delete(key); throw error; });
+      cache.set(key, pending);
+    }
+    return cache.get(key);
   }
 
   function renderAudit() {
@@ -36,90 +56,53 @@
     text("audit-position", count ? `${replay.auditIndex + 1} / ${count}` : "0 / 0");
   }
 
-  function modelData(events, market) {
-    const hmm = new Map();
-    const jm = new Map();
-    const candidates = new Set();
-    events.forEach((event) => {
-      if (event.kind !== "terminal_state" || event.market !== market || !event.date) return;
-      if (event.model === "hmm" && [0, 1].includes(event.payload.state)) {
-        hmm.set(event.date, event.payload.state);
-      }
-      if (event.model === "fixed_jm" && Array.isArray(event.payload.states)) {
-        const states = new Map();
-        event.payload.states.forEach((row) => {
-          const candidate = Number(row.candidate);
-          if (Number.isFinite(candidate) && [0, 1].includes(row.state)) {
-            candidates.add(candidate);
-            states.set(candidate, row.state);
-          }
-        });
-        jm.set(event.date, states);
-      }
-    });
-    const selected = events.slice().reverse().find((event) =>
-      event.kind === "selected_signal" && event.market === market
-      && event.model === "fixed_jm" && event.delay === 1);
-    return { hmm, jm, candidates: [...candidates].sort((a, b) => a - b), preferred: Number(selected?.payload.selected_candidate) };
-  }
-
-  function renderCandidates() {
-    const select = $("replay-candidate");
-    select.replaceChildren();
-    const candidates = replay.models?.candidates || [];
-    if (!candidates.length) {
-      const option = document.createElement("option");
-      option.textContent = "Unavailable";
-      select.append(option);
-      select.disabled = true;
-      replay.candidate = null;
-      return;
-    }
-    candidates.forEach((candidate) => {
-      const option = document.createElement("option");
-      option.value = candidate;
-      option.textContent = `λ = ${candidate}`;
-      select.append(option);
-    });
-    replay.candidate = candidates.includes(replay.models.preferred)
-      ? replay.models.preferred : candidates[0];
-    select.value = replay.candidate;
-    select.disabled = false;
-  }
-
-  function setFrameRow(row, hmm, jm, volumeAvailable) {
+  function setFrameRow(row) {
     const target = $("replay-frame-row");
     target.replaceChildren();
-    [row.date, row.open, row.high, row.low, row.close, volumeAvailable ? row.volume : null, stateText(hmm), stateText(jm)]
-      .forEach((item, index) => {
-        const cell = document.createElement("td");
-        cell.textContent = index === 0 || index > 5 ? item : value(item);
-        target.append(cell);
-      });
+    [
+      row.date, value(row.close), percent(row.dd_10), value(row.sortino_20),
+      value(row.sortino_60), tradeText(row.signal), tradeText(row.position),
+      percent(row.strategy_return), `${value(row.transaction_cost * 10_000)} bps`,
+      money(row.strategy_wealth_100), money(row.buy_hold_wealth_100),
+    ].forEach((item) => {
+      const cell = document.createElement("td");
+      cell.textContent = item;
+      target.append(cell);
+    });
   }
 
   function renderFrame() {
-    const data = replay.marketData;
+    const data = replay.storyData;
     if (!data?.rows.length) return;
     replay.index = Math.max(replay.start, Math.min(replay.index, data.rows.length - 1));
-    const row = data.rows[replay.index];
+    const storyRow = data.rows[replay.index];
+    const row = { ...(replay.marketRows.get(storyRow.date) || {}), ...storyRow };
     const first = Math.max(0, replay.index - 259);
-    const visible = data.rows.slice(first, replay.index + 1);
-    const hmm = replay.models.hmm.get(row.date);
-    const jm = replay.models.jm.get(row.date)?.get(replay.candidate);
-    window.MonitorCharts.market({
+    const storyRows = new Map(
+      data.rows.slice(first, replay.index + 1).map((item) => [item.date, item]),
+    );
+    const marketIndex = replay.marketIndexes.get(storyRow.date);
+    const marketRows = marketIndex === undefined ? [] : replay.marketData.rows.slice(
+      Math.max(0, marketIndex - 259), marketIndex + 1,
+    );
+    const visible = marketRows.length
+      ? marketRows.map((item) => ({ ...item, ...(storyRows.get(item.date) || {}) }))
+      : [...storyRows.values()].map((item) => ({
+        ...(replay.marketRows.get(item.date) || {}), ...item,
+      }));
+    window.MonitorCharts.story({
       rows: visible, currentDate: row.date,
-      candlesAvailable: data.quality.candles_available,
-      volumeAvailable: data.quality.volume_available,
-      hmm: visible.map((item) => replay.models.hmm.get(item.date) ?? null),
-      jm: visible.map((item) => replay.models.jm.get(item.date)?.get(replay.candidate) ?? null),
-      jmLabel: replay.candidate === null ? "Fixed JM" : `Fixed JM λ=${replay.candidate}`,
+      candlesAvailable: replay.marketData.quality.candles_available,
+      volumeAvailable: replay.marketData.quality.volume_available,
     });
     text("replay-summary-date", row.date);
-    text("replay-summary-hmm", stateText(hmm));
-    text("replay-summary-jm", stateText(jm));
-    text("replay-context", `Trailing ${visible.length} rows · HMM shading · JM λ held fixed`);
-    setFrameRow(row, hmm, jm, data.quality.volume_available);
+    text("replay-summary-model", `${modelNames[data.model]} · delay ${data.protocol.delay_trading_days} · return t+${data.protocol.effective_return_offset}`);
+    text("replay-summary-signal", tradeText(row.signal));
+    text("replay-summary-position", tradeText(row.position));
+    text("replay-summary-wealth", `${money(row.strategy_wealth_100)} · B&H ${money(row.buy_hold_wealth_100)}`);
+    text("replay-context", `Past ${visible.length} market days · ${storyRows.size} ${storyRows.size === 1 ? "strategy day" : "strategy days"} · ${value(data.protocol.one_way_cost_bps)} bps one-way cost`);
+    text("replay-feature-context", data.model === "fixed_jm" ? "Inputs used by Fixed JM" : "Context only · HMM fits returns");
+    setFrameRow(row);
     $("replay-range").min = replay.start;
     $("replay-range").max = data.rows.length - 1;
     $("replay-range").value = replay.index;
@@ -128,49 +111,52 @@
 
   function unavailable(message) {
     replay.marketData = null;
-    replay.models = null;
-    renderCandidates();
-    window.MonitorCharts.market({ rows: [] });
+    replay.storyData = null;
+    replay.marketRows = new Map();
+    replay.marketIndexes = new Map();
+    window.MonitorCharts.story({ rows: [] });
     text("replay-chart-fallback", message);
+    text("replay-feature-fallback", message);
     text("replay-source", message);
-    text("replay-position", "Market data unavailable");
-    ["replay-summary-source", "replay-summary-date", "replay-summary-quality"].forEach((id) => text(id, "--"));
-    text("replay-summary-hmm", "Unavailable");
-    text("replay-summary-jm", "Unavailable");
+    text("replay-position", "Strategy data unavailable");
+    ["replay-summary-date", "replay-summary-model", "replay-summary-wealth"].forEach((id) => text(id, "--"));
+    text("replay-summary-signal", "Unavailable");
+    text("replay-summary-position", "Unavailable");
     const cell = document.createElement("td");
-    cell.colSpan = 8;
+    cell.colSpan = 11;
     cell.textContent = message;
     $("replay-frame-row").replaceChildren(cell);
   }
 
-  async function loadMarket(market) {
+  async function loadSelection() {
     pause();
-    replay.market = market;
-    const jobId = replay.jobId;
-    const key = `${replay.jobId}:${market}`;
-    text("replay-chart-fallback", "Loading verified market source…");
+    const version = ++replay.loadVersion;
+    const { jobId, market, model, delay } = replay;
+    const marketKey = `${jobId}:${market}`;
+    const storyKey = `${marketKey}:${model}:${delay}`;
+    text("replay-chart-fallback", "Loading verified market and strategy…");
+    text("replay-feature-fallback", "Loading verified causal features…");
     try {
-      if (!replay.marketCache.has(key)) {
-        const path = `/api/jobs/${jobId}/markets/${market}/ohlcv`;
-        replay.marketCache.set(key, await replay.request(path));
+      const [marketData, storyData] = await Promise.all([
+        cached(replay.marketCache, marketKey, `/api/jobs/${jobId}/markets/${market}/ohlcv`),
+        cached(replay.storyCache, storyKey, `/api/jobs/${jobId}/markets/${market}/story?model=${model}&delay=${delay}`),
+      ]);
+      if (version !== replay.loadVersion) return;
+      if (marketData.run_id !== storyData.run_id || storyData.market !== market) {
+        throw new Error("Verified market and strategy identities do not match.");
       }
-      const data = replay.marketCache.get(key);
-      if (replay.jobId !== jobId || replay.market !== market) return;
-      replay.marketData = data;
-      replay.models = modelData(replay.events, market);
-      renderCandidates();
-      const modelDates = [...replay.models.hmm.keys(), ...replay.models.jm.keys()].sort();
-      const firstModel = modelDates[0];
-      const firstIndex = firstModel ? data.rows.findIndex((row) => row.date >= firstModel) : 0;
-      replay.start = Math.max(0, (firstIndex < 0 ? 0 : firstIndex) - 60);
+      replay.marketData = marketData;
+      replay.storyData = storyData;
+      replay.marketRows = new Map(marketData.rows.map((row) => [row.date, row]));
+      replay.marketIndexes = new Map(marketData.rows.map((row, index) => [row.date, index]));
+      replay.start = 0;
       replay.index = replay.start;
-      const source = `${data.source.source_id} · ${data.source.provider}`;
-      text("replay-source", `${marketNames[market]} · ${source} · ${data.coverage.first_date} to ${data.coverage.last_date}`);
-      text("replay-summary-source", source);
-      text("replay-summary-quality", `${Number(data.quality.distinct_ohlc_rows || 0).toLocaleString()} distinct candles · ${data.quality.volume_available ? "volume available" : "no volume"}`);
+      const source = `${marketData.source.source_id} · ${marketData.source.provider}`;
+      const quality = `${Number(marketData.quality.distinct_ohlc_rows || 0).toLocaleString()} distinct candles · ${marketData.quality.volume_available ? "volume available" : "no volume"}`;
+      text("replay-source", `${marketNames[market]} · ${source} · strategy ${storyData.coverage.first_date} to ${storyData.coverage.last_date} · ${quality}`);
       renderFrame();
     } catch (error) {
-      if (replay.jobId !== jobId || replay.market !== market) return;
+      if (version !== replay.loadVersion) return;
       unavailable(error instanceof Error ? error.message : String(error));
     }
   }
@@ -179,7 +165,7 @@
     pause();
     const version = ++replay.loadVersion;
     replay.jobId = jobId;
-    $("replay-market").disabled = true;
+    setFiltersDisabled(true);
     if (!replay.eventCache.has(jobId)) {
       text("audit-position", "Loading events");
       const payload = await replay.request(`/api/jobs/${jobId}/events`);
@@ -197,8 +183,10 @@
     const eventMarket = replay.events.find((event) => marketNames[event.market])?.market;
     replay.market = eventMarket || "us";
     $("replay-market").value = replay.market;
-    $("replay-market").disabled = false;
-    await loadMarket(replay.market);
+    $("replay-model").value = replay.model;
+    $("replay-delay").value = replay.delay;
+    setFiltersDisabled(false);
+    await loadSelection();
   }
 
   function act(action) {
@@ -220,8 +208,9 @@
     replay.eventCache = eventCache;
     replay.request = request;
     $("replay-job").addEventListener("change", (event) => load(event.target.value).catch(showError));
-    $("replay-market").addEventListener("change", (event) => loadMarket(event.target.value));
-    $("replay-candidate").addEventListener("change", (event) => { replay.candidate = Number(event.target.value); renderFrame(); });
+    $("replay-market").addEventListener("change", (event) => { replay.market = event.target.value; loadSelection(); });
+    $("replay-model").addEventListener("change", (event) => { replay.model = event.target.value; loadSelection(); });
+    $("replay-delay").addEventListener("change", (event) => { replay.delay = Number(event.target.value); loadSelection(); });
     $("replay-range").addEventListener("input", (event) => { pause(); replay.index = Number(event.target.value); renderFrame(); });
     $("audit-range").addEventListener("input", (event) => { replay.auditIndex = Number(event.target.value); renderAudit(); });
     document.querySelectorAll("[data-replay]").forEach((control) => {
