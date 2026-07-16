@@ -9,6 +9,7 @@ import pytest
 
 import adaptive_jump.calibration as calibration
 import adaptive_jump.calibration_runner as calibration_runner
+from adaptive_jump.artifacts import write_inventory
 from adaptive_jump.config import load_config
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -293,3 +294,68 @@ def test_parent_loader_stops_before_outer_values(tmp_path) -> None:
     (parent / "us/features.csv").write_text("tampered\n", encoding="utf-8")
     with pytest.raises(calibration_runner.CalibrationRunError, match="hash changed"):
         calibration_runner.load_parent_inputs(parent, _rules(), inventory_hash)
+
+
+def test_calibration_artifact_is_recomputed_by_verifier(tmp_path, monkeypatch) -> None:
+    config_path = tmp_path / "research.toml"
+    config_path.write_bytes((ROOT / "research.toml").read_bytes())
+    config = load_config(config_path)
+    rules = calibration.load_calibration_rules(SPEC, config)
+    parent = (
+        tmp_path
+        / "artifacts/fixed-baselines"
+        / "fixed-baselines-8adb330565d6-3636939b525d-e9614112b234"
+    )
+    parent.mkdir(parents=True)
+    (parent / "data-manifest.json").write_text("{}\n", encoding="utf-8")
+    dates = pd.bdate_range("2000-01-03", periods=40)
+    patterns = tuple(
+        [int((index // width) % 2) for index in range(40)] for width in (1, 2, 4)
+    )
+    attempted = (0.0, *(calibration.jm_penalty(j) for j in range(-8, 26)))
+    fixed_values = [patterns[index % 3] for index in range(len(attempted) - 3)]
+    fixed_values.extend([[0] * 40] * 3)
+    paths = {
+        "fixed_jm": {
+            market: pd.DataFrame(
+                dict(zip(attempted, fixed_values, strict=True)), index=dates
+            )
+            for market in MARKETS
+        },
+        "hmm": {
+            market: pd.DataFrame(
+                {candidate: patterns[candidate % 3] for candidate in range(2561)},
+                index=dates,
+            )
+            for market in MARKETS
+        },
+    }
+    search = calibration_runner.CalibrationSearchResult(
+        paths, calibration.calibrate_paths(paths, rules), attempted
+    )
+    monkeypatch.setattr(
+        calibration_runner, "run_calibration_search", lambda *_args, **_kwargs: search
+    )
+    monkeypatch.setattr(
+        calibration_runner, "load_parent_inputs", lambda *_args: ({}, {})
+    )
+    monkeypatch.setattr(calibration_runner, "_verify_parent", lambda *_args: None)
+    monkeypatch.setattr(calibration_runner, "_verify_run_locks", lambda *_args: None)
+    monkeypatch.setattr(calibration_runner, "research_git_sha", lambda _root: "a" * 40)
+
+    run_dir = calibration_runner.run_calibration_study(config, SPEC)
+    receipt = calibration_runner.verify_calibration_run(run_dir)
+
+    assert receipt["selected_budget"] == 3
+    assert receipt["attempted_jm"] == 35
+    assert receipt["attempted_hmm"] == 2561
+    assert not (run_dir / "metrics.csv").exists()
+    assert not (run_dir / "claim.json").exists()
+
+    diagnostics = run_dir / "candidate-diagnostics.csv"
+    frame = pd.read_csv(diagnostics)
+    frame.loc[0, "selected"] = not bool(frame.loc[0, "selected"])
+    frame.to_csv(diagnostics, index=False)
+    write_inventory(run_dir)
+    with pytest.raises(calibration_runner.CalibrationRunError, match="diagnostics"):
+        calibration_runner.verify_calibration_run(run_dir)
