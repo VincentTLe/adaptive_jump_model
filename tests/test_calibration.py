@@ -9,8 +9,9 @@ import pytest
 
 import adaptive_jump.calibration as calibration
 import adaptive_jump.calibration_runner as calibration_runner
-from adaptive_jump.artifacts import write_inventory
+from adaptive_jump.artifacts import verify_run, write_inventory
 from adaptive_jump.config import load_config
+from adaptive_jump.reporting import build_report
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = ROOT / "research/persistence-calibrated-search.toml"
@@ -344,8 +345,12 @@ def test_calibration_artifact_is_recomputed_by_verifier(tmp_path, monkeypatch) -
     monkeypatch.setattr(calibration_runner, "research_git_sha", lambda _root: "a" * 40)
 
     run_dir = calibration_runner.run_calibration_study(config, SPEC)
-    receipt = calibration_runner.verify_calibration_run(run_dir)
+    receipt = verify_run(run_dir)
+    report_path = build_report(run_dir)
+    report = report_path.read_text(encoding="utf-8")
 
+    assert report_path == run_dir / "report.html"
+    assert "No Sharpe, trades, or OOS performance" in report
     assert receipt["selected_budget"] == 3
     assert receipt["attempted_jm"] == 35
     assert receipt["attempted_hmm"] == 2561

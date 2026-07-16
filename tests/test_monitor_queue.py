@@ -16,9 +16,9 @@ STUDIES = {
 }
 
 
-def test_project_catalog_is_empty_after_engineering_replay_completion() -> None:
+def test_project_catalog_exposes_the_frozen_calibration() -> None:
     frozen = load_frozen_studies(ROOT / "research/experiment_registry.jsonl")
-    assert frozen == {}
+    assert tuple(frozen) == ("persistence-calibrated-search-001",)
 
 
 def test_catalog_requires_registration_and_latest_frozen_state(tmp_path: Path) -> None:

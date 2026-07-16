@@ -32,6 +32,7 @@ from adaptive_jump.calibration import (
 )
 from adaptive_jump.config import ResearchConfig, load_config
 from adaptive_jump.data import research_git_sha
+from adaptive_jump.reporting import write_calibration_report
 
 MARKETS = ("us", "de", "jp")
 FEATURE_COLUMNS = ("date", "dd_10", "sortino_20", "sortino_60", "excess_return")
@@ -43,8 +44,6 @@ class CalibrationRunError(ValueError):
 
 @dataclass(frozen=True)
 class CalibrationSearchResult:
-    """Complete pre-OOS paths, diagnostics, and attempted JM penalties."""
-
     paths: Mapping[str, Mapping[str, pd.DataFrame]]
     diagnostics: CalibrationResult
     attempted_jm: tuple[float, ...]
@@ -292,6 +291,7 @@ def run_calibration_study(
             "common_budget": len(result.diagnostics.grids["fixed_jm"]),
         },
     )
+    write_calibration_report(run_dir, run_id, rules, result)
     write_inventory(run_dir)
     metadata = read_json(metadata_path)
     metadata.update(

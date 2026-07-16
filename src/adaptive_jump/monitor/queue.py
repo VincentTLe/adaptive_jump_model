@@ -36,6 +36,9 @@ REGISTERED_STUDIES = {
     "monitor-local-acceptance-001": StudyDefinition(
         "monitor-local-acceptance-001", "replication"
     ),
+    "persistence-calibrated-search-001": StudyDefinition(
+        "persistence-calibrated-search-001", "persistence-calibration"
+    ),
 }
 
 

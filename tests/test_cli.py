@@ -75,6 +75,32 @@ def test_monitor_cli_delegates_to_the_loopback_server(monkeypatch) -> None:
     assert calls == ["research.toml"]
 
 
+def test_calibration_cli_uses_frozen_spec(monkeypatch, capsys) -> None:
+    expected = ROOT / "artifacts/calibration-fixture"
+    calls = []
+
+    def fake_run(config, spec):
+        calls.append((config, spec))
+        return expected
+
+    monkeypatch.setattr("adaptive_jump.cli.run_calibration_study", fake_run)
+    monkeypatch.setattr(
+        "adaptive_jump.cli._artifacts.verify_run",
+        lambda artifact: {"run_id": artifact.name, "status": "complete"},
+    )
+    arguments = [
+        "run",
+        "--study",
+        "persistence-calibration",
+        "--config",
+        str(ROOT / "research.toml"),
+    ]
+
+    assert main(arguments) == 0
+    assert Path(capsys.readouterr().out.strip()) == expected
+    assert calls[0][1].name == "persistence-calibrated-search.toml"
+
+
 def test_window_study_cli_uses_frozen_spec_without_manifest(
     monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:

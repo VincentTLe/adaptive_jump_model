@@ -17,6 +17,7 @@ from typing import Any
 import pandas as pd
 
 from adaptive_jump import artifacts as _artifacts
+from adaptive_jump.calibration_runner import run_calibration_study
 from adaptive_jump.config import ConfigError, ResearchConfig, load_config
 from adaptive_jump.data import AcquisitionError, acquire, research_git_sha
 from adaptive_jump.features import effective_oos_start, prepare_market
@@ -442,7 +443,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--study",
         required=True,
-        choices=["replication", "train-window-sensitivity"],
+        choices=["replication", "train-window-sensitivity", "persistence-calibration"],
     )
     run.add_argument("--config", required=True, help="path to research.toml")
     run.add_argument("--manifest", help="exact acquisition manifest path")
@@ -465,17 +466,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         if arguments.command == "run":
             config = load_config(arguments.config)
             observer = child_observer_from_environment()
+            research = config.path.parent / "research"
             if arguments.study == "replication":
                 frozen = load_frozen_data(config, arguments.manifest)
                 artifact = run_replication(config, frozen, observer)
-            else:
-                if arguments.manifest:
-                    raise RunError("--manifest is only valid for replication")
-                spec_path = (
-                    config.path.parent / "research/jm-train-window-sensitivity.toml"
+            elif arguments.manifest:
+                raise RunError("--manifest is only valid for replication")
+            elif arguments.study == "train-window-sensitivity":
+                spec = load_window_spec(
+                    research / "jm-train-window-sensitivity.toml", config
                 )
-                artifact = run_window_sensitivity(
-                    config, load_window_spec(spec_path, config), observer
+                artifact = run_window_sensitivity(config, spec, observer)
+            else:
+                artifact = run_calibration_study(
+                    config, research / "persistence-calibrated-search.toml"
                 )
             emit_artifact_verified(observer, _artifacts.verify_run(artifact))
             print(artifact)
