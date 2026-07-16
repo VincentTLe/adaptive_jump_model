@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import adaptive_jump.grid_runner as grid_runner
 from adaptive_jump.config import load_config
 from adaptive_jump.grid_runner import (
     COMPARISON_MODELS,
@@ -57,6 +58,31 @@ def test_grid_spec_rejects_provider_access(tmp_path: Path) -> None:
     )
     with pytest.raises(GridSpecError, match="provider access"):
         load_grid_spec(changed, load_config(ROOT / "research.toml"))
+
+
+def test_grid_control_gate_uses_sealed_calibration_sha(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = load_config(ROOT / "research.toml")
+    spec = load_grid_spec(SPEC, config)
+    observed = {}
+    monkeypatch.setattr(
+        grid_runner,
+        "_verify_parents",
+        lambda *_args: ({}, {"git_sha": "parent"}, {"git_sha": "calibration"}),
+    )
+    monkeypatch.setattr(grid_runner, "research_git_sha", lambda _root: "current")
+
+    def stop_after_gate(_root: Path, baseline: str, current: str) -> None:
+        observed.update(baseline=baseline, current=current)
+        raise RuntimeError("stop after control gate")
+
+    monkeypatch.setattr(grid_runner, "_verify_control_source", stop_after_gate)
+
+    with pytest.raises(RuntimeError, match="stop after control gate"):
+        grid_runner.run_grid_evaluation(config, spec)
+
+    assert observed == {"baseline": "calibration", "current": "current"}
 
 
 def _toy_path(scale: float) -> pd.DataFrame:

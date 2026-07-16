@@ -90,11 +90,12 @@ def run_grid_evaluation(
         / "persistence-calibrated-search"
         / spec.calibration_run_id
     )
-    parent_receipt, parent_metadata = _verify_parents(
+    parent_receipt, parent_metadata, calibration_metadata = _verify_parents(
         parent_dir, calibration_dir, config, spec
     )
     git_sha = research_git_sha(root)
-    _verify_control_source(root, str(parent_metadata["git_sha"]), git_sha)
+    control_git_sha = str(calibration_metadata["git_sha"])
+    _verify_control_source(root, control_git_sha, git_sha)
     identity = {
         "spec_sha256": spec.sha256,
         "config_sha256": config.sha256,
@@ -127,6 +128,7 @@ def run_grid_evaluation(
             parent_receipt,
             run_id,
             identity,
+            control_git_sha,
         )
 
     evaluated = replace(
@@ -277,7 +279,7 @@ def _verify_parents(
     calibration_dir: Path,
     config: ResearchConfig,
     spec: GridStudySpec,
-) -> tuple[dict[str, Any], dict[str, Any]]:
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     parent_receipt = verify_run(parent_dir)
     parent_metadata = read_json(parent_dir / "run.json")
     if (
@@ -290,6 +292,7 @@ def _verify_parents(
         raise ArtifactError("sealed v7 parent does not match the grid contract")
 
     calibration_receipt = verify_run(calibration_dir)
+    calibration_metadata = read_json(calibration_dir / "run.json")
     if (
         calibration_receipt.get("status") != "complete"
         or calibration_receipt.get("metrics_opened") is not False
@@ -299,12 +302,12 @@ def _verify_parents(
         != spec.calibration_selection_sha256
     ):
         raise ArtifactError("sealed calibration does not match the grid contract")
-    return parent_receipt, parent_metadata
+    return parent_receipt, parent_metadata, calibration_metadata
 
 
-def _verify_control_source(root: Path, parent_sha: str, current_sha: str) -> None:
+def _verify_control_source(root: Path, baseline_sha: str, current_sha: str) -> None:
     result = subprocess.run(
-        ["git", "diff", "--quiet", parent_sha, current_sha, "--", *CONTROL_SCOPE],
+        ["git", "diff", "--quiet", baseline_sha, current_sha, "--", *CONTROL_SCOPE],
         cwd=root,
         check=False,
     )
@@ -320,6 +323,7 @@ def _create_run(
     parent_receipt: dict[str, Any],
     run_id: str,
     identity: dict[str, str],
+    control_git_sha: str,
 ) -> None:
     run_dir.mkdir(parents=True)
     (run_dir / "study.lock.toml").write_bytes(spec.path.read_bytes())
@@ -334,6 +338,7 @@ def _create_run(
             "parent_run_id": spec.parent_run_id,
             "calibration_run_id": spec.calibration_run_id,
             "control_scope": list(CONTROL_SCOPE),
+            "control_baseline_git_sha": control_git_sha,
             "control_source_unchanged": True,
             "hmm_refit": False,
         },
