@@ -1,84 +1,99 @@
-# Task: Persistence-Calibrated Hyperparameter Search
+# Task: Persistence Grid Evaluation
 
 ## Identity
 
-- `task_id`: `persistence-calibrated-search-001`
-- `status`: `FROZEN_DOMAIN_CALIBRATION`
+- `task_id`: `persistence-grid-evaluation-001`
+- `status`: `FROZEN_EXPLORATORY_EVALUATION`
 - `target_branch`: `cleanup/research-protocol`
-- `starting_ref`: `40c58bb1fdb7dc93cdc6a09528d66977c2d527d5`
+- `starting_ref`: `723064c583ea4bc402b6ecd5bc49d7a3b5c1c250`
 - `parent_experiment`: `fixed-baselines-001-v7`
+- `calibration_experiment`: `persistence-calibrated-search-001`
+- `frozen_spec`: `research/persistence-grid-evaluation.toml`
+- `frozen_spec_sha256`: `e6365a1582131ddab5b8325ddcbfe3c955669bd7577f528ab85caf444bd4413f`
 - `claim_class`: `EXPLORATORY`
-- `outer_performance_access`: forbidden in this stage
-- `data_downloads`: forbidden
-- `post_2023_access`: forbidden
+- `data_cutoff`: `2023-12-31`
+- `extension_access`: forbidden
 - `adaptive_experiment`: forbidden
 
-The owner approved this replacement task on 2026-07-15. The unrun fixed-grid
-attribution task is withdrawn because the research question is now how to find
-an effective parameter region before optimizing within it.
+The owner reviewed and approved the exact behavior-calibrated grids on
+2026-07-16. This experiment was designed after the v7 proxy non-replication
+was known, so it cannot be presented as a fresh replication test.
 
-## Objective
+## Research Question
 
-Build one deterministic, causal search that converts a broad numerical JM
-lambda path and the cheap HMM k path into small, nondegenerate,
-behavior-balanced candidate sets. More CPU may explore the parameter path; it
-must not create more candidates for Sharpe peak-picking.
+Does changing only the fixed-JM lambda grid and HMM smoothing grid materially
+change model selection and frozen-v7 OOS results?
 
-This stage may use only dates strictly before each market's frozen v7 OOS start.
-It may use excess returns only for the existing JM state-label rule. It must not
-calculate strategy returns, Sharpe, drawdown, trades, or outer metrics.
+The primary estimand is the per-market Sharpe difference between the new-grid
+fixed JM and the sealed v7 fixed JM at the primary delay. The HMM grid change
+is secondary. Positive, negative and null results must all be reported.
 
-## Frozen Search
+## Locked Change
 
-- JM evaluates `0` plus half-octave values `2^(j/2)`, initially for
-  `j=-8..22`. Continue through `j=30` only until three consecutive candidates
-  are globally invalid; fail closed if no upper bracket is found.
-- HMM reuses parent raw states and evaluates every integer `k=0..2560`; it does
-  not refit HMMs.
-- A candidate is valid only when both states occupy at least 5% of calibration
-  days and at least two transitions occur in every market.
-- Paths identical across all three markets are deduplicated, keeping the lower
-  smoothing value.
-- Aggregate persistence is the geometric mean of market switch rates. Each
-  model is compressed to the same budget, at most nine candidates, spaced
-  evenly over log aggregate switch rate. Ties choose less smoothing.
-- Fewer than three valid unique candidates for either model fails calibration.
+- Fixed JM: `[0, 0.3535533905932738, 1, 5.656854249492381, 16, 32, 64, 181.01933598375618, 256]`.
+- HMM: `[0, 3, 9, 32, 54, 114, 166, 402, 1115]`.
+- Both grids contain nine candidates selected from pre-OOS state behavior.
+- No candidate was selected using strategy performance.
+- No grid expansion or replacement is allowed after this freeze.
 
-JM tasks run independently by `(market, lambda)` with 16 processes and one BLAS
-thread per process on the 16-physical-core host. Serial and parallel fixture
-results must match exactly. Each candidate has an identity-bound checkpoint.
+## Unchanged Controls
 
-## Freeze Gate
+Data, features, OOS dates, 3,000-observation fit window, eight-year validation,
+semiannual JM refits, daily HMM fits, monthly selection, tie rules, delays,
+costs, metrics and state labels remain exactly as in sealed v7.
 
-The ignored calibration artifact records every attempted parameter, behavior
-diagnostic, rejection reason, selected candidate, input hash, code SHA and an
-English visual report. After independent verification, the selected grids must
-be written to a new content-hashed lock and reviewed before any OOS selection
-or performance calculation. No result-driven expansion is allowed.
+The runner must reuse sealed v7 features and raw HMM states. It must fit only
+the new fixed-JM candidate paths. It must not contact a data provider, read
+post-2023 rows or alter `research.toml`.
+
+## Boundary-First Gate
+
+1. Verify the v7 parent, calibration artifact, spec hash and source controls.
+2. Build all new-grid monthly choices and CV surfaces without opening OOS paths.
+3. Evaluate the existing 5% upper-candidate rule for two models, three delays
+   and three markets: exactly 18 boundary rows.
+4. If any row fails, stop with status `boundary_failed`; do not write trades,
+   metrics, bootstrap output or a performance claim.
+5. If every row passes, open the aligned OOS paths and metrics once.
+
+Boundary failure is evidence that this locked grid is not operationally
+adequate under the existing protocol. It does not authorize another grid.
+
+## Comparison
+
+- Compare new-grid fixed JM with sealed v7 fixed JM on identical rows.
+- Compare new-grid HMM with sealed v7 HMM as a secondary attribution.
+- Report delays 1, 5 and 10; delay 1 is primary.
+- Use paired stationary bootstrap with 10,000 replications, mean block 60 and
+  sensitivities 20 and 120 on primary-delay paired returns.
+- Apply Holm adjustment across the three market tests.
+- Do not call a positive result a paper replication or a confirmatory claim.
+
+## Engineering Rule
+
+There is one baseline engine. The new study may provide an immutable grid
+override and study identity, but it must not copy the walk-forward, backtest or
+metric pipeline. Code is split only when responsibilities are genuinely
+different; readability and direct control flow take priority over line counts.
 
 ## Acceptance
 
-1. Parent artifact, config, data manifest and paper hashes match.
-2. Future-row mutation cannot change calibration output.
-3. No provider, HMM fit, backtest, metric or post-OOS path is invoked.
-4. Parallel output equals serial output and is repeatable after resume.
-5. Search stops or fails exactly under the frozen bracket rules.
-6. JM and HMM candidate budgets match and every retained path is valid.
-7. Full pytest, Ruff, lock/package checks and canonical parent verifier pass.
-8. No generated artifact, checkpoint or runtime output is tracked.
+1. Canonical v7 verification remains bit-for-bit unchanged.
+2. The derived spec and both parent artifacts match their locked hashes.
+3. HMM raw fits are reused; no HMM refit or provider call occurs.
+4. Future-row mutation cannot alter earlier states or choices.
+5. Resume produces the same state paths, choices and artifact hashes.
+6. Metrics cannot be opened before all 18 boundary rows pass.
+7. The verifier independently recomputes boundaries, metrics and claims.
+8. The English report labels the result exploratory and states the evidence boundary.
+9. Full tests, Ruff, package checks and Chromium desktop/mobile acceptance pass.
+10. Generated artifacts and checkpoints remain ignored.
 
-## Write Boundary And Sequence
+## Sequence
 
-Authorized changes are `TASK.md`, the new study TOML, append-only registry,
-minimal CLI/monitor registration, one small search module, focused tests and
-procedural handoff files. Dependencies, `research.toml`, data, parent artifacts,
-features, model mathematics, costs, delays, metrics, learning docs and monitor
-UI are protected.
+1. Freeze this task and content-hashed spec; stop.
+2. Make the canonical baseline runner accept the locked study context; verify v7.
+3. Add the smallest grid-evaluation path and focused tests; stop.
+4. Run through the production monitor, verify, report and close the registry.
 
-1. Freeze this contract and withdraw the unrun predecessor; stop.
-2. Implement deterministic domain calibration and tests; stop.
-3. Run pre-OOS calibration, verify and review the selected region; stop.
-4. Freeze the derived grids under a separate hash before outer evaluation.
-
-Every commit is pushed and remains below approximately 400 changed lines and
-15 files.
+Every implementation commit is pushed after verification.

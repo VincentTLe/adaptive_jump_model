@@ -1,0 +1,95 @@
+schema_version = 1
+experiment_id = "persistence-grid-evaluation-001"
+frozen_at_utc = "2026-07-16T20:54:09Z"
+claim_class = "EXPLORATORY"
+stage = "OOS_GRID_ATTRIBUTION"
+hypothesis = "Behavior-calibrated candidate grids change fixed-JM and HMM selection enough to improve their frozen-v7 OOS results."
+primary_estimand = "sharpe_fixed_jm_new_grid_minus_sharpe_fixed_jm_v7"
+secondary_estimand = "sharpe_hmm_new_grid_minus_sharpe_hmm_v7"
+extension_access = false
+post_2023_access = false
+adaptive_experiment = false
+
+[parent]
+experiment_id = "fixed-baselines-001-v7"
+config_path = "research.toml"
+config_sha256 = "8adb330565d64f8ed6edd986f0422dbba72585eda4efd34b0c1b41b95450d81b"
+run_id = "fixed-baselines-8adb330565d6-3636939b525d-e9614112b234"
+run_inventory_sha256 = "08e42044c25ef80e92f4b565034652a6b87fe94de0e9122eee1a418395239d55"
+data_manifest_sha256 = "3636939b525d604c5c4180d7e3abb6192b53b81a068f009ad6ca83a945e53a84"
+data_cutoff = "2023-12-31"
+
+[calibration]
+experiment_id = "persistence-calibrated-search-001"
+spec_sha256 = "83beedafca3781d708f0a5ed74bd19127998e441f4242843c07127bcc90487b3"
+run_id = "persistence-calibration-83beedafca37-08e42044c25e-766fdbd33604"
+run_inventory_sha256 = "77b30ef98fa01fb6c311cfd6e2cbc35b2fb61e42e812389a84452b4785f5099f"
+selection_sha256 = "4f38899360f9240ad572dfe4c510a378881f1a3bc312807ecef2f96f1ae311a2"
+metrics_opened = false
+reviewed_by_owner = true
+
+[grids]
+fixed_jm = [
+  0.0,
+  0.3535533905932738,
+  1.0,
+  5.656854249492381,
+  16.0,
+  32.0,
+  64.0,
+  181.01933598375618,
+  256.0,
+]
+hmm = [0, 3, 9, 32, 54, 114, 166, 402, 1115]
+equal_budget = 9
+selection_source = "pre-OOS behavior spacing; no strategy performance"
+result_driven_expansion_allowed = false
+
+[controls]
+features = "unchanged frozen v7"
+fit_window_observations = 3000
+validation_calendar_years = 8
+jm_refit_months = [1, 7]
+hmm_raw_fit = "reuse exact frozen-v7 raw states"
+monthly_objective = "annualized strategy excess Sharpe"
+tie_rule = "lower smoothing"
+signal_to_return_offset = 2
+robustness_delays = [1, 5, 10]
+one_way_cost_bps = 10
+market_data = "reuse exact frozen-v7 features through 2023"
+provider_access = false
+
+[evaluation]
+fit_new_jm_candidates = true
+refit_hmm = false
+reuse_parent_features = true
+reuse_parent_raw_hmm_states = true
+reuse_parent_buy_and_hold = true
+reuse_parent_oos_dates = true
+reuse_parent_candidate_choices = false
+checkpointing = true
+
+[boundary_gate]
+checked_before_metrics = true
+upper_candidate_month_fraction_limit = 0.05
+models = ["fixed_jm", "hmm"]
+delays = [1, 5, 10]
+markets = ["us", "de", "jp"]
+expected_rows = 18
+failure_action = "seal all new-grid OOS paths and metrics"
+expansion_after_failure = false
+
+[comparison]
+models = ["fixed_jm_v7", "fixed_jm_new_grid", "hmm_v7", "hmm_new_grid", "buy_and_hold"]
+primary_delay = 1
+robustness_delays = [1, 5, 10]
+sample = "exact parent per-market-delay OOS intersection"
+primary_metric = "annualized_excess_sharpe"
+secondary_metrics = ["maximum_drawdown", "turnover", "cash_fraction", "switch_count"]
+
+[bootstrap]
+method = "paired_stationary_block"
+replications = 10000
+seed = 20260716
+mean_block_length = 60
+sensitivity_block_lengths = [20, 120]
