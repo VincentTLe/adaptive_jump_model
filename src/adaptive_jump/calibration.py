@@ -4,15 +4,20 @@ import hashlib
 import math
 import tomllib
 from collections.abc import Mapping
-from dataclasses import dataclass
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from dataclasses import dataclass, replace
 from datetime import date
+from multiprocessing import get_context
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
+from threadpoolctl import threadpool_limits
 
-from adaptive_jump.config import ResearchConfig
+from adaptive_jump.config import JMProtocol, ModelProtocol, ResearchConfig
+from adaptive_jump.models import FixedJMResult, fixed_jm_states, smoothed_hmm_states
+from adaptive_jump.monitor.checkpoints import load_checkpoint, save_checkpoint
 
 MODELS = ("fixed_jm", "hmm")
 MARKETS = ("us", "de", "jp")
@@ -83,9 +88,13 @@ def load_calibration_rules(
     _require(jm.get("formula") == "lambda_j = 2^(j/2)", "JM formula changed")
     hmm = _table(document, "hmm_path")
     _require(hmm.get("refit_hmm") is False, "HMM refitting is forbidden")
+    _require(hmm.get("reuse_parent_raw_states") is True, "raw HMM reuse changed")
     validity = _table(document, "validity")
     compression = _table(document, "compression")
     parallel = _table(document, "parallel")
+    _require(parallel.get("start_method") == "forkserver", "start method changed")
+    for key in ("require_serial_parallel_equality", "candidate_checkpointing"):
+        _require(parallel.get(key) is True, f"{key} must be true")
     freeze = _table(document, "freeze_gate")
     _require(freeze.get("outer_metrics_allowed") is False, "outer metrics opened")
     _require(freeze.get("outer_selection_allowed") is False, "outer selection opened")
@@ -113,6 +122,10 @@ def load_calibration_rules(
     )
     _require(0 < rules.minimum_state_fraction < 0.5, "state fraction is invalid")
     _require(rules.minimum_budget <= rules.maximum_candidates, "budget is invalid")
+    _require(0 <= rules.hmm_k_min < rules.hmm_k_max, "HMM smoothing bounds are invalid")
+    _require(
+        (rules.process_workers, rules.blas_threads) == (16, 1), "CPU contract changed"
+    )
     return rules
 
 
@@ -314,3 +327,165 @@ def _number(document: dict[str, Any], key: str) -> float:
 def _require(condition: bool, message: str) -> None:
     if not condition:
         raise CalibrationError(message)
+
+
+def generate_calibration_paths(
+    frames: Mapping[str, pd.DataFrame],
+    raw_hmm: Mapping[str, pd.Series],
+    config: ResearchConfig,
+    rules: CalibrationRules,
+    penalties: tuple[float, ...],
+    checkpoint_dir: str | Path,
+    identity: Mapping[str, str],
+    *,
+    workers: int | None = None,
+) -> dict[str, dict[str, pd.DataFrame]]:
+    """Generate pre-OOS JM and HMM paths without performance calculations."""
+    if set(frames) != set(MARKETS) or set(raw_hmm) != set(MARKETS):
+        raise CalibrationError("runner inputs must cover us, de, and jp")
+    values = tuple(float(value) for value in penalties)
+    if (
+        not values
+        or values != tuple(sorted(set(values)))
+        or any(value < 0 or not math.isfinite(value) for value in values)
+    ):
+        raise CalibrationError("JM penalties must be finite, unique, and increasing")
+    worker_count = rules.process_workers if workers is None else workers
+    if type(worker_count) is not int or not 1 <= worker_count <= rules.process_workers:
+        raise CalibrationError("worker count is outside the frozen limit")
+
+    prepared = {
+        market: _pre_oos_frame(frames[market], rules.exclusive_ends[market])
+        for market in MARKETS
+    }
+    dates = {
+        market: pd.DatetimeIndex(prepared[market]["date"], name="date")
+        for market in MARKETS
+    }
+    jm_paths = {
+        market: pd.DataFrame(index=dates[market], columns=values, dtype=float)
+        for market in MARKETS
+    }
+    for table in jm_paths.values():
+        table.columns.name = "lambda"
+    hmm_grid = tuple(range(rules.hmm_k_min, rules.hmm_k_max + 1, rules.hmm_k_step))
+    hmm_paths = {
+        market: smoothed_hmm_states(
+            _pre_oos_series(raw_hmm[market], rules.exclusive_ends[market]),
+            hmm_grid,
+        )
+        for market in MARKETS
+    }
+
+    pending = []
+    root = Path(checkpoint_dir)
+    for market in MARKETS:
+        for penalty in values:
+            protocol = replace(config.jm_protocol, lambda_grid=(penalty,))
+            task = (
+                market,
+                penalty,
+                prepared[market],
+                config.model_protocol,
+                protocol,
+                rules.blas_threads,
+            )
+            stem, checkpoint_identity = _candidate_checkpoint(
+                root, identity, rules, config, market, penalty
+            )
+            loaded = load_checkpoint(
+                stem, kind="calibration_jm", identity=checkpoint_identity
+            )
+            item = (task, stem, checkpoint_identity)
+            if loaded is None:
+                pending.append(item)
+            else:
+                jm_paths[market][penalty] = _jm_series(loaded, dates[market], penalty)
+
+    def accept(item, result: FixedJMResult) -> None:
+        task, stem, checkpoint_identity = item
+        market, penalty, *_ = task
+        save_checkpoint(
+            stem,
+            result,
+            kind="calibration_jm",
+            identity=checkpoint_identity,
+        )
+        jm_paths[market][penalty] = _jm_series(result, dates[market], penalty)
+
+    if worker_count == 1:
+        for item in pending:
+            accept(item, _fit_jm_candidate(item[0]))
+    elif pending:
+        with ProcessPoolExecutor(
+            max_workers=worker_count,
+            mp_context=get_context("forkserver"),
+        ) as executor:
+            futures = {
+                executor.submit(_fit_jm_candidate, item[0]): item for item in pending
+            }
+            for future in as_completed(futures):
+                accept(futures[future], future.result())
+    return {"fixed_jm": jm_paths, "hmm": hmm_paths}
+
+
+_JMTask = tuple[str, float, pd.DataFrame, ModelProtocol, JMProtocol, int]
+
+
+def _pre_oos_frame(frame: pd.DataFrame, exclusive_end: date) -> pd.DataFrame:
+    if "date" not in frame:
+        raise CalibrationError("JM frame is missing date")
+    dates = pd.DatetimeIndex(pd.to_datetime(frame["date"], errors="raise"))
+    if dates.has_duplicates or not dates.is_monotonic_increasing:
+        raise CalibrationError("JM dates must be increasing and unique")
+    mask = dates.date < exclusive_end
+    if not mask.any():
+        raise CalibrationError("pre-OOS JM frame is empty")
+    result = frame.loc[mask].copy()
+    result["date"] = dates[mask]
+    return result.reset_index(drop=True)
+
+
+def _pre_oos_series(states: pd.Series, exclusive_end: date) -> pd.Series:
+    frame = _pre_oos(states.to_frame("hmm_state"), exclusive_end)
+    return pd.Series(frame["hmm_state"], dtype=float)
+
+
+def _candidate_checkpoint(
+    root: Path,
+    identity: Mapping[str, str],
+    rules: CalibrationRules,
+    config: ResearchConfig,
+    market: str,
+    penalty: float,
+) -> tuple[Path, dict[str, str]]:
+    if set(identity) != {"code_sha", "data_sha256"}:
+        raise CalibrationError("checkpoint identity requires code and data hashes")
+    fields = {
+        **identity,
+        "rules_sha256": rules.sha256,
+        "config_sha256": config.sha256,
+        "market": market,
+        "candidate": penalty.hex(),
+    }
+    encoded = "\n".join(f"{key}={value}" for key, value in sorted(fields.items()))
+    token = hashlib.sha256(encoded.encode()).hexdigest()[:16]
+    return root / f"jm_{market}_{token}", fields
+
+
+def _fit_jm_candidate(task: _JMTask) -> FixedJMResult:
+    _, _, frame, model_protocol, jm_protocol, threads = task
+    with threadpool_limits(limits=threads):
+        return fixed_jm_states(frame, model_protocol, jm_protocol)
+
+
+def _jm_series(result: object, dates: pd.DatetimeIndex, penalty: float) -> pd.Series:
+    if not isinstance(result, FixedJMResult):
+        raise CalibrationError("JM checkpoint payload has the wrong type")
+    states = result.states
+    if not states.index.equals(dates) or tuple(states.columns) != (penalty,):
+        raise CalibrationError("JM checkpoint shape does not match its candidate")
+    values = states[penalty]
+    if not values.dropna().isin((0.0, 1.0)).all():
+        raise CalibrationError("JM checkpoint contains invalid states")
+    return values

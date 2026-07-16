@@ -45,11 +45,16 @@ def _paths(future: int = 0):
     return result
 
 
-def test_frozen_contract_and_calibration_guards() -> None:
+def test_frozen_contract_and_calibration_guards(tmp_path) -> None:
     rules = calibration.load_calibration_rules(SPEC, CONFIG)
     expected = "83beedafca3781d708f0a5ed74bd19127998e441f4242843c07127bcc90487b3"
     assert rules.sha256 == expected
 
+    changed = SPEC.read_text().replace("process_workers = 16", "process_workers = 8")
+    invalid_spec = tmp_path / "invalid-search.toml"
+    invalid_spec.write_text(changed)
+    with pytest.raises(calibration.CalibrationError, match="CPU contract"):
+        calibration.load_calibration_rules(invalid_spec, CONFIG)
     result = calibration.calibrate_paths(_paths(), _rules())
     assert result.grids == {
         "fixed_jm": (0.0, 1.0, 2.0),
@@ -79,3 +84,99 @@ def test_jm_expands_until_three_invalid_candidates() -> None:
     assert calibration.next_jm_index(values, rules) == 5
     values[calibration.jm_penalty(5)] = False
     assert calibration.next_jm_index(values, rules) is None
+
+
+def test_runner_parallel_equals_serial_and_resumes(tmp_path, monkeypatch) -> None:
+    frames, raw_hmm, config, rules = _runner_fixture()
+    identity = {"code_sha": "c" * 40, "data_sha256": "d" * 64}
+
+    def run(name, workers, data=frames, states=raw_hmm):
+        return calibration.generate_calibration_paths(
+            data,
+            states,
+            config,
+            rules,
+            (0.0, 1.0),
+            tmp_path / name,
+            identity,
+            workers=workers,
+        )
+
+    def assert_equal(left, right):
+        for model in ("fixed_jm", "hmm"):
+            for market in MARKETS:
+                pd.testing.assert_frame_equal(left[model][market], right[model][market])
+
+    serial = run("serial", 1)
+    parallel = run("parallel", 2)
+    assert_equal(serial, parallel)
+    assert tuple(parallel["hmm"]["us"].columns) == (0, 2, 4)
+    assert len(list((tmp_path / "parallel").glob("*.json"))) == 6
+
+    changed_frames, changed_hmm, _, _ = _runner_fixture(future=99.0)
+    changed = run("changed", 1, changed_frames, changed_hmm)
+    assert_equal(serial, changed)
+
+    monkeypatch.setattr(
+        calibration,
+        "_fit_jm_candidate",
+        lambda _: pytest.fail("resume recomputed a completed candidate"),
+    )
+    assert_equal(parallel, run("parallel", 2))
+
+
+def _runner_fixture(future: float = 0.0):
+    dates = pd.bdate_range("2020-01-01", periods=14)
+    signal = [
+        -2.0,
+        -1.8,
+        -2.2,
+        2.0,
+        1.8,
+        2.2,
+        -1.9,
+        -2.1,
+        1.9,
+        2.1,
+        -1.7,
+        1.7,
+        0.0,
+        0.0,
+    ]
+    frame = pd.DataFrame(
+        {
+            "date": dates,
+            "dd_10": [abs(value) for value in signal],
+            "sortino_20": signal,
+            "sortino_60": [value / 2 for value in signal],
+            "excess_return": [-value / 100 for value in signal],
+        }
+    )
+    value_columns = ["dd_10", "sortino_20", "sortino_60", "excess_return"]
+    frame.loc[frame.index[-2:], value_columns] = future
+    frames = {market: frame.copy() for market in MARKETS}
+    raw = pd.Series(
+        [float("nan")] * 5 + [0, 1, 0, 1, 1, 0, 1, 0, 0],
+        index=dates,
+        name="hmm_state",
+    )
+    raw.iloc[-2:] = int(bool(future))
+    raw_hmm = {market: raw.copy() for market in MARKETS}
+    config = replace(
+        CONFIG,
+        model_protocol=replace(CONFIG.model_protocol, fit_window=6),
+        jm_protocol=replace(
+            CONFIG.jm_protocol,
+            lambda_grid=(0.0, 1.0),
+            n_init=1,
+            max_iter=20,
+        ),
+    )
+    rules = replace(
+        _rules(),
+        exclusive_ends=dict.fromkeys(MARKETS, date(2020, 1, 17)),
+        hmm_k_max=4,
+        hmm_k_step=2,
+        process_workers=2,
+    )
+    return frames, raw_hmm, config, rules
