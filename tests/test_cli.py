@@ -101,6 +101,35 @@ def test_calibration_cli_uses_frozen_spec(monkeypatch, capsys) -> None:
     assert calls[0][1].name == "persistence-calibrated-search.toml"
 
 
+def test_grid_evaluation_cli_uses_frozen_spec(
+    monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    expected = ROOT / "artifacts/grid-fixture"
+    calls = []
+
+    def fake_run(config, spec, observer):
+        calls.append((config, spec, observer))
+        return expected
+
+    monkeypatch.setattr("adaptive_jump.cli.run_grid_evaluation", fake_run)
+    monkeypatch.setattr(
+        "adaptive_jump.cli._artifacts.verify_run",
+        lambda artifact: {"run_id": artifact.name, "status": "boundary_failed"},
+    )
+    arguments = [
+        "run",
+        "--study",
+        "persistence-grid-evaluation",
+        "--config",
+        str(ROOT / "research.toml"),
+    ]
+
+    assert main(arguments) == 0
+    assert Path(capsys.readouterr().out.strip()) == expected
+    assert calls[0][1].jm_grid[-1] == 256.0
+    assert calls[0][1].hmm_grid[-1] == 1115
+
+
 def test_window_study_cli_uses_frozen_spec_without_manifest(
     monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:

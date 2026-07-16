@@ -21,6 +21,8 @@ from adaptive_jump.calibration_runner import run_calibration_study
 from adaptive_jump.config import ConfigError, ResearchConfig, load_config
 from adaptive_jump.data import AcquisitionError, acquire, research_git_sha
 from adaptive_jump.features import effective_oos_start, prepare_market
+from adaptive_jump.grid_runner import run_grid_evaluation
+from adaptive_jump.grid_spec import load_grid_spec
 from adaptive_jump.models import FixedJMResult, HMMResult, fixed_jm_states, hmm_states
 from adaptive_jump.monitor import checkpoints as checkpoint_store
 from adaptive_jump.monitor import study_runtime
@@ -443,7 +445,12 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--study",
         required=True,
-        choices=["replication", "train-window-sensitivity", "persistence-calibration"],
+        choices=[
+            "replication",
+            "train-window-sensitivity",
+            "persistence-calibration",
+            "persistence-grid-evaluation",
+        ],
     )
     run.add_argument("--config", required=True, help="path to research.toml")
     run.add_argument("--manifest", help="exact acquisition manifest path")
@@ -477,6 +484,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                     research / "jm-train-window-sensitivity.toml", config
                 )
                 artifact = run_window_sensitivity(config, spec, observer)
+            elif arguments.study == "persistence-grid-evaluation":
+                spec = load_grid_spec(
+                    research / "persistence-grid-evaluation.toml", config
+                )
+                artifact = run_grid_evaluation(config, spec, observer)
             else:
                 artifact = run_calibration_study(
                     config, research / "persistence-calibrated-search.toml"

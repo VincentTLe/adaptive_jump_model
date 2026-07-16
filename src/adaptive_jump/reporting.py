@@ -35,6 +35,10 @@ def build_report(run: str | Path) -> Path:
         from adaptive_jump.window_reporting import build_window_report
 
         return build_window_report(run_dir)
+    if metadata.get("study_kind") == "persistence_grid_evaluation":
+        from adaptive_jump.grid_runner import build_grid_report
+
+        return build_grid_report(run_dir)
     verification = verify_run(run_dir)
     manifest = read_json(run_dir / "data-manifest.json")
     config = load_config(run_dir / "config.lock.toml")

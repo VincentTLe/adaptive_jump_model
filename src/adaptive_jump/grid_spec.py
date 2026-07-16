@@ -196,9 +196,7 @@ def load_grid_spec(path: str | Path, config: ResearchConfig) -> GridStudySpec:
         data_manifest_sha256=_hex(parent, "data_manifest_sha256"),
         data_cutoff=cutoff,
         calibration_run_id=_text(calibration, "run_id"),
-        calibration_inventory_sha256=_hex(
-            calibration, "run_inventory_sha256"
-        ),
+        calibration_inventory_sha256=_hex(calibration, "run_inventory_sha256"),
         calibration_selection_sha256=_hex(calibration, "selection_sha256"),
         jm_grid=jm_grid,
         hmm_grid=hmm_grid,
@@ -242,6 +240,7 @@ def _number(document: dict[str, Any], key: str) -> float:
     if not math.isfinite(value):
         raise GridSpecError(f"{key} must be finite")
     return value
+
 
 def _float_tuple(document: dict[str, Any], key: str) -> tuple[float, ...]:
     value = document.get(key)

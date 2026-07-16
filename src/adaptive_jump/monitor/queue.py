@@ -39,6 +39,9 @@ REGISTERED_STUDIES = {
     "persistence-calibrated-search-001": StudyDefinition(
         "persistence-calibrated-search-001", "persistence-calibration"
     ),
+    "persistence-grid-evaluation-001": StudyDefinition(
+        "persistence-grid-evaluation-001", "persistence-grid-evaluation"
+    ),
 }
 
 

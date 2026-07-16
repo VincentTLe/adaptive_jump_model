@@ -1,11 +1,20 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import pytest
 
 from adaptive_jump.config import load_config
+from adaptive_jump.grid_runner import (
+    COMPARISON_MODELS,
+    _grid_claim,
+    _path_metrics,
+    _run_bootstrap,
+)
 from adaptive_jump.grid_spec import GridSpecError, load_grid_spec
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,3 +57,66 @@ def test_grid_spec_rejects_provider_access(tmp_path: Path) -> None:
     )
     with pytest.raises(GridSpecError, match="provider access"):
         load_grid_spec(changed, load_config(ROOT / "research.toml"))
+
+
+def _toy_path(scale: float) -> pd.DataFrame:
+    observations = 200
+    equity = 0.001 + 0.004 * np.sin(np.arange(observations) / 7)
+    cash = np.full(observations, 0.0001)
+    strategy = cash + scale * (equity - cash)
+    return pd.DataFrame(
+        {
+            "date": pd.bdate_range("2000-01-03", periods=observations),
+            "equity_simple": equity,
+            "cash_return": cash,
+            "signal": np.ones(observations),
+            "position": np.ones(observations),
+            "gross_return": strategy,
+            "one_way_turnover": np.zeros(observations),
+            "transaction_cost": np.zeros(observations),
+            "strategy_return": strategy,
+        }
+    )
+
+
+def test_grid_bootstrap_and_claim_smoke(tmp_path: Path) -> None:
+    config = load_config(ROOT / "research.toml")
+    frozen = load_grid_spec(SPEC, config)
+    spec = replace(
+        frozen,
+        bootstrap_replications=20,
+        bootstrap_blocks=(2, 3, 4),
+    )
+    scales = {
+        "buy_and_hold": 1.0,
+        "hmm_v7": 0.4,
+        "hmm_new_grid": 0.45,
+        "fixed_jm_v7": 0.5,
+        "fixed_jm_new_grid": 0.6,
+    }
+    one_market = {model: _toy_path(scales[model]) for model in COMPARISON_MODELS}
+    paths = {market: one_market for market in ("us", "de", "jp")}
+    metrics = pd.concat(
+        [
+            _path_metrics(one_market, config).assign(
+                market=market, delay=spec.primary_delay
+            )
+            for market in paths
+        ],
+        ignore_index=True,
+    )
+
+    bootstrap = _run_bootstrap(
+        paths,
+        config,
+        spec,
+        tmp_path,
+        {"test_identity": "fixture"},
+        None,
+    )
+    claim = _grid_claim(metrics, bootstrap, spec)
+
+    assert len(bootstrap) == 18
+    assert bootstrap["holm_adjusted_p"].between(0, 1).all()
+    assert claim["claim_class"] == "EXPLORATORY"
+    assert len(claim["fixed_jm"]) == 3
