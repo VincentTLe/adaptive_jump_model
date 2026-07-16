@@ -9,7 +9,7 @@
 - `parent_experiment`: `fixed-baselines-001-v7`
 - `calibration_experiment`: `persistence-calibrated-search-001`
 - `frozen_spec`: `research/persistence-grid-evaluation.toml`
-- `frozen_spec_sha256`: `e6365a1582131ddab5b8325ddcbfe3c955669bd7577f528ab85caf444bd4413f`
+- `frozen_spec_sha256`: `684fb4d81a9a5bca01db07b914b8f21029200d59b24107a685d2b747255df80e`
 - `claim_class`: `EXPLORATORY`
 - `data_cutoff`: `2023-12-31`
 - `extension_access`: forbidden
