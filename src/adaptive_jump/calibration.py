@@ -155,9 +155,9 @@ def next_jm_index(
     return following
 
 
-def calibrate_paths(
+def diagnose_paths(
     paths: Mapping[str, Mapping[str, pd.DataFrame]], rules: CalibrationRules
-) -> CalibrationResult:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     if set(paths) != set(MODELS):
         raise CalibrationError("candidate models must be fixed_jm and hmm")
     market_rows: list[dict[str, object]] = []
@@ -201,6 +201,13 @@ def calibrate_paths(
 
     market_frame = pd.DataFrame.from_records(market_rows)
     candidate_rows = _candidate_summary(market_frame, signatures)
+    return market_frame, candidate_rows
+
+
+def calibrate_paths(
+    paths: Mapping[str, Mapping[str, pd.DataFrame]], rules: CalibrationRules
+) -> CalibrationResult:
+    market_frame, candidate_rows = diagnose_paths(paths, rules)
     counts = {
         model: int(
             ((candidate_rows["model"] == model) & candidate_rows["eligible"]).sum()

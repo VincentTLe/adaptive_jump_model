@@ -1,3 +1,5 @@
+import hashlib
+import json
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
@@ -6,6 +8,7 @@ import pandas as pd
 import pytest
 
 import adaptive_jump.calibration as calibration
+import adaptive_jump.calibration_runner as calibration_runner
 from adaptive_jump.config import load_config
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -180,3 +183,113 @@ def _runner_fixture(future: float = 0.0):
         process_workers=2,
     )
     return frames, raw_hmm, config, rules
+
+
+def test_safe_search_orchestration(tmp_path, monkeypatch) -> None:
+    dates = pd.bdate_range("2020-01-01", periods=8)
+    patterns = (
+        [0, 1, 0, 1, 0, 1, 0, 1],
+        [0, 0, 1, 1, 0, 0, 1, 1],
+        [0, 0, 0, 1, 1, 1, 0, 0],
+    )
+    calls = []
+
+    def fake_generator(
+        frames,
+        raw_hmm,
+        config,
+        rules,
+        penalties,
+        checkpoint_dir,
+        identity,
+        *,
+        workers=None,
+    ):
+        calls.append(penalties)
+        known = {
+            0.0: patterns[0],
+            calibration.jm_penalty(0): patterns[1],
+            calibration.jm_penalty(1): patterns[2],
+        }
+        fixed = {}
+        hmm = {}
+        for market in MARKETS:
+            fixed[market] = pd.DataFrame(
+                {penalty: known.get(penalty, [0] * 8) for penalty in penalties},
+                index=dates,
+            )
+            hmm[market] = pd.DataFrame(
+                dict(zip((0, 2, 4), patterns, strict=True)),
+                index=dates,
+            )
+        return {"fixed_jm": fixed, "hmm": hmm}
+
+    monkeypatch.setattr(
+        calibration_runner, "generate_calibration_paths", fake_generator
+    )
+    rules = replace(
+        _rules(),
+        jm_initial_j_min=0,
+        jm_initial_j_max=1,
+        jm_hard_j_max=3,
+        jm_invalid_stop=2,
+    )
+    result = calibration_runner.run_calibration_search(
+        {},
+        {},
+        CONFIG,
+        rules,
+        tmp_path,
+        {"code_sha": "c" * 40, "data_sha256": "d" * 64},
+        workers=1,
+    )
+
+    expected = tuple([0.0] + [calibration.jm_penalty(j) for j in range(4)])
+    assert result.attempted_jm == expected
+    assert calls == [expected[:3], (expected[3],), (expected[4],)]
+    assert result.diagnostics.grids == {
+        "fixed_jm": expected[:3],
+        "hmm": (0.0, 2.0, 4.0),
+    }
+
+
+def test_parent_loader_stops_before_outer_values(tmp_path) -> None:
+    parent = tmp_path / "parent"
+    hashes = {}
+    for market in MARKETS:
+        market_dir = parent / market
+        market_dir.mkdir(parents=True)
+        feature_path = market_dir / "features.csv"
+        feature_path.write_text(
+            "date,dd_10,sortino_20,sortino_60,excess_return\n"
+            "2020-01-01,0,,,0.01\n"
+            "2020-01-02,1,0.2,0.3,-0.01\n"
+            "2020-01-13,NOT_READ,NOT_READ,NOT_READ,NOT_READ\n",
+            encoding="utf-8",
+        )
+        hmm_path = market_dir / "hmm-states.csv"
+        hmm_path.write_text(
+            "date,hmm_state\n2020-01-01,\n2020-01-02,1\n2020-01-13,NOT_READ\n",
+            encoding="utf-8",
+        )
+        for path in (feature_path, hmm_path):
+            relative = str(path.relative_to(parent))
+            hashes[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
+    inventory_path = parent / "inventory.json"
+    inventory_path.write_text(
+        json.dumps({"schema_version": 1, "files": hashes}),
+        encoding="utf-8",
+    )
+    inventory_hash = hashlib.sha256(inventory_path.read_bytes()).hexdigest()
+
+    frames, raw_hmm = calibration_runner.load_parent_inputs(
+        parent, _rules(), inventory_hash
+    )
+    assert all(len(frame) == 2 for frame in frames.values())
+    assert all(len(states) == 2 for states in raw_hmm.values())
+    assert pd.isna(frames["us"].loc[0, "sortino_20"])
+    assert pd.isna(raw_hmm["us"].iloc[0])
+
+    (parent / "us/features.csv").write_text("tampered\n", encoding="utf-8")
+    with pytest.raises(calibration_runner.CalibrationRunError, match="hash changed"):
+        calibration_runner.load_parent_inputs(parent, _rules(), inventory_hash)
