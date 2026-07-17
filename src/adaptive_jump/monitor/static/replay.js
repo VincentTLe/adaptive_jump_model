@@ -193,6 +193,19 @@
       unavailable("Market replay opens after the job completes and its artifact is verified.");
       return;
     }
+    const verified = replay.events.find(
+      (event) => event.kind === "artifact_verified" && event.stage === "verification",
+    );
+    if (
+      verified?.payload.status !== "complete"
+      || typeof verified.payload.run_id !== "string"
+      || !verified.payload.run_id.startsWith("fixed-baselines-")
+    ) {
+      unavailable(
+        "Runtime audit is available, but market replay requires a completed fixed-baseline artifact.",
+      );
+      return;
+    }
     const eventMarket = replay.events.find((event) => marketNames[event.market])?.market;
     replay.market = eventMarket || "us";
     $("replay-market").value = replay.market;

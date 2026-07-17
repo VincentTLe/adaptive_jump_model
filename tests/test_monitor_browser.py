@@ -522,6 +522,60 @@ def test_monitor_ui_in_real_chromium_desktop_mobile_and_no_js(tmp_path: Path) ->
         browser.close()
 
 
+def test_boundary_failed_job_keeps_audit_without_requesting_market_replay(
+    tmp_path: Path,
+) -> None:
+    with _monitor_origin(tmp_path) as (origin, active_job_id), sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=True)
+        context = browser.new_context(
+            extra_http_headers={"Cf-Access-Jwt-Assertion": "owner-token"}
+        )
+        _block_external(context, origin)
+        page = context.new_page()
+        errors = _watch_errors(page)
+        market_requests = []
+
+        def rewrite_events(route):
+            response = route.fetch()
+            payload = response.json()
+            for event in payload["events"]:
+                if event["kind"] == "artifact_verified":
+                    event["payload"] = {
+                        "run_id": "grid-eval-fixture",
+                        "status": "boundary_failed",
+                    }
+            route.fulfill(
+                status=response.status,
+                content_type="application/json",
+                body=json.dumps(payload),
+            )
+
+        page.route(f"{origin}/api/jobs/{active_job_id}/events", rewrite_events)
+        page.on(
+            "request",
+            lambda request: (
+                market_requests.append(request.url)
+                if "/markets/" in request.url
+                else None
+            ),
+        )
+        page.goto(origin, wait_until="domcontentloaded")
+        page.get_by_role("button", name="Replay").click()
+
+        message = (
+            "Runtime audit is available, but market replay requires a completed "
+            "fixed-baseline artifact."
+        )
+        expect(page.locator("#replay-source")).to_have_text(message)
+        expect(page.locator("#audit-count")).to_have_text("8 append-only events")
+        expect(page.locator("#audit-position")).to_have_text("1 / 8")
+        assert market_requests == []
+        assert errors == []
+
+        context.close()
+        browser.close()
+
+
 def test_local_owner_opens_the_monitor_with_browser_basic_auth(tmp_path: Path) -> None:
     password = "correct-local-password"
     authenticator = LocalAuthenticator(password)
