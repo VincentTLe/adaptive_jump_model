@@ -65,6 +65,9 @@ task/config/run metadata:
 - baseline, challenger, and exact mathematical difference;
 - candidate values or search domain, units, and provenance;
 - development sample, selection score, costs, and delay;
+- each "useful regime behavior" objective as a named metric, direction, and
+  comparison rule (for example, lower turnover or maximum drawdown within an
+  advance-set Sharpe tolerance);
 - results that would support, weaken, or falsify the idea.
 
 There are no arbitrary line, file, commit, or runtime quotas. Use the smallest
@@ -72,6 +75,10 @@ coherent implementation, prefer configuration over a duplicate runner, reuse
 the canonical pipeline when its semantics match, and state expected runtime.
 Complexity is justified by the scientific question, not by a numeric code
 budget.
+
+If an exploratory implementation grows beyond roughly 300 changed lines or one
+working day, pause once to tell the owner what is growing and why before
+continuing. This is a warning, not a cap or a reason to split coherent work.
 
 Exploratory work normally does not need an independent verifier, HTML report,
 monitor integration, bootstrap inference, or a new governance document. Use
