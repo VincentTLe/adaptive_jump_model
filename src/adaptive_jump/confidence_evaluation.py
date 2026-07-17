@@ -213,6 +213,7 @@ def _metric_row(
         periods_per_year=protocol.periods_per_year,
         volatility_ddof=protocol.volatility_ddof,
         expected_shortfall_quantile=protocol.expected_shortfall_quantile,
+        turnover_scale=protocol.turnover_scale,
     )
     return {
         "market": market,

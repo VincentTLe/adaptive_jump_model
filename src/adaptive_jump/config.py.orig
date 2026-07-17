@@ -14,7 +14,6 @@ LEGACY_TURNOVER_DEFINITION = "mean_one_way_turnover_times_252"
 PAPER_COMPARISON_SAMPLE = "per_market_all_delays_intersection_of_complete_metric_rows"
 LEGACY_COMPARISON_SAMPLE = (
     "per_market_delay_intersection_of_complete_metric_rows"
-)
 
 
 class ConfigError(ValueError):
@@ -103,7 +102,6 @@ class MetricsProtocol:
     volatility_ddof: int
     expected_shortfall_quantile: float
     turnover_definition: str = PAPER_TURNOVER_DEFINITION
-    comparison_sample: str = PAPER_COMPARISON_SAMPLE
 
     @property
     def turnover_scale(self) -> float:
@@ -453,6 +451,7 @@ def _selection_protocol(row: dict[str, Any]) -> SelectionProtocol:
 
 def _metrics_protocol(row: dict[str, Any]) -> MetricsProtocol:
     expected = {
+        "comparison_sample": "per_market_delay_intersection_of_complete_metric_rows",
         "sharpe_numerator": "mean_strategy_minus_cash",
         "sharpe_denominator": "strategy_return_volatility",
         "cagr": "compound_252_over_n",
@@ -468,11 +467,6 @@ def _metrics_protocol(row: dict[str, Any]) -> MetricsProtocol:
         turnover_definition in {PAPER_TURNOVER_DEFINITION, LEGACY_TURNOVER_DEFINITION},
         "invalid metric definition",
     )
-    comparison_sample = _text(row, "comparison_sample")
-    _require(
-        comparison_sample in {PAPER_COMPARISON_SAMPLE, LEGACY_COMPARISON_SAMPLE},
-        "invalid metric definition",
-    )
     periods = _positive_integer(row, "periods_per_year")
     ddof = _integer(row, "volatility_ddof")
     quantile = _positive_number(row, "expected_shortfall_quantile")
@@ -481,13 +475,7 @@ def _metrics_protocol(row: dict[str, Any]) -> MetricsProtocol:
         "metrics must use 252 periods and sample volatility",
     )
     _require(quantile == 0.05, "expected shortfall quantile must be 0.05")
-    return MetricsProtocol(
-        periods,
-        ddof,
-        quantile,
-        turnover_definition,
-        comparison_sample,
-    )
+    return MetricsProtocol(periods, ddof, quantile, turnover_definition)
 
 
 def _integer(row: dict[str, Any], key: str) -> int:

@@ -1,112 +1,98 @@
-# Task: Evidence-Adaptive Transition Penalty
+# Task: Causal State-Separation Diagnostic
 
 ## Identity
 
-- `task_id`: `adaptive-confidence-001`
+- `task_id`: `adaptive-separation-001`
 - `status`: `EXPERIMENT_COMPLETE`
 - `target_branch`: `cleanup/research-protocol`
-- `parent_experiment`: `fixed-baselines-001-v7`
-- `frozen_spec`: `research/adaptive-confidence-001.toml`
-- `frozen_spec_sha256`: `1b0c327b2db44f39be183b153e6feaae6c53e2cad1e56e782f1ef7eda3849cc3`
+- `parent_experiment`: `adaptive-confidence-001`
+- `frozen_spec`: `research/adaptive-separation-001.toml`
+- `frozen_spec_sha256`: `813f6691252644a9012392a0598879d4032d1c9d40643cc34492a64074a44050`
 - `claim_class`: `EXPLORATORY`
 - `data_cutoff`: `2023-12-31`
+- `performance_file_access`: forbidden
 - `extension_access`: forbidden
 - `monitor_changes`: forbidden
-- `completed_run`: `adaptive-confidence-1b0c327b2db4-3636939b525d-864d671cf973`
+- `completed_run`: `adaptive-separation-813f66912526-26cbca8871be-fefc608b9081`
 
-This study is authorized by the owner's 2026-07-16 request. It was designed
-after the v7 proxy results were known, so it cannot support a replication,
-confirmatory, or performance claim.
+The owner asked that the mathematical development history be preserved and
+that research continue toward a model contribution with useful market
+behavior. The durable history is in `research/SCIENTIFIC_LEDGER.md`.
 
 ## Outcome
 
-- US, DE, and JP completed concurrently against the sealed v7 sample through
-  2023-12-29; beta zero matched the parent states, choices, signal, accounting,
-  trade path, and metrics.
-- The evidence-discount mechanism was operational for both positive betas in
-  every market, but neither beta met the locked reduced-trade-off rule in any
-  market. The study result is `not_supported`.
-- Both DE challengers improved Sharpe and reduced turnover and switches while
-  maximum drawdown was equal to baseline within floating-point precision. The
-  exact locked deltas were slightly negative (`-2.22e-16` and `-5.55e-16`), so
-  no post-result tolerance was introduced.
-- This is an exploratory development-sample result, not a performance claim.
+- A first 56-event run was invalidated after concrete-date inspection found
+  pre-OOS events. The corrected spec added only the already-registered US, DE,
+  and JP outer starts; no mathematical or decision rule changed.
+- The corrected run reconstructed 1,152 positive-lambda refit rows and admitted
+  42 exact arrival-ablation events: US 14, DE 15, and JP 13. Every admitted
+  event had valid reliability geometry; no exact DP tie was admitted.
+- All three leave-one-market-out fits failed the locked gradient criterion:
+  held-out US `1.99e-9`, DE `2.58e-9`, and JP `1.61e-8`, versus
+  `1e-9`. The frozen result is therefore `inconclusive`.
+- Descriptively, DE did not have greater refit separation than JP (median
+  `0.5463` versus `0.5578`). DE whipsaw events had slightly *higher*
+  reliability than persistent events (`0.5675` versus `0.5626`); JP showed
+  only a small difference in the hypothesized direction (`0.5632` versus
+  `0.5659`). This statistic does not explain the DE/JP contrast.
+- The reliability gate is not justified and no P&L or new-model study was run.
 
 ## Scientific Question
 
-Can an evidence-adaptive transition penalty reduce the latency/whipsaw
-trade-off of Shu et al.'s fixed-lambda Jump Model on the same causal proxy
-sample through 2023?
+Does a causal training-prefix measure of state separation add
+out-of-market predictive information, beyond the current arrival-loss
+discount, about whether a discount-attributable fixed-lambda JM switch
+persists or reverses?
 
-For arrival state `j` from prior state `i`:
-
-```text
-C_t(i,j) = lambda0 * exp(
-    -beta * tanh(max(L_t(i) - L_t(j), 0) / q_train)
-), i != j
-C_t(i,i) = 0
-```
-
-The decoded objective is:
+For each market, refit, and raw lambda, define
 
 ```text
-sum_t L_t(s_t) + sum_{t=1}^{T-1} C_t(s_{t-1}, s_t)
+D = ||mu0 - mu1||
+rho_k = median(||z_u - mu_k|| for z_u strictly nearer mu_k)
+R_train = D / (D + rho_0 + rho_1)
 ```
 
-`L_t(k)` is one half the squared Euclidean distance from the scaled v7
-feature row to fitted center `k`. The matrix direction is previous state by
-arrival state, and the loss evidence is evaluated on the arrival day.
+`R_train` uses only the exact 3,000-row training prefix and stored v7 scaler
+and centers. It is bounded, label-symmetric, and invariant to a common
+positive distance scale.
+Events are restricted to the sealed v7 outer starts: US 2007-12-04, DE
+2008-01-03, and JP 2009-05-07. Earlier candidate history may supply causal
+training context but is not an eligible event population.
 
-## Frozen Design
+## Frozen Diagnostic
 
-- Beta scenarios are exactly `0`, `log(2)`, and `log(4)`.
-- Each beta is a separate equal-budget pipeline over the unchanged raw v7
-  lambda grid `[0, 5, 15, 35, 70, 150, 300, 600, 1200]`.
-- Lambda is selected monthly inside each beta pipeline by the existing v7
-  eight-year trailing strategy-excess-Sharpe rule. Beta is not selected.
-- `q_train` is the raw median absolute deviation of all finite state-loss
-  entries on the 3,000-row training prefix for that lambda and refit. It must
-  be finite and strictly positive; there is no epsilon or future-data fallback.
-- An unoccupied fitted state's missing loss is `+infinity`, matching v7 DP.
-- Reconstruct the deterministic v7 fixed-JM fits because the sealed artifact
-  did not retain center vectors. Reuse each reconstructed scaler and fitted
-  centers for every beta until the next v7 Jan/Jul refit.
-- Use the sealed v7 feature rows, OOS dates, state labeling, monthly timeline,
-  signal mapping, t+2 return timing, and 10 bps one-way cost.
-- Stop on any row after 2023-12-31. Do not contact a provider, expand lambda,
-  build calibration, alter the monitor, or modify historical artifacts.
+1. Use only the parent `features.csv`, `refits-and-scales.csv`, and the three
+   fixed-lambda candidate-state files. Never read returns, metrics, choices,
+   selected timelines, positions, or performance conclusions.
+2. Reconstruct every training prefix and fixed objective. Mark separation
+   invalid rather than imputing when a center or geometric partition is
+   unavailable.
+3. A candidate event must separate adaptive beta from beta zero at the same
+   market and lambda, use an actual final-step arrival transition, receive a
+   discounted penalty, and disappear when only that arrival-day penalty is
+   ablated back to fixed lambda.
+4. Label a whipsaw when the adaptive emitted state returns to its source in
+   the next 20 signal dates. Require the whole horizon before the next refit
+   and apply the frozen non-overlap rule.
+5. Compare baseline and reliability-augmented unpenalized logistic models by
+   leave-one-market-out Brier score, using equal total weight per training
+   market. Follow the exact supported/falsified/inconclusive rule in the TOML.
 
-## Advance-Set Evaluation
+## Success Conditions
 
-For each challenger beta and market, report baseline-relative delta Sharpe,
-delta maximum drawdown (positive means less severe), absolute and delta
-turnover, cash fraction, and switch count.
-
-A market has a reduced trade-off only when delta Sharpe and delta maximum
-drawdown are non-negative, turnover and switch-count deltas are non-positive,
-and at least one inequality is strict. Cash fraction is descriptive. Study
-support requires the same challenger beta to pass in all three markets; one or
-two is mixed evidence; zero is not supported.
-
-The mechanism is operational only if beta zero is exactly nested, every
-penalty satisfies the frozen directed formula and bounds, evidence-supported
-discounts occur on real selected paths, and at least one emitted state differs
-for each positive beta. This is separate from trade-off improvement.
-
-## Verification and Execution
-
-1. Verify the parent inventory/config/data identities and cutoff.
-2. Verify formula, objective, deterministic toy paths, brute-force equality,
-   the two-state directed-cost identity, and prefix invariance.
-3. Run a real US first-refit smoke across all lambdas and betas; beta zero must
-   match the corresponding sealed v7 state rows.
-4. Run US, DE, and JP concurrently with one worker per market.
-5. Before interpreting aggregates, inspect concrete selected-path dates from
-   loss and penalty through DP state, signal, delayed position, trade and cost.
-6. Write ignored CSV evidence and a concise factual exploratory conclusion.
+- Frozen spec and parent hashes match the registry.
+- Formula, label symmetry, common-scale invariance, objective reconstruction,
+  arrival ablation, candidate-state reconstruction, refit joins, cutoff, and
+  source-file restrictions are tested.
+- US smoke passes before the complete US/DE/JP diagnostic.
+- Ignored CSV/JSON evidence is written and inventoried.
+- The ledger and registry state the result without converting an association
+  into a performance or causal claim.
 
 ## Completion States
 
-- `CODE_COMPLETE`: focused and full semantic tests pass.
-- `EXPERIMENT_COMPLETE`: smoke and all three markets finish with complete CSVs.
-- `CLAIM_READY`: impossible in this exploratory study.
+- `CODE_COMPLETE`: focused semantic tests pass.
+- `EXPERIMENT_COMPLETE`: all three markets and leave-one-market-out folds are
+  written, or the frozen rule returns an auditable inconclusive result.
+- `MODEL_GATE_READY`: possible only if the frozen diagnostic is supported;
+  profitability still requires a separate frozen experiment.

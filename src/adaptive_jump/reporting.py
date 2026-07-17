@@ -281,7 +281,7 @@ def _results_section(
                 _percent(row.volatility),
                 f"{float(row.sharpe):.3f}",
                 _percent(row.maximum_drawdown),
-                f"{float(row.turnover):.2f}",
+                _percent(row.turnover),
             )
         )
     primary = int(config.backtest_protocol.primary_delay)

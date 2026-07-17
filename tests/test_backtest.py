@@ -144,8 +144,25 @@ def test_frozen_performance_metric_definitions() -> None:
     assert metrics["maximum_drawdown"] == pytest.approx(-0.10)
     assert metrics["calmar"] == pytest.approx(0.5)
     assert metrics["expected_shortfall_5pct"] == pytest.approx(-0.10)
-    assert metrics["turnover"] == pytest.approx(2.0)
+    assert metrics["turnover"] == pytest.approx(1.0)
     assert metrics["leverage"] == pytest.approx(0.5)
+
+
+def test_turnover_convention_does_not_change_full_switch_costs() -> None:
+    result = apply_signal(
+        return_frame(6),
+        pd.Series([1, 0, 1, 0, 1, 0]),
+        delay_trading_days=1,
+        one_way_cost_bps=10,
+    )
+
+    paper = performance_metrics(result, periods_per_year=4)
+    legacy = performance_metrics(result, periods_per_year=4, turnover_scale=1.0)
+
+    assert result["one_way_turnover"].sum() == pytest.approx(3.0)
+    assert result["transaction_cost"].sum() == pytest.approx(0.003)
+    assert paper["turnover"] == pytest.approx(1.5)
+    assert legacy["turnover"] == pytest.approx(3.0)
 
 
 def test_sharpe_uses_strategy_volatility_not_excess_volatility() -> None:

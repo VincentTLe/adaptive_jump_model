@@ -117,8 +117,9 @@ def performance_metrics(
     periods_per_year: int = 252,
     volatility_ddof: int = 1,
     expected_shortfall_quantile: float = 0.05,
+    turnover_scale: float = 0.5,
 ) -> dict[str, float | int | str]:
-    """Calculate the complete frozen metric set for one strategy path."""
+    """Calculate metrics, reporting paper turnover unless explicitly overridden."""
     required = [
         "date",
         "cash_return",
@@ -133,6 +134,8 @@ def performance_metrics(
         raise BacktestError("metric period and ddof settings are invalid")
     if not 0 < expected_shortfall_quantile < 1:
         raise BacktestError("expected shortfall quantile must be between 0 and 1")
+    if not math.isfinite(turnover_scale) or turnover_scale <= 0:
+        raise BacktestError("turnover scale must be finite and positive")
 
     frame = result.loc[:, required].copy()
     frame["date"] = pd.to_datetime(frame["date"], errors="raise")
@@ -184,6 +187,8 @@ def performance_metrics(
         "maximum_drawdown": maximum_drawdown,
         "calmar": float(calmar),
         "expected_shortfall_5pct": expected_shortfall,
-        "turnover": float(frame["one_way_turnover"].mean() * periods_per_year),
+        "turnover": float(
+            turnover_scale * frame["one_way_turnover"].mean() * periods_per_year
+        ),
         "leverage": float(frame["position"].mean()),
     }

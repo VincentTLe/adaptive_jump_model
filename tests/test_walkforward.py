@@ -73,6 +73,21 @@ def test_numerical_tie_selects_lower_candidate() -> None:
     assert result.choices["selected"].eq(0.0).all()
 
 
+def test_numerical_tie_can_select_higher_candidate_explicitly() -> None:
+    returns, states = _inputs()
+    states[5.0] = states[0.0]
+
+    result = select_monthly_candidate(
+        returns,
+        states,
+        replace(_selection(), tie_rule="higher_smoothing"),
+        delay_trading_days=1,
+        one_way_cost_bps=10,
+    )
+
+    assert result.choices["selected"].eq(5.0).all()
+
+
 def test_unsorted_candidate_columns_keep_their_state_paths() -> None:
     returns, states = _inputs()
 

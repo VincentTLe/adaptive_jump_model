@@ -10,8 +10,20 @@ before evaluating any adaptive extension.
 The fixed-baseline proxy replication through 2023 is complete. The locked v7
 run passed all 18 grid-boundary checks and independently reproduced all 27
 metric rows from its trade paths, but fixed JM failed the directional gate in
-all three markets. The result is therefore **proxy non-replication** and
-adaptive-model work remains blocked.
+all three markets. The result is therefore **proxy non-replication** and does
+not refute the paper because the exact long sample and source definitions were
+unavailable.
+
+The exploratory `adaptive-confidence-001` decoder study is also complete.
+Its evidence-dependent arrival penalty behaved as designed, but the frozen
+three-market trade-off rule was not supported: DE improved while US and JP did
+not. No performance claim is allowed. The causal state-separation follow-up is
+also complete: 42 exact arrival-ablation events were found, but all three
+leave-one-market-out fits failed the locked optimizer criterion, so the result
+is inconclusive and the proposed reliability gate is not justified. It read no
+P&L or post-2023 data. The mathematical ideas, withdrawn interpretations,
+frozen studies, and exact evidence status are maintained in
+[`research/SCIENTIFIC_LEDGER.md`](research/SCIENTIFIC_LEDGER.md).
 
 The follow-up exploratory JM-window sensitivity is also complete. It changed
 only the fixed-JM rolling window from 3,000 to 4,000 observations while using
@@ -197,8 +209,9 @@ packages are intentionally not preinstalled.
    boundary gate; no performance conclusion was opened.
 6. The live monitor passed local lifecycle and artifact-parity acceptance; it
    preserves these frozen boundaries and creates no scientific claim.
-7. Adaptive, grid-expansion, and extension work require a new approved task
-   that formally states the next research question.
+7. The evidence-adaptive decoder and state-separation diagnostic are complete.
+   The latter was inconclusive and did not justify a reliability-gated model or
+   P&L study.
 
 Raw/processed data belongs under `data/`; run outputs belong under `artifacts/`.
 Both locations are ignored by Git. A valid run carries its config and data

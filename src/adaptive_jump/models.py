@@ -15,6 +15,7 @@ import pandas as pd
 from hmmlearn.base import ConvergenceMonitor
 from hmmlearn.hmm import GaussianHMM
 from jumpmodels.jump import JumpModel
+from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from threadpoolctl import threadpool_limits
 
@@ -327,21 +328,49 @@ def best_hmm_terminal_fit(
     values = np.asarray(log_returns, dtype=float).reshape(-1, 1)
     if len(values) != model_protocol.fit_window or not np.isfinite(values).all():
         raise ModelError("HMM window must contain the frozen number of finite returns")
+    if (
+        not isinstance(hmm_protocol.kmeans_n_init, int)
+        or hmm_protocol.kmeans_n_init < 1
+    ):
+        raise ModelError("HMM KMeans n_init must be a positive integer")
+    if not math.isfinite(hmm_protocol.covars_prior) or hmm_protocol.covars_prior < 0:
+        raise ModelError("HMM covariance prior must be finite and non-negative")
 
     accepted: list[tuple[float, int, int, tuple[float, float]]] = []
     failures: list[str] = []
     for seed in hmm_protocol.seeds:
         try:
             with _quiet_hmmlearn():
+                means = (
+                    KMeans(
+                        n_clusters=model_protocol.n_states,
+                        init="k-means++",
+                        n_init=hmm_protocol.kmeans_n_init,
+                        random_state=seed,
+                    )
+                    .fit(values)
+                    .cluster_centers_
+                )
                 model = GaussianHMM(
                     n_components=model_protocol.n_states,
                     covariance_type="diag",
                     min_covar=hmm_protocol.min_covar,
+                    startprob_prior=1.0,
+                    transmat_prior=1.0,
+                    means_prior=0.0,
+                    means_weight=0.0,
+                    covars_prior=hmm_protocol.covars_prior,
+                    covars_weight=1.0,
                     n_iter=hmm_protocol.n_iter,
                     tol=hmm_protocol.tol,
                     algorithm="viterbi",
                     random_state=seed,
+                    verbose=False,
+                    params="stmc",
+                    init_params="stc",
+                    implementation="log",
                 )
+                model.means_ = means
                 model.monitor_ = _SymmetricConvergenceMonitor(
                     hmm_protocol.tol, hmm_protocol.n_iter, False
                 )
@@ -409,6 +438,7 @@ def smoothed_hmm_states(
     *,
     threshold: float = 0.5,
     min_periods: int = 1,
+    require_full_window: bool = False,
 ) -> pd.DataFrame:
     """Apply the preregistered causal majority filter to HMM states."""
     values = pd.Series(states, dtype=float)
@@ -421,7 +451,8 @@ def smoothed_hmm_states(
         if window == 0:
             candidates[window] = values
             continue
-        mean = values.rolling(window=window, min_periods=min_periods).mean()
+        required = window if require_full_window else min_periods
+        mean = values.rolling(window=window, min_periods=required).mean()
         candidates[window] = (mean > threshold).astype(float).where(mean.notna())
     candidates.columns.name = "k"
     return candidates

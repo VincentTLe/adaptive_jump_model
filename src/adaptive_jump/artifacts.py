@@ -366,6 +366,7 @@ def _verify_metrics(
                     expected_shortfall_quantile=(
                         config.metrics_protocol.expected_shortfall_quantile
                     ),
+                    turnover_scale=config.metrics_protocol.turnover_scale,
                 )
                 row = metrics.loc[
                     (metrics["market"] == market.id)

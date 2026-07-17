@@ -39,9 +39,126 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">87 session(s) · newest first · 2026-07-15 10:31 UTC</p>
+  <p class="sub">96 session(s) · newest first · 2026-07-17 07:52 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-17T07:51:48Z</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">Recorded the full mathematical/experimental lineage and completed adaptive-separation-001; the corrected through-2023 mechanism diagnostic is inconclusive and does not justify a reliability gate or P&amp;L test.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>README.md</code></li><li><code>TASK.md</code></li><li><code>research/SCIENTIFIC_LEDGER.md (+)</code></li><li><code>research/adaptive-separation-001.toml (+)</code></li><li><code>research/experiment_registry.jsonl</code></li><li><code>src/adaptive_jump/separation_study.py (+)</code></li><li><code>src/adaptive_jump/separation_analysis.py (+)</code></li><li><code>src/adaptive_jump/separation_evaluation.py (+)</code></li><li><code>src/adaptive_jump/separation_runner.py (+)</code></li><li><code>tests/test_separation_study.py (+)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>Corrected US smoke passed: 392 refit-lambda rows reconstructed, 329 valid geometry rows, 14 exact arrival-ablation events, no DP ties.</li><li>Final parallel US/DE/JP run completed as adaptive-separation-813f66912526-26cbca8871be-fefc608b9081; strengthened verifier passed with 42 events and result inconclusive.</li><li>Artifact audit: penalty max error 4.44e-16, log-discount max error 2.22e-16, fixed-objective max error 9.10e-13, q_train max error 0; reverse penalty, predecessor, ablation, outcome partition, uniqueness, market starts, and cutoff exact.</li><li>Full pytest: 333 passed in 41.08s.</li><li>Ruff check passed; Ruff format --check reported 81 files formatted; uv pip check and uv lock --check passed.</li><li>Current implementation resolves to the same sealed artifact and re-verifies successfully.</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>uncommitted</code></p></div>
+        <div><span class="lbl">Next step</span><p>Do not implement or performance-test the proposed R_train reliability gate: all three frozen logistic folds failed the 1e-9 gradient criterion and DE/JP descriptive separation did not explain the contrast. Any next mathematical model needs a new frozen question and should avoid treating the repeatedly viewed 2023 proxy as untouched evidence.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>The first 56-event run was explicitly invalidated after concrete-date audit found pre-OOS events; the corrected spec added only the registered US/DE/JP starts and retained all math/decision rules. adaptive-confidence-002 remains a recorded reporting-tolerance proposal, not a model contribution. No parent performance files, post-2023 data, monitor, textbook, or historical artifacts were changed. Existing .agent logs were preserved append-only. No commit or push was made because this new bounded study did not include fresh git-mutation authorization.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-17T06:05:31Z</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">Scientific question answered: the evidence-adaptive transition penalty was operational but did not meet the exact frozen reduced-trade-off criterion for either beta in any of US, DE, or JP through 2023.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>TASK.md</code></li><li><code>research/adaptive-confidence-001.toml</code></li><li><code>research/experiment_registry.jsonl</code></li><li><code>src/adaptive_jump/tv_jump.py</code></li><li><code>src/adaptive_jump/confidence_spec.py</code></li><li><code>src/adaptive_jump/confidence_model.py</code></li><li><code>src/adaptive_jump/confidence_evaluation.py</code></li><li><code>src/adaptive_jump/confidence_runner.py</code></li><li><code>tests/test_tv_jump.py</code></li><li><code>tests/test_confidence_study.py</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>US smoke passed: 1 real refit, 20 terminal dates, 180 beta-zero state cells exact, and future-prefix mutation invariant.</li><li>uv run pytest -q: 320 passed in 40.93s; final focused suite: 42 passed.</li><li>Ruff check and format passed; uv lock --check and uv pip check passed.</li><li>Full US/DE/JP parallel run completed as adaptive-confidence-1b0c327b2db4-3636939b525d-864d671cf973.</li><li>Read-only artifact audit: 35,073 timeline rows, exact formula error 0, all bounds and t+2 dates valid, 1,296 q_train rows recomputed from exact 3,000-row causal prefixes, and all 27 inventory hashes matched.</li><li>Commits edfc616 through 1f522ab pushed to origin/cleanup/research-protocol.</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>1f522ab</code></p></div>
+        <div><span class="lbl">Next step</span><p>Review summary.csv and dated timeline evidence. Any tolerance change or further adaptive variant must be a new frozen exploratory study; do not reinterpret this run as a performance claim.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>The first frozen q_train definition was withdrawn before any adaptive state or metric after the US smoke exposed unoccupied NaN centers; corrected spec hash is 1b0c327b2db44f39be183b153e6feaae6c53e2cad1e56e782f1ef7eda3849cc3. DE improved Sharpe and reduced turnover/switches, but exact MDD deltas were -2.22e-16 and -5.55e-16, so the locked no-tolerance rule remained false. Monitor, textbook, historical artifacts, and post-2023 data were untouched. Existing .agent changes were preserved append-only.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-16T23:27:53-05:00</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">No scientific question moved - the owner requested the final policy warning and cross-agent instruction audit.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>AGENTS.md</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>Added an exact-metric requirement for any useful-regime-behavior objective.</li><li>Added a soft warning at roughly 300 changed lines or one working day; it is explicitly not a cap.</li><li>git diff --check and staged diff check passed; only AGENTS.md was staged.</li><li>/net/home/tle/AGENTS.md resolves to /home/tle/AGENTS.md and their contents compare equal.</li><li>The /home and /net CLAUDE.md files compare equal and already contain the new research-first policy.</li><li>Commit 369fd47 pushed to origin/cleanup/research-protocol.</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>369fd47</code></p></div>
+        <div><span class="lbl">Next step</span><p>Turn the first adaptive-model idea into a compact exploratory specification with explicit performance and regime-behavior metrics, then run it.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Branch cleanup/research-protocol. Claude synchronized the CLAUDE.md files and replaced the stale /net AGENTS.md with a symlink concurrently; Codex preserved those external changes. A patch reject created during the race was removed. No code, model, data, monitor, or experiment changed.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-16T23:11:52-05:00</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">No scientific question moved - the owner requested a research-first rewrite of account and project agent policy.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>AGENTS.md</code></li><li><code>/home/tle/AGENTS.md</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>Project AGENTS.md reduced from 864 historical lines to 229 lines; account AGENTS.md reduced from 130 to 105 lines.</li><li>Removed per-step approval gate and arbitrary exploratory line, file, and runtime quotas.</li><li>Corrected infinite-penalty endpoint semantics and added behavior-first state, signal, position, trade verification.</li><li>git diff --check passed; staged file list contained only AGENTS.md.</li><li>Commit e3ce6b1 pushed to origin/cleanup/research-protocol.</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>e3ce6b1</code></p></div>
+        <div><span class="lbl">Next step</span><p>Use the exploratory lane to run the next approved model idea; touch monitor code only when needed to observe and verify actual model behavior.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Branch cleanup/research-protocol. No model, data, experiment, monitor, or result changed. The account-level file is outside any Git repository. Existing append-only handoff files remain locally dirty.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-17T00:26:46Z</span><span class="who">codex · GPT-5 Codex</span>
+      </div>
+      <p class="goal">Run the persistence-grid parameter experiment end to end through the production monitor, close it honestly at the preregistered gate, and verify the monitor against the real completed subprocess.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/artifacts.py (modified)</code></li><li><code>src/adaptive_jump/cli.py (modified)</code></li><li><code>src/adaptive_jump/grid_runner.py (modified)</code></li><li><code>src/adaptive_jump/grid_spec.py (modified)</code></li><li><code>src/adaptive_jump/monitor/queue.py (modified)</code></li><li><code>src/adaptive_jump/monitor/static/replay.js (modified)</code></li><li><code>src/adaptive_jump/reporting.py (modified)</code></li><li><code>research/experiment_registry.jsonl (appended)</code></li><li><code>TASK.md (modified)</code></li><li><code>tests/test_cli.py (modified)</code></li><li><code>tests/test_grid_evaluation.py (modified)</code></li><li><code>tests/test_monitor_browser.py (modified)</code></li><li><code>tests/test_monitor_queue.py (modified)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>uv run pytest -q: 289 passed in 40.27s</li><li>uv run ruff check .: passed</li><li>uv run ruff format --check .: 71 files formatted</li><li>uv lock --check: passed</li><li>uv pip check: all installed packages compatible</li><li>adaptive-jump verify grid-eval-684fb4d81a9a-3636939b525d-9c81579e9de4: boundary_failed, metrics_opened=false, boundary_rows=18</li><li>Actual monitor Chromium desktop/mobile: 18 boundary rows, 1394 events, zero market replay requests, zero console errors, zero horizontal overflow</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>4be5b0ab9cfe1b183dfed8e5e4a527e4f49f14f7</code></p></div>
+        <div><span class="lbl">Next step</span><p>Before another expensive run, inspect why the calibrated representative grids still select their upper endpoint in 16 of 18 market/model/delay rows and preregister a scale-aware coverage correction; keep Sharpe metrics locked.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Commits 8af577c, 9c81579, eeb9131, and 4be5b0a were pushed. Real job 97dbf73334aa4883b85606355c18c37c completed in about 1022 seconds. Only US HMM delays 1 and 5 passed the 5 percent boundary gate. Monitor remains running in tmux adaptive-jump-live:monitor on 127.0.0.1:8765; current password is in the tmux startup output.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-16T21:01:40Z</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">Freeze the owner-approved behavior-calibrated grids as a separate exploratory OOS attribution study without changing v7 or opening performance.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>TASK.md (replaced completed calibration task with frozen grid-evaluation contract)</code></li><li><code>research/persistence-grid-evaluation.toml (new content-hashed study and grid lock)</code></li><li><code>research/experiment_registry.jsonl (append-only FROZEN row)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>study TOML parsed; exact 9+9 grids, 18 boundary rows, and registry hash matched e6365a1582131ddab5b8325ddcbfe3c955669bd7577f528ab85caf444bd4413f</li><li>canonical v7 verifier: complete, 27 metric rows, maximum metric difference 7.327471962526033e-15</li><li>canonical calibration verifier: complete, selected budget 9, metrics_opened false</li><li>full pytest: 283 passed; Ruff lint and format checks passed</li><li>commit 106be0d pushed to origin/cleanup/research-protocol</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>106be0d</code></p></div>
+        <div><span class="lbl">Next step</span><p>After owner review, move the existing baseline runner into one readable shared module without behavior changes and prove canonical v7 remains bit-for-bit unchanged before adding the locked grid override.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>The owner explicitly prioritized simple readable responsibilities over numeric line-count targets. The new study is exploratory because v7 outcomes were already known. No provider, model fit, OOS path, metric, bootstrap, post-2023 row or adaptive experiment was accessed.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-16T08:17:49Z</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">Complete the approved persistence-calibrated pre-OOS search end to end through a real 16-worker monitor run, sealed artifact, report, verifier, registry close, and GitHub push.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/calibration_runner.py (artifact lifecycle, verifier, report handoff)</code></li><li><code>src/adaptive_jump/artifacts.py (calibration verifier dispatch)</code></li><li><code>src/adaptive_jump/cli.py (canonical study command)</code></li><li><code>src/adaptive_jump/monitor/queue.py (frozen study registration)</code></li><li><code>src/adaptive_jump/reporting.py (English sealed report)</code></li><li><code>tests/test_calibration.py, tests/test_cli.py, tests/test_monitor_queue.py (focused contracts)</code></li><li><code>research/experiment_registry.jsonl (append-only completion)</code></li><li><code>artifacts/persistence-calibrated-search/persistence-calibration-83beedafca37-08e42044c25e-766fdbd33604 (ignored runtime artifact)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>production monitor job 763cb563765240bea96cd5412bcd7b08 succeeded with 16 workers in 272.20 model seconds; 32 JM and 2561 HMM candidates attempted</li><li>canonical calibration verifier: complete, selected budget 9, metrics_opened false</li><li>behavior audit: all 54 selected model-market paths valid; 27 JM and 1250 HMM candidates globally valid</li><li>Chromium report inspection at 1440x900 and 390x844: zero console errors and zero page overflow; screenshots inspected</li><li>full pytest: 283 passed; Ruff lint and format checks passed; uv lock and uv pip checks passed</li><li>monitor restarted at commit 723064c; health OK and queueable study list empty</li><li>completion commits d497e4f, 766fdbd, and 723064c pushed to origin/cleanup/research-protocol</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>723064c</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner reviews the selected behavior-balanced JM and HMM grids. Freeze them under a new content hash only after approval; do not open OOS performance before that gate.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>No Sharpe, trades, strategy returns, OOS metrics, post-2023 rows, or adaptive experiment was accessed. Monitor resource events underreported forked-worker CPU as zero while OS process inspection showed 16 busy workers; this is a residual observability issue, not a calibration failure. apply_patch remained unavailable because bwrap could not configure loopback, so reviewed unified diffs were applied with patch and temporary backups were moved to /tmp.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-16T05:00:18Z</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">Add safe frozen-parent loading and automatic upper-bracket orchestration for pre-OOS persistence calibration.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/calibration.py (+ diagnose-only path audit)</code></li><li><code>src/adaptive_jump/calibration_runner.py (+ safe loader and bracket search)</code></li><li><code>tests/test_calibration.py (+ loader/search regressions)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>uv run pytest -q: 281 passed</li><li>uv run ruff check .: passed</li><li>uv run ruff format --check .: 68 files formatted</li><li>uv lock --check: passed</li><li>uv pip check: 64 packages compatible</li><li>adaptive-jump verify frozen v7: complete, max metric difference 7.33e-15</li><li>real parent loader smoke: us 5023, de 5042, jp 9696 pre-OOS rows</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>2d7814b</code></p></div>
+        <div><span class="lbl">Next step</span><p>Add the reviewed artifact/verifier/report/CLI milestone; do not run the 16-worker real calibration until that output contract is approved and verified.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Commit pushed to origin/cleanup/research-protocol. No market metrics, post-2023 rows, adaptive model, or scientific claim were accessed. Existing .agent changes remain intentionally uncommitted.</p>
+    </article>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-16T02:28:15Z</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">Implement the approved deterministic pre-OOS calibration runner with forkserver parallelism, raw-HMM reuse, and identity-bound candidate checkpoints.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/calibration.py (+177/-2)</code></li><li><code>tests/test_calibration.py (+102/-1)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>fail-first focused test: failed with expected missing generate_calibration_paths AttributeError</li><li>uv run pytest -q tests/test_calibration.py: 3 passed</li><li>real fixture: serial JM paths exactly equaled two-worker forkserver paths; future mutation was neutral; resume invoked no fitter</li><li>uv run pytest -q: 279 passed</li><li>uv run ruff check .: passed</li><li>uv run ruff format --check .: 67 files formatted</li><li>uv lock --check: resolved 65 packages</li><li>uv pip check: 64 packages compatible</li><li>adaptive-jump verify frozen v7 parent: status complete, maximum metric absolute difference 7.327471962526033e-15</li><li>git diff --cached --check: passed before commit</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>698c67e</code></p></div>
+        <div><span class="lbl">Next step</span><p>After owner review, add the smallest safe pre-OOS input/orchestration layer and execute the frozen calibration. calibration.py is now 491 lines, so a second module or an approved split is required before adding run orchestration.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Branch cleanup/research-protocol; starting HEAD 688e40d3cc6727abc632d75f5af03a645387c6ff; ending HEAD 698c67e; commit pushed to origin. No real market calibration, OOS metric, backtest, provider call, data download, or generated research artifact occurred. Built-in apply_patch remained unavailable because bwrap could not configure loopback; standard unified patches were used and temporary patch files were moved to /tmp.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-15T10:31:01Z</span><span class="who">codex · gpt-5</span>

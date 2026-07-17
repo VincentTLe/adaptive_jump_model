@@ -229,12 +229,40 @@ def test_rejects_nonfinite_or_malformed_model_inputs() -> None:
 def test_hmm_rejects_bad_restart_and_selects_highest_likelihood(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("adaptive_jump.models.GaussianHMM", _FakeHMM)
+    kmeans_calls: list[dict[str, object]] = []
+    hmm_calls: list[dict[str, object]] = []
+
+    class RecordingKMeans:
+        def __init__(self, **kwargs: object) -> None:
+            kmeans_calls.append(dict(kwargs))
+
+        def fit(self, _: np.ndarray) -> "RecordingKMeans":
+            self.cluster_centers_ = np.array([[-0.25], [0.25]])
+            return self
+
+    class RecordingHMM(_FakeHMM):
+        def __init__(self, **kwargs: object) -> None:
+            hmm_calls.append(dict(kwargs))
+            super().__init__(**kwargs)
+
+        def fit(self, values: np.ndarray) -> "RecordingHMM":
+            np.testing.assert_array_equal(self.means_, [[-0.25], [0.25]])
+            return super().fit(values)
+
+    monkeypatch.setattr("adaptive_jump.models.KMeans", RecordingKMeans)
+    monkeypatch.setattr("adaptive_jump.models.GaussianHMM", RecordingHMM)
+    protocol = HMMProtocol(
+        (0, 2),
+        (0, 1, 2),
+        0.001,
+        100,
+        1e-6,
+        kmeans_n_init=1,
+        covars_prior=0.0,
+    )
     model = ModelProtocol(2, 4, 0, 1)
 
-    fit = best_hmm_terminal_fit(
-        pd.Series([0.1, -0.1, 0.2, -0.2]), model, _hmm_protocol()
-    )
+    fit = best_hmm_terminal_fit(pd.Series([0.1, -0.1, 0.2, -0.2]), model, protocol)
 
     assert fit.seed == 2
     assert fit.log_likelihood == 2.0
@@ -244,6 +272,31 @@ def test_hmm_rejects_bad_restart_and_selects_highest_likelihood(
     assert fit.failed_starts[0].startswith(
         "seed=0: ModelError: strict convergence failed"
     )
+
+    assert kmeans_calls == [
+        {
+            "n_clusters": 2,
+            "init": "k-means++",
+            "n_init": 1,
+            "random_state": seed,
+        }
+        for seed in (0, 1, 2)
+    ]
+    explicit = {
+        "startprob_prior": 1.0,
+        "transmat_prior": 1.0,
+        "means_prior": 0.0,
+        "means_weight": 0.0,
+        "covars_prior": 0.0,
+        "covars_weight": 1.0,
+        "verbose": False,
+        "params": "stmc",
+        "init_params": "stc",
+        "implementation": "log",
+    }
+    assert [call["random_state"] for call in hmm_calls] == [0, 1, 2]
+    for call in hmm_calls:
+        assert {key: call[key] for key in explicit} == explicit
 
 
 def test_real_hmm_labels_low_and_high_conditional_variance() -> None:
@@ -391,6 +444,12 @@ def test_hmm_majority_filter_uses_strict_half_threshold() -> None:
 
     candidates = smoothed_hmm_states(states, (0, 2, 4))
 
+    full = smoothed_hmm_states(states, (0, 2, 4), require_full_window=True)
+
+    assert full[0].equals(candidates[0])
+    assert full[2].first_valid_index() == 2
+    assert full[4].first_valid_index() == 4
+    assert full[4].iloc[:4].isna().all()
     assert np.isnan(candidates[0].iloc[0])
     assert candidates[0].iloc[1] == 0.0
     assert candidates[2].iloc[2] == 0.0

@@ -1,13 +1,13 @@
 schema_version = 1
-experiment_id = "hyperparameter-grid-attribution-001"
-frozen_at_utc = "2026-07-15T08:56:02Z"
+experiment_id = "fixed-baseline-assumption-audit-001"
+frozen_at_utc = "2026-07-17T09:01:41Z"
 claim_class = "EXPLORATORY"
-analysis_label = "PROTOCOL ATTRIBUTION"
-hypothesis = "Restricting both model candidate sets to the fixed values illustrated in Table 3 increases the JM-minus-HMM Sharpe gap in all three frozen proxy markets."
-primary_estimand = "jm_minus_hmm_sharpe_table3_both_minus_expanded_control"
+analysis_label = "FIXED-BASELINE ASSUMPTION AUDIT"
+hypothesis = "Source-anchored alternatives to undisclosed local settings materially change the fixed-model directional proxy conclusion in at least one market."
+primary_estimand = "directional_gate_and_metrics_by_every_predeclared_fixed_only_variant"
 extension_access = false
 adaptive_experiment = false
-model_refitting = false
+model_refitting = true
 
 [source]
 paper = "Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3"
@@ -15,6 +15,10 @@ paper_sha256 = "141e48bd5ccaefe5d2c276a3c8772716b583b1df91517109d54a2452f4cb3af1
 table3_values_are = "fixed illustrative hyperparameters, not a disclosed complete cross-validation grid"
 complete_cross_validation_grids_disclosed = false
 hmm_original_k = 6
+historical_v1_paper = "Shu, Yu, and Mulvey, arXiv:2402.05272v1"
+historical_v1_tex_sha256 = "97909f0b69ca02f6582906795b4b1037b7ec7d6a7fdc31d94d1e257dd39ab261"
+historical_v1_grid_is = "author-used in an older materially different design, not the final-v3 grid"
+official_repository = "https://github.com/Yizhan-Oliver-Shu/jump-models"
 
 [parent]
 experiment_id = "fixed-baselines-001-v7"
@@ -25,25 +29,30 @@ run_inventory_sha256 = "08e42044c25ef80e92f4b565034652a6b87fe94de0e9122eee1a4183
 data_manifest_sha256 = "3636939b525d604c5c4180d7e3abb6192b53b81a068f009ad6ca83a945e53a84"
 artifact_git_sha = "e9614112b234abcff26f33c446a0a692bf31c262"
 data_cutoff = "2023-12-31"
-reuse_precomputed_candidate_states = true
+fresh_control_reads_canonical_manifest = true
+reuse_parent_only_after_exact_control_parity = true
+post_2023_access = false
 
 [samples]
 us = "2007-12-04..2023-12-29"
 de = "2008-01-03..2023-12-29"
 jp = "2009-05-07..2023-12-29"
-comparison = "per_market_delay_intersection_of_complete_metric_rows"
+comparison = "per_market_all_models_all_delays_intersection_of_complete_metric_rows"
 
 [grids]
 jm_table3_illustrated = [0, 5, 15, 35, 70, 150]
 hmm_table3_illustrated = [0, 2, 4, 8, 20]
 jm_expanded_project = [0, 5, 15, 35, 70, 150, 300, 600, 1200]
 hmm_expanded_project = [0, 2, 4, 6, 8, 10, 20, 40, 80, 160, 320, 640, 1280, 2560]
+jm_historical_v1_author = [10, 22, 50, 100, 220, 500, 1000]
+jm_source_union = [0, 5, 10, 15, 22, 35, 50, 70, 100, 150, 220, 500, 1000]
+hmm_source_union = [0, 2, 4, 6, 8, 20]
 project_boundary_fraction_limit = 0.05
 boundary_seals_metrics = false
 expand_after_results = false
 
 [[cells]]
-id = "expanded_control"
+id = "v7_expanded_control"
 jm_grid = "expanded_project"
 hmm_grid = "expanded_project"
 
@@ -62,6 +71,38 @@ id = "table3_both"
 jm_grid = "table3_illustrated"
 hmm_grid = "table3_illustrated"
 
+[[cells]]
+id = "historical_v1_jm_only"
+jm_grid = "historical_v1_author"
+hmm_grid = "expanded_project"
+
+[[cells]]
+id = "source_union_jm_only"
+jm_grid = "source_union"
+hmm_grid = "expanded_project"
+
+[[cells]]
+id = "source_union_hmm_only"
+jm_grid = "expanded_project"
+hmm_grid = "source_union"
+
+[hmm_initialization]
+legacy_control = "10 outer seeds times hmmlearn internal KMeans n_init 10"
+literal_paper = "10 outer seeds, one explicit KMeans++ start per seed"
+literal_paper_priors = "hmmlearn defaults explicit: startprob/transmat 1, means prior/weight 0, covariance prior 0.01/weight 1, params stmc, log implementation"
+conditional_mle_covariance_prior = 0.0
+run_full_literal_path_if_sampled_terminal_states_differ = true
+sample_rule = "first eligible terminal, every calendar-year final complete date, and final complete date per market"
+sample_outputs = ["terminal_state", "seed", "log_likelihood", "conditional_variances", "accepted_starts", "failures"]
+sample_reads_performance = false
+
+[cheap_sensitivities]
+exact_tie_rules = ["lower_smoothing", "higher_smoothing"]
+tie_tolerance = 1e-12
+hmm_startup_rules = ["partial_window_min_periods_1", "full_window_min_periods_k"]
+semiannual_refit_phases_if_needed = [[1, 7], [2, 8], [3, 9], [4, 10], [5, 11], [6, 12]]
+select_best_variant_after_results = false
+
 [protocol]
 selection_cadence = "monthly_prior_month_last_complete_date"
 validation_calendar_years = 8
@@ -73,27 +114,29 @@ signal_to_return_offset = 2
 one_way_cost_bps = 10
 primary_delay = 1
 robustness_delays = [1, 5, 10]
+turnover = "half_mean_one_way_turnover_times_252"
 
 [control]
 require_exact_parent_choices = true
 require_exact_parent_paths = true
 require_metrics_within_verifier_tolerance = true
 stop_before_attribution_on_failure = true
+fresh_control_requires_exact_features_states_choices_signals_positions_costs_and_returns = true
+boundary_is_descriptive_not_a_metric_gate = true
+transaction_cost_uses_full_absolute_position_change = true
 
-[bootstrap]
-method = "paired_stationary_block"
-replications = 10000
-seed = 20260715
-mean_block_length = 60
-sensitivity_block_lengths = [20, 120]
-confidence_level = 0.95
+[inference]
+bootstrap_enabled = false
+performance_claim_allowed = false
 
 [decision]
-consistent_explanation = "primary_delta_positive_in_all_three_markets"
-mixed_explanation = "primary_delta_positive_in_one_or_two_markets"
-not_supported = "primary_delta_positive_in_zero_markets"
+grid_sensitive = "any source-anchored grid cell changes a market directional conclusion"
+implementation_sensitive = "literal-ten-start HMM changes a market directional conclusion"
+robust_to_tested_assumptions = "no predeclared cell changes any market directional conclusion"
+underidentified = "conclusions vary across undisclosed but source-defensible settings"
 confirmatory_claims_allowed = false
+winner_selection_allowed = false
 
 [storage]
-artifact_subdir = "hyperparameter-grid-attribution"
+artifact_subdir = "fixed-baseline-assumption-audit"
 report_language = "English"
