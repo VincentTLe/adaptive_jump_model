@@ -3,7 +3,7 @@
 ## Identity
 
 - `task_id`: `persistence-grid-evaluation-001`
-- `status`: `FROZEN_EXPLORATORY_EVALUATION`
+- `status`: `EXPERIMENT_COMPLETE_BOUNDARY_FAILED`
 - `target_branch`: `cleanup/research-protocol`
 - `starting_ref`: `723064c583ea4bc402b6ecd5bc49d7a3b5c1c250`
 - `parent_experiment`: `fixed-baselines-001-v7`
@@ -13,11 +13,21 @@
 - `claim_class`: `EXPLORATORY`
 - `data_cutoff`: `2023-12-31`
 - `extension_access`: forbidden
+- `completed_run`: `grid-eval-684fb4d81a9a-3636939b525d-9c81579e9de4`
 - `adaptive_experiment`: forbidden
 
 The owner reviewed and approved the exact behavior-calibrated grids on
 2026-07-16. This experiment was designed after the v7 proxy non-replication
 was known, so it cannot be presented as a fresh replication test.
+
+## Outcome
+
+- The production-monitor run completed on 2026-07-16.
+- The locked upper candidate exceeded the 5% selection limit in 16 of 18
+  model-market-delay checks.
+- The study stopped with `boundary_failed`.
+- No trades, performance metrics, bootstrap output or performance claim were
+  opened.
 
 ## Research Question
 

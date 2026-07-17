@@ -16,9 +16,9 @@ STUDIES = {
 }
 
 
-def test_project_catalog_exposes_only_the_frozen_grid_evaluation() -> None:
+def test_project_catalog_is_empty_after_grid_evaluation() -> None:
     frozen = load_frozen_studies(ROOT / "research/experiment_registry.jsonl")
-    assert tuple(frozen) == ("persistence-grid-evaluation-001",)
+    assert tuple(frozen) == ()
 
 
 def test_catalog_requires_registration_and_latest_frozen_state(tmp_path: Path) -> None:

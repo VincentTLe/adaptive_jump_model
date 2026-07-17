@@ -23,7 +23,7 @@ SPEC = ROOT / "research/persistence-grid-evaluation.toml"
 REGISTRY = ROOT / "research/experiment_registry.jsonl"
 
 
-def test_frozen_grid_spec_matches_registry() -> None:
+def test_grid_spec_matches_completed_registry() -> None:
     config = load_config(ROOT / "research.toml")
     spec = load_grid_spec(SPEC, config)
     latest = [
@@ -33,7 +33,8 @@ def test_frozen_grid_spec_matches_registry() -> None:
     ][-1]
 
     assert spec.sha256 == latest["frozen_spec_hash"]
-    assert latest["status"] == "FROZEN"
+    assert latest["status"] == "EXPERIMENT_COMPLETE"
+    assert "boundary gate failed" in latest["outcome"]
     assert spec.jm_grid == (
         0.0,
         0.3535533905932738,
