@@ -1,0 +1,96 @@
+schema_version = 1
+experiment_id = "adaptive-confidence-001"
+frozen_at_utc = "2026-07-17T04:53:59Z"
+claim_class = "EXPLORATORY"
+stage = "DEVELOPMENT_SAMPLE_MECHANISM_STUDY"
+question = "Can an evidence-adaptive transition penalty reduce the latency/whipsaw trade-off of fixed-lambda JM on the same causal proxy sample through 2023?"
+hypothesis = "Discounting a switch only when arrival-day loss favors the destination can permit evidence-backed transitions without lowering the penalty on weak-evidence transitions."
+performance_claim_allowed = false
+extension_access = false
+post_2023_access = false
+
+[parent]
+experiment_id = "fixed-baselines-001-v7"
+config_path = "research.toml"
+config_sha256 = "8adb330565d64f8ed6edd986f0422dbba72585eda4efd34b0c1b41b95450d81b"
+run_id = "fixed-baselines-8adb330565d6-3636939b525d-e9614112b234"
+run_inventory_sha256 = "08e42044c25ef80e92f4b565034652a6b87fe94de0e9122eee1a418395239d55"
+data_manifest_sha256 = "3636939b525d604c5c4180d7e3abb6192b53b81a068f009ad6ca83a945e53a84"
+data_cutoff = "2023-12-31"
+
+[penalty]
+objective = "sum_t L_t(s_t) + sum_t>=1 C_t(s_(t-1),s_t)"
+loss = "0.5 * squared Euclidean distance from scaled v7 features to the reconstructed v7 fitted center"
+missing_center_loss = "+infinity, matching the existing fixed-JM DP treatment of an unoccupied fitted state"
+transition_direction = "row i is previous state; column j is arrival state"
+arrival_day_formula = "lambda0 * exp(-beta * tanh(max(L_t(i)-L_t(j),0)/q_train)) for i!=j; zero diagonal"
+beta = [0.0, 0.6931471805599453, 1.3862943611198906]
+beta_provenance = "PREREGISTERED owner scenarios: 0, log(2), log(4)"
+q_train = "raw median absolute deviation about the median of all finite state-loss entries on the training prefix; require finite and >0"
+q_train_provenance = "ESTIMATED from the causal 3000-row training prefix at each lambda/refit; frozen after the pre-result US smoke exposed empty-state centers"
+q_train_fallback = "none"
+
+[candidates]
+raw_lambda_grid = [0.0, 5.0, 15.0, 35.0, 70.0, 150.0, 300.0, 600.0, 1200.0]
+lambda_provenance = "SOURCE_FIXED frozen v7"
+beta_selected = false
+selection_pipeline = "separate monthly v7 lambda selection within each fixed beta"
+raw_grid_expansion = false
+calibration_framework = false
+
+[controls]
+features = ["dd_10", "sortino_20", "sortino_60"]
+feature_source = "exact sealed v7 market features.csv"
+fit_window_observations = 3000
+standardizer = "sklearn StandardScaler ddof0 reconstructed from each v7 fit window"
+centers = "deterministically reconstructed v7 fixed-JM centers, reused across beta"
+jm_refit_months = [1, 7]
+validation_calendar_years = 8
+monthly_objective = "annualized strategy excess Sharpe"
+tie_rule = "lower lambda within each beta"
+primary_delay_trading_days = 1
+signal_to_return_offset = 2
+one_way_cost_bps = 10
+state_risky_label = 0
+state_cash_label = 1
+provider_access = false
+
+[comparison]
+baseline_beta = 0.0
+challenger_beta = [0.6931471805599453, 1.3862943611198906]
+markets = ["us", "de", "jp"]
+sample = "exact sealed v7 per-market fixed-JM delay-1 trade dates"
+metrics = ["sharpe", "maximum_drawdown", "turnover", "cash_fraction", "switch_count"]
+cash_fraction_direction = "descriptive"
+
+[decision]
+market_reduced_tradeoff = "delta_sharpe>=0 and delta_maximum_drawdown>=0 and delta_turnover<=0 and delta_switch_count<=0, with at least one strict"
+study_supported = "the same challenger beta reduces the trade-off in all three markets"
+study_mixed = "the same challenger beta reduces the trade-off in one or two markets"
+study_not_supported = "neither challenger beta reduces the trade-off in any market"
+mechanism_operational = "beta0 exact; formula and bounds exact; real selected-path discounts occur; each positive beta changes at least one emitted state"
+paper_replication_claim_allowed = false
+
+[verification]
+beta_zero_candidate_states_equal_parent = true
+beta_zero_choices_equal_parent = true
+beta_zero_signal_equal_parent = true
+beta_zero_trade_path_equal_parent = true
+brute_force_oracle = true
+toy_paths = true
+two_state_directed_identity = true
+prefix_invariance = true
+dated_mechanism_audit = true
+
+[execution]
+us_smoke = "first reconstructed v7 refit plus 20 terminal dates, all lambdas and betas"
+full_markets_parallel = true
+market_workers = 3
+threadpool_limit_per_worker = 1
+
+[storage]
+artifact_subdir = "adaptive-confidence-001"
+summary_csv = "summary.csv"
+timeline_csv = "selected-timeline.csv"
+conclusion_json = "conclusion.json"
+generated_outputs_tracked = false

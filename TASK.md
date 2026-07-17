@@ -1,109 +1,97 @@
-# Task: Persistence Grid Evaluation
+# Task: Evidence-Adaptive Transition Penalty
 
 ## Identity
 
-- `task_id`: `persistence-grid-evaluation-001`
-- `status`: `EXPERIMENT_COMPLETE_BOUNDARY_FAILED`
+- `task_id`: `adaptive-confidence-001`
+- `status`: `FROZEN`
 - `target_branch`: `cleanup/research-protocol`
-- `starting_ref`: `723064c583ea4bc402b6ecd5bc49d7a3b5c1c250`
 - `parent_experiment`: `fixed-baselines-001-v7`
-- `calibration_experiment`: `persistence-calibrated-search-001`
-- `frozen_spec`: `research/persistence-grid-evaluation.toml`
-- `frozen_spec_sha256`: `684fb4d81a9a5bca01db07b914b8f21029200d59b24107a685d2b747255df80e`
+- `frozen_spec`: `research/adaptive-confidence-001.toml`
+- `frozen_spec_sha256`: `1b0c327b2db44f39be183b153e6feaae6c53e2cad1e56e782f1ef7eda3849cc3`
 - `claim_class`: `EXPLORATORY`
 - `data_cutoff`: `2023-12-31`
 - `extension_access`: forbidden
-- `completed_run`: `grid-eval-684fb4d81a9a-3636939b525d-9c81579e9de4`
-- `adaptive_experiment`: forbidden
+- `monitor_changes`: forbidden
 
-The owner reviewed and approved the exact behavior-calibrated grids on
-2026-07-16. This experiment was designed after the v7 proxy non-replication
-was known, so it cannot be presented as a fresh replication test.
+This study is authorized by the owner's 2026-07-16 request. It was designed
+after the v7 proxy results were known, so it cannot support a replication,
+confirmatory, or performance claim.
 
-## Outcome
+## Scientific Question
 
-- The production-monitor run completed on 2026-07-16.
-- The locked upper candidate exceeded the 5% selection limit in 16 of 18
-  model-market-delay checks.
-- The study stopped with `boundary_failed`.
-- No trades, performance metrics, bootstrap output or performance claim were
-  opened.
+Can an evidence-adaptive transition penalty reduce the latency/whipsaw
+trade-off of Shu et al.'s fixed-lambda Jump Model on the same causal proxy
+sample through 2023?
 
-## Research Question
+For arrival state `j` from prior state `i`:
 
-Does changing only the fixed-JM lambda grid and HMM smoothing grid materially
-change model selection and frozen-v7 OOS results?
+```text
+C_t(i,j) = lambda0 * exp(
+    -beta * tanh(max(L_t(i) - L_t(j), 0) / q_train)
+), i != j
+C_t(i,i) = 0
+```
 
-The primary estimand is the per-market Sharpe difference between the new-grid
-fixed JM and the sealed v7 fixed JM at the primary delay. The HMM grid change
-is secondary. Positive, negative and null results must all be reported.
+The decoded objective is:
 
-## Locked Change
+```text
+sum_t L_t(s_t) + sum_{t=1}^{T-1} C_t(s_{t-1}, s_t)
+```
 
-- Fixed JM: `[0, 0.3535533905932738, 1, 5.656854249492381, 16, 32, 64, 181.01933598375618, 256]`.
-- HMM: `[0, 3, 9, 32, 54, 114, 166, 402, 1115]`.
-- Both grids contain nine candidates selected from pre-OOS state behavior.
-- No candidate was selected using strategy performance.
-- No grid expansion or replacement is allowed after this freeze.
+`L_t(k)` is one half the squared Euclidean distance from the scaled v7
+feature row to fitted center `k`. The matrix direction is previous state by
+arrival state, and the loss evidence is evaluated on the arrival day.
 
-## Unchanged Controls
+## Frozen Design
 
-Data, features, OOS dates, 3,000-observation fit window, eight-year validation,
-semiannual JM refits, daily HMM fits, monthly selection, tie rules, delays,
-costs, metrics and state labels remain exactly as in sealed v7.
+- Beta scenarios are exactly `0`, `log(2)`, and `log(4)`.
+- Each beta is a separate equal-budget pipeline over the unchanged raw v7
+  lambda grid `[0, 5, 15, 35, 70, 150, 300, 600, 1200]`.
+- Lambda is selected monthly inside each beta pipeline by the existing v7
+  eight-year trailing strategy-excess-Sharpe rule. Beta is not selected.
+- `q_train` is the raw median absolute deviation of all finite state-loss
+  entries on the 3,000-row training prefix for that lambda and refit. It must
+  be finite and strictly positive; there is no epsilon or future-data fallback.
+- An unoccupied fitted state's missing loss is `+infinity`, matching v7 DP.
+- Reconstruct the deterministic v7 fixed-JM fits because the sealed artifact
+  did not retain center vectors. Reuse each reconstructed scaler and fitted
+  centers for every beta until the next v7 Jan/Jul refit.
+- Use the sealed v7 feature rows, OOS dates, state labeling, monthly timeline,
+  signal mapping, t+2 return timing, and 10 bps one-way cost.
+- Stop on any row after 2023-12-31. Do not contact a provider, expand lambda,
+  build calibration, alter the monitor, or modify historical artifacts.
 
-The runner must reuse sealed v7 features and raw HMM states. It must fit only
-the new fixed-JM candidate paths. It must not contact a data provider, read
-post-2023 rows or alter `research.toml`.
+## Advance-Set Evaluation
 
-## Boundary-First Gate
+For each challenger beta and market, report baseline-relative delta Sharpe,
+delta maximum drawdown (positive means less severe), absolute and delta
+turnover, cash fraction, and switch count.
 
-1. Verify the v7 parent, calibration artifact, spec hash and source controls.
-2. Build all new-grid monthly choices and CV surfaces without opening OOS paths.
-3. Evaluate the existing 5% upper-candidate rule for two models, three delays
-   and three markets: exactly 18 boundary rows.
-4. If any row fails, stop with status `boundary_failed`; do not write trades,
-   metrics, bootstrap output or a performance claim.
-5. If every row passes, open the aligned OOS paths and metrics once.
+A market has a reduced trade-off only when delta Sharpe and delta maximum
+drawdown are non-negative, turnover and switch-count deltas are non-positive,
+and at least one inequality is strict. Cash fraction is descriptive. Study
+support requires the same challenger beta to pass in all three markets; one or
+two is mixed evidence; zero is not supported.
 
-Boundary failure is evidence that this locked grid is not operationally
-adequate under the existing protocol. It does not authorize another grid.
+The mechanism is operational only if beta zero is exactly nested, every
+penalty satisfies the frozen directed formula and bounds, evidence-supported
+discounts occur on real selected paths, and at least one emitted state differs
+for each positive beta. This is separate from trade-off improvement.
 
-## Comparison
+## Verification and Execution
 
-- Compare new-grid fixed JM with sealed v7 fixed JM on identical rows.
-- Compare new-grid HMM with sealed v7 HMM as a secondary attribution.
-- Report delays 1, 5 and 10; delay 1 is primary.
-- Use paired stationary bootstrap with 10,000 replications, mean block 60 and
-  sensitivities 20 and 120 on primary-delay paired returns.
-- Apply Holm adjustment across the three market tests.
-- Do not call a positive result a paper replication or a confirmatory claim.
+1. Verify the parent inventory/config/data identities and cutoff.
+2. Verify formula, objective, deterministic toy paths, brute-force equality,
+   the two-state directed-cost identity, and prefix invariance.
+3. Run a real US first-refit smoke across all lambdas and betas; beta zero must
+   match the corresponding sealed v7 state rows.
+4. Run US, DE, and JP concurrently with one worker per market.
+5. Before interpreting aggregates, inspect concrete selected-path dates from
+   loss and penalty through DP state, signal, delayed position, trade and cost.
+6. Write ignored CSV evidence and a concise factual exploratory conclusion.
 
-## Engineering Rule
+## Completion States
 
-There is one baseline engine. The new study may provide an immutable grid
-override and study identity, but it must not copy the walk-forward, backtest or
-metric pipeline. Code is split only when responsibilities are genuinely
-different; readability and direct control flow take priority over line counts.
-
-## Acceptance
-
-1. Canonical v7 verification remains bit-for-bit unchanged.
-2. The derived spec and both parent artifacts match their locked hashes.
-3. HMM raw fits are reused; no HMM refit or provider call occurs.
-4. Future-row mutation cannot alter earlier states or choices.
-5. Resume produces the same state paths, choices and artifact hashes.
-6. Metrics cannot be opened before all 18 boundary rows pass.
-7. The verifier independently recomputes boundaries, metrics and claims.
-8. The English report labels the result exploratory and states the evidence boundary.
-9. Full tests, Ruff, package checks and Chromium desktop/mobile acceptance pass.
-10. Generated artifacts and checkpoints remain ignored.
-
-## Sequence
-
-1. Freeze this task and content-hashed spec; stop.
-2. Make the canonical baseline runner accept the locked study context; verify v7.
-3. Add the smallest grid-evaluation path and focused tests; stop.
-4. Run through the production monitor, verify, report and close the registry.
-
-Every implementation commit is pushed after verification.
+- `CODE_COMPLETE`: focused and full semantic tests pass.
+- `EXPERIMENT_COMPLETE`: smoke and all three markets finish with complete CSVs.
+- `CLAIM_READY`: impossible in this exploratory study.
