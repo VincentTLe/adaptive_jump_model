@@ -3,7 +3,7 @@
 ## Identity
 
 - `task_id`: `adaptive-confidence-001`
-- `status`: `FROZEN`
+- `status`: `EXPERIMENT_COMPLETE`
 - `target_branch`: `cleanup/research-protocol`
 - `parent_experiment`: `fixed-baselines-001-v7`
 - `frozen_spec`: `research/adaptive-confidence-001.toml`
@@ -12,10 +12,25 @@
 - `data_cutoff`: `2023-12-31`
 - `extension_access`: forbidden
 - `monitor_changes`: forbidden
+- `completed_run`: `adaptive-confidence-1b0c327b2db4-3636939b525d-864d671cf973`
 
 This study is authorized by the owner's 2026-07-16 request. It was designed
 after the v7 proxy results were known, so it cannot support a replication,
 confirmatory, or performance claim.
+
+## Outcome
+
+- US, DE, and JP completed concurrently against the sealed v7 sample through
+  2023-12-29; beta zero matched the parent states, choices, signal, accounting,
+  trade path, and metrics.
+- The evidence-discount mechanism was operational for both positive betas in
+  every market, but neither beta met the locked reduced-trade-off rule in any
+  market. The study result is `not_supported`.
+- Both DE challengers improved Sharpe and reduced turnover and switches while
+  maximum drawdown was equal to baseline within floating-point precision. The
+  exact locked deltas were slightly negative (`-2.22e-16` and `-5.55e-16`), so
+  no post-result tolerance was introduced.
+- This is an exploratory development-sample result, not a performance claim.
 
 ## Scientific Question
 
