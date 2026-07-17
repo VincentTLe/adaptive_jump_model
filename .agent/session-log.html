@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">96 session(s) · newest first · 2026-07-17 07:52 UTC</p>
+  <p class="sub">97 session(s) · newest first · 2026-07-17 12:48 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-17T12:47:47Z</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">Reproduce and audit the original fixed JM/HMM proxy baseline, correct turnover reporting, attribute undisclosed local grid and protocol choices, and stop before new adaptive work.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>README.md (updated fixed-audit status and turnover explanation)</code></li><li><code>TASK.md (replaced with completed fixed-baseline audit)</code></li><li><code>research/SCIENTIFIC_LEDGER.md (appended mathematical and experimental evidence)</code></li><li><code>research/experiment_registry.jsonl (append-only freezes, invalidations, completion)</code></li><li><code>research/hyperparameter-grid-attribution.toml (final frozen audit contract)</code></li><li><code>src/adaptive_jump/config.py and walkforward.py (paper turnover/comparison protocol formatting from active fix)</code></li><li><code>tests/test_config.py and tests/test_walkforward.py (protocol coverage)</code></li><li><code>src/adaptive_jump/config.py.orig and config.py.rej (deleted generated patch debris)</code></li><li><code>ignored artifact fixed-baseline-assumption-audit-79c94852c8fd-3636939b525d-4cc8cdbccd14</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>clean fixed-v7 rerun exit 0; scientific files byte-identical to sealed parent</li><li>HMM initialization diagnostic: 95 paired windows, 0 terminal-state changes, 54 winning-seed changes</li><li>final US smoke: 95/95 checks passed</li><li>final full audit: 670/670 integrity checks and 124/124 diagnostic parity hashes passed</li><li>artifact inventory: 22/22 exact, no extra or post-2023 file</li><li>independent timeline reconstruction: 33/33 events and 40/40 t+2 trade chains exact</li><li>independent self-contained replay exit 0: 15/15 scientific CSVs and 21/21 evidence files byte-identical</li><li>pytest: 337 passed, 57 expected sklearn warnings</li><li>ruff check and format check passed; uv pip check and uv lock --check passed</li><li>git diff --check passed</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>uncommitted</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner review. Commit and push only with explicit publish authorization. Do not resume adaptive modeling until the fixed-audit conclusion and next scientific question are agreed.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Final conclusion is exploratory: local grids are binding, source-visible restrictions do not rescue the three-market proxy result, turnover display was 2x paper convention while costs and returns were correct, and final-v3 grids remain undisclosed.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-17T07:51:48Z</span><span class="who">codex · gpt-5</span>

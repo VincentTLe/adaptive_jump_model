@@ -1,98 +1,105 @@
-# Task: Causal State-Separation Diagnostic
+# Task: Fixed-Baseline Assumption Audit
 
 ## Identity
 
-- `task_id`: `adaptive-separation-001`
+- `task_id`: `fixed-baseline-assumption-audit-001`
 - `status`: `EXPERIMENT_COMPLETE`
 - `target_branch`: `cleanup/research-protocol`
-- `parent_experiment`: `adaptive-confidence-001`
-- `frozen_spec`: `research/adaptive-separation-001.toml`
-- `frozen_spec_sha256`: `813f6691252644a9012392a0598879d4032d1c9d40643cc34492a64074a44050`
+- `parent_experiment`: `fixed-baselines-001-v7`
+- `frozen_spec`: `research/hyperparameter-grid-attribution.toml`
+- `frozen_spec_sha256`: `79c94852c8fd07f3c149e1d39fe30e300dfd1142a73bd86501c6031c28c49b8a`
 - `claim_class`: `EXPLORATORY`
 - `data_cutoff`: `2023-12-31`
-- `performance_file_access`: forbidden
-- `extension_access`: forbidden
+- `adaptive_model_access`: forbidden
+- `performance_claim`: forbidden
 - `monitor_changes`: forbidden
-- `completed_run`: `adaptive-separation-813f66912526-26cbca8871be-fefc608b9081`
+- `completed_run`:
+  `fixed-baseline-assumption-audit-79c94852c8fd-3636939b525d-4cc8cdbccd14`
 
-The owner asked that the mathematical development history be preserved and
-that research continue toward a model contribution with useful market
-behavior. The durable history is in `research/SCIENTIFIC_LEDGER.md`.
-
-## Outcome
-
-- A first 56-event run was invalidated after concrete-date inspection found
-  pre-OOS events. The corrected spec added only the already-registered US, DE,
-  and JP outer starts; no mathematical or decision rule changed.
-- The corrected run reconstructed 1,152 positive-lambda refit rows and admitted
-  42 exact arrival-ablation events: US 14, DE 15, and JP 13. Every admitted
-  event had valid reliability geometry; no exact DP tie was admitted.
-- All three leave-one-market-out fits failed the locked gradient criterion:
-  held-out US `1.99e-9`, DE `2.58e-9`, and JP `1.61e-8`, versus
-  `1e-9`. The frozen result is therefore `inconclusive`.
-- Descriptively, DE did not have greater refit separation than JP (median
-  `0.5463` versus `0.5578`). DE whipsaw events had slightly *higher*
-  reliability than persistent events (`0.5675` versus `0.5626`); JP showed
-  only a small difference in the hypothesized direction (`0.5632` versus
-  `0.5659`). This statistic does not explain the DE/JP contrast.
-- The reliability gate is not justified and no P&L or new-model study was run.
+The durable mathematical and experimental history is in
+`research/SCIENTIFIC_LEDGER.md`.
 
 ## Scientific Question
 
-Does a causal training-prefix measure of state separation add
-out-of-market predictive information, beyond the current arrival-loss
-discount, about whether a discount-attributable fixed-lambda JM switch
-persists or reverses?
+Do locally inferred settings that Shu et al. do not fully disclose—especially
+the JM-lambda grid, HMM-smoothing grid, tie rule, and smoothing startup—explain
+why the fixed-v7 causal proxy baseline does not reproduce the paper's market
+result?
 
-For each market, refit, and raw lambda, define
+This is an audit of the local proxy pipeline, not a search for the best grid
+and not a replication of the paper's published profits.
+
+## What Was Fit
+
+1. The original fixed-v7 JM/HMM pipeline was rerun once from the canonical
+   through-2023 manifest in a clean detached worktree. Its scientific files
+   were byte-identical to the sealed parent.
+2. The audit fit only seven missing historical-v1 JM lambdas:
+   `10, 22, 50, 100, 220, 500, 1000`.
+3. The HMM performance path was not refit. A separate performance-free
+   diagnostic fit 95 trailing 3,000-return windows under two internal KMeans
+   initialization counts while holding all other HMM settings fixed.
+4. No adaptive penalty, beta, new feature, enlarged post-result grid, or
+   post-2023 observation was used.
+
+## Frozen Comparisons
+
+- v7 expanded project grids;
+- values visible in final-v3 Table 3;
+- the historical-v1 JM grid;
+- source-only unions of disclosed values;
+- lower versus higher selection on exact/tolerance ties;
+- partial versus full HMM smoothing startup on the bounded source-union grid.
+
+All paths were built on full causal history before family-specific matched
+samples were sliced. Signal at `t` controls the position at the second
+subsequent market observation, and cost is 10 bps times full one-way traded
+notional.
+
+## Outcome
+
+- The original v7 run is exactly reproducible on the local data.
+- The paper does not disclose complete final-v3 CV grids; Table 3 is not a
+  complete grid specification.
+- Project-added values are selected often, so the grids are binding.
+- Restricting fixed JM to Table-3-visible values changes primary-delay Sharpe
+  by `+0.0112 / -0.1294 / -0.3157` for US/DE/JP, and changes switches by
+  `0 / +18 / +69`.
+- Historical-v1 and source-union grids improve DE but worsen US and JP. No
+  source-grounded restriction recovers a stable three-market result.
+- HMM internal initialization changes no sampled terminal state in `95/95`
+  paired windows, although the winning seed changes in `54/95`.
+- Full HMM startup is null on the bounded source-union grid.
+- Every multi-candidate score tie is exact; no tolerance-only tie occurs.
+- The 5% upper-boundary rule is not from the paper and seals no metric.
+- The frozen label is `core_grid_sensitive`, but every overall local market
+  gate remains false. This is sensitivity evidence only.
+
+## Turnover Correction
+
+Paper turnover is
 
 ```text
-D = ||mu0 - mu1||
-rho_k = median(||z_u - mu_k|| for z_u strictly nearer mu_k)
-R_train = D / (D + rho_0 + rho_1)
+0.5 * 252 * mean(abs(position change))
 ```
 
-`R_train` uses only the exact 3,000-row training prefix and stored v7 scaler
-and centers. It is bounded, label-symmetric, and invariant to a common
-positive distance scale.
-Events are restricted to the sealed v7 outer starts: US 2007-12-04, DE
-2008-01-03, and JP 2009-05-07. Earlier candidate history may supply causal
-training context but is not an eligible event population.
+Combined annualized traded notional is
 
-## Frozen Diagnostic
+```text
+252 * mean(abs(position change)) = 2 * paper turnover
+```
 
-1. Use only the parent `features.csv`, `refits-and-scales.csv`, and the three
-   fixed-lambda candidate-state files. Never read returns, metrics, choices,
-   selected timelines, positions, or performance conclusions.
-2. Reconstruct every training prefix and fixed objective. Mark separation
-   invalid rather than imputing when a center or geometric partition is
-   unavailable.
-3. A candidate event must separate adaptive beta from beta zero at the same
-   market and lambda, use an actual final-step arrival transition, receive a
-   discounted penalty, and disappear when only that arrival-day penalty is
-   ablated back to fixed lambda.
-4. Label a whipsaw when the adaptive emitted state returns to its source in
-   the next 20 signal dates. Require the whole horizon before the next refit
-   and apply the frozen non-overlap rule.
-5. Compare baseline and reliability-augmented unpenalized logistic models by
-   leave-one-market-out Brier score, using equal total weight per training
-   market. Follow the exact supported/falsified/inconclusive rule in the TOML.
+The old v7 display used the second number while calling it turnover. Costs and
+returns already used the full position change and remain unchanged.
 
-## Success Conditions
+## Completion Evidence
 
-- Frozen spec and parent hashes match the registry.
-- Formula, label symmetry, common-scale invariance, objective reconstruction,
-  arrival ablation, candidate-state reconstruction, refit joins, cutoff, and
-  source-file restrictions are tested.
-- US smoke passes before the complete US/DE/JP diagnostic.
-- Ignored CSV/JSON evidence is written and inventoried.
-- The ledger and registry state the result without converting an association
-  into a performance or causal claim.
-
-## Completion States
-
-- `CODE_COMPLETE`: focused semantic tests pass.
-- `EXPERIMENT_COMPLETE`: all three markets and leave-one-market-out folds are
-  written, or the frozen rule returns an auditable inconclusive result.
-- `MODEL_GATE_READY`: possible only if the frozen diagnostic is supported;
-  profitability still requires a separate frozen experiment.
+- US smoke: `95/95` checks passed.
+- Full control/integrity table: `670/670` checks passed.
+- HMM initialization parity: `124/124` source-file hashes matched.
+- Final inventory: `22/22` files present with exact hashes.
+- Independent causal timeline reconstruction: `33/33` events and `40/40`
+  position-effect rows matched exactly.
+- Independent self-contained replay: exit `0`; all `15/15` scientific CSVs
+  and `21/21` non-metadata evidence files were byte-identical. The registry
+  completion row was appended only after this pass.

@@ -14,6 +14,25 @@ all three markets. The result is therefore **proxy non-replication** and does
 not refute the paper because the exact long sample and source definitions were
 unavailable.
 
+The fixed-only assumption audit is also complete. A clean rerun reproduced
+the sealed v7 scientific files exactly. The audit then showed that the locally
+chosen JM/HMM candidate grids are strongly binding, but restricting them to the
+values visible in Table 3 does not rescue the proxy result and sharply worsens
+the JP fixed-JM path. The paper's complete final-v3 cross-validation grids
+remain undisclosed, so this is an underidentified sensitivity result rather
+than a recovered paper configuration. The local 5% upper-boundary rule is not
+in the paper and is now descriptive only.
+
+Turnover reporting is corrected to the paper convention,
+`0.5 * 252 * mean(abs(position change))`. The previous display was exactly
+twice too high because it showed combined annualized traded notional. The
+10-bps transaction costs, strategy returns, and Sharpe values were already
+correct and did not change. The final self-contained CSV artifact is:
+
+```text
+artifacts/fixed-baseline-assumption-audit/fixed-baseline-assumption-audit-79c94852c8fd-3636939b525d-4cc8cdbccd14
+```
+
 The exploratory `adaptive-confidence-001` decoder study is also complete.
 Its evidence-dependent arrival penalty behaved as designed, but the frozen
 three-market trade-off rule was not supported: DE improved while US and JP did
@@ -204,12 +223,15 @@ packages are intentionally not preinstalled.
 1. Free-source audit and the six-series proxy contract are complete.
 2. The causal fixed JM/HMM/B&H protocol is frozen in `research.toml` v7.
 3. The through-2023 proxy run is complete and classified as non-replication.
-4. Period/data attribution is complete; exact paper data remain unavailable.
-5. The 4,000-observation JM sensitivity is complete but stopped at its lambda
+4. The fixed-only assumption audit is complete: turnover reporting is fixed,
+   source-visible grid restrictions are binding but do not rescue the proxy
+   result, and the final-v3 grids remain undisclosed.
+5. Period/data attribution is complete; exact paper data remain unavailable.
+6. The 4,000-observation JM sensitivity is complete but stopped at its lambda
    boundary gate; no performance conclusion was opened.
-6. The live monitor passed local lifecycle and artifact-parity acceptance; it
+7. The live monitor passed local lifecycle and artifact-parity acceptance; it
    preserves these frozen boundaries and creates no scientific claim.
-7. The evidence-adaptive decoder and state-separation diagnostic are complete.
+8. The evidence-adaptive decoder and state-separation diagnostic are complete.
    The latter was inconclusive and did not justify a reliability-gated model or
    P&L study.
 

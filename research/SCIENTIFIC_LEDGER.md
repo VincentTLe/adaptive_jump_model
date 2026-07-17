@@ -257,6 +257,67 @@ mechanism diagnostic first supports the predictive value of
   justified and was not sent to a P&L test. Artifact:
   `adaptive-separation-813f66912526-26cbca8871be-fefc608b9081`.
 
+### 2026-07-17 — `fixed-baseline-assumption-audit-001` (complete)
+
+- A clean detached-worktree rerun at `1f522ab` repeated the original fixed-v7
+  JM/HMM pipeline from the canonical through-2023 manifest. Every scientific
+  file was byte-identical to the sealed parent, so the original proxy result is
+  reproducible.
+- Shu et al. v3 does not disclose the complete JM-lambda or HMM-smoothing
+  cross-validation grids. Table 3 shows illustrative fixed values
+  `{0,5,15,35,70,150}` for JM and `{0,2,4,8,20}` for HMM; historical v1 used
+  JM `{10,22,50,100,220,500,1000}` under a materially different design. The
+  official package accepts user-supplied penalties and contains no paper
+  backtest or HMM calibration pipeline.
+- The audit fit only the seven historical-v1 JM lambdas missing from v7. It
+  reused every overlapping parent state and did not refit the HMM performance
+  path. A performance-free HMM check compared internal KMeans `n_init=10`
+  with a literal one-start-per-outer-seed interpretation on 95 windows:
+  terminal state changed in `0/95`, while the winning seed changed in `54/95`.
+  This is sampled terminal-state stability, not full-path equivalence.
+- The turnover display bug was isolated. Paper turnover is
+  \(0.5\times252\times\operatorname{mean}|\Delta position|\); combined
+  annualized traded notional is exactly twice that. The old display reported
+  the second quantity as turnover. Trading cost and P&L were already correct
+  at \(0.001|\Delta position|\), so the fix changes reporting only.
+- Locally added candidates were binding in primary-delay OOS monthly choices:
+  about `41%/47%/58%` of JM choices and `55%/50%/87%` of HMM choices in
+  US/DE/JP lay outside the Table-3-visible sets.
+
+Primary-delay fixed-JM evidence on the matched core sample is:
+
+| Market | Expanded control: Sharpe / MDD / turnover / cash / switches | Table-3-visible delta: Sharpe / MDD improvement / turnover / cash / switches |
+| --- | --- | --- |
+| US | `0.5705 / -0.3386 / 0.6554 / 0.2098 / 21` | `+0.0112 / 0 / 0 / +0.0622 / 0` |
+| DE | `0.1852 / -0.3878 / 0.9956 / 0.1832 / 32` | `-0.1294 / +0.0180 / +0.5600 / +0.1442 / +18` |
+| JP | `0.3297 / -0.3216 / 0.4579 / 0.2770 / 13` | `-0.3157 / -0.0194 / +2.4305 / +0.3606 / +69` |
+
+- Historical-v1 and source-union JM grids were mixed: they raised DE Sharpe
+  by `0.1121` and `0.0647` while lowering US and JP Sharpe. Restricting to
+  Table-3-visible values therefore does not rescue the fixed baseline and is
+  especially harmful in JP.
+- The 5% upper-boundary rule is local, absent from the paper, and does not
+  enter states, trades, costs, or returns. It failed `94/216` descriptive
+  rows in this audit and sealed no metric.
+- Full-window versus partial-window startup on the source-union HMM grid
+  changed no selected path or metric. All `7,995` multi-candidate score ties
+  were exact floating-point ties, not tolerance-only ties. Higher tie-breaking
+  changed the US fixed-JM path in one core family, so tie semantics are a real
+  numerical-protocol sensitivity but not a selected winner.
+- Every overall local market gate remained false. One DE component
+  (`fixed-JM Sharpe > HMM Sharpe`) flipped under the `table3_both` cell, so the
+  frozen label is `core_grid_sensitive`: the local conclusion depends on
+  tested candidate sets, while the actual final-v3 grids remain
+  underidentified. This is exploratory development evidence, not a paper
+  replication or performance claim.
+- Concrete timelines were independently reconstructed from score to active
+  candidate, state, signal, t+2 position, turnover, and 10-bps cost for all 33
+  pair/market events. Two intermediate runs were invalidated before completion
+  registration for non-governing timeline provenance and missing diagnostic
+  evidence; the final artifact is self-contained and independently replayed.
+- Artifact:
+  `fixed-baseline-assumption-audit-79c94852c8fd-3636939b525d-4cc8cdbccd14`.
+
 ## Claims that remain open
 
 - No theorem yet bounds detection delay or false-switch probability for the

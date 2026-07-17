@@ -1,13 +1,16 @@
 schema_version = 1
 experiment_id = "fixed-baseline-assumption-audit-001"
-frozen_at_utc = "2026-07-17T09:01:41Z"
+frozen_at_utc = "2026-07-17T12:20:55Z"
 claim_class = "EXPLORATORY"
 analysis_label = "FIXED-BASELINE ASSUMPTION AUDIT"
-hypothesis = "Source-anchored alternatives to undisclosed local settings materially change the fixed-model directional proxy conclusion in at least one market."
-primary_estimand = "directional_gate_and_metrics_by_every_predeclared_fixed_only_variant"
+hypothesis = "At least one predeclared grid, sampled HMM-initialization, tie, or bounded-startup axis changes a sampled HMM terminal state, a fixed-model selected path, or matched-sample proxy metrics."
+primary_estimand = "paired_path_and_metric_deltas_within_predeclared_audit_blocks"
 extension_access = false
 adaptive_experiment = false
 model_refitting = true
+target = "audit of the local v7 causal proxy pipeline, not replication of the paper-published profits"
+untested_undisclosed_settings = ["JM optimizer and refit phase", "HMM convergence and min_covar", "minimum-valid-return rule", "metric ddof", "initial-allocation convention"]
+no_sensitivity_claim = "stability applies only to the tested axes and does not validate the undisclosed final-v3 grids"
 
 [source]
 paper = "Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3"
@@ -32,12 +35,25 @@ data_cutoff = "2023-12-31"
 fresh_control_reads_canonical_manifest = true
 reuse_parent_only_after_exact_control_parity = true
 post_2023_access = false
+fresh_control_run_id = "fixed-baselines-8adb330565d6-3636939b525d-1f522ab126d1"
+fresh_control_exit_code = 0
+fresh_control_scientific_files_byte_identical = true
+fresh_control_comparison_exclusions = ["run.json", "claim.json", "inventory.json", "checkpoint.pkl", "checkpoint.json"]
 
 [samples]
-us = "2007-12-04..2023-12-29"
-de = "2008-01-03..2023-12-29"
-jp = "2009-05-07..2023-12-29"
-comparison = "per_market_all_models_all_delays_intersection_of_complete_metric_rows"
+parent_primary_delay_bounds = { us = "2007-12-04..2023-12-29", de = "2008-01-03..2023-12-29", jp = "2009-05-07..2023-12-29" }
+comparison = "per_market_per_family_date intersection of complete rows across every member, model, and delay; derived bounds are recorded, not forced to parent_primary_delay_bounds"
+audit_sample_aligner = "build every path on full history, join by market date, intersect complete metric rows across the family, then slice without recomputing turnover"
+recompute_control_on_each_family_sample = true
+cross_family_metric_deltas_allowed = false
+core_grid_family = ["v7_expanded_control", "table3_jm", "table3_hmm", "table3_both"]
+historical_v1_family = ["v7_expanded_control", "historical_v1_jm_only"]
+source_union_jm_family = ["v7_expanded_control", "source_union_jm_only"]
+source_union_hmm_family = ["v7_expanded_control", "source_union_hmm_only"]
+tie_family = "both tie rules within each core-grid cell"
+startup_family = "partial versus full startup on source-union HMM grid only"
+core_pairs = ["table3_jm-v7_expanded_control", "table3_hmm-v7_expanded_control", "table3_both-v7_expanded_control"]
+tie_pairs = ["v7_expanded_control:lower-higher", "table3_jm:lower-higher", "table3_hmm:lower-higher", "table3_both:lower-higher"]
 
 [grids]
 jm_table3_illustrated = [0, 5, 15, 35, 70, 150]
@@ -55,52 +71,86 @@ expand_after_results = false
 id = "v7_expanded_control"
 jm_grid = "expanded_project"
 hmm_grid = "expanded_project"
+role = "core_control"
 
 [[cells]]
 id = "table3_jm"
 jm_grid = "table3_illustrated"
 hmm_grid = "expanded_project"
+role = "core_jm_grid_attribution"
 
 [[cells]]
 id = "table3_hmm"
 jm_grid = "expanded_project"
 hmm_grid = "table3_illustrated"
+role = "core_hmm_grid_attribution"
 
 [[cells]]
 id = "table3_both"
 jm_grid = "table3_illustrated"
 hmm_grid = "table3_illustrated"
+role = "core_composition_checksum"
 
 [[cells]]
 id = "historical_v1_jm_only"
 jm_grid = "historical_v1_author"
 hmm_grid = "expanded_project"
+role = "supplementary_historical_provenance"
 
 [[cells]]
 id = "source_union_jm_only"
 jm_grid = "source_union"
 hmm_grid = "expanded_project"
+role = "supplementary_source_union"
 
 [[cells]]
 id = "source_union_hmm_only"
 jm_grid = "expanded_project"
 hmm_grid = "source_union"
+role = "supplementary_source_union"
 
 [hmm_initialization]
-legacy_control = "10 outer seeds times hmmlearn internal KMeans n_init 10"
-literal_paper = "10 outer seeds, one explicit KMeans++ start per seed"
-literal_paper_priors = "hmmlearn defaults explicit: startprob/transmat 1, means prior/weight 0, covariance prior 0.01/weight 1, params stmc, log implementation"
-conditional_mle_covariance_prior = 0.0
-run_full_literal_path_if_sampled_terminal_states_differ = true
+outer_seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+legacy_kmeans_n_init_per_seed = 10
+paper_count_kmeans_n_init_per_seed = 1
+undisclosed_priors_held_fixed = "hmmlearn 0.3.3 defaults made explicit: startprob/transmat 1, means prior/weight 0, covariance prior 0.01/weight 1, params stmc, log implementation"
+all_other_hmm_settings_held_identical = true
 sample_rule = "first eligible terminal, every calendar-year final complete date, and final complete date per market"
-sample_outputs = ["terminal_state", "seed", "log_likelihood", "conditional_variances", "accepted_starts", "failures"]
-sample_reads_performance = false
+duplicate_sample_dates = "deduplicate dates and concatenate their sample roles"
+sample_input = "trailing 3000 finite local equity-proxy log-return observations ending at each sampled terminal"
+initialization_contract = "init_params stc with sklearn KMeans++ means supplied manually"
+sample_outputs = ["variant", "market", "fit_date", "training_start", "training_end", "window_sha256", "terminal_state", "seed", "log_likelihood", "conditional_variances", "accepted_starts", "failures"]
+forbidden_inputs = ["candidate_selection_returns", "metrics", "positions", "trades", "directional_gate"]
+legacy_sample_must_match_fresh_control = true
+legacy_sample_discrete_parity = "terminal state, winning seed, accepted starts, and failures exact"
+legacy_sample_float_parity_absolute_tolerance = 1e-12
+on_any_terminal_state_difference = "stop after diagnostic and freeze a separate full-path sensitivity before reading its performance"
+no_difference_claim = "sample stability only, not full-path equivalence"
+covariance_prior_zero_axis_enabled = false
 
-[cheap_sensitivities]
-exact_tie_rules = ["lower_smoothing", "higher_smoothing"]
-tie_tolerance = 1e-12
+[audit_blocks]
+design = "staged_blocked_not_full_factorial"
+order = ["exact_control", "hmm_initialization_sample", "core_grid", "supplementary_grids", "tie_replay", "bounded_hmm_startup"]
+core_grid_cell_ids = ["v7_expanded_control", "table3_jm", "table3_hmm", "table3_both"]
+supplementary_grid_cell_ids = ["historical_v1_jm_only", "source_union_jm_only", "source_union_hmm_only"]
+core_grid_interpretation = "2x2 attribution of project-expanded versus Table-3-illustrated JM and HMM grids; Table 3 is not claimed to be the paper cross-validation grid"
+supplementary_cells_do_not_determine_core_label = true
+overlapping_candidate_states = "must exactly match parent artifacts; only historical-v1-only JM lambdas may be newly fitted"
+composition_checks = ["table3_jm.fixed_jm equals table3_both.fixed_jm", "table3_hmm.hmm equals table3_both.hmm", "v7_expanded_control.hmm equals table3_jm.hmm", "v7_expanded_control.fixed_jm equals table3_hmm.fixed_jm"]
+tie_replay_rules = ["lower_smoothing", "higher_smoothing"]
+tie_replay_scope = "all four core-grid cells independently"
+tie_replay_inputs = "eligible-candidate score surfaces and candidate-state paths from the same cell; no fit or center recomputation"
+tie_equivalence = "finite eligible candidates with best_score - score <= 1e-12"
+report_exact_float_equal_ties_separately = true
+hmm_startup_grid = "source_union"
 hmm_startup_rules = ["partial_window_min_periods_1", "full_window_min_periods_k"]
-semiannual_refit_phases_if_needed = [[1, 7], [2, 8], [3, 9], [4, 10], [5, 11], [6, 12]]
+hmm_startup_k0 = "unchanged raw Viterbi state under both rules"
+hmm_startup_refits_hmm = false
+hmm_startup_recomputes = "smoothed candidates, monthly choices, signal, position, trades, and metrics"
+hmm_startup_control_jm_grid = "expanded_project"
+hmm_startup_tie_rule = "lower_smoothing"
+expanded_hmm_startup_output = "coverage only; no performance because k=2560 would redefine the sample"
+semiannual_refit_phase = "not run; requires a separate refreeze"
 select_best_variant_after_results = false
 
 [protocol]
@@ -115,14 +165,21 @@ one_way_cost_bps = 10
 primary_delay = 1
 robustness_delays = [1, 5, 10]
 turnover = "half_mean_one_way_turnover_times_252"
+annualized_traded_notional = "mean_one_way_turnover_times_252"
+cash_fraction = "one_minus_mean_risky_weight"
+switch_count = "count rows with precomputed full-history one_way_turnover greater than zero after family-sample slicing"
+maximum_drawdown_absolute_tolerance = 1e-9
+metric_equivalence_absolute_tolerance = 1e-12
 
 [control]
 require_exact_parent_choices = true
 require_exact_parent_paths = true
-require_metrics_within_verifier_tolerance = true
+require_parent_legacy_metrics_within_verifier_tolerance = true
+recompute_paper_metrics_on_each_family_sample = true
 stop_before_attribution_on_failure = true
 fresh_control_requires_exact_features_states_choices_signals_positions_costs_and_returns = true
 boundary_is_descriptive_not_a_metric_gate = true
+audit_path_builder = "select_monthly_candidate plus apply_signal; do not call boundary-sealed baseline_paths for audit cells"
 transaction_cost_uses_full_absolute_position_change = true
 
 [inference]
@@ -130,13 +187,37 @@ bootstrap_enabled = false
 performance_claim_allowed = false
 
 [decision]
-grid_sensitive = "any source-anchored grid cell changes a market directional conclusion"
-implementation_sensitive = "literal-ten-start HMM changes a market directional conclusion"
-robust_to_tested_assumptions = "no predeclared cell changes any market directional conclusion"
-underidentified = "conclusions vary across undisclosed but source-defensible settings"
+primary_delay = 1
+market_gate_conditions = ["fixed_jm_sharpe_above_hmm", "fixed_jm_sharpe_above_buy_and_hold", "fixed_jm_absolute_mdd_below_buy_and_hold"]
+mdd_improvement = "abs(reference_mdd) - abs(challenger_mdd); positive means smaller drawdown"
+mdd_decision_delta = "zero if abs(raw_delta) <= 1e-9, otherwise raw_delta"
+core_grid_sensitive = "any core cell changes any market gate relative to v7_expanded_control"
+core_grid_stable = "all four core cells have identical market gates"
+underidentified = "the complete final-v3 CV grids remain undisclosed; observed core sensitivity shows the local conclusion depends on tested candidate-set choices"
+path_sensitive = "any paired cell changes a monthly choice, state, position, or trade"
+metric_sensitive = "any paired raw metric delta exceeds metric_equivalence_absolute_tolerance"
+binding = "path_sensitive or metric_sensitive"
+implementation_sample_sensitive = "paper-count initialization changes any sampled terminal state; this does not open performance"
+market_gate_status = "local descriptive project rule, not a paper-defined replication test"
 confirmatory_claims_allowed = false
 winner_selection_allowed = false
+
+[timeline]
+delay = 1
+event_rule = "for each paired cell and market, find the first finite OOS selected-state or signal difference within each model, choose the earliest actual difference across models, and show its position effect two market observations later"
+decision_date = "latest monthly choice date at or before state_date; it may precede the OOS floor as causal warm-up, both active selected candidates must differ, and candidate scores must come from this governing decision"
+first_choice_difference_date = "earliest OOS decision with different selected candidates for the reported model; it may follow a pre-OOS governing decision and is blank only if no OOS choice differs"
+choice_only_rule = "if neither model ever has a selected-state or signal difference, report the earliest OOS choice difference across models as choice_only_no_state_difference; if no choice differs, report no_event"
+oos_boundary = "scan finite selected signals from the locked market OOS floor, not from the first OOS choice difference; earlier choices may supply causal warm-up"
+governing_candidate_assertion = "for each side, the state of selected_hyperparameter at state_date must exactly equal selected_state"
+revision_provenance = "post-run semantic correction after a concrete-date audit found non-governing first choices paired with later states; no fit, choice, state, path, return, metric, gate, or parameter changed"
+required_fields = ["pair", "market", "first_choice_difference_date", "decision_date", "candidate_scores", "selected_hyperparameter", "state_date", "selected_state", "signal", "position_date", "prior_position", "position", "one_way_turnover", "transaction_cost"]
 
 [storage]
 artifact_subdir = "fixed-baseline-assumption-audit"
 report_language = "English"
+always_required_csvs = ["control-parity.csv"]
+required_after_control_pass = ["diagnostic-run.json", "hmm-initialization-sample.csv", "hmm-initialization-control-parity.csv"]
+required_only_after_initialization_sample_stable = ["common-samples.csv", "boundaries.csv", "summary.csv", "choices.csv", "timelines.csv"]
+artifact_self_replay = "a completed artifact must retain the diagnostic run, sample, and original 124-row initialization control parity under distinct names; a fresh replay must accept that artifact directly as diagnostic_dir"
+required_output_flag = "computed from file existence after explicit diagnostic copies, never hard-coded"

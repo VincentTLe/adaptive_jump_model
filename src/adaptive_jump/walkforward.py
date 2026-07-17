@@ -214,10 +214,7 @@ def baseline_paths(
         output: dict[int, dict[str, pd.DataFrame]] = {}
         for delay, paths in unaligned.items():
             complete = pd.concat(
-                [
-                    path[metric_columns].notna().all(axis=1)
-                    for path in paths.values()
-                ],
+                [path[metric_columns].notna().all(axis=1) for path in paths.values()],
                 axis=1,
             ).all(axis=1)
             if not complete.any():

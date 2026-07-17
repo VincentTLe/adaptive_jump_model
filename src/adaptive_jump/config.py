@@ -12,9 +12,7 @@ from typing import Any
 PAPER_TURNOVER_DEFINITION = "half_mean_one_way_turnover_times_252"
 LEGACY_TURNOVER_DEFINITION = "mean_one_way_turnover_times_252"
 PAPER_COMPARISON_SAMPLE = "per_market_all_delays_intersection_of_complete_metric_rows"
-LEGACY_COMPARISON_SAMPLE = (
-    "per_market_delay_intersection_of_complete_metric_rows"
-)
+LEGACY_COMPARISON_SAMPLE = "per_market_delay_intersection_of_complete_metric_rows"
 
 
 class ConfigError(ValueError):
