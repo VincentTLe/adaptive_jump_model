@@ -64,6 +64,104 @@ The market study reused fixed-v7 scalers and fitted centers and changed only
 online decoding. It did **not** jointly fit adaptive centers, learn beta, or
 prove a latency/false-switch theorem.
 
+### Binary value-difference recursion and same-day amplification
+
+For two states, define
+
+\[
+g_t=L_t(1)-L_t(0),\qquad
+a_t=C_t(0,1),\qquad b_t=C_t(1,0),
+\]
+
+and let \(d_t=V_t(1)-V_t(0)\) be the dynamic-programming value
+difference. The exact recursion is
+
+\[
+d_t=g_t+\operatorname{clip}(d_{t-1},-b_t,a_t).
+\]
+
+Thus fixed JM is an evidence accumulator with a hysteresis interval. In the
+arrival-adaptive model, current evidence enters once through \(g_t\) and
+again by moving the active barrier. When the evidence-supported barrier is
+active,
+
+\[
+\left|\frac{\partial d_t}{\partial g_t}\right|
+=1+\frac{\beta C_t}{q_{\rm train}}
+\operatorname{sech}^2(|g_t|/q_{\rm train})>1.
+\]
+
+This establishes a local one-observation amplification mechanism; it is not a
+probabilistic false-switch theorem. It explains why the arrival formula can
+react too strongly to an isolated gap and motivated a lagged-evidence
+alternative.
+
+### Lagged-evidence transition penalty
+
+The frozen candidate in `lagged-evidence-mechanism-001` is
+
+\[
+C_t^{\rm lag}(i,j)=\lambda_0\exp\!\left[
+-\beta\tanh\!\left(
+\frac{[L_{t-1}(i)-L_{t-1}(j)]_+}{q_{\rm train}}
+\right)\right],\quad i\ne j,
+\]
+
+with zero diagonal and the fixed-lambda matrix at \(t=0\). Its objective is
+
+\[
+J_{\rm lag}(s)=\sum_tL_t(s_t)
++\sum_{t\ge1}C_t^{\rm lag}(s_{t-1},s_t).
+\]
+
+Established code-level properties are:
+
+- \(\beta=0\) is bit-exact fixed JM.
+- \(\lambda_0e^{-\beta}\le C_t^{\rm lag}(i,j)\le\lambda_0\).
+- Common positive scaling of all losses and \(q_{\rm train}\) leaves the
+  penalty unchanged.
+- The additive objective remains exactly solvable in \(O(TK^2)\).
+- Brute-force objective, prefix-invariance, direction, and toy-path tests pass.
+- On locked toys, arrival switches on an isolated shock and alternating noise,
+  lagged does not; on a persistent shift, arrival/fixed/lagged first switch at
+  indices `3/6/4`, so lagging retains part of the latency gain.
+
+The first frozen real-market mechanism run was interrupted and registered as
+`INVALID_IMPLEMENTATION` before any market artifact, event table, summary, or
+conclusion existed. It did not contain future look-ahead, but it violated its
+own performance-free protocol by reading return columns and reconstructing
+fits instead of consuming only the sealed scaler, centers, and
+\(q_{\rm train}\). It also passed the mechanical prerequisite as a literal
+Boolean and had a verifier that did not replay candidate states or event
+counts. No state-path or mechanism conclusion from that partial execution is
+accepted. The correction retains the same mathematical formula and decision
+inequalities, replaces refitting with sealed-parameter generation, derives the
+mechanical Boolean from executable evidence, aligns boundary-switch counting,
+and requires a full independent replay before refreeze and rerun.
+
+The implementation is causal. However, on Jan/Jul refit dates the previous-row
+loss is recomputed under scaler and centers fit through the current row.
+Therefore “lagged-evidence” is precise, while strict
+\(\mathcal F_{t-1}\)-predictability is not claimed. Changing activation to
+old centers would be a different protocol and would break exact beta-zero
+nesting with the sealed v7 parent.
+
+The corrected frozen run
+`lagged-evidence-6f964f5724b2-26cbca8871be-d173ca32c86f` subsequently completed
+and was independently reconstructed across US, DE, and JP without reading any
+choice, trade, return, or performance file. At `beta=log(4)`, arrival versus
+lagged candidate-path whipsaws were `6→2` in US, `6→3` in DE, and `5→1` in JP;
+pooled whipsaws were therefore `17→6`. JP candidate-path switches fell
+`266→258`, while `11` persistent events still switched before fixed JM. Only
+`log(4)` passed the frozen rule. This is accepted performance-free mechanism
+support, not evidence of improved Sharpe, drawdown, turnover, or profit.
+
+A limited primary-source literature scan found adjacent work on arbitrary
+transition matrices, state-specific penalties, time-varying penalties, and
+lagged-observable transition probabilities, but not this exact bounded
+prior-loss-gap regularizer. The safe description is a candidate mathematical
+contribution within statistical JM, not a global novelty claim.
+
 ### Binary directed-cost identity
 
 For constant binary transition costs \(a=C(0,1)\) and \(b=C(1,0)\),
@@ -80,7 +178,7 @@ time-varying directed costs the per-transition decomposition still holds, but
 the antisymmetric term need not telescope. The active model is not a
 semi-Markov duration model.
 
-### Proposed reliability-gated extension
+### Reliability-gated extension (diagnostic not supportive)
 
 The open theory is that evidence discounts should be trusted only when fitted
 states are distinguishable on information available at the refit. The frozen
@@ -103,9 +201,12 @@ C_t(i,j)=\lambda_0\exp[-\beta R_{\rm train}
 \tanh([L_t(i)-L_t(j)]_+/q_{\rm train})].
 \]
 
-That gate is only a hypothesis. It must not be performance-tested unless the
-mechanism diagnostic first supports the predictive value of
-\(R_{\rm train}\), and a separate model study is frozen.
+The completed `adaptive-separation-001` diagnostic did not justify this
+gate: all leave-one-market-out fits were invalid under the frozen optimizer
+criterion, and the descriptive reliability ordering did not separate
+whipsaws from persistent events consistently. It is closed as the next model
+unless new performance-free evidence supplies a different reliability
+statistic and a separately frozen study.
 
 ## Experiment history
 
@@ -172,8 +273,10 @@ mechanism diagnostic first supports the predictive value of
 - Proposed restricting candidates to illustrative paper values to test grid
   attribution.
 - No model was fit and no output was produced.
-- Status: withdrawn before run. See
-  `research/hyperparameter-grid-attribution.toml`.
+- Status: withdrawn before run. Its immutable identity is the registry event
+  with spec hash `0e7edadc7c09...`. The later fixed-baseline audit reused
+  `research/hyperparameter-grid-attribution.toml`, so that current filename
+  must not be treated as the withdrawn Table-3 contract.
 
 ### 2026-07-15/16 — persistence-calibrated candidate search (complete)
 

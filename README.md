@@ -7,6 +7,27 @@ before evaluating any adaptive extension.
 
 ## Current Status
 
+**Canonical status pointers:** [`TASK.md`](TASK.md) contains only the active
+question; [`research/STATUS.md`](research/STATUS.md) contains the accepted
+results, paper/proxy comparison, and failure diagnosis; and
+[`research/SCIENTIFIC_LEDGER.md`](research/SCIENTIFIC_LEDGER.md) preserves the
+mathematical history. The append-only experiment registry is authoritative
+about valid, withdrawn, and invalidated runs.
+
+Current bottom line: the fixed-v7 proxy pipeline is reproducible, but it does
+not reproduce the paper's three-market performance. Grid choices remain
+underidentified; the 5% boundary rule and directional gate affect study
+classification, not state paths or P&L. No extension has earned a stable-profit
+claim.
+
+The corrected lagged-evidence mechanism study is complete and independently
+reconstructed without reading choices, trades, returns, or performance
+metrics. At `beta=log(4)`, lagging the evidence reduced pooled candidate-path
+whipsaws from `17` to `6`, reduced JP candidate-path switches from `266` to
+`258`, and retained `11` confirmed-early events. This is performance-free
+mechanism support only; it authorizes no Sharpe, drawdown, or profitability
+claim.
+
 The fixed-baseline proxy replication through 2023 is complete. The locked v7
 run passed all 18 grid-boundary checks and independently reproduced all 27
 metric rows from its trade paths, but fixed JM failed the directional gate in

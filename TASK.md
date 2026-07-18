@@ -1,105 +1,93 @@
-# Task: Fixed-Baseline Assumption Audit
+# Task: Lagged-Evidence JM Mechanism Test
 
 ## Identity
 
-- `task_id`: `fixed-baseline-assumption-audit-001`
-- `status`: `EXPERIMENT_COMPLETE`
+- `task_id`: `lagged-evidence-mechanism-001`
+- `status`: `EXPERIMENT_COMPLETE / INDEPENDENTLY_VERIFIED`
 - `target_branch`: `cleanup/research-protocol`
-- `parent_experiment`: `fixed-baselines-001-v7`
-- `frozen_spec`: `research/hyperparameter-grid-attribution.toml`
-- `frozen_spec_sha256`: `79c94852c8fd07f3c149e1d39fe30e300dfd1142a73bd86501c6031c28c49b8a`
-- `claim_class`: `EXPLORATORY`
+- `parent_experiment`: `adaptive-confidence-001`
+- `frozen_spec`: `research/lagged-evidence-mechanism-001.toml`
+- `frozen_spec_sha256`: `6f964f5724b23cffff43c37ca050af1dd7eb37a3c7e7588462a86571e8825ed1`
+- `claim_class`: `EXPLORATORY / MECHANISM_ONLY`
 - `data_cutoff`: `2023-12-31`
-- `adaptive_model_access`: forbidden
+- `data_access`: fixed-v7 through-2023 artifacts only
+- `performance_access`: forbidden during mechanism stage
 - `performance_claim`: forbidden
 - `monitor_changes`: forbidden
-- `completed_run`:
+- `latest_accepted_baseline`:
   `fixed-baseline-assumption-audit-79c94852c8fd-3636939b525d-4cc8cdbccd14`
+- `latest_accepted_challenger`:
+  `adaptive-confidence-1b0c327b2db4-3636939b525d-864d671cf973`
 
-The durable mathematical and experimental history is in
+The concise accepted-result map is in `research/STATUS.md`. The durable
+mathematical and experimental history is in
 `research/SCIENTIFIC_LEDGER.md`.
 
 ## Scientific Question
 
-Do locally inferred settings that Shu et al. do not fully disclose—especially
-the JM-lambda grid, HMM-smoothing grid, tie rule, and smoothing startup—explain
-why the fixed-v7 causal proxy baseline does not reproduce the paper's market
-result?
+Can the adaptive penalty avoid same-day evidence double counting by using the
+previous observation's loss gap, thereby rejecting isolated/alternating shocks
+while retaining some latency gain on a persistent regime change?
 
-This is an audit of the local proxy pipeline, not a search for the best grid
-and not a replication of the paper's published profits.
+This first stage tests mathematics and state paths only. It is not a grid
+search, a market-performance study, or a claim of novelty or profitability.
 
-## What Was Fit
+## Proposed Model
 
-1. The original fixed-v7 JM/HMM pipeline was rerun once from the canonical
-   through-2023 manifest in a clean detached worktree. Its scientific files
-   were byte-identical to the sealed parent.
-2. The audit fit only seven missing historical-v1 JM lambdas:
-   `10, 22, 50, 100, 220, 500, 1000`.
-3. The HMM performance path was not refit. A separate performance-free
-   diagnostic fit 95 trailing 3,000-return windows under two internal KMeans
-   initialization counts while holding all other HMM settings fixed.
-4. No adaptive penalty, beta, new feature, enlarged post-result grid, or
-   post-2023 observation was used.
-
-## Frozen Comparisons
-
-- v7 expanded project grids;
-- values visible in final-v3 Table 3;
-- the historical-v1 JM grid;
-- source-only unions of disclosed values;
-- lower versus higher selection on exact/tolerance ties;
-- partial versus full HMM smoothing startup on the bounded source-union grid.
-
-All paths were built on full causal history before family-specific matched
-samples were sliced. Signal at `t` controls the position at the second
-subsequent market observation, and cost is 10 bps times full one-way traded
-notional.
-
-## Outcome
-
-- The original v7 run is exactly reproducible on the local data.
-- The paper does not disclose complete final-v3 CV grids; Table 3 is not a
-  complete grid specification.
-- Project-added values are selected often, so the grids are binding.
-- Restricting fixed JM to Table-3-visible values changes primary-delay Sharpe
-  by `+0.0112 / -0.1294 / -0.3157` for US/DE/JP, and changes switches by
-  `0 / +18 / +69`.
-- Historical-v1 and source-union grids improve DE but worsen US and JP. No
-  source-grounded restriction recovers a stable three-market result.
-- HMM internal initialization changes no sampled terminal state in `95/95`
-  paired windows, although the winning seed changes in `54/95`.
-- Full HMM startup is null on the bounded source-union grid.
-- Every multi-candidate score tie is exact; no tolerance-only tie occurs.
-- The 5% upper-boundary rule is not from the paper and seals no metric.
-- The frozen label is `core_grid_sensitive`, but every overall local market
-  gate remains false. This is sensitivity evidence only.
-
-## Turnover Correction
-
-Paper turnover is
+For `i != j`,
 
 ```text
-0.5 * 252 * mean(abs(position change))
+C_t(i,j) = lambda0 * exp(
+    -beta * tanh(max(L_(t-1)(i) - L_(t-1)(j), 0) / q_train)
+)
 ```
 
-Combined annualized traded notional is
+and `C_t(i,i) = 0`. At `t=0`, use the fixed-lambda matrix; no incoming
+transition is evaluated there. Beta remains exactly `[0, log(2), log(4)]`, and
+`q_train` remains the nonzero robust scale from the training prefix.
 
-```text
-252 * mean(abs(position change)) = 2 * paper turnover
-```
+On Jan/Jul refit days, `L_(t-1)` is recomputed under centers fit through day
+`t`. This preserves exact beta-zero nesting and remains causal, but it is not
+strictly measurable at `t-1`; “lagged-evidence” is therefore the precise name.
 
-The old v7 display used the second number while calling it turnover. Costs and
-returns already used the full position change and remain unchanged.
+## Required Verification Before Market Metrics
 
-## Completion Evidence
+1. Previous-row index and transition direction are exact.
+2. `beta=0` is bit-exact fixed JM.
+3. The additive objective matches brute-force path enumeration.
+4. Penalties and online values are prefix invariant.
+5. Loss/scale co-scaling leaves penalties unchanged.
+6. An isolated shock and alternating noise do not receive an immediate
+   same-day discount.
+7. A persistent shift switches later than arrival-adaptive but earlier than
+   fixed JM on the locked toy path.
 
-- US smoke: `95/95` checks passed.
-- Full control/integrity table: `670/670` checks passed.
-- HMM initialization parity: `124/124` source-file hashes matched.
-- Final inventory: `22/22` files present with exact hashes.
-- Independent causal timeline reconstruction: `33/33` events and `40/40`
-  position-effect rows matched exactly.
-- Independent self-contained replay: exit `0`; all `15/15` scientific CSVs
-  and `21/21` non-metadata evidence files were byte-identical. The registry
-  completion row was appended only after this pass.
+## Decision Boundary
+
+No P&L metric may be read until a performance-free mechanism protocol and its
+pass/fail rule are frozen. If the toy/oracle contracts fail, stop. If they
+pass, compare fixed, arrival-adaptive, and lagged-evidence candidate state paths
+without monthly Sharpe selection. Only a separately frozen development study
+may then reuse t+2 positions and 10-bps cost through 2023.
+
+## Current Evidence
+
+The corrected run
+`lagged-evidence-6f964f5724b2-26cbca8871be-d173ca32c86f` completed and was
+independently reconstructed exactly across all three markets. It used only
+sealed features, scaler, centers, and `q_train`; return columns, choices,
+trades, and performance files were not accessed.
+
+Only `beta=log(4)` passed the frozen mechanism rule. Pooled whipsaws fell from
+`17` under arrival evidence to `6` under lagged evidence; US/DE/JP counts were
+`6→2`, `6→3`, and `5→1`. JP candidate-path switches fell `266→258`, and the
+lagged rule retained `11` confirmed-early events. These switch counts sum the
+eight positive-lambda candidate state paths; they are not trading turnover.
+This supports the mechanism only. A separately frozen study is still required
+before any P&L metric may be opened.
+
+## Fixed-Baseline Audit Already Closed
+
+The fixed pipeline, unknown-paper-parameter audit, and turnover correction are
+complete. They remain accepted evidence and are summarized in
+`research/STATUS.md`; they are no longer the active task.
