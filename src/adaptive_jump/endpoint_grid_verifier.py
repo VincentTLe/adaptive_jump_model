@@ -103,7 +103,10 @@ def verify_lineage(config: ResearchConfig, spec: EndpointGridSpec) -> _Lineage:
     if (
         sha256_file(parent_dir / "inventory.json") != spec.parent_inventory_sha256
         or parent_metadata.get("run_id") != spec.parent_run_id
-        or parent_metadata.get("experiment_id") != PARENT_EXPERIMENT_ID
+        or (
+            "experiment_id" in parent_metadata
+            and parent_metadata["experiment_id"] != PARENT_EXPERIMENT_ID
+        )
         or parent_metadata.get("config_sha256") != config.sha256
         or parent_metadata.get("data_manifest_sha256") != spec.data_manifest_sha256
     ):

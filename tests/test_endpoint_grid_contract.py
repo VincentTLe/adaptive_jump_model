@@ -238,7 +238,7 @@ def test_lineage_is_verified_before_diagnostics_are_used(
 
     parent_id = {"value": spec.parent_run_id}
     experiments = {
-        "parent": verifier.PARENT_EXPERIMENT_ID,
+        "parent": None,
         "calibration": verifier.CALIBRATION_EXPERIMENT_ID,
         "base": verifier.BASE_EXPERIMENT_ID,
     }
@@ -247,12 +247,14 @@ def test_lineage_is_verified_before_diagnostics_are_used(
         if path.name == "selection.json":
             return {"selected_grids": {"fixed_jm": [0.0], "hmm": [0]}}
         if path.parent.name == spec.parent_run_id:
-            return {
+            metadata = {
                 "run_id": spec.parent_run_id,
-                "experiment_id": experiments["parent"],
                 "config_sha256": config.sha256,
                 "data_manifest_sha256": spec.data_manifest_sha256,
             }
+            if experiments["parent"] is not None:
+                metadata["experiment_id"] = experiments["parent"]
+            return metadata
         if path.parent.name == spec.calibration_run_id:
             return {
                 "run_id": spec.calibration_run_id,
