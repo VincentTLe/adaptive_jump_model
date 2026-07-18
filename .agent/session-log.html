@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">97 session(s) · newest first · 2026-07-17 12:48 UTC</p>
+  <p class="sub">98 session(s) · newest first · 2026-07-18 07:39 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-18T07:39:17Z</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">Freeze, implement, execute, independently verify, and close out endpoint-grid-audit-001 to test whether one source-derived JM/HMM endpoint explains the fixed-v7 proxy non-replication.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>research/endpoint-grid-audit.toml (+ frozen protocol)</code></li><li><code>src/adaptive_jump/endpoint_grid_*.py (+ implementation, controls, replay, verifier)</code></li><li><code>tests/test_endpoint_grid_*.py (+ contract, artifact, parallel, decision coverage)</code></li><li><code>README.md and TASK.md (completed outcome)</code></li><li><code>research/STATUS.md and SCIENTIFIC_LEDGER.md (accepted evidence)</code></li><li><code>research/experiment_registry.jsonl (append-only lifecycle)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>US performance-free smoke passed, followed by forkserver US/DE/JP execution.</li><li>Run endpoint-grid-audit-05e9d08f619b-77b30ef98fa0-24ca06c297e8 completed; exact all-market base behavior parity passed and independent verification passed twice.</li><li>No post-2023 access; performance_claim_allowed=false and paper_replication_claim_allowed=false.</li><li>Primary J1-J0: US Sharpe -0.073932, turnover +0.124845, switches +4; DE Sharpe +0.079039, MDD -0.089177, turnover -0.124444, switches -4; JP all deltas zero. Primary K1-K0 all zero.</li><li>Full pytest: 448 passed, 57 expected sklearn warnings in 90.84s.</li><li>Ruff check and format check passed; registry jq validation and git diff --check passed.</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>e698cec</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner review. Do not expand either grid under this study. Any next mathematical or performance experiment requires a separately frozen question and must treat the through-2023 proxy as repeatedly inspected development data.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Endpoint grid work spans b3d28c7 through e698cec. JM 362.03867196751236 and HMM 1249 were derived from sealed pre-OOS calibration, not chosen from returns. Two pre-result attempts were invalidated before accounting/metrics for historical-parent schema and sealed-parser mismatches; the scientific spec hash never changed. Grid truncation is real, but the single permitted endpoint did not rescue all markets: D failed, JM endpoint concentration remained 6.70%/28.50%/5.08%, and finite optimum is unidentified. The 5% rule was descriptive only. Monitor, textbook, historical artifacts, and post-2023 data were untouched.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-17T12:47:47Z</span><span class="who">codex · gpt-5</span>
