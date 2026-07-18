@@ -578,6 +578,51 @@ The complete final-v3 paper grids remain unidentified.
   add a soft semi-Markov reversal surcharge. A diagonal feature metric is a
   lower-priority geometry test. None has been run or selected by P&L.
 
+### 2026-07-18 — `balanced-lagged-mechanism-001` (complete, not supported)
+
+- Frozen post-result candidate, motivated by the lagged upper-lambda
+  concentration and the large path/choice interaction: for \(i\ne j\),
+  \(C_t(i,j)=\lambda_0\bigl[1-(1-e^{-\beta})\tanh((L_{t-1}(i)-L_{t-1}(j))/q_{\rm train})\bigr]\),
+  zero diagonal, fixed matrix at \(t=0\). The pair-sum identity
+  \(C_t(i,j)+C_t(j,i)=2\lambda_0\) preserves the binary DP
+  hysteresis-interval width exactly, while signed lagged evidence still tilts
+  transition direction. \(\beta\in\{0,\log 4\}\) with \(\beta=0\) bit-exact
+  fixed JM; only `log4` is decision-bearing and there was no new beta search.
+- Three pre-run freezes were withdrawn before any market path: a stale
+  timestamp with an under-specified matched-category algorithm, an `h=20`
+  exposure credit hole, and a 65-hex transcription typo in the parent
+  inventory hash (corrected to the sealed value already recorded by both
+  accepted lagged specs). The final freeze is
+  `a7d9914ca1a8ab8660cd262c1f759c2e6b25972062536dc151492c8b92ff4cfc`; no
+  scientific rule changed across the last refreeze.
+- Two response-independent implementation corrections preceded the first
+  passing US smoke: the parent `run.json` is metadata outside the sealed
+  inventory (matching every prior study's source lock), and the
+  stale-vs-current refit probe now skips lambdas whose terminal loss row
+  lacks a sealed center, because a missing center saturates the signed
+  evidence at \(\pm 1\) and makes the arrival penalty parameter-independent
+  by construction. At the genuine second US refit, 6 of 8 event lambdas were
+  informative and all 6 were distinct (minimum distance `2.36e-3`).
+- US smoke passed: parent lagged parity and beta-zero parity exact over 558
+  cells each, formula, pair sum, and bounds exact through the second refit,
+  and prefix plus future-mutation invariance held.
+- Run `balanced-lagged-a7d9914ca1a8-643dd3e6d96f-17961bfd667f` completed with
+  33 own events and 13 matched anchors, passed pre- and post-completion
+  verification, and passed a separate CLI replay that reconstructed all 108
+  candidate paths across the three markets.
+- Result `not_supported`. Passed: mechanics, both nontriviality conditions,
+  anchor coverage after the response-independent `t+40` same-refit filter,
+  market switch guard, matched market whipsaw, latency by market, pooled
+  latency retention `0.875`, and both lock-in guards with zero own or matched
+  unconfirmed-persistent responses. Failed: own-market whipsaw (JP 2 versus
+  1), own pooled whipsaw (7 versus 6, not strictly lower), and matched pooled
+  whipsaw (5 versus 5, not strictly lower).
+- Interpretation stays mechanism-level: preserving the fixed pair-average
+  transition scale retained most early confirmations and produced no lock-in,
+  but it did not reduce discount-attributable reversals on this repeatedly
+  inspected sample. No P&L, provider access, post-2023 data, or monthly
+  selection was touched, and no P&L study is authorized either way.
+
 ## Claims that remain open
 
 - No theorem yet bounds detection delay or false-switch probability for the

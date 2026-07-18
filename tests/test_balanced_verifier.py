@@ -354,6 +354,7 @@ def synthetic_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
             "refit_convention_min_stale_distance": 1.0,
             "refit_convention_max_stale_distance": 2.0,
             "refit_convention_lambdas_checked": 1,
+            "refit_convention_informative_lambdas": 1,
             "refit_convention_distinct_lambdas": 1,
             "refit_convention_max_abs_error": 0.0,
         }
@@ -619,6 +620,7 @@ def test_smoke_coverage_requires_full_grid_and_every_stale_lambda() -> None:
         "actual_formula_lambda_values_checked": 2,
         "actual_formula_directed_cells_checked": 160,
         "refit_convention_lambdas_checked": 1,
+        "refit_convention_informative_lambdas": 1,
         "refit_convention_distinct_lambdas": 1,
         "refit_convention_min_stale_distance": 1.0,
         "refit_convention_max_stale_distance": 2.0,
@@ -633,6 +635,10 @@ def test_smoke_coverage_requires_full_grid_and_every_stale_lambda() -> None:
     smoke["actual_formula_lambda_values_checked"] += 1
     smoke["refit_convention_distinct_lambdas"] = 0
     assert not _smoke_coverage_exact(smoke, spec)
+    smoke["refit_convention_distinct_lambdas"] = 1
+    smoke["refit_convention_informative_lambdas"] = 0
+    assert not _smoke_coverage_exact(smoke, spec)
+    smoke["refit_convention_informative_lambdas"] = 1
 
 
 def test_valid_synthetic_artifact_verifies(synthetic_run) -> None:

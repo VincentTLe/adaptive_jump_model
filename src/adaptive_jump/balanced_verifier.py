@@ -87,6 +87,7 @@ def _smoke_coverage_exact(smoke: dict[str, Any], spec: BalancedSpec) -> bool:
         "actual_formula_lambda_values_checked",
         "actual_formula_directed_cells_checked",
         "refit_convention_lambdas_checked",
+        "refit_convention_informative_lambdas",
         "refit_convention_distinct_lambdas",
     )
     if any(type(smoke.get(key)) is not int for key in integer_fields):
@@ -106,8 +107,7 @@ def _smoke_coverage_exact(smoke: dict[str, Any], spec: BalancedSpec) -> bool:
         and generated == max(prefix, formula_dates)
         and smoke["parent_lagged_state_cells_checked"]
         == generated_cells * len(spec.betas)
-        and smoke["beta_zero_state_cells_checked"]
-        == generated_cells * len(spec.rules)
+        and smoke["beta_zero_state_cells_checked"] == generated_cells * len(spec.rules)
         and smoke["short_long_prefix_state_cells_checked"]
         == prefix_cells * len(spec.rules) * len(spec.betas)
         and smoke["future_mutation_prefix_state_cells_checked"]
@@ -117,7 +117,11 @@ def _smoke_coverage_exact(smoke: dict[str, Any], spec: BalancedSpec) -> bool:
         and smoke["actual_formula_directed_cells_checked"]
         == formula_dates * lambda_count * 2
         and smoke["refit_convention_lambdas_checked"] == len(spec.event_lambdas)
-        and smoke["refit_convention_distinct_lambdas"] == len(spec.event_lambdas)
+        and 1
+        <= smoke["refit_convention_informative_lambdas"]
+        <= len(spec.event_lambdas)
+        and smoke["refit_convention_distinct_lambdas"]
+        == smoke["refit_convention_informative_lambdas"]
         and minimum_stale > spec.numerical_tolerance
         and maximum_stale >= minimum_stale
     )

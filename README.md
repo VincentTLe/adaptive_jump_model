@@ -278,6 +278,11 @@ packages are intentionally not preinstalled.
    null at the primary delay, and no performance claim was made.
 10. The post-result lagged 2x2 attribution is complete. It found a large
     path-choice interaction and does not authorize a winner or causal claim.
+11. The pair-balanced lagged mechanism study is complete and not supported:
+    preserving the fixed pair-average transition scale retained latency
+    (`0.875` pooled) with zero lock-in but did not reduce own or matched
+    whipsaws (JP `2` versus `1`, pooled `7` versus `6`, matched `5` versus
+    `5`).
 
 Raw/processed data belongs under `data/`; run outputs belong under `artifacts/`.
 Both locations are ignored by Git. A valid run carries its config and data

@@ -3,10 +3,11 @@
 ## Identity
 
 - `task_id`: `balanced-lagged-mechanism-001`
-- `status`: `FROZEN / NOT RUN`
+- `status`: `EXPERIMENT_COMPLETE / NOT SUPPORTED`
 - `frozen_spec`: `research/balanced-lagged-mechanism-001.toml`
 - `frozen_spec_sha256`:
-  `15744d8edf032c06dd62ab2bcbccdb308cbab0fbd6927279f8b6180e8392a89b`
+  `a7d9914ca1a8ab8660cd262c1f759c2e6b25972062536dc151492c8b92ff4cfc`
+- `run_id`: `balanced-lagged-a7d9914ca1a8-643dd3e6d96f-17961bfd667f`
 - `claim_class`: `EXPLORATORY / POST_RESULT / PERFORMANCE_FREE`
 - `data_cutoff`: `2023-12-31`
 - performance, paper-replication, and new-model claims: forbidden
@@ -27,50 +28,47 @@ h_t(i,j) = tanh((L_(t-1)(i) - L_(t-1)(j)) / q_train)
 C_t(i,j) = lambda0 * (1 - alpha_beta * h_t(i,j))
 ```
 
-The diagonal is zero and `t=0` uses the fixed matrix. The exact frozen grid is:
+The diagonal is zero, `t=0` uses the fixed matrix, and
+`C_t(i,j) + C_t(j,i) = 2 * lambda0` preserves the binary DP
+hysteresis-interval width exactly. The frozen grid was
+`lambda = [0, 5, 15, 35, 70, 150, 300, 600, 1200]`, `beta = [0, log(4)]`,
+with `beta=0` an exact fixed-JM nesting oracle and `log4` the only decision
+beta.
 
-```text
-lambda = [0, 5, 15, 35, 70, 150, 300, 600, 1200]
-beta = [0, log(4)]
-```
+## Result: not supported
 
-No grid expansion, CV, monthly selection, refit, returns, trades, P&L, provider
-access, or post-2023 data is allowed. The sealed v7 centers, scalers, and
-training-prefix `q_train` are reused exactly.
+The run completed, passed pre- and post-completion verification, and passed a
+separate CLI replay reconstructing all 108 candidate paths. Of the frozen
+decision conditions:
 
-## Why This Formula
+- PASSED: mechanical prerequisites, nontriviality versus fixed and versus
+  sealed lagged, anchor coverage after the response-independent `t+40` filter,
+  market switch guard, matched market whipsaw, latency by market, pooled
+  latency retention `0.875 >= 0.5`, and both lock-in guards (zero own or
+  matched unconfirmed-persistent responses).
+- FAILED: own-market whipsaw (JP balanced 2 versus lagged 1), own pooled
+  whipsaw (7 versus 6, not strictly lower), matched pooled whipsaw (5 versus
+  5, not strictly lower).
 
-The one-sided lagged penalty lowers one directed cost and leaves the reverse at
-`lambda`, so its symmetric switch component can fall below the fixed-JM scale.
-The balanced formula instead enforces:
+Preserving the pair-average scale kept most early confirmations and created
+no lock-in, but it did not reduce discount-attributable reversals on this
+sample. Support would not have authorized a P&L study; non-support authorizes
+none either.
 
-```text
-C_t(i,j) + C_t(j,i) = 2 * lambda0
-```
+## Execution record
 
-Evidence therefore tilts direction without mechanically lowering the pair
-average. `beta=0` must remain bit-exact fixed JM; the objective remains an
-exact `O(T*K^2)` dynamic program.
+1. Three earlier freezes were withdrawn before any market path (stale
+   timestamp / matched-category gap, `h=20` exposure credit hole, and a
+   65-hex transcription typo in the parent inventory hash). The final freeze
+   corrected only that typo plus the timestamp.
+2. Two implementation corrections preceded the first passing US smoke, both
+   response-independent: parent `run.json` is metadata outside the sealed
+   inventory, and the stale-vs-current refit probe skips lambdas whose
+   terminal loss row lacks a sealed center (saturated evidence is
+   parameter-independent by construction; 6 of 8 lambdas were informative and
+   all 6 distinct).
+3. US smoke passed through a genuine second refit; full US/DE/JP ran in three
+   forkserver workers; the independent verifier and CLI replay both passed.
 
-## Frozen Decision
-
-`log4`, inherited from the performance-free lagged study, is the only decision
-beta; `beta=0` is an exact nesting oracle. The matched denominator is the
-regenerated lagged event set. Support requires exact mechanics, nontrivial paths,
-no market-level switch increase, fewer own and matched whipsaws, no increase in
-own or matched unconfirmed lock-in, at least one retained early confirmation in
-each market, and at least 50% pooled retention. The 50% threshold is
-preregistered but uncalibrated.
-
-Support is mechanism behavior only and cannot authorize another P&L study on
-this repeatedly inspected US/DE/JP sample.
-
-## Execution
-
-1. Implement formula, strict source locks, mechanics, events, and independent
-   verifier without changing historical modules.
-2. Pass synthetic formula/toy/brute-force/prefix tests.
-3. Run a no-P&L US smoke through a genuine second refit.
-4. Run US/DE/JP candidate paths in three one-thread processes.
-5. Replay every path/event/decision, inspect concrete loss→penalty→state dates,
-   and record either support or a valid negative result.
+Any next experiment requires a separately frozen question and must treat the
+through-2023 US/DE/JP sample as repeatedly inspected development data.

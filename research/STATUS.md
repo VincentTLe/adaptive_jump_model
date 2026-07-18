@@ -14,7 +14,10 @@ same three markets prevent a confirmation claim. The fixed-model endpoint audit
 confirmed that the JM grid is binding, but its single source-derived extension
 did not rescue the paper ordering. Post-result attribution shows that lagged
 P&L differences cannot be read as a standalone improvement in the state path:
-the monthly selector response and path-choice interaction are material.
+the monthly selector response and path-choice interaction are material. A
+pair-balanced variant that preserves the fixed pair-average transition scale
+kept most early confirmations without creating lock-in but did not reduce own
+or matched whipsaws, so it is not supported.
 
 ## Accepted evidence
 
@@ -28,6 +31,7 @@ the monthly selector response and path-choice interaction are material.
 | Lagged P&L | `lagged-evidence-performance-001` / `lagged-pnl-bad599271e2d-643dd3e6d96f-be70588256b2` | Frozen development rule supported; Sharpe delta positive in 3/3 markets, but JP whipsaw and adaptive endpoint concentration remain |
 | Lagged attribution | `lagged-selection-attribution-001` / `lagged-attribution-73a5995c487e-52854fc3c22a-197915169632` | Post-result mechanical diagnostic complete; choice schedule dominates mean Sharpe Shapley allocation, interaction is large, and no causal/performance claim is allowed |
 | Endpoint-grid audit | `endpoint-grid-audit-001` / `endpoint-grid-audit-05e9d08f619b-77b30ef98fa0-24ca06c297e8` | JM endpoint is binding but does not rescue all markets; HMM endpoint is null at the primary delay |
+| Balanced mechanism | `balanced-lagged-mechanism-001` / `balanced-lagged-a7d9914ca1a8-643dd3e6d96f-17961bfd667f` | Pair balance preserved latency (0.875 retention) with zero lock-in but did not reduce whipsaws; not supported |
 
 Invalidated runs remain preserved for provenance, but they are not accepted
 evidence. In particular, the `2207...` and `d6fe...` fixed-audit runs and the

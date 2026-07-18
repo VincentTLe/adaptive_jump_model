@@ -19,7 +19,7 @@ from adaptive_jump.models import FEATURE_COLUMNS
 from adaptive_jump.separation_analysis import MarketInputs
 from adaptive_jump.tv_jump import lagged_evidence_penalty_seq
 
-SPEC_SHA256 = "611301f9477c538b26374ce80425d8e7b684b0d531d450a786e6c8222ffda8ba"
+SPEC_SHA256 = "a7d9914ca1a8ab8660cd262c1f759c2e6b25972062536dc151492c8b92ff4cfc"
 MARKETS = ("us", "de", "jp")
 BETAS = (0.0, math.log(4.0))
 DECISION_BETA = math.log(4.0)

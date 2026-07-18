@@ -1,6 +1,6 @@
 schema_version = 1
 experiment_id = "balanced-lagged-mechanism-001"
-frozen_at_utc = "2026-07-18T11:30:52Z"
+frozen_at_utc = "2026-07-18T12:57:00Z"
 claim_class = "EXPLORATORY"
 stage = "DEVELOPMENT_SAMPLE_PERFORMANCE_FREE_MECHANISM_STUDY"
 question = "Does a pair-balanced signed lagged penalty preserve the fixed-JM binary hysteresis width while reducing lagged discount-attributable reversals without converting them into unconfirmed persistent states?"
@@ -33,7 +33,7 @@ allowed_market_files = ["features.csv", "jm-states.csv"]
 experiment_id = "lagged-evidence-mechanism-001"
 spec_sha256 = "6f964f5724b23cffff43c37ca050af1dd7eb37a3c7e7588462a86571e8825ed1"
 run_id = "lagged-evidence-6f964f5724b2-26cbca8871be-d173ca32c86f"
-run_inventory_sha256 = "643dd3e6d96ffd9035de2012b6e1ac84bb0b3fad1f80cfb119989d4be88f094c8"
+run_inventory_sha256 = "643dd3e6d96ffd903de2012b6e1ac84bb0b3fad1f80cfb119989d4be88f094c8"
 allowed_market_files = [
   "candidate-states-beta-0.csv",
   "candidate-states-beta-log4.csv",

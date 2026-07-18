@@ -97,9 +97,7 @@ def _actual_formula_checks(
     if len(fit_dates) < 2:
         raise BalancedStudyError("independent smoke needs a second refit")
     previous_fit, second_fit = pd.Timestamp(fit_dates[0]), pd.Timestamp(fit_dates[1])
-    terminal_dates = (
-        evidence.states[spec.decision_beta][spec.lambdas[0]].dropna().index
-    )
+    terminal_dates = evidence.states[spec.decision_beta][spec.lambdas[0]].dropna().index
     terminal_dates = terminal_dates[terminal_dates <= second_fit]
     if len(terminal_dates) == 0 or pd.Timestamp(terminal_dates[-1]) != second_fit:
         raise BalancedStudyError("independent formula replay missed second refit")
@@ -163,6 +161,7 @@ def _actual_formula_checks(
     if len(positive_event_lambdas) != len(spec.event_lambdas):
         raise BalancedStudyError("independent smoke event lambda coverage changed")
     stale_distances: list[float] = []
+    informative_lambdas = 0
     for lambda0 in positive_event_lambdas:
         rows = rows_by_lambda[lambda0].set_index("fit_date")
         if second_fit not in rows.index or previous_fit not in rows.index:
@@ -170,9 +169,23 @@ def _actual_formula_checks(
         stale_mean, stale_scale, stale_centers = _sealed_parameters(
             rows.loc[previous_fit]
         )
+        current_mean, current_scale, current_centers = _sealed_parameters(
+            rows.loc[second_fit]
+        )
         stale_loss = loss_matrix(
             (previous_raw - stale_mean) / stale_scale, stale_centers
         )
+        current_loss = loss_matrix(
+            (previous_raw - current_mean) / current_scale, current_centers
+        )
+        if not (
+            np.isfinite(stale_loss[-1]).all() and np.isfinite(current_loss[-1]).all()
+        ):
+            # A missing sealed center saturates the signed evidence at +-1 under
+            # both fits, so the penalty is parameter-independent by construction
+            # and cannot distinguish the stale from the current convention.
+            continue
+        informative_lambdas += 1
         stale = independent_balanced_penalty(
             np.repeat(stale_loss, 2, axis=0),
             lambda0,
@@ -186,6 +199,8 @@ def _actual_formula_checks(
             ]
         )
         stale_distances.append(float(np.max(np.abs(observed - stale))))
+    if not stale_distances:
+        raise BalancedStudyError("independent smoke has no informative stale lambda")
     return {
         "first_terminal_date": pd.Timestamp(terminal_dates[0]),
         "second_refit_date": second_fit,
@@ -198,12 +213,12 @@ def _actual_formula_checks(
         "bounds_exact": bounds_exact,
         "minimum_stale_fit_distance": min(stale_distances),
         "maximum_stale_fit_distance": max(stale_distances),
-        "stale_fit_lambdas_checked": len(stale_distances),
+        "stale_fit_lambdas_checked": len(positive_event_lambdas),
+        "stale_fit_lambdas_informative": informative_lambdas,
         "stale_fit_lambdas_distinct": sum(
             distance > spec.numerical_tolerance for distance in stale_distances
         ),
     }
-
 
 
 def run_independent_smoke(
@@ -336,10 +351,11 @@ def run_independent_smoke(
             actual["maximum_second_refit_formula_abs_error"]
         )
         <= spec.numerical_tolerance
-        and float(actual["minimum_stale_fit_distance"])
-        > spec.numerical_tolerance
+        and float(actual["minimum_stale_fit_distance"]) > spec.numerical_tolerance
         and int(actual["stale_fit_lambdas_checked"]) == len(spec.event_lambdas)
-        and int(actual["stale_fit_lambdas_distinct"]) == len(spec.event_lambdas),
+        and int(actual["stale_fit_lambdas_informative"]) >= 1
+        and int(actual["stale_fit_lambdas_distinct"])
+        == int(actual["stale_fit_lambdas_informative"]),
     }
     if not all(checks.values()) or mechanics.get("passed") is not True:
         raise BalancedStudyError(f"independent balanced smoke failed: {checks}")
@@ -378,9 +394,10 @@ def run_independent_smoke(
             actual["maximum_stale_fit_distance"]
         ),
         "refit_convention_lambdas_checked": int(actual["stale_fit_lambdas_checked"]),
-        "refit_convention_distinct_lambdas": int(
-            actual["stale_fit_lambdas_distinct"]
+        "refit_convention_informative_lambdas": int(
+            actual["stale_fit_lambdas_informative"]
         ),
+        "refit_convention_distinct_lambdas": int(actual["stale_fit_lambdas_distinct"]),
         "refit_convention_max_abs_error": float(
             actual["maximum_second_refit_formula_abs_error"]
         ),

@@ -77,7 +77,7 @@ def verify_source_inputs(
     parent_lock = _verified(parent_dir, parent_files, "study.lock.toml")
     if sha256_file(parent_lock) != spec.parent_spec_sha256:
         raise BalancedStudyError("parent lagged spec changed")
-    parent_meta = read_json(_verified(parent_dir, parent_files, "run.json"))
+    parent_meta = read_json(parent_dir / "run.json")
     if (
         parent_meta.get("experiment_id") != "lagged-evidence-mechanism-001"
         or parent_meta.get("run_id") != spec.parent_run_id

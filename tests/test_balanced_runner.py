@@ -281,6 +281,7 @@ def test_actual_formula_rebuild_uses_current_fit_at_second_refit(spec):
     assert result["minimum_stale_fit_distance"] > mini.numerical_tolerance
     assert result["maximum_stale_fit_distance"] >= result["minimum_stale_fit_distance"]
     assert result["stale_fit_lambdas_checked"] == 2
+    assert result["stale_fit_lambdas_informative"] == 2
     assert result["stale_fit_lambdas_distinct"] == 2
 
     evidence.c01[mini.decision_beta].loc[dates[4], 0.0] = 1.0
@@ -359,6 +360,7 @@ def test_us_smoke_uses_full_generated_horizon_and_strict_stale_gate(spec, monkey
         "minimum_stale_fit_distance": 1.0,
         "maximum_stale_fit_distance": 2.0,
         "stale_fit_lambdas_checked": 1,
+        "stale_fit_lambdas_informative": 1,
         "stale_fit_lambdas_distinct": 1,
     }
     sources = SimpleNamespace(
@@ -401,6 +403,7 @@ def test_us_smoke_uses_full_generated_horizon_and_strict_stale_gate(spec, monkey
     assert result["future_mutation_prefix_state_cells_checked"] == 20 * 2 * 2 * 2
     assert result["actual_formula_lambda_values_checked"] == 2
     assert result["refit_convention_lambdas_checked"] == 1
+    assert result["refit_convention_informative_lambdas"] == 1
     assert result["refit_convention_distinct_lambdas"] == 1
 
     actual["minimum_stale_fit_distance"] = 0.0
@@ -410,3 +413,8 @@ def test_us_smoke_uses_full_generated_horizon_and_strict_stale_gate(spec, monkey
     actual["stale_fit_lambdas_distinct"] = 0
     with pytest.raises(BalancedStudyError, match="US balanced smoke failed"):
         run_us_smoke(config, mini)
+    actual["stale_fit_lambdas_distinct"] = 1
+    actual["stale_fit_lambdas_informative"] = 0
+    with pytest.raises(BalancedStudyError, match="US balanced smoke failed"):
+        run_us_smoke(config, mini)
+    actual["stale_fit_lambdas_informative"] = 1
