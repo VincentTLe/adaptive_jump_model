@@ -10,6 +10,7 @@ from adaptive_jump.tv_jump import (
     TVJumpModel,
     dp_tv,
     evidence_penalty_seq,
+    lagged_evidence_penalty_seq,
     lam_to_penalty_seq,
     loss_matrix,
     robust_loss_scale,
@@ -146,6 +147,106 @@ def test_evidence_penalty_requires_finite_state_loss_in_each_row():
 
     with pytest.raises(ValueError, match="each loss_mx row"):
         evidence_penalty_seq(loss, lambda0=1.0, beta=np.log(2.0), q_train=1.0)
+
+
+def test_lagged_evidence_penalty_uses_previous_day_evidence_and_fixed_t0():
+    loss = np.array([[0.0, 10.0], [2.0, 0.0], [0.0, 0.2]])
+    lambda0 = 4.0
+    beta = np.log(4.0)
+
+    penalty = lagged_evidence_penalty_seq(loss, lambda0, beta, q_train=1.0)
+    fixed = lam_to_penalty_seq(np.full(len(loss), lambda0), n_c=2)
+
+    assert np.array_equal(penalty[0], fixed[0])
+    assert penalty[1, 0, 1] == lambda0
+    assert penalty[1, 1, 0] == pytest.approx(lambda0 * np.exp(-beta * np.tanh(10.0)))
+    assert penalty[2, 0, 1] == pytest.approx(lambda0 * np.exp(-beta * np.tanh(2.0)))
+    assert penalty[2, 1, 0] == lambda0
+
+
+def test_lagged_evidence_penalty_beta_zero_is_exact_fixed_penalty():
+    loss = np.random.default_rng(29).uniform(0.0, 5.0, size=(12, 3))
+    q_train = robust_loss_scale(loss[:8])
+
+    actual = lagged_evidence_penalty_seq(loss, lambda0=5.0, beta=0.0, q_train=q_train)
+    expected = lam_to_penalty_seq(np.full(len(loss), 5.0), n_c=3)
+
+    assert np.array_equal(actual, expected)
+
+
+def test_lagged_evidence_penalty_is_scale_invariant():
+    loss = np.random.default_rng(31).uniform(0.0, 5.0, size=(12, 2))
+    q_train = robust_loss_scale(loss[:8])
+    beta = np.log(4.0)
+
+    unscaled = lagged_evidence_penalty_seq(loss, 5.0, beta, q_train)
+    scaled = lagged_evidence_penalty_seq(loss * 8.0, 5.0, beta, q_train * 8.0)
+
+    assert np.array_equal(unscaled, scaled)
+
+
+@pytest.mark.parametrize("beta", [0.0, np.log(2.0), np.log(4.0)])
+def test_lagged_evidence_penalty_dp_matches_brute_force_objective(beta):
+    loss = np.random.default_rng(37).uniform(0.0, 5.0, size=(6, 2))
+    q_train = robust_loss_scale(loss[:4])
+    penalty = lagged_evidence_penalty_seq(loss, lambda0=3.0, beta=beta, q_train=q_train)
+
+    assign, value = dp_tv(loss, penalty)
+
+    assert value == pytest.approx(brute_force_tv(loss, penalty))
+    assert path_cost_tv(loss, penalty, assign) == pytest.approx(value)
+
+
+def test_lagged_evidence_penalty_online_values_are_prefix_invariant():
+    prefix_loss = np.array([[0.0, 4.0], [0.2, 1.0], [2.0, 0.1], [0.4, 0.6], [3.0, 0.0]])
+    full_loss = np.vstack([prefix_loss, [[1e6, 0.0], [0.0, 1e6]]])
+    q_train = robust_loss_scale(prefix_loss[:3])
+    beta = np.log(4.0)
+    prefix_penalty = lagged_evidence_penalty_seq(prefix_loss, 4.0, beta, q_train)
+    full_penalty = lagged_evidence_penalty_seq(full_loss, 4.0, beta, q_train)
+
+    prefix_values = dp_tv(prefix_loss, prefix_penalty, return_value_mx=True)
+    full_values = dp_tv(full_loss, full_penalty, return_value_mx=True)
+
+    assert np.array_equal(prefix_penalty, full_penalty[: len(prefix_loss)])
+    assert np.array_equal(prefix_values, full_values[: len(prefix_loss)])
+
+
+def test_lagged_evidence_penalty_filters_isolated_and_alternating_shocks():
+    isolated = np.array([[0.0, 8.0], [0.0, 8.0], [2.0, 0.0], [0.0, 2.0], [0.0, 8.0]])
+    alternating = np.array([[0.0, 8.0], [0.0, 8.0]] + [[2.0, 0.0], [0.0, 2.0]] * 5)
+    expected_arrival = [
+        np.array([0, 0, 1, 0, 0]),
+        np.array([0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]),
+    ]
+
+    for loss, expected in zip([isolated, alternating], expected_arrival, strict=True):
+        fixed = lagged_evidence_penalty_seq(loss, 4.0, 0.0, 1.0)
+        arrival = evidence_penalty_seq(loss, 4.0, np.log(4.0), 1.0)
+        lagged = lagged_evidence_penalty_seq(loss, 4.0, np.log(4.0), 1.0)
+
+        fixed_online = dp_tv(loss, fixed, return_value_mx=True).argmin(axis=1)
+        arrival_online = dp_tv(loss, arrival, return_value_mx=True).argmin(axis=1)
+        lagged_online = dp_tv(loss, lagged, return_value_mx=True).argmin(axis=1)
+
+        assert np.array_equal(fixed_online, np.zeros(len(loss), dtype=int))
+        assert np.array_equal(arrival_online, expected)
+        assert np.array_equal(lagged_online, np.zeros(len(loss), dtype=int))
+
+
+def test_lagged_evidence_penalty_retains_latency_gain_on_persistent_shift():
+    loss = np.array([[0.0, 8.0], [0.0, 8.0]] + [[1.0, 0.0]] * 6)
+    fixed = lagged_evidence_penalty_seq(loss, 4.0, 0.0, 1.0)
+    arrival = evidence_penalty_seq(loss, 4.0, np.log(4.0), 1.0)
+    lagged = lagged_evidence_penalty_seq(loss, 4.0, np.log(4.0), 1.0)
+
+    fixed_online = dp_tv(loss, fixed, return_value_mx=True).argmin(axis=1)
+    arrival_online = dp_tv(loss, arrival, return_value_mx=True).argmin(axis=1)
+    lagged_online = dp_tv(loss, lagged, return_value_mx=True).argmin(axis=1)
+
+    assert np.flatnonzero(np.diff(arrival_online))[0] + 1 == 3
+    assert np.flatnonzero(np.diff(lagged_online))[0] + 1 == 4
+    assert np.flatnonzero(np.diff(fixed_online))[0] + 1 == 6
 
 
 @pytest.mark.parametrize("beta", [0.0, np.log(2.0), np.log(4.0)])

@@ -136,6 +136,35 @@ def evidence_penalty_seq(
     return penalty
 
 
+def lagged_evidence_penalty_seq(
+    loss_mx: np.ndarray,
+    lambda0: float,
+    beta: float,
+    q_train: float,
+) -> np.ndarray:
+    r"""Build transition penalties at t from the state-loss gap at t-1.
+
+    The current loss therefore enters the DP objective once, through
+    ``L_t(s_t)``. ``penalty_seq[0]`` is the fixed-lambda matrix because no
+    lagged observation exists and the DP never reads an incoming transition at
+    t=0.
+    """
+    loss = np.asarray(loss_mx, dtype=float)
+    if loss.ndim != 2 or loss.shape[0] == 0 or loss.shape[1] < 2:
+        raise ValueError(
+            "loss_mx must be a non-empty 2-d matrix with at least two states"
+        )
+    if np.isneginf(loss).any():
+        raise ValueError("loss_mx must not contain negative infinity")
+    finite = np.isfinite(replace_nan_by_inf(loss))
+    if not finite.any(axis=1).all():
+        raise ValueError("each loss_mx row must contain at least one finite state loss")
+
+    lagged_loss = np.zeros_like(loss)
+    lagged_loss[1:] = loss[:-1]
+    return evidence_penalty_seq(lagged_loss, lambda0, beta, q_train)
+
+
 def dp_tv(loss_mx: np.ndarray, penalty_seq: np.ndarray, return_value_mx: bool = False):
     """Exact DP for a time-varying penalty.
 
