@@ -143,6 +143,46 @@ def test_loader_rejects_contract_contradictions(
         verifier.load_endpoint_grid_spec(changed, config)
 
 
+def test_market_source_uses_sealed_witness_producer_csv_semantics(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = load_config(ROOT / "research.toml")
+    parent = tmp_path / "parent"
+    market_dir = parent / "us"
+    market_dir.mkdir(parents=True)
+    dates = pd.date_range("2020-01-02", periods=2)
+    features = pd.DataFrame(
+        {
+            "date": dates,
+            "equity_simple": [0.0, 0.01],
+            "cash_return": [0.0, 0.0],
+            "excess_return": [0.0, 0.01],
+            "dd_10": [0.0, 0.1],
+            "sortino_20": [0.0, 0.2],
+            "sortino_60": [0.0, 0.3],
+        }
+    )
+    raw_hmm = pd.DataFrame({"date": dates, "hmm_state": [0.0, 1.0]})
+    calls: list[dict[str, object]] = []
+
+    def fake_read_csv(path: Path, **kwargs):
+        calls.append(dict(kwargs))
+        return (features if path.name == "features.csv" else raw_hmm).copy()
+
+    monkeypatch.setattr(verifier, "_verify_parent_file", lambda *_args: None)
+    monkeypatch.setattr(verifier.pd, "read_csv", fake_read_csv)
+    monkeypatch.setattr(
+        verifier, "effective_oos_start", lambda *_args, **_kwargs: dates[-1].date()
+    )
+
+    source = verifier.load_market_source(
+        parent, "us", config, SimpleNamespace(parent_dir=parent)
+    )
+
+    assert source.frame["date"].tolist() == dates.tolist()
+    assert calls == [{}, {}]
+
+
 def test_endpoints_are_derived_from_last_eligible_and_first_invalid() -> None:
     endpoints = verifier.derive_endpoints(_diagnostics())
 

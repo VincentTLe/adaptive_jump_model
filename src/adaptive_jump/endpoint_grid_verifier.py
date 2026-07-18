@@ -187,7 +187,7 @@ def load_market_source(
     raw_hmm_path = parent_dir / market / "hmm-states.csv"
     _verify_parent_file(parent_dir, feature_path)
     _verify_parent_file(parent_dir, raw_hmm_path)
-    frame = pd.read_csv(feature_path, float_precision="round_trip")
+    frame = pd.read_csv(feature_path)
     required = {
         "date",
         "equity_simple",
@@ -205,7 +205,7 @@ def load_market_source(
     ):
         raise EndpointGridError(f"{market}: feature dates are invalid")
     dates = pd.DatetimeIndex(frame["date"], name="date")
-    raw_frame = pd.read_csv(raw_hmm_path, float_precision="round_trip")
+    raw_frame = pd.read_csv(raw_hmm_path)
     if tuple(raw_frame.columns) != ("date", "hmm_state"):
         raise EndpointGridError(f"{market}: raw HMM schema changed")
     raw_hmm = pd.Series(

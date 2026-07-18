@@ -52,8 +52,11 @@ def _real_forkserver_tasks(tmp_path: Path):
         config.jm_protocol,
         lambda_grid=(*jm_grid, endpoints.jm_endpoint),
     )
+    producer_source = input_verifier.load_market_source(
+        parent_dir, "us", config, lineage
+    )
     current_fit = fixed_jm_states(
-        frame.loc[:, ("date", *FEATURE_COLUMNS, "excess_return")],
+        producer_source.frame.loc[:, ("date", *FEATURE_COLUMNS, "excess_return")],
         config.model_protocol,
         protocol,
     )
