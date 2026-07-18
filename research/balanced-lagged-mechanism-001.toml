@@ -1,0 +1,209 @@
+schema_version = 1
+experiment_id = "balanced-lagged-mechanism-001"
+frozen_at_utc = "2026-07-18T11:30:52Z"
+claim_class = "EXPLORATORY"
+stage = "DEVELOPMENT_SAMPLE_PERFORMANCE_FREE_MECHANISM_STUDY"
+question = "Does a pair-balanced signed lagged penalty preserve the fixed-JM binary hysteresis width while reducing lagged discount-attributable reversals without converting them into unconfirmed persistent states?"
+hypothesis = "Keeping C_t(i,j)+C_t(j,i)=2*lambda preserves the binary dynamic program's hysteresis-interval width at 2*lambda, while signed lagged evidence can still tilt transition direction."
+performance_claim_allowed = false
+paper_replication_claim_allowed = false
+new_model_claim_allowed = false
+post_2023_access = false
+provider_access = false
+monthly_selection_allowed = false
+result_driven_changes = [
+  "The candidate was proposed after lagged-evidence performance and 2x2 attribution were known; this is explicitly post-result development work.",
+  "The observed upper-lambda concentration and large state-path/choice interaction motivated preserving the pair-average transition scale exactly.",
+  "Only beta=log(4), inherited from the completed lagged mechanism, is evaluated; beta=0 is an exact nesting oracle and there is no new beta search.",
+  "Training normalization and two-observation confirmation remain unrun alternatives and cannot rescue this study.",
+  "A pre-run scientific audit required a response-independent t+40 matched-anchor censor and exactly 20 post-entry dates so late balanced entries cannot earn persistence or latency credit with shorter exposure.",
+]
+
+[fixed_source]
+experiment_id = "fixed-baselines-001-v7"
+config_path = "research.toml"
+config_sha256 = "8adb330565d64f8ed6edd986f0422dbba72585eda4efd34b0c1b41b95450d81b"
+run_id = "fixed-baselines-8adb330565d6-3636939b525d-e9614112b234"
+run_inventory_sha256 = "08e42044c25ef80e92f4b565034652a6b87fe94de0e9122eee1a418395239d55"
+data_manifest_sha256 = "3636939b525d604c5c4180d7e3abb6192b53b81a068f009ad6ca83a945e53a84"
+data_cutoff = "2023-12-31"
+allowed_market_files = ["features.csv", "jm-states.csv"]
+
+[parent_lagged_source]
+experiment_id = "lagged-evidence-mechanism-001"
+spec_sha256 = "6f964f5724b23cffff43c37ca050af1dd7eb37a3c7e7588462a86571e8825ed1"
+run_id = "lagged-evidence-6f964f5724b2-26cbca8871be-d173ca32c86f"
+run_inventory_sha256 = "643dd3e6d96ffd9035de2012b6e1ac84bb0b3fad1f80cfb119989d4be88f094c8"
+allowed_market_files = [
+  "candidate-states-beta-0.csv",
+  "candidate-states-beta-log4.csv",
+  "refits-and-scales.csv"
+]
+forbidden_files = [
+  "path-behavior.csv",
+  "discount-events.csv",
+  "mechanism-summary.csv",
+  "dated-audit.csv",
+  "conclusion.json",
+  "summary.csv",
+  "choices.csv",
+  "selected-timeline.csv",
+  "trades.csv"
+]
+
+[scope]
+markets = ["us", "de", "jp"]
+evaluation_start = { us = "2007-12-04", de = "2008-01-03", jp = "2009-05-07" }
+evaluation_end = "last available candidate date no later than 2023-12-31"
+features = ["dd_10", "sortino_20", "sortino_60"]
+fit_window_observations = 3000
+jm_refit_months = [1, 7]
+performance_files_accessed = false
+return_columns_accessed = false
+
+[penalty]
+objective = "sum_t L_t(s_t) + sum_t>=1 C_t(s_(t-1),s_t)"
+alpha = "1-exp(-beta)"
+signed_evidence = "h_t(i,j)=tanh((L_(t-1)(i)-L_(t-1)(j))/q_train)"
+formula = "lambda0*(1-(1-exp(-beta))*h_t(i,j)) for i!=j; zero diagonal"
+initial_penalty = "fixed-lambda matrix at t=0; no incoming transition is charged at t=0"
+missing_state_rule = "replace unavailable loss by +infinity; if both directed losses are unavailable set the signed gap to zero; every row must have at least one finite state loss"
+beta = [0.0, 1.3862943611198906]
+decision_beta = 1.3862943611198906
+q_train = "exact sealed positive raw MAD from the 3000-row training prefix for each refit and lambda"
+refit_convention = "on a Jan/Jul fit date, recompute the t-1 loss under scaler and centers fitted through t, matching the sealed lagged source"
+information_claim = "causal at t; not strictly F_(t-1)-predictable on a refit date"
+
+[mathematics]
+beta_zero = "beta=0 is bit-exact fixed JM"
+pair_balance = "C_t(i,j)+C_t(j,i)=2*lambda0 for every unordered pair"
+bounds = "lambda0*exp(-beta) <= C_t(i,j) <= lambda0*(2-exp(-beta))"
+monotonicity = "C_t(i,j) is non-increasing in L_(t-1)(i)-L_(t-1)(j)"
+scale_invariance = "common positive scaling of losses and q_train leaves penalties unchanged"
+objective_bound = "for the same fixed state path s with N(s) switches at one fixed candidate lambda, abs(J_balanced(s)-J_fixed(s)) <= N(s)*lambda0*(1-exp(-beta))"
+forward_discount = "for evidence x in [0,1], 1-(1-exp(-beta))*x >= exp(-beta*x); balanced never discounts the favored direction more than one-sided lagged, with equality at x=0 or x=1"
+complexity = "the additive dynamic program remains exact O(T*K^2)"
+binary_hysteresis_width = "for two states, d_t=g_t+clip(d_(t-1),-C_t(1,0),C_t(0,1)); pair balance keeps the clipping-interval width exactly 2*lambda0"
+
+[candidates]
+raw_lambda_grid = [0.0, 5.0, 15.0, 35.0, 70.0, 150.0, 300.0, 600.0, 1200.0]
+event_lambda_grid = [5.0, 15.0, 35.0, 70.0, 150.0, 300.0, 600.0, 1200.0]
+rules = ["lagged", "balanced"]
+raw_grid_expansion = false
+beta_selected_by_performance = false
+lambda_selected_by_performance = false
+center_refit = false
+
+[toys]
+lambda0 = 4.0
+beta = 1.3862943611198906
+q_train = 1.0
+isolated_loss = [[0.0, 8.0], [0.0, 8.0], [2.0, 0.0], [0.0, 2.0], [0.0, 8.0]]
+isolated_fixed_path = [0, 0, 0, 0, 0]
+isolated_lagged_path = [0, 0, 0, 0, 0]
+isolated_balanced_path = [0, 0, 0, 0, 0]
+alternating_loss = [[0.0, 8.0], [0.0, 8.0], [2.0, 0.0], [0.0, 2.0], [2.0, 0.0], [0.0, 2.0], [2.0, 0.0], [0.0, 2.0], [2.0, 0.0], [0.0, 2.0], [2.0, 0.0], [0.0, 2.0]]
+alternating_fixed_path = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+alternating_lagged_path = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+alternating_balanced_path = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+persistent_loss = [[0.0, 8.0], [0.0, 8.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0]]
+persistent_fixed_path = [0, 0, 0, 0, 0, 0, 1, 1]
+persistent_lagged_path = [0, 0, 0, 0, 1, 1, 1, 1]
+persistent_balanced_path = [0, 0, 0, 0, 1, 1, 1, 1]
+reversal_loss = [[0.0, 8.0], [0.0, 8.0], [8.0, 0.0], [8.0, 0.0], [8.0, 0.0], [0.0, 5.0], [8.0, 0.0], [8.0, 0.0]]
+reversal_fixed_path = [0, 0, 1, 1, 1, 0, 1, 1]
+reversal_lagged_path = [0, 0, 1, 1, 1, 0, 1, 1]
+reversal_balanced_path = [0, 0, 1, 1, 1, 1, 1, 1]
+
+[events]
+unit = "own-rule discount-attributable candidate-path switch at fixed market, rule, beta, and positive raw lambda"
+candidate_condition = "rule and fixed agree in source i on t-1; rule emits j!=i on t while fixed remains i"
+terminal_condition = "rule terminal state is j and its unique final-step minimizing predecessor is i"
+discount_condition = "C_t(i,j)<lambda0; lagged reverse cost equals lambda0; balanced reverse cost equals 2*lambda0-C_t(i,j)>lambda0"
+ablation = "replace only day-t full off-diagonal matrix by fixed lambda0 while preserving all earlier own-rule penalties; unique terminal state must return to i"
+tie_rule = "exclude and count exact terminal-state, final-predecessor, or ablated-state argmin ties"
+horizon_candidate_dates = 20
+matched_entry_search_candidate_dates = 20
+matched_followup_candidate_dates = 20
+matched_anchor_censor_candidate_dates = 40
+censor = "require exactly 20 following candidate dates, all mapped to the event refit and no later than cutoff"
+overlap_rule = "after admitting an event, suppress the next 20 dates within market x rule x beta x lambda"
+whipsaw = "the rule returns to the source state at least once during the next 20 candidate dates"
+persistent = "the rule remains in the destination state on every one of the next 20 candidate dates"
+confirmed_early = "persistent event for which fixed JM first reaches the destination during the next 20 candidate dates"
+unconfirmed_persistent = "persistent event for which fixed JM never reaches the destination during the next 20 candidate dates"
+full_path_switch_count = "adjacent state changes whose destination date is on or after the market evaluation start through cutoff"
+state_differences = "report balanced differences versus both fixed and sealed lagged paths"
+anchor = "independently regenerate every sealed-lagged log4 event under the original terminal-tie, local-ablation, t+20 censor, and overlap rules; only after admission, retain anchors with t+40 available under the same event refit, producing a fixed response-independent matched denominator"
+matched_window = "first_destination_h=-1 if balanced occupies destination j at anchor t-1, otherwise the minimum h in 0..20 with balanced state j, or missing if no such h; h=-1 is baseline occupancy with exactly t..t+19 observed, while h>=0 is followed on exactly t+h+1..t+h+20"
+matched_categories = [
+  "already_destination_whipsaw",
+  "already_destination_persistent_confirmed",
+  "already_destination_persistent_unconfirmed",
+  "suppressed_no_entry",
+  "enters_then_whipsaw",
+  "enters_persistent_confirmed",
+  "enters_persistent_unconfirmed"
+]
+matched_classification = "missing first_destination_h is suppressed_no_entry; otherwise whipsaw iff balanced returns to source i during its exact 20-date post-entry or post-baseline window; if no return it is persistent and splits confirmed/unconfirmed by whether fixed reaches j no later than that matched follow-end; first_destination_h=-1 selects already_destination categories and h>=0 selects enters categories"
+matched_whipsaw = "already_destination_whipsaw or enters_then_whipsaw on any lagged anchor; never entering the destination is suppression, not a whipsaw"
+matched_retained_confirmed_early = "on a lagged confirmed_early anchor, balanced reaches or already occupies the destination strictly before the original fixed_confirmation_h and never returns to source during its exact 20-date matched follow window"
+matched_unconfirmed_persistent = "an already-destination or entered persistent category for which fixed never reaches destination by that balanced matched follow-end"
+binary_partition = "states are binary; any response outside the seven exhaustive categories is an error"
+
+[decision]
+decision_beta_label = "log4"
+numerical_tolerance = 1e-12
+mechanical_prerequisites = "formula, missing-state semantics, beta-zero, pair balance, bounds, monotonicity, scale invariance, same-path objective bound, brute-force equivalence, prefix invariance, current-fit refit convention, and exact locked toy inputs and paths all pass"
+nontrivial_vs_fixed = "pooled balanced state differences versus fixed are strictly positive"
+nontrivial_vs_lagged = "pooled balanced state differences versus sealed lagged are strictly positive"
+anchor_coverage = "eligible matched lagged-anchor count and original lagged confirmed_early count are each at least one in every market after the response-independent t+40 same-refit filter; a zero denominator fails"
+market_switch_guard = "balanced full-path switch count summed across the eight positive-lambda paths is no greater than lagged in each market; this is conditional on the inherited grid"
+own_market_whipsaw = "balanced own-event whipsaw count is no greater than lagged in each market"
+own_pooled_whipsaw = "balanced own-event whipsaw count is strictly lower than lagged pooled"
+matched_market_whipsaw = "over all eligible matched lagged anchors, balanced matched-whipsaw count is no greater than lagged whipsaw-anchor count in each market"
+matched_pooled_whipsaw = "over all eligible matched lagged anchors, balanced matched-whipsaw count is strictly lower than lagged whipsaw-anchor count pooled"
+matched_latency_by_market = "at least one original lagged confirmed_early eligible anchor is retained by balanced in every market"
+matched_latency_fraction = "pooled retained-confirmed-early anchors divided by pooled original lagged confirmed_early eligible anchors is at least 0.5; this threshold is PREREGISTERED and UNCALIBRATED"
+matched_lock_in_guard = "balanced matched unconfirmed-persistent count is no greater than original lagged unconfirmed-persistent eligible anchors pooled"
+own_lock_in_guard = "balanced own-event unconfirmed-persistent count is no greater than lagged own-event count pooled"
+study_supported = "all mechanical, both nontriviality, coverage, switch, own/matched whipsaw, latency, and own/matched lock-in conditions hold"
+study_not_supported = "any condition fails; all raw mechanism results remain reportable"
+result_scope = "support is conditional on eight inherited positive-lambda paths and authorizes no P&L study on the same three-market sample"
+
+[verification]
+strict_spec_and_registry_lock = true
+source_inventory_exact = true
+parent_lagged_states_exactly_replayed = true
+beta_zero_candidate_states_equal_fixed = true
+no_performance_or_return_file_access = true
+all_dates_through_2023 = true
+formula_and_pair_sum_reconstructed = true
+candidate_states_reconstructed = true
+terminal_predecessor_ties_and_local_ablation_reconstructed = true
+switch_events_and_censoring_reconstructed = true
+matched_anchor_partition_reconstructed = true
+summary_and_decision_reconstructed = true
+concrete_dated_audit = true
+artifact_allowlist_exact = true
+source_and_implementation_hashes_recomputed = true
+us_smoke_before_parallel_markets = true
+separate_cli_replay = true
+
+[execution]
+us_smoke = "all lambdas and betas through a genuine second refit; verify parent lagged parity, balanced beta-zero parity, formula, pair sum, bounds, and current-fit-versus-stale t-1 loss without fitting"
+full_markets_parallel = true
+market_workers = 3
+threadpool_limit_per_worker = 1
+
+[storage]
+artifact_subdir = "balanced-lagged-mechanism-001"
+summary_csv = "mechanism-summary.csv"
+path_behavior_csv = "path-behavior.csv"
+event_csv = "discount-events.csv"
+matched_anchor_csv = "matched-lagged-anchors.csv"
+penalty_summary_csv = "penalty-summary.csv"
+dated_audit_csv = "dated-audit.csv"
+conclusion_json = "conclusion.json"
+mechanical_checks_json = "mechanical-checks.json"
+generated_outputs_tracked = false

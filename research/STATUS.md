@@ -7,10 +7,14 @@ authority for lifecycle status; this page is the short human-readable view.
 
 The fixed v7 proxy pipeline is reproducible and its accounting is now audited,
 but it does not reproduce the paper's three-market result. No mathematical
-extension has yet earned a stable-profit claim. The lagged-evidence transition
-penalty passed its performance-free mechanism rule; no new market P&L has been
-opened. The fixed-model endpoint audit confirmed that the JM grid is binding,
-but its single source-derived extension did not rescue the paper ordering.
+extension has earned a stable-profit claim. The lagged-evidence transition
+penalty passed its performance-free mechanism rule and its frozen development-
+sample P&L rule, but adaptive upper-grid concentration and repeated use of the
+same three markets prevent a confirmation claim. The fixed-model endpoint audit
+confirmed that the JM grid is binding, but its single source-derived extension
+did not rescue the paper ordering. Post-result attribution shows that lagged
+P&L differences cannot be read as a standalone improvement in the state path:
+the monthly selector response and path-choice interaction are material.
 
 ## Accepted evidence
 
@@ -21,6 +25,8 @@ but its single source-derived extension did not rescue the paper ordering.
 | Mathematical challenger | `adaptive-confidence-001` / `adaptive-confidence-1b0c327b2db4-3636939b525d-864d671cf973` | Mechanism operational; frozen performance rule not supported |
 | Mechanism diagnostic | `adaptive-separation-001` / `adaptive-separation-813f66912526-26cbca8871be-fefc608b9081` | Inconclusive; global separation gate not justified |
 | Lagged mechanism | `lagged-evidence-mechanism-001` / `lagged-evidence-6f964f5724b2-26cbca8871be-d173ca32c86f` | Performance-free mechanism rule supported at `beta=log(4)`; no P&L claim |
+| Lagged P&L | `lagged-evidence-performance-001` / `lagged-pnl-bad599271e2d-643dd3e6d96f-be70588256b2` | Frozen development rule supported; Sharpe delta positive in 3/3 markets, but JP whipsaw and adaptive endpoint concentration remain |
+| Lagged attribution | `lagged-selection-attribution-001` / `lagged-attribution-73a5995c487e-52854fc3c22a-197915169632` | Post-result mechanical diagnostic complete; choice schedule dominates mean Sharpe Shapley allocation, interaction is large, and no causal/performance claim is allowed |
 | Endpoint-grid audit | `endpoint-grid-audit-001` / `endpoint-grid-audit-05e9d08f619b-77b30ef98fa0-24ca06c297e8` | JM endpoint is binding but does not rescue all markets; HMM endpoint is null at the primary delay |
 
 Invalidated runs remain preserved for provenance, but they are not accepted
@@ -128,17 +134,36 @@ code failure:
 Items 1--4 concern the fixed-model paper gap. Item 5 motivates the next
 mathematical model; it does not explain the fixed-JM non-replication.
 
-## Active next decision
+## Latest model decision and next step
 
-The corrected Lagged-Evidence JM passed exact formula, fixed-JM nesting,
-brute-force objective, prefix-invariance, toy-path, and independent-replay
-checks. At `beta=log(4)`, pooled candidate-path whipsaws fell `17→6`, every
-market was non-worse, JP candidate-path switches fell `266→258`, and `11`
-confirmed-early events remained. The result concerns state paths only.
+Lagged-Evidence JM at `beta=log(4)` passed formula, beta-zero nesting,
+brute-force objective, prefix-invariance, toy paths, t+2 accounting, plus completion-time and separate CLI
+source replays. Lagged-minus-fixed Sharpe was `+0.0169/+0.1714/
++0.0839` in US/DE/JP, for a market-equal mean of `+0.0908`. US switches fell
+`21→15` and DE `32→8`; JP instead rose `13→33`. MDD improved slightly in US
+and JP and was equal within `1e-9` in DE.
 
-The predefined fixed-model endpoint question is now closed. The JM grid is
-still endpoint-concentrated, so the finite optimum is unidentified, but the
-single permitted expansion did not recover the paper ordering. The 5% rule
-remained descriptive and no further endpoint search is authorized by this
-study. Any next mathematical or performance experiment requires a separately
-frozen question; see `TASK.md` and `SCIENTIFIC_LEDGER.md` for the full history.
+Lagged JM was the strongest local B&H/HMM/JM comparator only in DE; US HMM
+Sharpe remained higher (`0.654` versus `0.587`) and JP B&H remained higher
+(`0.545` versus `0.413`). It therefore did not recover the paper ordering.
+This satisfies the frozen exploratory rule, not a stable-profit claim. The
+upper lambda was selected in `8.81%/45.31%/30.11%` of adaptive US/DE/JP months,
+so the finite optimum is unidentified and the result is conditional on the
+frozen grid. The same through-2023 markets have been inspected repeatedly.
+
+The frozen post-result 2x2 attribution is complete. Equal-market mean Sharpe
+attribution was total `+0.090769`, path Shapley `-0.034835`, and choice-schedule
+Shapley `+0.125603`. The corresponding direct effects at the fixed counterpart
+were `-0.137373` and `+0.023065`, with interaction `+0.205076`. For turnover,
+path and choice Shapley effects were `+0.181900` and `-0.258276`; in JP both
+were positive. These are mechanical allocations of nonlinear metrics, not
+causal effects.
+
+The evidence therefore does not support the simple story that lagging the loss
+made the state path intrinsically better. Much of the readout came through how
+monthly validation changed lambda choices and through interaction. The next
+confirmation priority is untouched markets or genuinely prospective data.
+Robust-gap, two-day-confirmation, semi-Markov, and feature-metric variants
+remain mathematical hypotheses; they must not be swept and winner-selected on
+the repeatedly inspected US/DE/JP sample. See `TASK.md` and
+`SCIENTIFIC_LEDGER.md` for exact grids, equations, and evidence status.

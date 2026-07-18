@@ -1,0 +1,93 @@
+schema_version = 1
+experiment_id = "lagged-selection-attribution-001"
+frozen_at_utc = "2026-07-18T09:50:54Z"
+claim_class = "EXPLORATORY"
+stage = "POST_RESULT_MECHANICAL_ATTRIBUTION"
+question = "How much of the already observed lagged-minus-fixed metric difference is mechanically allocated to candidate-state paths versus the monthly lambda-choice schedule?"
+performance_claim_allowed = false
+paper_replication_claim_allowed = false
+causal_claim_allowed = false
+post_2023_access = false
+
+[parent]
+experiment_id = "lagged-evidence-performance-001"
+run_id = "lagged-pnl-bad599271e2d-643dd3e6d96f-be70588256b2"
+run_inventory_sha256 = "52854fc3c22a1f9828372f603702e60b5d4fd0bc9c85d7343df40fe8043bd30e"
+choices_sha256 = "a795e31d12df985e66452bb1df055fe3ec01851342dee25249318e0965d31d56"
+spec_sha256 = "bad599271e2df32d7f8e292d56534bd0de8ba4a868e73c489c07dafe40b6565b"
+implementation_sha256 = "be70588256b24847ca31194625192e62cc6adb7ae9e288cd9b2f4ecd4059ac3c"
+config_sha256 = "8adb330565d64f8ed6edd986f0422dbba72585eda4efd34b0c1b41b95450d81b"
+data_cutoff = "2023-12-31"
+
+[state_sources]
+fixed_inventory_sha256 = "08e42044c25ef80e92f4b565034652a6b87fe94de0e9122eee1a418395239d55"
+lagged_inventory_sha256 = "643dd3e6d96ffd903de2012b6e1ac84bb0b3fad1f80cfb119989d4be88f094c8"
+raw_lambda_grid = [0.0, 5.0, 15.0, 35.0, 70.0, 150.0, 300.0, 600.0, 1200.0]
+state_families = ["fixed", "lagged_log4"]
+choice_schedules = ["fixed", "lagged_log4"]
+refit_or_state_regeneration = false
+cross_validation_rerun = false
+
+[cells]
+FF = "fixed candidate states with fixed monthly choices"
+FL = "fixed candidate states with lagged-log4 monthly choices"
+LF = "lagged-log4 candidate states with fixed monthly choices"
+LL = "lagged-log4 candidate states with lagged-log4 monthly choices"
+first_letter = "candidate-state family: F=fixed, L=lagged-log4"
+second_letter = "monthly-choice schedule: F=fixed, L=lagged-log4"
+
+[protocol]
+markets = ["us", "de", "jp"]
+sample = "exact parent delay-1 trade dates"
+primary_delay_trading_days = 1
+signal_to_return_offset = 2
+one_way_cost_bps = 10
+turnover = "0.5*252*mean(abs(position change))"
+metrics = ["sharpe", "maximum_drawdown", "turnover", "cash_fraction", "switch_count"]
+no_new_selection = true
+no_grid_expansion = true
+provider_access = false
+
+[attribution]
+total = "M_LL-M_FF"
+path_at_fixed_choices = "M_LF-M_FF"
+choice_at_fixed_path = "M_FL-M_FF"
+interaction = "M_LL-M_LF-M_FL+M_FF"
+path_shapley = "0.5*((M_LF-M_FF)+(M_LL-M_FL))"
+choice_shapley = "0.5*((M_FL-M_FF)+(M_LL-M_LF))"
+identity = "path_shapley+choice_shapley=M_LL-M_FF"
+equal_market_mean = true
+percentage_attribution = false
+interpretation = "mechanical Shapley allocation of nonlinear metrics on an already opened development sample; not causal"
+
+[decision]
+result = "diagnostic_complete"
+supported_or_not_supported_forbidden = true
+cell_winner_selection_forbidden = true
+performance_conclusion_forbidden = true
+
+[verification]
+parent_run_verified_first = true
+parent_FF_and_LL_trades_metrics_exact = true
+choice_schedules_exact_parent_rows = true
+signal_axis_toy_test = true
+t_plus_2_and_10bps_exact = true
+same_dates_returns_and_cutoff = true
+shapley_identity_absolute_tolerance = 1e-12
+artifact_allowlist_exact = true
+independent_source_replay = true
+
+[execution]
+us_smoke_before_cross_metrics = true
+full_markets_parallel = true
+market_workers = 3
+threadpool_limit_per_worker = 1
+gpu_required = false
+
+[storage]
+artifact_subdir = "lagged-selection-attribution-001"
+summary_csv = "summary.csv"
+attribution_csv = "attribution.csv"
+change_traces_csv = "change-traces.csv"
+decision_json = "decision.json"
+generated_outputs_tracked = false

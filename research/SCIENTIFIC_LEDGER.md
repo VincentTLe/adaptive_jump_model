@@ -455,6 +455,129 @@ Primary-delay fixed-JM evidence on the matched core sample is:
   rescue the three-market proxy non-replication. The local 5% rule only reports
   unresolved truncation; it never changed or censored a metric.
 
+### 2026-07-18 — reconciled grid inventory
+
+The exact candidate sets already tested are now recorded in one place:
+
+- Paper-v3 Table-3-visible values only: JM
+  `[0, 5, 15, 35, 70, 150]`; HMM `[0, 2, 4, 8, 20]`. These are
+  illustrations, not the undisclosed full final-v3 validation grids.
+- Canonical repo v7: JM `[0, 5, 15, 35, 70, 150, 300, 600, 1200]`; HMM
+  `[0, 2, 4, 6, 8, 10, 20, 40, 80, 160, 320, 640, 1280, 2560]`.
+- Historical-v1 JM: `[10, 22, 50, 100, 220, 500, 1000]`.
+- Source-union audit: JM
+  `[0, 5, 10, 15, 22, 35, 50, 70, 100, 150, 220, 500, 1000]`; HMM
+  `[0, 2, 4, 6, 8, 20]`.
+- Performance-free behavior domain: JM `0` plus
+  `2^(j/2), j=-8,...,22` (32 candidates); `0` through
+  `362.03867196751236` were globally valid and `512` onward failed the
+  occupancy/transition rule. HMM tested every integer `k=0,...,2560`; `0..1249`
+  were globally valid and `1250+` failed. HMM candidates are smoothings of one
+  raw HMM path, not separate Gaussian-HMM fits.
+- Behavior-selected base grids: JM
+  `[0, 0.3535533905932738, 1, 5.656854249492381, 16, 32, 64,
+  181.01933598375618, 256]`; HMM `[0, 3, 9, 32, 54, 114, 166, 402, 1115]`.
+  The endpoint audit added only JM `362.03867196751236` and HMM `1249`.
+- Adaptive mechanism scenarios used the unchanged v7 lambda grid and exactly
+  `beta=[0, log(2), log(4)]`; the lagged P&L readout carried forward only the
+  performance-free-selected `beta=log(4)`.
+
+No tested grid recovered the paper ordering across all three proxy markets.
+The complete final-v3 paper grids remain unidentified.
+
+### 2026-07-18 — `lagged-evidence-performance-001` (complete)
+
+- The mathematical rule replaces arrival evidence by the previous observation:
+  `C_t(i,j)=lambda*exp(-beta*tanh([L_(t-1)(i)-L_(t-1)(j)]_+/q_train))` off the
+  diagonal, with a zero diagonal. On Jan/Jul refit dates, that previous loss is
+  recomputed under parameters fitted through `t`; the sealed rule is causal at
+  `t`, but is not strictly `F_(t-1)`-measurable on those dates.
+- The extension preserves exact dynamic programming. For `beta>=0`,
+  `lambda*exp(-beta) <= C_t(i,j) <= lambda`; `beta=0` is exactly fixed JM; and
+  for a positive loss gap the penalty derivative is non-positive. For any path at one fixed candidate lambda
+  with `N` switches, its adaptive objective lies between the fixed objective
+  minus `N*lambda*(1-exp(-beta))` and the fixed objective. These are algebraic
+  properties, not a delay, whipsaw, or profit theorem.
+- The study reused sealed v7 features, scalers, centers and candidate states,
+  selected lambda separately each month over the previous eight calendar years,
+  used the exact parent t+2 sample, 10-bps one-way costs, and paper turnover
+  `0.5*252*mean(abs(position change))`. It accessed no post-2023 data.
+- Run `lagged-pnl-bad599271e2d-643dd3e6d96f-be70588256b2` passed source locks,
+  beta-zero parity, US smoke, full replay of choices/signals/positions/trades,
+  accounting identities, cutoff checks, artifact allowlists, plus completion-time and separate CLI
+  source replays. One earlier result artifact was invalidated before inspection
+  when the verifier's optional error reporter attempted to subtract booleans;
+  the reproduced implementation-only fix changed the run identity.
+
+| Market | Delta Sharpe | Delta MDD | Delta turnover | Delta cash | Switches fixed→lagged |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| US | `+0.016913` | `+0.000664` | `-0.186851` | `+0.037568` | `21→15` |
+| DE | `+0.171448` | `0` within `1e-9` | `-0.745011` | `-0.048534` | `32→8` |
+| JP | `+0.083945` | `+0.003631` | `+0.702733` | `+0.000837` | `13→33` |
+
+- The frozen primary rule was `supported`: mean Delta Sharpe was `+0.090769`
+  and all three market deltas were positive. The readout improved the net-Sharpe/
+  switching combination in US and DE, but not uniformly: JP turnover and switches
+  increased substantially.
+- It did not restore the paper's all-market ordering on the proxy. Lagged Sharpe
+  was `0.587` in US versus proxy HMM `0.654`; `0.338` in DE versus proxy B&H
+  `0.290` and HMM `0.008`; and `0.413` in JP versus proxy B&H `0.545`. It was the
+  strongest local comparator only in DE.
+- The adaptive upper lambda was selected in `8.81%`, `45.31%`, and `30.11%`
+  of US/DE/JP OOS months. The descriptive 5% rule never gated a metric, but this
+  concentration means the finite optimum remains unidentified. The positive
+  readout is conditional on the frozen grid and repeatedly inspected development
+  sample; it is not an out-of-sample performance or paper-replication claim.
+
+### 2026-07-18 — `lagged-selection-attribution-001` (complete)
+
+- This was frozen only after the lagged P&L result was known, so it is a
+  post-result mechanical diagnostic. It replayed the exact parent states and
+  monthly choices without refitting, regenerating states, rerunning CV,
+  expanding the grid, or reading post-2023 data.
+- The four cells were fixed states/fixed choices (`FF`), fixed states/lagged
+  choices (`FL`), lagged states/fixed choices (`LF`), and lagged states/lagged
+  choices (`LL`). `FF` and `LL` reproduced the parent trades exactly.
+- For each nonlinear metric `M`, the two-factor interaction was
+  `M_LL-M_LF-M_FL+M_FF`. Shapley allocations averaged the path and choice
+  marginal changes across both possible baselines and exactly summed to
+  `M_LL-M_FF`; they are accounting identities, not causal estimands.
+- Equal-market mean Delta Sharpe was `+0.090769`. The direct path effect at
+  fixed choices was `-0.137373`, the direct choice effect at fixed paths was
+  `+0.023065`, and interaction was `+0.205076`. Shapley allocation was
+  `-0.034835` to candidate-state family and `+0.125603` to monthly choices.
+- Market Sharpe Shapley allocations (path / choice) were US
+  `-0.098607 / +0.115520`, DE `+0.011331 / +0.160117`, and JP
+  `-0.017228 / +0.101173`. Thus the positive parent readout is not evidence
+  that lagged candidate paths alone were uniformly better.
+- Mean turnover Shapley allocation was `+0.181900` to paths and `-0.258276` to
+  choices. JP was adverse on both axes (`+0.281093 / +0.421640`), so its
+  higher turnover cannot be assigned solely to either path or selector.
+- The verifier reconstructed source schedules, all four signal/trade paths,
+  t+2 positions, 10-bps costs, paper turnover, and both Shapley sides. A
+  separate replay passed with maximum error exactly `0.0`. Concrete traces
+  retain choice→state→signal→position→signed-trade transitions.
+- The first completed implementation was invalidated after independent audit
+  found that `NaN != NaN` mislabeled each cell's uninitialized first row as a
+  trade example. Metrics and attribution were unaffected. The corrected run
+  requires both signed trades to be finite and has a direct regression test.
+- Run:
+  `lagged-attribution-73a5995c487e-52854fc3c22a-197915169632`.
+  Result: `diagnostic_complete`; no cell winner, performance claim, causal
+  claim, or paper-replication claim is authorized.
+
+### Mathematical queue after the lagged readout
+
+- The frozen 2x2 diagnostic is complete. Its large interaction and adverse
+  direct path effect make a selector-free theorem or mechanism test more
+  important than another same-sample P&L sweep.
+- First validation priority: untouched markets or genuinely prospective data;
+  more optimization on US/DE/JP through 2023 cannot create confirmation.
+- If a new transition model is later justified, the ranked candidates are:
+  robustly cap the signed loss gap, require two-day evidence confirmation, then
+  add a soft semi-Markov reversal surcharge. A diagonal feature metric is a
+  lower-priority geometry test. None has been run or selected by P&L.
+
 ## Claims that remain open
 
 - No theorem yet bounds detection delay or false-switch probability for the

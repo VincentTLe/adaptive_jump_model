@@ -17,16 +17,24 @@ about valid, withdrawn, and invalidated runs.
 Current bottom line: the fixed-v7 proxy pipeline is reproducible, but it does
 not reproduce the paper's three-market performance. Grid choices remain
 underidentified; the 5% boundary rule and directional gate affect study
-classification, not state paths or P&L. No extension has earned a stable-profit
-claim.
+classification, not state paths or P&L. Lagged-Evidence JM passed its frozen
+development-sample rule, but no extension has earned a stable-profit claim.
 
-The corrected lagged-evidence mechanism study is complete and independently
-reconstructed without reading choices, trades, returns, or performance
-metrics. At `beta=log(4)`, lagging the evidence reduced pooled candidate-path
-whipsaws from `17` to `6`, reduced JP candidate-path switches from `266` to
-`258`, and retained `11` confirmed-early events. This is performance-free
-mechanism support only; it authorizes no Sharpe, drawdown, or profitability
-claim.
+The corrected lagged-evidence mechanism and P&L studies are complete. At
+`beta=log(4)`, the performance-free candidate-path diagnostic reduced pooled
+arrival-to-lagged whipsaws from `17` to `6`. The separately frozen t+2, 10-bps readout then raised
+Sharpe by `0.0169/0.1714/0.0839` in US/DE/JP. Switches fell `21→15` in US and
+`32→8` in DE but rose `13→33` in JP. Adaptive upper-lambda selection remained
+concentrated at `8.81%/45.31%/30.11%`, so this is conditional, repeatedly
+inspected development evidence—not a paper-replication or profitability claim.
+
+The post-result 2x2 attribution is also complete. On the already inspected
+sample, the mean `+0.0908` Sharpe difference was mechanically allocated by
+Shapley as `-0.0348` to the changed candidate-state family and `+0.1256` to the
+changed monthly lambda schedule. Interaction was large (`+0.2051` in the
+three-part decomposition), and both components increased JP turnover. This
+shows that the selector's response to altered paths is central; it does not
+prove that either component caused profit or will generalize.
 
 The fixed-baseline proxy replication through 2023 is complete. The locked v7
 run passed all 18 grid-boundary checks and independently reproduced all 27
@@ -262,12 +270,14 @@ packages are intentionally not preinstalled.
    boundary gate; no performance conclusion was opened.
 7. The live monitor passed local lifecycle and artifact-parity acceptance; it
    preserves these frozen boundaries and creates no scientific claim.
-8. The evidence-adaptive decoder and state-separation diagnostic are complete.
-   The latter was inconclusive and did not justify a reliability-gated model or
-   P&L study.
+8. The arrival-adaptive decoder, separation diagnostic, lagged mechanism, and
+   lagged P&L readout are complete. Lagged evidence passed its frozen development
+   rule, but JP whipsaw and adaptive endpoint concentration remain unresolved.
 9. The one-shot fixed-model endpoint-grid audit is complete. The JM endpoint
    was binding but did not rescue the three-market result; the HMM endpoint was
    null at the primary delay, and no performance claim was made.
+10. The post-result lagged 2x2 attribution is complete. It found a large
+    path-choice interaction and does not authorize a winner or causal claim.
 
 Raw/processed data belongs under `data/`; run outputs belong under `artifacts/`.
 Both locations are ignored by Git. A valid run carries its config and data
