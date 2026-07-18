@@ -20,6 +20,8 @@ from adaptive_jump import artifacts as _artifacts
 from adaptive_jump.calibration_runner import run_calibration_study
 from adaptive_jump.config import ConfigError, ResearchConfig, load_config
 from adaptive_jump.data import AcquisitionError, acquire, research_git_sha
+from adaptive_jump.endpoint_grid_audit import run_endpoint_grid_audit
+from adaptive_jump.endpoint_grid_verifier import load_endpoint_grid_spec
 from adaptive_jump.features import effective_oos_start, prepare_market
 from adaptive_jump.grid_runner import run_grid_evaluation
 from adaptive_jump.grid_spec import load_grid_spec
@@ -450,6 +452,7 @@ def build_parser() -> argparse.ArgumentParser:
             "train-window-sensitivity",
             "persistence-calibration",
             "persistence-grid-evaluation",
+            "endpoint-grid-audit",
         ],
     )
     run.add_argument("--config", required=True, help="path to research.toml")
@@ -489,6 +492,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                     research / "persistence-grid-evaluation.toml", config
                 )
                 artifact = run_grid_evaluation(config, spec, observer)
+            elif arguments.study == "endpoint-grid-audit":
+                spec = load_endpoint_grid_spec(
+                    research / "endpoint-grid-audit.toml", config
+                )
+                artifact = run_endpoint_grid_audit(config, spec)
             else:
                 artifact = run_calibration_study(
                     config, research / "persistence-calibrated-search.toml"
