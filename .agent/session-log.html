@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">98 session(s) · newest first · 2026-07-18 07:39 UTC</p>
+  <p class="sub">99 session(s) · newest first · 2026-07-18 18:58 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-18T19:05:00Z</span><span class="who">claude · claude-fable-5</span>
+      </div>
+      <p class="goal">Executed and closed out balanced-lagged-mechanism-001 from Codex&#x27;s frozen handoff state: the pair-balanced log4 penalty preserved latency (0.875 pooled retention, zero lock-in) but did not reduce own or matched whipsaws, so the frozen mechanism rule is not supported.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>TASK.md (completed outcome)</code></li><li><code>README.md (status item 11)</code></li><li><code>research/STATUS.md (accepted-evidence row)</code></li><li><code>research/SCIENTIFIC_LEDGER.md (appended complete-not-supported section)</code></li><li><code>research/experiment_registry.jsonl (append-only: withdraw 611301f9, refreeze a7d9914c, EXPERIMENT_COMPLETE)</code></li><li><code>research/balanced-lagged-mechanism-001.toml (typo-only refreeze)</code></li><li><code>src/adaptive_jump/balanced_model.py (spec pin)</code></li><li><code>src/adaptive_jump/balanced_sources.py (parent run.json outside inventory)</code></li><li><code>src/adaptive_jump/balanced_smoke.py + balanced_smoke_replay.py + balanced_verifier.py (informative-lambda refit probe)</code></li><li><code>tests/test_balanced_runner.py + tests/test_balanced_verifier.py</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>US smoke passed: parent lagged and beta-zero parity exact over 558 cells each, formula/pair-sum/bounds exact through the genuine second refit, 6/8 informative stale lambdas all distinct (min 2.36e-3).</li><li>Run balanced-lagged-a7d9914ca1a8-643dd3e6d96f-17961bfd667f completed (33 own events, 13 matched anchors) and passed pre- and post-completion verification.</li><li>Separate CLI replay verified: 108 candidate paths, 3 markets, status verified, result not_supported.</li><li>Full pytest: 525 passed, 57 expected sklearn warnings in 95.66s.</li><li>Ruff check and format check passed; uv pip check and uv lock --check passed; git diff --check clean.</li><li>jq validated the registry after both appends.</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>b89797a</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner review. Failed conditions were all whipsaw-side: JP own 2 vs 1, pooled own 7 vs 6, matched pooled 5 vs 5. Any next candidate (capped signed gap, two-day confirmation, semi-Markov surcharge per the ledger queue) needs a separately frozen question; the through-2023 US/DE/JP sample stays repeatedly inspected development data.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Codex&#x27;s freeze contained a 65-hex parent-inventory hash typo that could never match; withdraw+refreeze changed no scientific rule (spec a7d9914c). Two response-independent code fixes were needed before the smoke could pass: parent run.json is not inventoried (repo convention), and stale-vs-current refit distinctness is mathematically impossible at lambdas with a missing sealed center (tanh saturates), so the probe now requires distinctness only on informative lambdas, mirroring the accepted lagged precedent. Artifacts stay untracked; .agent log files remain dirty by design.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-18T07:39:17Z</span><span class="who">codex · gpt-5</span>
