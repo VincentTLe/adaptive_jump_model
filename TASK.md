@@ -3,7 +3,7 @@
 ## Identity
 
 - `task_id`: `endpoint-grid-audit-001`
-- `status`: `FROZEN / NOT RUN`
+- `status`: `EXPERIMENT_COMPLETE / INDEPENDENTLY_VERIFIED`
 - `target_branch`: `cleanup/research-protocol`
 - `parent_experiment`: `fixed-baselines-001-v7`
 - `frozen_spec`: `research/endpoint-grid-audit.toml`
@@ -14,6 +14,8 @@
 - `adaptive_model_access`: forbidden
 - `performance_claim`: forbidden
 - `monitor_changes`: forbidden
+- `completed_run`:
+  `endpoint-grid-audit-05e9d08f619b-77b30ef98fa0-24ca06c297e8`
 
 Accepted prior results are summarized in `research/STATUS.md`; mathematical and
 experimental history is retained in `research/SCIENTIFIC_LEDGER.md`.
@@ -89,3 +91,26 @@ choice→signal→t+2-position→trade dates.
 If an endpoint remains the most-selected candidate above the descriptive 5%
 rate, the finite optimum is unidentified and the study stops without expanding
 the grid.
+
+## Outcome
+
+The run completed after a performance-free US smoke and parallel US/DE/JP
+execution. All three base paths matched the sealed current-code behavior, the
+artifact passed independent verification twice, and no post-2023 data was
+accessed.
+
+Primary-delay endpoint-minus-base results were:
+
+| Market | Model | Delta Sharpe | Delta MDD | Delta turnover | Delta cash | Delta switches |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| US | JM | `-0.073932` | `0` | `+0.124845` | `-0.009661` | `+4` |
+| DE | JM | `+0.079039` | `-0.089177` | `-0.124444` | `-0.043457` | `-4` |
+| JP | JM | `0` | `0` | `0` | `0` | `0` |
+| US/DE/JP | HMM | `0` | `0` | `0` | `0` | `0` |
+
+Cell D failed the frozen three-market rescue: US passed, DE failed the
+buy-and-hold Sharpe condition, and JP failed all three conditions. The JM
+endpoint remained selected above 5% in all three markets (`6.70%`, `28.50%`,
+and `5.08%`), so the finite JM optimum remains unidentified. The rule was
+descriptive and did not censor any metric; no further expansion is allowed by
+this study. There is no paper-replication or performance claim.

@@ -1,6 +1,6 @@
 # Current Research Status
 
-Last reconciled: 2026-07-17. The append-only experiment registry remains the
+Last reconciled: 2026-07-18. The append-only experiment registry remains the
 authority for lifecycle status; this page is the short human-readable view.
 
 ## Bottom line
@@ -9,7 +9,8 @@ The fixed v7 proxy pipeline is reproducible and its accounting is now audited,
 but it does not reproduce the paper's three-market result. No mathematical
 extension has yet earned a stable-profit claim. The lagged-evidence transition
 penalty passed its performance-free mechanism rule; no new market P&L has been
-opened.
+opened. The fixed-model endpoint audit confirmed that the JM grid is binding,
+but its single source-derived extension did not rescue the paper ordering.
 
 ## Accepted evidence
 
@@ -20,6 +21,7 @@ opened.
 | Mathematical challenger | `adaptive-confidence-001` / `adaptive-confidence-1b0c327b2db4-3636939b525d-864d671cf973` | Mechanism operational; frozen performance rule not supported |
 | Mechanism diagnostic | `adaptive-separation-001` / `adaptive-separation-813f66912526-26cbca8871be-fefc608b9081` | Inconclusive; global separation gate not justified |
 | Lagged mechanism | `lagged-evidence-mechanism-001` / `lagged-evidence-6f964f5724b2-26cbca8871be-d173ca32c86f` | Performance-free mechanism rule supported at `beta=log(4)`; no P&L claim |
+| Endpoint-grid audit | `endpoint-grid-audit-001` / `endpoint-grid-audit-05e9d08f619b-77b30ef98fa0-24ca06c297e8` | JM endpoint is binding but does not rescue all markets; HMM endpoint is null at the primary delay |
 
 Invalidated runs remain preserved for provenance, but they are not accepted
 evidence. In particular, the `2207...` and `d6fe...` fixed-audit runs and the
@@ -46,8 +48,8 @@ materially different target sample: proxy B&H Sharpe is about `0.545`, versus
 
 | Repo choice | Can change state/P&L? | What the audit says |
 | --- | --- | --- |
-| JM lambda candidate grid | Yes | Strongly binding and a plausible contributor, but tested paper-visible/historical grids do not rescue all three markets; the true final paper grid remains unknown |
-| HMM smoothing grid | Yes, for the HMM comparator | Can change the JM-vs-HMM comparison, but it cannot change fixed-JM standalone returns |
+| JM lambda candidate grid | Yes | Strongly binding and a plausible contributor, but neither tested paper-visible/historical grids nor the last globally valid eligible endpoint rescue all three markets; the true final paper grid remains unknown |
+| HMM smoothing grid | Yes, for the HMM comparator | Its added eligible endpoint changes no primary-delay metric; it cannot change fixed-JM standalone returns |
 | 5% upper-boundary guardrail | No | Can stop or label a study as boundary-failed; it cannot make Sharpe, drawdown, or trades worse |
 | Three-market directional gate | No | It is a stricter repo classification inspired by the paper's reported ordering; it cannot alter any metric |
 
@@ -71,6 +73,23 @@ The Table-3 JM grid also changed JP from 13 to 82 switches and from about
 the signs across markets show that none of these tested alternatives recovers
 the paper's three-market result.
 
+The one-shot endpoint test sharpened that conclusion. It added only JM
+`362.03867196751236` and HMM `1249`, both derived from sealed pre-OOS
+calibration. Primary-delay endpoint-minus-base changes were:
+
+| Market | JM Delta Sharpe | JM Delta MDD | JM Delta turnover | JM Delta cash | JM Delta switches | HMM metric change |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| US | `-0.0739` | `0` | `+0.1248` | `-0.0097` | `+4` | none |
+| DE | `+0.0790` | `-0.0892` | `-0.1244` | `-0.0435` | `-4` | none |
+| JP | `0` | `0` | `0` | `0` | `0` | none |
+
+The JM endpoint was selected in `6.70%`, `28.50%`, and `5.08%` of primary
+US/DE/JP choice months. Thus grid truncation is real, but the tested endpoint
+helps DE on Sharpe, turnover, and switch count while worsening its MDD; it
+hurts US on Sharpe, turnover, and switches; and leaves the JP primary path
+unchanged. The frozen three-market rescue failed and the finite JM optimum
+remains unidentified; no metric was hidden by the descriptive 5% rule.
+
 ## What the audit established
 
 - The sealed fixed-v7 result was replayed exactly; `670/670` audit checks and
@@ -85,6 +104,9 @@ the paper's three-market result.
   to JP.
 - The local 5% upper-boundary rule is not from the paper and is descriptive
   only. It does not enter the model or P&L.
+- The source-derived endpoint audit passed exact all-market base parity. Its JM
+  extension changed primary paths in US and DE but not JP; its HMM extension
+  changed no primary metric and the frozen three-market rescue failed.
 
 ## Why the paper result was not reproduced
 
@@ -114,8 +136,9 @@ checks. At `beta=log(4)`, pooled candidate-path whipsaws fell `17→6`, every
 market was non-worse, JP candidate-path switches fell `266→258`, and `11`
 confirmed-early events remained. The result concerns state paths only.
 
-The next fixed-model question is whether the behavior-calibrated JM and HMM
-grids were truncated at their upper endpoints. This must be frozen as one
-predefined endpoint test; the local 5% boundary remains descriptive and cannot
-change or censor metrics. See `TASK.md` and `SCIENTIFIC_LEDGER.md` for the full
-history.
+The predefined fixed-model endpoint question is now closed. The JM grid is
+still endpoint-concentrated, so the finite optimum is unidentified, but the
+single permitted expansion did not recover the paper ordering. The 5% rule
+remained descriptive and no further endpoint search is authorized by this
+study. Any next mathematical or performance experiment requires a separately
+frozen question; see `TASK.md` and `SCIENTIFIC_LEDGER.md` for the full history.

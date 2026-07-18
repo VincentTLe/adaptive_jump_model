@@ -44,6 +44,16 @@ remain undisclosed, so this is an underidentified sensitivity result rather
 than a recovered paper configuration. The local 5% upper-boundary rule is not
 in the paper and is now descriptive only.
 
+The one-shot endpoint-grid audit is complete. It added only the last globally
+valid eligible pre-OOS endpoint to each fixed-model grid and first reproduced
+the sealed base behavior exactly. At the primary delay, the JM endpoint raised
+DE Sharpe by `0.0790` and reduced switches by `4`, but worsened DE maximum
+drawdown by `0.0892`; it lowered US Sharpe by `0.0739` and added `4` switches,
+while JP metrics were unchanged. The HMM endpoint changed no primary-delay
+metric. The frozen three-market rescue rule failed, and continued JM endpoint
+concentration leaves the finite optimum unidentified. This is an exploratory
+grid-sensitivity result, not a paper-replication or performance claim.
+
 Turnover reporting is corrected to the paper convention,
 `0.5 * 252 * mean(abs(position change))`. The previous display was exactly
 twice too high because it showed combined annualized traded notional. The
@@ -255,6 +265,9 @@ packages are intentionally not preinstalled.
 8. The evidence-adaptive decoder and state-separation diagnostic are complete.
    The latter was inconclusive and did not justify a reliability-gated model or
    P&L study.
+9. The one-shot fixed-model endpoint-grid audit is complete. The JM endpoint
+   was binding but did not rescue the three-market result; the HMM endpoint was
+   null at the primary delay, and no performance claim was made.
 
 Raw/processed data belongs under `data/`; run outputs belong under `artifacts/`.
 Both locations are ignored by Git. A valid run carries its config and data

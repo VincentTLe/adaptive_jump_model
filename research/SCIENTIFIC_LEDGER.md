@@ -421,6 +421,40 @@ Primary-delay fixed-JM evidence on the matched core sample is:
 - Artifact:
   `fixed-baseline-assumption-audit-79c94852c8fd-3636939b525d-4cc8cdbccd14`.
 
+### 2026-07-18 — `endpoint-grid-audit-001` (complete)
+
+- Tested one source-derived endpoint per fixed-model family after exact
+  current-code reproduction of the sealed base behavior: JM
+  `362.03867196751236` (next candidate `512` invalid) and HMM `1249` (next
+  candidate `1250` invalid). No wider grid or winner search was permitted.
+- Two pre-result executions were invalidated before accounting or metrics. The
+  first corrected an optional parent metadata field absent from the historical
+  schema. The second restored the default pandas parser used by the sealed
+  witness producer after a round-trip parser changed `32,199` US input cells by
+  at most `2.22e-16`. Neither correction changed a scientific rule or spec hash.
+- Run `endpoint-grid-audit-05e9d08f619b-77b30ef98fa0-24ca06c297e8`
+  passed the US smoke, three-market exact base selection-behavior parity, all
+  formula/accounting checks, and independent verification twice. It accessed
+  no post-2023 data and authorizes no performance or paper-replication claim.
+- At primary delay 1, JM endpoint-minus-base changes were: US Sharpe
+  `-0.073932`, MDD `0`, turnover `+0.124845`, cash `-0.009661`, switches `+4`;
+  DE Sharpe `+0.079039`, MDD `-0.089177`, turnover `-0.124444`, cash
+  `-0.043457`, switches `-4`; JP all five deltas `0`. The HMM endpoint changed
+  none of the five primary metrics in any market.
+- Concrete causal traces linked US choice/signal `2022-01-31` to t+2
+  position/trade `2022-02-02`, and DE choice/signal `2019-01-31` to t+2
+  position/trade `2019-02-04`. JP changed nine monthly choices at the primary
+  delay but their selected state/signal paths were identical, so no position or
+  trade changed.
+- Cell D failed the locked three-market rescue. US passed all conditions; DE
+  failed JM-versus-buy-and-hold Sharpe; JP failed all three. Primary JM endpoint
+  selection remained above the descriptive 5% rate in US/DE/JP at
+  `6.70%/28.50%/5.08%`, so the finite JM optimum is still unidentified.
+- Conclusion: candidate-grid truncation is a real and material source of model
+  sensitivity, but this predefined endpoint extension does not explain or
+  rescue the three-market proxy non-replication. The local 5% rule only reports
+  unresolved truncation; it never changed or censored a metric.
+
 ## Claims that remain open
 
 - No theorem yet bounds detection delay or false-switch probability for the
