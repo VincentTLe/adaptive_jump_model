@@ -75,6 +75,8 @@ def load_market_inputs(
     feature_path: Path,
     adaptive_market_dir: Path,
     spec: SeparationSpec,
+    *,
+    include_fixed_objective: bool = True,
 ) -> MarketInputs:
     """Read only the frozen allowlisted columns and reconstruct model dates."""
     if market not in spec.markets:
@@ -112,17 +114,20 @@ def load_market_inputs(
         "training_end",
         "lambda0",
         "q_train",
-        "fixed_objective",
         "scaler_mean",
         "scaler_scale",
         "centers",
     ]
+    numeric_columns = ["lambda0", "q_train"]
+    if include_fixed_objective:
+        refit_columns.append("fixed_objective")
+        numeric_columns.append("fixed_objective")
     refits = pd.read_csv(
         adaptive_market_dir / "refits-and-scales.csv", usecols=refit_columns
     )
     for column in ("fit_date", "training_start", "training_end"):
         refits[column] = pd.to_datetime(refits[column], errors="raise")
-    for column in ("lambda0", "q_train", "fixed_objective"):
+    for column in numeric_columns:
         refits[column] = pd.to_numeric(refits[column], errors="raise")
     expected_lambdas = {0.0, *spec.lambdas}
     if (
@@ -131,7 +136,7 @@ def load_market_inputs(
         or set(refits["lambda0"]) != expected_lambdas
         or (refits["training_end"] != refits["fit_date"]).any()
         or refits["fit_date"].max().date() > spec.data_cutoff
-        or not np.isfinite(refits[["q_train", "fixed_objective"]]).all().all()
+        or not np.isfinite(refits[numeric_columns]).all().all()
         or (refits["q_train"] <= 0).any()
     ):
         raise SeparationStudyError(f"{market}: refit table changed")

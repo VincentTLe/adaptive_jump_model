@@ -1,0 +1,143 @@
+schema_version = 1
+experiment_id = "lagged-evidence-mechanism-001"
+frozen_at_utc = "2026-07-17T20:02:05Z"
+claim_class = "EXPLORATORY"
+stage = "DEVELOPMENT_SAMPLE_PERFORMANCE_FREE_MECHANISM_STUDY"
+question = "Does using the previous observation's loss gap for the transition discount reduce arrival-adaptive false switches while retaining some early detection of persistent state changes?"
+hypothesis = "Separating the current loss contribution from the evidence used to discount the current transition barrier will filter isolated and alternating shocks without reverting completely to fixed-JM latency."
+performance_claim_allowed = false
+new_model_claim_allowed = false
+extension_access = false
+post_2023_access = false
+monthly_performance_selection_allowed = false
+result_driven_changes = [
+  "The lagged-evidence model was proposed after adaptive-confidence-001 showed favorable DE behavior but unfavorable JP whipsaw and drawdown.",
+  "The JP switch-count condition is explicitly motivated by that observed failure and is exploratory, not confirmatory.",
+  "A partial run was invalidated before any market artifact or conclusion because implementation audit found return-column access, refitting, a hard-coded prerequisite pass, and an insufficient verifier; the corrected path uses only sealed features and fitted parameters.",
+  "Before any valid market result, the US smoke was made nonvacuous by passing full features through a genuine second refit, requiring changed post-prefix losses and unchanged prefix states, and requiring the independent verifier to recompute the smoke."
+]
+
+[fixed_source]
+experiment_id = "fixed-baselines-001-v7"
+config_path = "research.toml"
+config_sha256 = "8adb330565d64f8ed6edd986f0422dbba72585eda4efd34b0c1b41b95450d81b"
+run_id = "fixed-baselines-8adb330565d6-3636939b525d-e9614112b234"
+run_inventory_sha256 = "08e42044c25ef80e92f4b565034652a6b87fe94de0e9122eee1a418395239d55"
+data_manifest_sha256 = "3636939b525d604c5c4180d7e3abb6192b53b81a068f009ad6ca83a945e53a84"
+data_cutoff = "2023-12-31"
+allowed_market_files = ["features.csv", "jm-states.csv"]
+
+[arrival_source]
+experiment_id = "adaptive-confidence-001"
+spec_sha256 = "1b0c327b2db44f39be183b153e6feaae6c53e2cad1e56e782f1ef7eda3849cc3"
+run_id = "adaptive-confidence-1b0c327b2db4-3636939b525d-864d671cf973"
+run_inventory_sha256 = "26cbca8871be6ac6f53aa2156904c48d0743f86ab1cbe6b44410f93056e7c80b"
+allowed_market_files = ["candidate-states-beta-0.csv", "candidate-states-beta-log2.csv", "candidate-states-beta-log4.csv", "refits-and-scales.csv"]
+performance_files_forbidden = ["summary.csv", "selected-timeline.csv", "choices.csv", "conclusion.json", "trades.csv"]
+
+[scope]
+markets = ["us", "de", "jp"]
+evaluation_start = { us = "2007-12-04", de = "2008-01-03", jp = "2009-05-07" }
+evaluation_end = "last available candidate date no later than 2023-12-31"
+population = "every positive raw-lambda fixed, arrival, and lagged candidate path on the exact sealed v7 outer dates, generated only from sealed fitted parameters and date plus the three v7 features"
+performance_files_accessed = false
+
+[penalty]
+objective = "sum_t L_t(s_t) + sum_t>=1 C_t(s_(t-1),s_t)"
+loss = "0.5 * squared Euclidean distance from scaled v7 features to the sealed v7 fitted center"
+transition_direction = "row i is previous state; column j is arrival state"
+lagged_formula = "lambda0 * exp(-beta * tanh(max(L_(t-1)(i)-L_(t-1)(j),0)/q_train)) for i!=j; zero diagonal"
+initial_penalty = "fixed-lambda matrix at t=0; the objective has no incoming transition at t=0"
+beta = [0.0, 0.6931471805599453, 1.3862943611198906]
+q_train = "raw median absolute deviation about the median of all finite state-loss entries on the causal 3000-row training prefix; require finite and >0"
+q_train_fallback = "none"
+refit_convention = "on a Jan/Jul fit date, recompute the t-1 loss under the scaler and centers fitted through t, matching beta-zero v7 activation"
+information_claim = "causal lagged-loss evidence; not strictly F_(t-1)-predictable on a refit date"
+
+[candidates]
+raw_lambda_grid = [0.0, 5.0, 15.0, 35.0, 70.0, 150.0, 300.0, 600.0, 1200.0]
+event_lambda_grid = [5.0, 15.0, 35.0, 70.0, 150.0, 300.0, 600.0, 1200.0]
+raw_grid_expansion = false
+beta_selected_by_performance = false
+lambda_selected_by_performance = false
+center_refit = false
+fitted_parameter_source = "sealed adaptive-confidence-001 refits-and-scales.csv; no model refit"
+
+[controls]
+features = ["dd_10", "sortino_20", "sortino_60"]
+fit_window_observations = 3000
+standardizer = "exact sealed v7 StandardScaler parameters"
+centers = "exact sealed v7 fixed-JM centers for each raw lambda and Jan/Jul refit"
+jm_refit_months = [1, 7]
+state_risky_label = 0
+state_cash_label = 1
+provider_access = false
+
+[events]
+rules = ["arrival", "lagged"]
+betas = [0.6931471805599453, 1.3862943611198906]
+unit = "own-rule discount-attributable candidate-path switch at fixed market, beta, and raw lambda"
+candidate_condition = "model and fixed agree in state i on t-1; model emits j!=i on t while fixed remains i"
+terminal_condition = "the model terminal state is j and its exact final-step minimizing predecessor is i"
+discount_condition = "C_t(i,j) < lambda0"
+ablation = "replace only day t off-diagonal costs by fixed lambda0 while preserving every earlier rule-specific penalty; terminal state must become i"
+terminal_tie_rule = "exclude and count an event if terminal state, final predecessor, or ablated terminal state has an exact argmin tie"
+horizon_signal_days = 20
+whipsaw = "model returns to source state i at least once during the next 20 candidate-path dates"
+persistent = "model remains destination state j on every one of the next 20 candidate-path dates"
+confirmed_early = "persistent event for which fixed JM first emits destination j within the next 20 dates"
+censor = "require exactly 20 following candidate-path dates, all mapped to the event refit and no later than cutoff"
+overlap_rule = "after admitting an event, suppress the next 20 dates within market x rule x beta x lambda"
+evidence_date = "t for arrival and t-1 for lagged"
+full_path_switch_count = "number of adjacent state changes whose destination date is on or after evaluation_start through cutoff, reported by market x rule x beta x positive lambda"
+
+[decision]
+unit = "one positive beta"
+numerical_tolerance = 1e-12
+mechanical_prerequisites = "formula, bounds, beta-zero exact nesting, scale invariance, brute-force objective, nonvacuous prefix invariance, second-refit convention, and locked toy paths all pass"
+nontrivial = "lagged candidate states differ from fixed candidate states at least once pooled"
+market_whipsaw = "lagged own whipsaw count is no greater than arrival own whipsaw count in each of US, DE, and JP"
+pooled_whipsaw = "lagged own whipsaw count is strictly lower than arrival pooled across markets"
+jp_switches = "lagged full-path switch count summed across positive lambdas is strictly lower than arrival for JP"
+latency_retained = "lagged has at least one confirmed_early persistent event pooled across markets"
+beta_advances = "all mechanical, nontrivial, market_whipsaw, pooled_whipsaw, jp_switches, and latency_retained conditions hold"
+selection_if_both_advance = "select log2 because it is the smaller deformation from fixed JM"
+study_supported = "at least one beta advances to a separately frozen through-2023 development P&L study"
+study_not_supported = "no beta advances; stop before P&L"
+
+[verification]
+strict_spec_and_registry_lock = true
+source_inventory_exact = true
+no_performance_file_access = true
+all_dates_through_2023 = true
+beta_zero_candidate_states_equal_parent = true
+full_sealed_arrival_candidate_states_reproduced = true
+mechanical_evidence_recomputed = true
+formula_reconstruction_from_rule_evidence_date = true
+candidate_state_reconstruction = true
+terminal_predecessor_and_tie_audit = true
+local_ablation_reconstruction = true
+event_horizon_and_overlap_audit = true
+decision_reconstruction = true
+dated_audit = true
+per_market_and_root_tables_equal = true
+source_and_implementation_locks_recomputed = true
+us_smoke_before_parallel_markets = true
+us_smoke_independently_recomputed = true
+
+[execution]
+us_smoke = "all lambdas and betas on the first 20 terminal dates while both runs receive full features through the genuine second refit; mutate only post-prefix features, require changed future losses and unchanged prefix states, and verify beta-zero, sealed arrival, lagged formula, and current-fit-versus-stale refit convention without fitting"
+full_arrival_replay = "regenerate every arrival candidate state from sealed fitted parameters and compare to its sealed source before analysis"
+full_markets_parallel = true
+market_workers = 3
+threadpool_limit_per_worker = 1
+
+[storage]
+artifact_subdir = "lagged-evidence-mechanism-001"
+path_behavior_csv = "path-behavior.csv"
+event_csv = "discount-events.csv"
+summary_csv = "mechanism-summary.csv"
+dated_audit_csv = "dated-audit.csv"
+conclusion_json = "conclusion.json"
+generated_outputs_tracked = false
+mechanical_checks_json = "mechanical-checks.json"
