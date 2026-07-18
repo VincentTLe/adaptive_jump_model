@@ -130,6 +130,35 @@ def test_grid_evaluation_cli_uses_frozen_spec(
     assert calls[0][1].hmm_grid[-1] == 1115
 
 
+def test_endpoint_grid_audit_cli_uses_frozen_spec(
+    monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    expected = ROOT / "artifacts/endpoint-grid-fixture"
+    calls = []
+
+    def fake_run(config, spec):
+        calls.append((config, spec))
+        return expected
+
+    monkeypatch.setattr("adaptive_jump.cli.run_endpoint_grid_audit", fake_run)
+    monkeypatch.setattr(
+        "adaptive_jump.cli._artifacts.verify_run",
+        lambda artifact: {"run_id": artifact.name, "status": "complete"},
+    )
+    arguments = [
+        "run",
+        "--study",
+        "endpoint-grid-audit",
+        "--config",
+        str(ROOT / "research.toml"),
+    ]
+
+    assert main(arguments) == 0
+    assert Path(capsys.readouterr().out.strip()) == expected
+    assert calls[0][1].protocol_status == "FROZEN"
+    assert calls[0][1].smoke_terminal_dates == 20
+
+
 def test_window_study_cli_uses_frozen_spec_without_manifest(
     monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
