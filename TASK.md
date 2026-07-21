@@ -1,74 +1,80 @@
-# Task: Pair-Balanced Lagged Mechanism
+# Task: Restore the Economic Research Question
 
 ## Identity
 
-- `task_id`: `balanced-lagged-mechanism-001`
-- `status`: `EXPERIMENT_COMPLETE / NOT SUPPORTED`
-- `frozen_spec`: `research/balanced-lagged-mechanism-001.toml`
-- `frozen_spec_sha256`:
-  `a7d9914ca1a8ab8660cd262c1f759c2e6b25972062536dc151492c8b92ff4cfc`
-- `run_id`: `balanced-lagged-a7d9914ca1a8-643dd3e6d96f-17961bfd667f`
-- `claim_class`: `EXPLORATORY / POST_RESULT / PERFORMANCE_FREE`
-- `data_cutoff`: `2023-12-31`
-- performance, paper-replication, and new-model claims: forbidden
+- `task_id`: `research-story-reset-001`
+- `status`: `COMPLETE`
+- `task_type`: `READ_ONLY_AUDIT_AND_DOCUMENTATION`
+- `completed`: `2026-07-21`
+- No new model run, provider access, post-2023 access, or experiment-registry
+  entry was part of this task.
 
 ## Question
 
-Does preserving the fixed-JM pair-average transition scale reduce the original
-lagged rule's discount-attributable reversals without converting them into
-unconfirmed persistent states?
+What did Shu, Yu, and Mulvey actually test, what has this repository tested,
+and does any current Jump Model beat both same-sample buy-and-hold and the
+canonical Gaussian HMM?
 
-## Mathematical Candidate
+## Correct target
 
-For `i != j`:
+For market `m` and a prespecified JM variant `v`:
 
-```text
-alpha_beta = 1 - exp(-beta)
-h_t(i,j) = tanh((L_(t-1)(i) - L_(t-1)(j)) / q_train)
-C_t(i,j) = lambda0 * (1 - alpha_beta * h_t(i,j))
-```
+`G_m(v) = Sharpe_v,m - max(Sharpe_BuyHold,m, Sharpe_HMM,m)`.
 
-The diagonal is zero, `t=0` uses the fixed matrix, and
-`C_t(i,j) + C_t(j,i) = 2 * lambda0` preserves the binary DP
-hysteresis-interval width exactly. The frozen grid was
-`lambda = [0, 5, 15, 35, 70, 150, 300, 600, 1200]`, `beta = [0, log(4)]`,
-with `beta=0` an exact fixed-JM nesting oracle and `log4` the only decision
-beta.
+A model passes a market only when `G_m(v) > 0`. The cross-market target
+requires the same prespecified variant to pass every declared market. MDD,
+turnover, cash fraction, and switch count are secondary risk/activity
+guardrails.
 
-## Result: not supported
+## Audit result
 
-The run completed, passed pre- and post-completion verification, and passed a
-separate CLI replay reconstructing all 108 candidate paths. Of the frozen
-decision conditions:
+The paper's purpose is not merely to fit JM or compare clusters. Its persistent
+state signal drives a 0/1 market-or-cash strategy, which is compared with both
+buy-and-hold and an HMM strategy after delay and costs.
 
-- PASSED: mechanical prerequisites, nontriviality versus fixed and versus
-  sealed lagged, anchor coverage after the response-independent `t+40` filter,
-  market switch guard, matched market whipsaw, latency by market, pooled
-  latency retention `0.875 >= 0.5`, and both lock-in guards (zero own or
-  matched unconfirmed-persistent responses).
-- FAILED: own-market whipsaw (JP balanced 2 versus lagged 1), own pooled
-  whipsaw (7 versus 6, not strictly lower), matched pooled whipsaw (5 versus
-  5, not strictly lower).
+The checked repository path is internally consistent: the independent
+trade-level audit confirmed common dates, signal at `t` earning `t+2`,
+10-bps one-way costs, corrected paper turnover, and no post-2023 rows. The
+authors' public GitHub repository contains a generic JM library and examples,
+not the paper's HMM, licensed data, monthly validation/accounting pipeline, or
+complete final grids.
 
-Preserving the pair-average scale kept most early confirmations and created
-no lock-in, but it did not reduce discount-attributable reversals on this
-sample. Support would not have authorized a P&L study; non-support authorizes
-none either.
+## Current evidence
 
-## Execution record
+| Market | Strongest benchmark | Fixed JM | Best observed JM | Gap | Result |
+| --- | ---: | ---: | ---: | ---: | --- |
+| US | HMM `0.653725` | `0.569865` | Balanced `0.616326` | `-0.037398` | No |
+| DE | B&H `0.289638` | `0.166440` | Lagged `0.337888` | `+0.048251` | Yes |
+| JP | B&H `0.544589` | `0.329270` | Lagged `0.413215` | `-0.131375` | No |
 
-1. Three earlier freezes were withdrawn before any market path (stale
-   timestamp / matched-category gap, `h=20` exposure credit hole, and a
-   65-hex transcription typo in the parent inventory hash). The final freeze
-   corrected only that typo plus the timestamp.
-2. Two implementation corrections preceded the first passing US smoke, both
-   response-independent: parent `run.json` is metadata outside the sealed
-   inventory, and the stale-vs-current refit probe skips lambdas whose
-   terminal loss row lacks a sealed center (saturated evidence is
-   parameter-independent by construction; 6 of 8 lambdas were informative and
-   all 6 distinct).
-3. US smoke passed through a genuine second refit; full US/DE/JP ran in three
-   forkserver workers; the independent verifier and CLI replay both passed.
+This table is an ex-post per-market upper envelope, not one universal model.
+Fixed and arrival-adaptive JM beat both benchmarks in `0/3` markets. Lagged
+and pair-balanced JM each do so only in DE (`1/3`). No current variant meets
+the cross-market target.
 
-Any next experiment requires a separately frozen question and must treat the
-through-2023 US/DE/JP sample as repeatedly inspected development data.
+## Documentation delivered
+
+- `README.md`: short project explanation, equations, exact benchmark result,
+  turnover definition, and reproduction entry points.
+- `docs/research-workflow-comparison.html`: five-section advisor brief with
+  one five-step workflow and one primary result table.
+- `paper/manuscript.tex`: self-contained working paper following the Shu
+  narrative from downside-risk problem to 0/1 strategy, models, protocol,
+  results, limitations, and next hypothesis.
+- `research/STATUS.md`: benchmark outcome promoted to the headline.
+- `research/SCIENTIFIC_LEDGER.md`: append-only objective reconciliation,
+  mathematical sequence, and timing terminology clarification.
+- `AGENTS.md`: repository north star corrected to the B&H/HMM economic test.
+
+## Scientific interpretation
+
+The contribution so far is mathematical and diagnostic: a verified family of
+past-only time-varying JM decoders, plus a precise map of where they help or
+fail. It is not yet a model that wins across markets, and it is not a
+profitability, alpha, holdout, or generalization claim.
+
+A simple next hypothesis is a predictive JM whose training objective combines
+feature compactness, transition persistence, and a robust loss for matured
+`t+2` returns. That model has not been implemented or run. It requires a
+separate frozen specification, parameter provenance, and untouched or
+prospective evaluation evidence.

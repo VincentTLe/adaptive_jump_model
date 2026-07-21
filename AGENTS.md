@@ -11,9 +11,23 @@ reason to deviate.
 
 **The unit of progress is a scientific question answered.**
 
-> Can a mathematically justified and identifiable extension of the fixed jump
-> model improve net out-of-sample performance or useful regime behavior over
-> the same fixed-JM selection pipeline under the same causal protocol?
+> Can a causal Jump-Model-guided market/cash strategy identify persistent
+> unfavorable regimes well enough to achieve higher net risk-adjusted
+> performance than both buy-and-hold and Gaussian HMM under the same protocol?
+
+There are two distinct levels of evidence. A mathematical extension has local
+value when it changes the fixed-JM objective in a verified, causal, identifiable
+way or improves a declared mechanism metric. It has economic value only when
+the resulting strategy beats both same-sample benchmarks. For market `m`, the
+primary economic gap for prespecified variant `v` is:
+
+`G_m(v) = Sharpe_v,m - max(Sharpe_BuyHold,m, Sharpe_HMM,m)`.
+
+The cross-market target is `G_m(v) > 0` for the same `v` in every declared
+market. Maximum drawdown,
+turnover, cash fraction, and switch count are secondary guardrails. Exact
+numbers reported by Shu, Yu, and Mulvey are context, not a replication target,
+because this repository uses a later public proxy sample.
 
 The sealed v7 proxy study is the current development baseline, not permanent
 proof and not a reason to forbid new exploratory work. Data limitations are
@@ -112,9 +126,11 @@ active at a time.
    decision, execution, and earned-return dates explicit.
 3. **Frictions.** Apply the declared one-way cost, normally 10 bps, and the same
    delay in validation and evaluation. No cost-free or delay-free headline.
-4. **Holdout.** The development cutoff remains 2023-12-31. Treat 2024-2026 as
-   locked confirmation data until the owner explicitly opens or reclassifies
-   it. Once an outcome influences a choice, that sample is development data.
+4. **Holdout.** The development cutoff remains 2023-12-31. No model or P&L
+   experiment may use post-2023 rows without explicit authorization. A separate
+   authorized source audit already inspected public candidate series through
+   July 2026, so those dates are not untouched confirmation data. Once an
+   outcome influences a choice, that sample is development data.
 5. **Data integrity.** `data/raw/` is immutable. Never silently substitute
    synthetic, shorter, stale, price-only, total-return, or risk-free data.
    Conclusion-bearing data has source, field, cutoff, coverage, and hash

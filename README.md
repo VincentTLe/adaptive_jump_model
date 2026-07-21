@@ -1,294 +1,192 @@
 # Adaptive Jump Model
 
-Reproducible daily-frequency research on statistical jump models for market
-regime identification. The first scientific milestone is to replicate the
-protocol in [Shu, Yu, and Mulvey (2024)](https://arxiv.org/abs/2402.05272)
-before evaluating any adaptive extension.
+This project asks one practical question:
 
-## Current Status
+> Can a causal Jump-Model strategy beat both buy-and-hold and a Gaussian HMM
+> on the same market sample after execution delay and trading costs?
 
-**Canonical status pointers:** [`TASK.md`](TASK.md) contains only the active
-question; [`research/STATUS.md`](research/STATUS.md) contains the accepted
-results, paper/proxy comparison, and failure diagnosis; and
-[`research/SCIENTIFIC_LEDGER.md`](research/SCIENTIFIC_LEDGER.md) preserves the
-mathematical history. The append-only experiment registry is authoritative
-about valid, withdrawn, and invalidated runs.
+That is also the economic question behind Shu, Yu, and Mulvey's study. Their
+Jump Model is not useful merely because it clusters days. Its states must lead
+to a better market-or-cash strategy than the two benchmarks.
 
-Current bottom line: the fixed-v7 proxy pipeline is reproducible, but it does
-not reproduce the paper's three-market performance. Grid choices remain
-underidentified; the 5% boundary rule and directional gate affect study
-classification, not state paths or P&L. Lagged-Evidence JM passed its frozen
-development-sample rule, but no extension has earned a stable-profit claim.
+## The experiment in one minute
 
-The corrected lagged-evidence mechanism and P&L studies are complete. At
-`beta=log(4)`, the performance-free candidate-path diagnostic reduced pooled
-arrival-to-lagged whipsaws from `17` to `6`. The separately frozen t+2, 10-bps readout then raised
-Sharpe by `0.0169/0.1714/0.0839` in US/DE/JP. Switches fell `21→15` in US and
-`32→8` in DE but rose `13→33` in JP. Adaptive upper-lambda selection remained
-concentrated at `8.81%/45.31%/30.11%`, so this is conditional, repeatedly
-inspected development evidence—not a paper-replication or profitability claim.
+1. Compute equity log return for HMM and three downside-risk features for JM:
+   DD-10, Sortino-20, and Sortino-60.
+2. Fit two-state Gaussian HMM and Jump Model candidates using past data only.
+3. Each month, select JM lambda and HMM smoothing k from the preceding eight
+   years.
+4. Map the favorable state to 100% equity and the unfavorable state to 100%
+   local cash.
+5. A signal formed after day `t` first earns the return at `t+2`; charge
+   10 bps whenever the position changes.
+6. Compare net Sharpe on identical dates.
 
-The post-result 2x2 attribution is also complete. On the already inspected
-sample, the mean `+0.0908` Sharpe difference was mechanically allocated by
-Shapley as `-0.0348` to the changed candidate-state family and `+0.1256` to the
-changed monthly lambda schedule. Interaction was large (`+0.2051` in the
-three-part decomposition), and both components increased JP turnover. This
-shows that the selector's response to altered paths is central; it does not
-prove that either component caused profit or will generalize.
+For market m and a prespecified JM variant v, the primary score is
 
-The fixed-baseline proxy replication through 2023 is complete. The locked v7
-run passed all 18 grid-boundary checks and independently reproduced all 27
-metric rows from its trade paths, but fixed JM failed the directional gate in
-all three markets. The result is therefore **proxy non-replication** and does
-not refute the paper because the exact long sample and source definitions were
-unavailable.
+$$
+G_m(v) =
+\operatorname{Sharpe}_{v,m}
+- \max(\operatorname{Sharpe}_{B\&H,m},
+        \operatorname{Sharpe}_{HMM,m}).
+$$
 
-The fixed-only assumption audit is also complete. A clean rerun reproduced
-the sealed v7 scientific files exactly. The audit then showed that the locally
-chosen JM/HMM candidate grids are strongly binding, but restricting them to the
-values visible in Table 3 does not rescue the proxy result and sharply worsens
-the JP fixed-JM path. The paper's complete final-v3 cross-validation grids
-remain undisclosed, so this is an underidentified sensitivity result rather
-than a recovered paper configuration. The local 5% upper-boundary rule is not
-in the paper and is now descriptive only.
+Variant v succeeds in a market only when G_m(v) > 0. The cross-market target
+requires the same prespecified v to pass every market. Maximum drawdown,
+turnover, cash fraction, and switch count describe the risk and trading cost of
+achieving that Sharpe; they do not replace the benchmark test.
 
-The one-shot endpoint-grid audit is complete. It added only the last globally
-valid eligible pre-OOS endpoint to each fixed-model grid and first reproduced
-the sealed base behavior exactly. At the primary delay, the JM endpoint raised
-DE Sharpe by `0.0790` and reduced switches by `4`, but worsened DE maximum
-drawdown by `0.0892`; it lowered US Sharpe by `0.0739` and added `4` switches,
-while JP metrics were unchanged. The HMM endpoint changed no primary-delay
-metric. The frozen three-market rescue rule failed, and continued JM endpoint
-concentration leaves the finite optimum unidentified. This is an exploratory
-grid-sensitivity result, not a paper-replication or performance claim.
+## Models
 
-Turnover reporting is corrected to the paper convention,
-`0.5 * 252 * mean(abs(position change))`. The previous display was exactly
-twice too high because it showed combined annualized traded notional. The
-10-bps transaction costs, strategy returns, and Sharpe values were already
-correct and did not change. The final self-contained CSV artifact is:
+**Buy and hold.** Always hold the equity index.
 
-```text
-artifacts/fixed-baseline-assumption-audit/fixed-baseline-assumption-audit-79c94852c8fd-3636939b525d-4cc8cdbccd14
-```
+**Gaussian HMM.** Infer a latent two-state Markov process from univariate
+equity log returns, then hold equity in the favorable state and cash in the
+unfavorable state.
 
-The exploratory `adaptive-confidence-001` decoder study is also complete.
-Its evidence-dependent arrival penalty behaved as designed, but the frozen
-three-market trade-off rule was not supported: DE improved while US and JP did
-not. No performance claim is allowed. The causal state-separation follow-up is
-also complete: 42 exact arrival-ablation events were found, but all three
-leave-one-market-out fits failed the locked optimizer criterion, so the result
-is inconclusive and the proposed reliability gate is not justified. It read no
-P&L or post-2023 data. The mathematical ideas, withdrawn interpretations,
-frozen studies, and exact evidence status are maintained in
-[`research/SCIENTIFIC_LEDGER.md`](research/SCIENTIFIC_LEDGER.md).
+**Fixed Jump Model.** Cluster observations around two centers while charging a
+constant cost λ whenever the state changes:
 
-The follow-up exploratory JM-window sensitivity is also complete. It changed
-only the fixed-JM rolling window from 3,000 to 4,000 observations while using
-the exact sealed v7 controls. Its upper-lambda boundary failed in 8 of 9
-market/delay rows, most strongly in Germany, so the fail-closed protocol did
-not expose performance metrics or bootstrap results. This is a valid boundary
-failure, not evidence that JM-4,000 improved or worsened Sharpe. Its report is:
+$$
+\min_{\Theta,s}
+\sum_t \tfrac12\lVert x_t-\theta_{s_t}\rVert^2
++\lambda\sum_{t\ge1}\mathbf 1\{s_t\ne s_{t-1}\}.
+$$
 
-```text
-artifacts/reports/jm-window-cd9ac0b9d7a6-3636939b525d-6c19911401ad/report.html
-```
+**Evidence-adaptive Jump Models.** Keep the same observation loss but let the
+switch cost respond to evidence. The first version used the current day's loss
+gap. The stronger version uses the previous observation's gap, evaluated with
+parameters available at the current decision date:
 
-This does not refute the paper. Free sources could not reproduce the paper's
-1970 warm-up and exact index/risk-free definitions, so the eligible OOS samples
-begin in 2007-2009 rather than 1990. The audited local report is generated at:
+$$
+C_t(i,j)=
+\lambda_0\exp\!\left[
+-\beta\tanh\!\left(
+\frac{[L_{t-1}(i)-L_{t-1}(j)]_+}{q_{\rm train}}
+\right)\right],\qquad i\ne j.
+$$
 
-```text
-artifacts/reports/fixed-baselines-8adb330565d6-3636939b525d-e9614112b234/report.html
-```
+Here q_train is the positive raw median absolute deviation of state losses on
+the 3,000-row training prefix. Arrival and lagged rules used beta in
+{0, log(2), log(4)}; the later pair-balanced rule used {0, log(4)}. In every
+case beta=0 exactly reproduces fixed JM. Beta was scenario-fixed, not learned
+to maximize profit.
 
-The live monitor is **LOCALLY OPERATIONALLY ACCEPTED**. A real canonical replay
-was enqueued, canceled, checkpointed, interrupted by monitor shutdown, resumed,
-completed, independently verified, and matched all 125 non-checkpoint hashes in
-the direct-CLI reference. Desktop, mobile, replay, charts, and the no-JavaScript
-fallback passed real Chromium acceptance. The default monitor is now local-first
-and uses browser-native authentication on the loopback origin. Real Cloudflare
-Tunnel, Access, OTP, owner/viewer routing, and remote deployment remain
-unaccepted. The engineering replay is complete, so it is no longer queueable.
+Pair-balanced uses a signed lagged gap: it discounts one direction while
+increasing the opposite direction so $C_t(i,j)+C_t(j,i)=2\lambda_0$. This
+preserves the pair-average transition cost.
 
-Only `src/adaptive_jump/` is active source code. Everything under `archive/` is
-frozen provenance and must not be imported or used as a second research stack.
-The active CLI workflows are `fetch`, `run`, `verify`, `report`, and `monitor`;
-archived scripts are unsupported. A separately authorized source audit inspected
-public candidate series through July 2026. It was not an extension experiment
-and produced no extension claim, but those dates are no longer untouched
-prospective evidence. The frozen v7 model run itself remains capped at 2023.
+## Current result
 
-## Reproduce The Environment
+These are the accepted net Sharpe ratios on the public proxy sample through
+2023. Every model in a market uses the same dates, `t+2` execution, and 10-bps
+one-way costs.
 
-Prerequisites are Git and `uv`. `.python-version` selects Python 3.12.3,
-`pyproject.toml` pins every direct dependency, and `uv.lock` stores the complete
-transitive resolution.
+| Market | Buy & Hold | HMM | Fixed JM | Arrival adaptive | Lagged adaptive | Pair-balanced | Best JM gap G_m |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| US | 0.512964 | **0.653725** | 0.569865 | 0.501745 | 0.586777 | 0.616326 | **-0.037398** |
+| DE | 0.289638 | 0.007599 | 0.166440 | 0.277070 | **0.337888** | 0.335543 | **+0.048251** |
+| JP | **0.544589** | 0.398539 | 0.329270 | 0.385254 | 0.413215 | 0.244542 | **-0.131375** |
+
+The per-market best observed JM beats both benchmarks only in Germany. This
+upper envelope uses Pair-balanced in US and Lagged in DE/JP; it is not one
+universal model or deployable selection rule:
+
+| Market | Best observed JM | MDD | Turnover | Cash fraction | Switches | Beats both? |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| US | Pair-balanced | -0.337905 | 0.404844 | 0.261740 | 13 | No: HMM is higher |
+| DE | Lagged | -0.387794 | 0.248337 | 0.134270 | 8 | **Yes** |
+| JP | Lagged | -0.317989 | 1.159509 | 0.279699 | 33 | No: buy-and-hold is higher |
+
+**Bottom line:** the mathematical mechanisms are implemented and verified, but
+no tested JM wins against both benchmarks in all three markets. Lagging the
+evidence is an observed development-sample improvement in Germany, not yet a cross-market
+trading result.
+
+Turnover follows the paper convention:
+0.5 × 252 × mean(|change in position|). For a 0/1 strategy, it annualizes
+position changes and counts a complete equity-to-cash-to-equity round trip as
+one unit. Transaction cost is calculated separately from the unhalved one-way
+position change, so correcting the old turnover display did not change costs,
+returns, or Sharpe.
+
+## What the work has established
+
+- The fixed-JM, HMM, signal, `t+2` position, trade, cost, and return pipeline
+  is causally aligned and independently replayed.
+- Fixed JM does not beat the strongest benchmark in US, DE, or JP on this
+  proxy.
+- Current-day adaptive discounting beats both benchmarks in 0/3 markets.
+- Lagged discounting beats both in DE, beats HMM but not buy-and-hold in JP,
+  and loses HMM in US.
+- Pair balancing comes closest in US but is poor in JP.
+- The complete grids used by the paper are not published and grid choice
+  matters, but the source-grounded alternatives tested here did not produce a
+  three-market winner.
+
+The contribution so far is therefore a verified family of causal,
+time-varying-transition Jump Models and a precise map of where they help or
+fail. Benchmark outperformance would show that the inferred state is
+economically useful; it would not prove that a latent state is the market's
+unique “true regime.”
+
+## Relation to the Shu paper
+
+Shu, Yu, and Mulvey report that fixed JM beats both HMM and buy-and-hold in US,
+Germany, and Japan over 1990--2023. This repository uses later public proxy
+series whose usable test periods begin in 2007--2009, so their exact Sharpe
+values are context, not our target. Our target is the same *within-sample
+ordering* against B&H and HMM.
+
+The authors' public [jump-models repository](https://github.com/Yizhan-Oliver-Shu/jump-models)
+contains the generic JM library and examples, not the paper's full data,
+HMM comparison, monthly validation pipeline, or final candidate grids.
+
+## Reproduce
+
+The frozen research sample stops at 2023-12-31.
+No reported model or P&L experiment used later rows. A separate source audit
+inspected public candidate series through July 2026, so those dates are not
+untouched holdout evidence.
 
 ```bash
 uv python install 3.12.3
 uv sync --locked --extra data
-.venv/bin/python -c "import adaptive_jump, jumpmodels, hmmlearn, yfinance"
 .venv/bin/python -m pytest -q
-.venv/bin/ruff check .
-.venv/bin/ruff format --check .
-uv pip check --python .venv/bin/python
-uv lock --check
+
+.venv/bin/adaptive-jump fetch --config research.toml
+.venv/bin/adaptive-jump run --study replication --config research.toml
+.venv/bin/adaptive-jump verify --run artifacts/fixed-baselines/<run_id>
+
+tectonic paper/manuscript.tex --outdir artifacts/paper
 ```
 
-All commands above must pass before research work begins. `--extra data`
-installs the approved Yahoo Finance acquisition client; it does not authorize
-silently substituting Yahoo data for the paper's Bloomberg/GFD series.
-There is intentionally no `requirements.txt`: adding one would create a second
-dependency source that can drift away from `pyproject.toml` and `uv.lock`.
+## Local monitor
 
-Install the separately pinned monitoring and browser-test tools only when
-operating or changing the monitor:
+The monitor uses the same locked environment:
 
 ```bash
 uv sync --locked --extra data --extra monitor
-uv run playwright install chromium
-uv run python -c "import fastapi, jwt, psutil, uvicorn"
-```
-
-## Acquire The Frozen Proxy Sources
-
-```bash
-.venv/bin/adaptive-jump fetch --config research.toml
-```
-
-The command validates the committed proxy contract, fetches exactly its six
-sources through the end of 2023, and writes ignored raw payloads, canonical
-observations, hashes, quality facts, and a manifest under `data/`. It does not
-calculate returns, fill missing values, run a model, or download extension
-data.
-
-## Run And Verify The Fixed Baselines
-
-After one matching fetch manifest exists:
-
-```bash
-.venv/bin/adaptive-jump run --study replication --config research.toml
-```
-
-The full three-market run is computationally expensive and checkpoints HMM and
-fixed-JM progress under ignored `artifacts/.monitor/`. Checkpoints are reused
-only when config, data-manifest, and Git hashes all match.
-The command prints its sealed run directory.
-
-Verify a completed or boundary-failed run without trusting its stored metrics:
-
-```bash
-.venv/bin/adaptive-jump verify \
-  --run artifacts/fixed-baselines/<run_id>
-```
-
-`verify` checks identity locks and every inventoried hash, validates the complete
-boundary surface, recomputes accounting and metrics from stored trade CSVs, and
-reconstructs the claim. The current schema-1 verifier does not refit models or
-prove the full source-to-feature-to-state-to-signal chain; that deeper verifier
-is a required scientific-audit milestone before v8.
-
-Generate the deterministic English report only after verification succeeds:
-
-```bash
-.venv/bin/adaptive-jump report \
-  --run artifacts/fixed-baselines/<run_id>
-```
-
-The report is written outside the immutable run at
-`artifacts/reports/<run_id>/report.html`. It can always be regenerated and is
-therefore ignored by Git.
-
-The completed exploratory window study can be reproduced and checked with:
-
-```bash
-.venv/bin/adaptive-jump run \
-  --study train-window-sensitivity --config research.toml
-.venv/bin/adaptive-jump verify \
-  --run artifacts/jm-train-window-sensitivity/<run_id>
-.venv/bin/adaptive-jump report \
-  --run artifacts/jm-train-window-sensitivity/<run_id>
-```
-
-This workflow reads the sealed v7 parent artifact and never downloads data.
-Its frozen contract is `research/jm-train-window-sensitivity.toml`.
-
-## Run The Research Monitor
-
-Local use requires no authentication environment variables. Start the monitor:
-
-```bash
 .venv/bin/adaptive-jump monitor --config research.toml
 ```
 
-It binds only to `127.0.0.1:8765` and prints the URL, username `owner`, and a new
-random password. Open the printed URL and enter those credentials in the
-browser's sign-in dialog. A cloned repository behaves the same way after the
-locked monitor dependencies are installed.
+Local use requires no authentication environment variables. It displays a
+separately launched `adaptive-jump run`; it does not start or alter an
+experiment. Remote deployment is documented in
+[`docs/monitor/deployment.md`](docs/monitor/deployment.md). `requirements.txt`
+is a compatibility export, not the dependency source; use `pyproject.toml` and
+`uv.lock` for the locked environment.
 
-The application retains its SQLite queue, append-only event journals, and
-mutation audit under ignored `artifacts/.monitor/`. It can enqueue only a study
-whose registry state is `FROZEN`; a separately launched `adaptive-jump run`
-process is not automatically attached to the monitor. It has no
-arbitrary-command, config-edit, upload, or delete interface.
+Raw data and generated runs belong in ignored `data/` and `artifacts/`.
+Only `src/adaptive_jump/` is active source; `archive/` is frozen history.
 
-Cloudflare is an optional remote-access deployment. Use
-[`docs/monitor/deployment.md`](docs/monitor/deployment.md) for the pinned tunnel,
-exact-email Access, external secrets, systemd, browser, and operations procedure.
+## Read next
 
-Start with the [beginner learning path](docs/learning/index.html). For a
-research-advisor discussion, use the
-[legacy/current/paper workflow comparison](docs/research-workflow-comparison.html).
-The ready-to-send author request is in
-[`docs/author-data-request.txt`](docs/author-data-request.txt).
-
-## Dependency Roles
-
-| Role | Current contents | Policy |
-| --- | --- | --- |
-| Core | NumPy, pandas, SciPy, scikit-learn, hmmlearn, jumpmodels, Matplotlib | Canonical numerical research stack |
-| Data | yfinance, Requests | Optional Yahoo and public-HTTP acquisition clients |
-| Dev | pytest, Ruff, Playwright | Tests, formatting, linting, and real Chromium acceptance |
-| Monitor | FastAPI, Uvicorn, PyJWT/cryptography, psutil, vendored ECharts | Optional authenticated control and observability stack |
-| Audit backtest | None | Add only for an aligned parity check |
-
-`jumpmodels==0.1.1` declares Matplotlib as a runtime dependency, so static
-plotting is present in core. Interactive dashboard and third-party backtest
-packages are intentionally not preinstalled.
-
-## Research Order
-
-1. Free-source audit and the six-series proxy contract are complete.
-2. The causal fixed JM/HMM/B&H protocol is frozen in `research.toml` v7.
-3. The through-2023 proxy run is complete and classified as non-replication.
-4. The fixed-only assumption audit is complete: turnover reporting is fixed,
-   source-visible grid restrictions are binding but do not rescue the proxy
-   result, and the final-v3 grids remain undisclosed.
-5. Period/data attribution is complete; exact paper data remain unavailable.
-6. The 4,000-observation JM sensitivity is complete but stopped at its lambda
-   boundary gate; no performance conclusion was opened.
-7. The live monitor passed local lifecycle and artifact-parity acceptance; it
-   preserves these frozen boundaries and creates no scientific claim.
-8. The arrival-adaptive decoder, separation diagnostic, lagged mechanism, and
-   lagged P&L readout are complete. Lagged evidence passed its frozen development
-   rule, but JP whipsaw and adaptive endpoint concentration remain unresolved.
-9. The one-shot fixed-model endpoint-grid audit is complete. The JM endpoint
-   was binding but did not rescue the three-market result; the HMM endpoint was
-   null at the primary delay, and no performance claim was made.
-10. The post-result lagged 2x2 attribution is complete. It found a large
-    path-choice interaction and does not authorize a winner or causal claim.
-11. The pair-balanced lagged mechanism study is complete and not supported:
-    preserving the fixed pair-average transition scale retained latency
-    (`0.875` pooled) with zero lock-in but did not reduce own or matched
-    whipsaws (JP `2` versus `1`, pooled `7` versus `6`, matched `5` versus
-    `5`).
-
-Raw/processed data belongs under `data/`; run outputs belong under `artifacts/`.
-Both locations are ignored by Git. A valid run carries its config and data
-locks, code revision, package versions, intermediate states, trades, metrics,
-claim, and inventory. Generated reports must not be committed.
-
-Research behavior, evidence levels, and handoff rules are defined in
-`AGENTS.md`. A branch-relevant `TASK.md` or frozen machine-readable config is
-required before any conclusion-bearing experiment.
+- [Simple advisor brief](docs/research-workflow-comparison.html)
+- [Paper source](paper/manuscript.tex) — compiles to the ignored local file
+  `artifacts/paper/manuscript.pdf`
+- [Current evidence](research/STATUS.md)
+- [Mathematical and experimental history](research/SCIENTIFIC_LEDGER.md)
+- [Current task](TASK.md)
+- [Frozen core protocol](research.toml)
+- [Original paper](2402.05272v3.pdf)

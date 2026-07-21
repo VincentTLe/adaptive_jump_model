@@ -1,0 +1,1406 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage[round,authoryear]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\title{From Fixed to Evidence-Adaptive Persistence in Statistical Jump Models:\\
+A Walk-Forward Three-Market Proxy Study}
+\author{Working manuscript for advisor discussion}
+\date{21 July 2026}
+
+\newcommand{\BH}{Buy\&Hold}
+\newcommand{\JM}{JM}
+\newcommand{\HMM}{HMM}
+\newcommand{\ind}{\mathbf{1}}
+\newcommand{\F}{\mathcal{F}}
+\newcommand{\sech}{\operatorname{sech}}
+\setlength{\emergencystretch}{3em}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Financial markets often pass through persistent favorable and unfavorable
+periods. This creates a simple investment problem: leaving equity during a bad
+period can reduce downside risk, but an unstable signal can replace market risk
+with late reactions and costly whipsaws. Shu, Yu, and Mulvey study this problem
+with a transparent strategy: hold an equity index in a favorable regime and
+local cash in an unfavorable regime. Their statistical Jump Model (JM)
+encourages persistent states with a fixed transition penalty and, on their
+exact 1990--2023 data, outperforms both buy-and-hold and a Gaussian hidden
+Markov model (HMM).
+
+We reconstruct the same past-only economic test on a later public proxy sample
+through 2023 and ask whether the fixed switching barrier should respond to
+evidence. We formulate and audit three time-varying decoders: arrival-day
+evidence, lagged evidence, and a pair-balanced lagged penalty. They retain exact
+dynamic programming, nest fixed JM at \(\beta=0\), and use a robust scale
+estimated only from the training prefix. In the binary case, the
+value-difference recursion shows why using the current loss gap twice can
+amplify a shock; lagging the gap removes that direct double-use, while pair
+balancing fixes the average two-direction transition scale.
+
+Economically, the extension is not yet a general success. Fixed JM does not
+beat the strongest same-sample benchmark in the United States, Germany, or
+Japan. Even an ex-post upper envelope that chooses the best tested variant
+separately in each market beats both benchmarks only in Germany. This envelope
+is not one deployable model: it remains 0.037 Sharpe below HMM in the United
+States and 0.131 below buy-and-hold in Japan. The contribution at this stage is
+a candidate mathematical extension, a look-ahead-free audited experiment, and a clear
+map of heterogeneous failure---not evidence of robust or generalizable
+profitability. The evidence points toward a different next hypothesis: market
+states may need to be formed partly by their matured future economic
+consequences rather than by feature compactness and persistence alone.
+\end{abstract}
+
+\noindent\textbf{Keywords:} market regimes; statistical jump models; hidden
+Markov models; downside risk; market timing; transition penalties.
+
+\section{Introduction}
+
+Traded markets do not behave as if one distribution governs every day.
+Extended periods of rising or falling prices are commonly described as bull
+and bear markets \citep{pagan2003}; volatility changes materially over time
+\citep{schwert1989}; and investors distinguish risk-on from risk-off episodes
+\citep{smales2016}. Regime-switching behavior has been studied in equities
+\citep{hardy2001}, fixed income, currencies, and the business cycle.
+Latent-state and turning-point methods offer different ways to date these
+periods \citep{harding2003}. One reason the regime language persists is
+interpretability: an inferred state can often
+be related after the fact to a recession, crisis, recovery, or change in market
+risk \citep{hamilton1989,ang2012}.
+
+The investment problem is narrower than explaining every fluctuation. Losses
+during a persistent unfavorable period can dominate long-horizon downside
+risk. Safety-first and semivariance ideas already recognize that investors
+need not value upside and downside symmetrically
+\citep{roy1952,markowitz1959}. In regime-dependent allocation models, a
+credible unfavorable state creates an economic reason to reduce risky
+exposure and move toward a safe asset \citep{ang2002,ang2004}. The challenge is
+timing. A signal that reacts to every noisy day may trade repeatedly and pay
+costs; a signal that insists on too much persistence may recognize a crash only
+after much of the loss has occurred. We call this the latency--whipsaw
+trade-off.
+
+A useful experiment should make the value of the signal visible. The 0/1
+strategy does this by holding 100\% equity in a favorable state and 100\%
+local cash in an unfavorable state. It deliberately removes portfolio
+optimization and cross-asset diversification, so the comparison mostly asks
+whether the regime signal itself is economically useful. HMM-guided versions
+of this strategy provide an established benchmark \citep{bulla2011}. The
+experiment is severe but easy to audit: a state becomes a signal, the signal
+becomes a delayed position, and every position change pays a transaction cost.
+
+An HMM and a JM express persistence differently. A Gaussian HMM assumes an
+unobserved Markov chain and estimates state-transition probabilities and
+conditional return distributions by likelihood. A fixed JM is closer to
+clustering: it assigns observations to centers, but charges a constant cost
+whenever two adjacent observations receive different states
+\citep{bemporad2018}. This explicit jump penalty can suppress the short-lived
+states that arise when a model follows daily noise. Earlier work connected
+jump penalties to persistent market-state identification
+\citep{nystrup2020persistent}; Shu, Yu, and Mulvey then asked whether that
+statistical persistence produces a better delayed and costed investment
+strategy \citep{shu2024}.
+
+Shu et al.\ make two central moves. First, they evaluate persistence by its
+economic consequence in a simple market/cash strategy rather than by a
+clustering score alone. Second, they select the JM penalty each month with
+time-series validation Sharpe after the same trading delay and cost used in
+testing. On their licensed 1990--2023 sample, JM improves downside-risk and
+risk-adjusted metrics relative to both HMM and \BH{} in the United States,
+Germany, and Japan. Their paper is consequently not simply fitting JM and
+comparing clusters. It is a walk-forward economic test of whether a more persistent
+regime-identification signal is useful.
+
+The fixed JM nevertheless treats every possible switch alike. A move supported
+by an overwhelming loss difference between states pays the same \(\lambda\)
+as a move supported by almost no difference. This observation leads to the
+simple idea studied here: keep the fixed penalty as the default, but lower the
+barrier when past-only state-fit evidence favors the destination. The formula
+is simple; its consequences are not. The evidence can be counted twice,
+directional costs can alter path boundaries, and monthly validation can select
+different lambdas even when candidate paths improve mechanically.
+
+We therefore ask two linked questions:
+\begin{quote}
+\textbf{Mathematical question.} Can a loss-gap-dependent switching cost be
+inserted into JM without losing exact dynamic programming, training-only scaling, or
+the fixed-JM special case?
+
+\textbf{Economic question.} Can one prespecified JM variant beat both
+same-sample \BH{} and Gaussian HMM after a one-day trading delay and 10-basis-
+point one-way costs?
+\end{quote}
+
+Throughout this manuscript, ``causal'' refers only to information timing: each
+decision uses quantities available by its decision date. It does not denote
+treatment-effect identification.
+
+The study makes three bounded contributions. First, it formulates a family of
+past-only, loss-gap-dependent transition costs that retains
+\(O(TK^2)\) dynamic programming and exactly nests fixed JM at \(\beta=0\).
+Second, for two states it derives the value-difference recursion, identifies a
+same-day evidence-amplification channel, and constructs lagged and
+pair-balanced alternatives with an exact transition-cost identity. Third, it
+documents heterogeneous economic effects on three public proxy development
+samples: Germany improves substantially, but no tested variant beats both
+benchmarks in every market. These statements do not establish global novelty,
+statistical significance, or performance on untouched data.
+
+\section{The Shu et al.\ parent study}
+
+\subsection{Economic design}
+
+Shu et al.\ use daily total-return indices for the S\&P 500, DAX, and Nikkei
+225 from Bloomberg, together with each country's three-month Treasury-bill
+yield from Global Financial Data. Their raw history begins in 1970. A
+3,000-day training window and an eight-year validation period make the reported
+testing period 1990--2023. The markets are tested independently in local
+currency.
+
+Their two-state HMM observes daily log total returns. It is refit daily on
+3,000 observations from ten starts; the accepted fit has the highest
+likelihood. The lower-volatility state is favorable and the higher-volatility
+state is unfavorable. The terminal Viterbi state is an online state estimate.
+Because that endpoint can be noisy, a causal trailing median filter is applied,
+and its window length is selected monthly.
+
+Their two-state JM observes three standardized excess-return features:
+downside deviation with half-life 10 and Sortino ratios with half-lives 20 and
+60. Centers are refit every six months on 3,000 observations from ten starts;
+the fit with the lowest objective is retained. The state with higher cumulative
+training excess return is labeled favorable. For each online date, the fitted
+centers are frozen, the dynamic program is run on the trailing feature window,
+and the terminal state is emitted. At the start of each month, the preceding
+eight calendar years select the JM penalty and HMM smoothing value that
+maximize delayed, costed validation Sharpe.
+
+The state recognized after day \(t\) cannot earn day \(t+1\). Allocation is
+changed at the end of \(t+1\), so the first affected return is \(t+2\).
+Every one-way position change costs 10 basis points. This separates model
+latency---the observations needed to recognize a new state---from operational
+trading delay after the signal already exists.
+
+\subsection{What Shu et al.\ report}
+
+Table~\ref{tab:shu-main} reproduces the numerical contents of Shu et al.'s
+primary performance table. Their ordering is consistent in all three markets:
+JM has the highest Sharpe and Calmar ratios, lower maximum drawdown than both
+comparators, and much lower turnover than HMM. Their claim is primarily about
+downside-risk reduction and risk-adjusted performance, not maximum raw return.
+
+\begin{table}[!htbp]
+\centering
+\caption{Results reported by Shu et al.\ for 1990--2023. Turnover is their
+paper convention. These are parent-study values, not results produced by this
+repository.}
+\label{tab:shu-main}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{llrrrrrrrr}
+\toprule
+Market & Strategy & Return & Vol. & Sharpe & MDD & Calmar & ES 5\% & Turnover & Equity exposure \\
+\midrule
+US & \BH{} & 10.2\% & 18.2\% & 0.48 & -55.2\% & 0.16 & -2.7\% & 0\% & 100\% \\
+US & HMM    &  8.5\% & 11.3\% & 0.54 & -28.9\% & 0.21 & -1.8\% & 141\% & 72\% \\
+US & JM     & 11.2\% & 13.1\% & 0.68 & -26.6\% & 0.33 & -2.0\% & 44\% & 80\% \\
+\addlinespace
+DE & \BH{} & 6.8\% & 22.1\% & 0.30 & -72.7\% & 0.09 & -3.3\% & 0\% & 100\% \\
+DE & HMM    & 6.4\% & 14.0\% & 0.35 & -40.5\% & 0.12 & -2.2\% & 246\% & 73\% \\
+DE & JM     & 8.6\% & 16.4\% & 0.44 & -39.4\% & 0.18 & -2.5\% & 170\% & 84\% \\
+\addlinespace
+JP & \BH{} & 0.8\% & 23.4\% & 0.12 & -79.1\% & 0.04 & -3.4\% & 0\% & 100\% \\
+JP & HMM    & 2.5\% & 16.0\% & 0.19 & -48.6\% & 0.06 & -2.5\% & 290\% & 68\% \\
+JP & JM     & 4.7\% & 17.1\% & 0.31 & -45.3\% & 0.12 & -2.6\% & 72\% & 75\% \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Shu et al.\ also align validation and testing delays at 1, 5, and 10 trading
+days. Their JM Sharpe ratios at those delays are \(0.68/0.71/0.70\) in the US,
+\(0.44/0.38/0.29\) in Germany, and \(0.31/0.27/0.24\) in Japan. The comparison
+supports their interpretation that a persistent state signal can remain useful
+under longer execution delays.
+
+\subsection{What the paper and public code do not disclose}
+
+The authors' public repository contains a generic JM library and a Nasdaq
+example. We audited the public code at commit
+\texttt{d0fa00ce10126791695a259a45c5ddd41fbced80}. It confirms the half-squared
+Euclidean loss, a zero diagonal and constant off-diagonal penalty matrix,
+coordinate descent, dynamic programming, and ten-start fitting. It does not
+contain the paper's Bloomberg/GFD data, HMM comparison, \BH{} path, monthly
+validation, trading accounting, three-market replication, or final candidate
+grids.
+
+The paper explains the selection procedure but does not publish the complete
+JM-lambda grid, HMM-smoothing grid, tie-breaking rule, exact semiannual refit
+dates, raw vendor identifiers, cash-yield conversion, or machine-readable
+states and trades. Table 3 displays illustrative fixed values
+\(\lambda=\{0,5,15,35,70,150\}\) and
+\(k=\{0,2,4,8,20\}\); it does not identify them as the complete validation
+grids. Exact replication of Table~\ref{tab:shu-main} is therefore
+underidentified without additional source data and conventions.
+
+\section{Public proxy data}
+
+We use public series capped at 31 December 2023. Table~\ref{tab:data} states
+the definitions explicitly. These proxies were chosen to approximate the
+economic roles in the parent study, not to claim vendor-level equivalence.
+
+\begin{table}[!htbp]
+\centering
+\caption{Public proxy definitions and primary evaluation samples.}
+\label{tab:data}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{p{0.07\textwidth}p{0.21\textwidth}p{0.23\textwidth}p{0.30\textwidth}r}
+\toprule
+Market & Equity proxy & Cash proxy & Important difference from Shu et al. & Observations \\
+\midrule
+US & Yahoo \texttt{\char94 SP500TR}, gross total-return candidate
+& FRED \texttt{DTB3}, three-month Treasury-bill discount rate
+& Equity history begins in 1988, so the 1970 warm-up and 1990 test start are unavailable
+& 4,046 \\
+DE & Yahoo \texttt{\char94 GDAXI}, DAX performance-index candidate
+& FRED \texttt{IR3TIB01DEM156N}, monthly interbank-rate proxy
+& Equity history begins in 1987; cash is not a Treasury-bill series
+& 4,059 \\
+JP & Yahoo \texttt{\char94 N225}, Nikkei 225 price index
+& Bank of Japan \texttt{STRACLUC3M}, monthly uncollateralized call-rate proxy
+& The equity series excludes dividends and cash is not a Treasury-bill series
+& 3,586 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+Equity simple return is \(P_t/P_{t^-}-1\), where \(t^-\) is the preceding
+valid equity date; log return is \(\log(P_t/P_{t^-})\). Annual percentage cash
+rates are converted to daily returns by division by \(100\times252\) and are
+aligned backward only after causal availability. Excess return is equity
+simple return minus cash return. Missing source values are preserved rather
+than filled from the future.
+
+After feature warm-up, selection, delay, and common-date alignment, the primary
+samples are:
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Market & Start & End & Observations \\
+\midrule
+US & 4 Dec 2007 & 29 Dec 2023 & 4,046 \\
+DE & 3 Jan 2008 & 29 Dec 2023 & 4,059 \\
+JP & 7 May 2009 & 29 Dec 2023 & 3,586 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The periods are economically different from 1990--2023. The Japanese
+difference is especially material: proxy \BH{} Sharpe is about 0.545, versus
+0.12 in Shu et al., and the proxy omits dividends. Parent-paper performance is
+therefore context. The scientific comparison here is the ordering of models on
+the same proxy dates, not numerical equality with Table~\ref{tab:shu-main}.
+
+\section{From an observed return to a tradable position}
+
+Let \(r^e_t\) and \(r^c_t\) denote equity and local-cash returns. A model emits
+\(a_t\in\{0,1\}\), with one denoting equity. The signal formed after observing
+day \(t\) is executed at the end of the next trading day and first earns the
+return at \(t+2\):
+\begin{equation}
+r^p_{t+2}=a_t r^e_{t+2}+(1-a_t)r^c_{t+2}.
+\label{eq:gross}
+\end{equation}
+If \(w_u\) is the position that earns return \(u\), net return is
+\begin{equation}
+r^{p,\mathrm{net}}_u
+=w_u r^e_u+(1-w_u)r^c_u
+-0.001\,|w_u-w_{u-1}|.
+\label{eq:net}
+\end{equation}
+The initial position does not receive a fictional trade cost.
+
+\begin{figure}[!htbp]
+\centering
+\fbox{\parbox{0.92\textwidth}{
+\centering
+observe returns/features at \(t\)
+\(\longrightarrow\) infer state \(s_t\)
+\(\longrightarrow\) set signal \(a_t=1-s_t\)
+\(\longrightarrow\) execute at end of \(t+1\)
+\(\longrightarrow\) earn net return at \(t+2\)
+}}
+\caption{The common causal timeline. Every candidate, HMM, and fixed/adaptive
+JM path uses this timing.}
+\label{fig:timeline}
+\end{figure}
+
+This is regime identification rather than direct next-day return forecasting.
+The model describes the state at \(t\); the strategy earns money only if the
+state's risk--return relation persists after execution. Shu et al.\ explicitly
+make this distinction, and related allocation work also separates
+identification from forecasting \citep{nystrup2015}.
+
+Annualized Sharpe is
+\begin{equation}
+\operatorname{Sharpe}
+=\sqrt{252}\,
+\frac{\operatorname{mean}(r^{p,\mathrm{net}}_t-r^c_t)}
+     {\operatorname{sd}(r^{p,\mathrm{net}}_t)},
+\label{eq:sharpe}
+\end{equation}
+using sample standard deviation. Maximum drawdown is the minimum peak-to-trough
+wealth decline. Cash fraction is \(\operatorname{mean}(1-w_t)\).
+Switch count is the number of nonzero adjacent position changes.
+
+Turnover follows the parent-paper convention:
+\begin{equation}
+\operatorname{Turnover}
+=\frac{1}{2}\,252\,
+\operatorname{mean}|w_t-w_{t-1}|.
+\label{eq:turnover}
+\end{equation}
+For a binary strategy, an equity-to-cash-to-equity round trip counts as one
+unit. The old repository display omitted the one-half and therefore reported
+annualized traded notional instead of paper turnover. Equation
+\eqref{eq:net} always used the full one-way change, so correcting the turnover
+label changed no cost, return, Sharpe, or drawdown.
+
+\section{Benchmark regime models}
+
+\subsection{Gaussian HMM}
+
+An HMM assumes an unobserved two-state Markov chain \(s_t\) with transition
+matrix \(P\), and a Gaussian distribution for the observed log return
+conditional on each state. In simple language, it fits two return
+distributions and probabilities of remaining in or moving between them. The
+Baum--Welch expectation--maximization procedure estimates parameters by
+likelihood; Viterbi decoding finds a most likely state path. Gaussian HMMs can
+reproduce several stylized properties of daily equity returns
+\citep{ryden1998}, but likelihood is multimodal and the assumed distribution
+can be misspecified.
+
+The proxy protocol fits a two-state diagonal-covariance Gaussian HMM daily on
+the trailing 3,000 finite log returns. Ten deterministic starts are attempted
+and the highest-likelihood accepted fit is kept. The state with lower fitted
+variance is favorable. The terminal Viterbi state is recorded as the day's
+raw online state. For each smoothing candidate \(k\), a causal trailing
+majority/median filter acts only on states already emitted. \(k=0\) is
+unsmoothed. The monthly validation procedure chooses \(k\).
+
+\subsection{Fixed statistical Jump Model}
+
+Let \(x_t\in\mathbb{R}^3\) be a standardized feature vector, let
+\(\theta_0,\theta_1\) be centers, and let \(s_t\in\{0,1\}\). Fixed JM solves
+\begin{equation}
+\min_{\Theta,S}
+\sum_{t=0}^{T}
+\frac{1}{2}\|x_t-\theta_{s_t}\|_2^2
++\lambda\sum_{t=1}^{T}\ind\{s_t\ne s_{t-1}\}.
+\label{eq:fixed}
+\end{equation}
+The first term is k-means-like compactness. The second charges \(\lambda\)
+each time the path changes state. At \(\lambda=0\), time order does not affect
+the assignment step; larger \(\lambda\) creates persistence, and an
+excessively large value can collapse the path to one state.
+
+The three v7 features follow the parent design:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Feature & Half-life & Economic role \\
+\midrule
+Exponentially weighted downside deviation & 10 days & recent downside risk \\
+Exponentially weighted Sortino ratio & 20 days & medium-horizon return/downside risk \\
+Exponentially weighted Sortino ratio & 60 days & slower return/downside risk \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The learner alternates two simple steps. Holding the states fixed, it updates
+each center from the observations assigned to that state. Holding the centers
+fixed, it obtains the globally optimal path for those centers by dynamic
+programming. Ten initializations are attempted and the lowest objective is
+kept. Features are standardized from past data only. The proxy centers are
+refit in January and July on a rolling 3,000-observation window. The state
+with higher cumulative training excess return is favorable; the other is
+cash.
+
+For online date \(t\), centers remain frozen at the most recent refit. The
+decoder sees the trailing 3,000 feature rows through \(t\), and its terminal
+state becomes the signal state for \(t\). A large \(\lambda\) reduces switches
+but can delay a turning point; a small \(\lambda\) reacts sooner but can
+whipsaw. This is the same accuracy--latency problem emphasized in persistent
+online classification \citep{nystrup2018,nystrup2020online}.
+
+\subsection{Monthly hyperparameter selection}
+
+At each prior-month final complete date, every eligible JM lambda and HMM
+smoothing candidate is replayed over the preceding eight calendar years. Its
+0/1 strategy uses the same \(t+2\) timing and 10-basis-point costs as the outer
+sample. The candidate with highest validation Sharpe is activated for the
+next month, subject to the same delay. Candidates with fewer than 252 valid
+returns are ineligible. Ties within \(10^{-12}\) choose the smaller smoothing
+value. Thus hyperparameter selection itself is causal and economic rather than
+a retrospective choice from outer Sharpe.
+
+\section{Evidence-adaptive transition penalties}
+
+\subsection{General objective and dynamic program}
+
+For fitted centers, define the state-fit loss
+\begin{equation}
+L_t(k)=\frac{1}{2}\|x_t-\theta_k\|_2^2.
+\label{eq:loss}
+\end{equation}
+A time-varying decoder solves
+\begin{equation}
+\min_S
+\sum_{t=0}^{T}L_t(s_t)
++\sum_{t=1}^{T}C_t(s_{t-1},s_t),
+\qquad C_t(i,i)=0.
+\label{eq:tvobjective}
+\end{equation}
+The exact recurrence is
+\begin{equation}
+V_t(j)=L_t(j)+\min_i\{V_{t-1}(i)+C_t(i,j)\}.
+\label{eq:dp}
+\end{equation}
+Backtracking gives the minimizing path. The complexity remains
+\(O(TK^2)\); for two states it is linear in \(T\).
+
+At each refit,
+\begin{equation}
+q_{\mathrm{train}}
+=\operatorname{median}_{u,k}
+\left|L_u(k)-\operatorname{median}_{v,\ell}L_v(\ell)\right|
+\label{eq:q}
+\end{equation}
+is the raw median absolute deviation of all finite state losses on the causal
+3,000-row training prefix. It must be finite and strictly positive. This
+training-only scale makes the loss gap dimensionless and prevents an asset's
+feature scale from silently redefining \(\beta\). Adaptive studies reuse the
+sealed v7 standardizer and fixed-JM centers for each lambda/refit; they change
+online decoding only and do not jointly refit centers under
+\eqref{eq:tvobjective}.
+
+\subsection{Arrival-day evidence}
+
+The first rule lowers the cost from previous state \(i\) to destination \(j\)
+only when the current observation fits \(j\) better:
+\begin{equation}
+C^A_t(i,j)=
+\lambda_0\exp\!\left[
+-\beta\tanh\!\left(
+\frac{[L_t(i)-L_t(j)]_+}{q_{\mathrm{train}}}
+\right)\right],
+\qquad i\ne j.
+\label{eq:arrival}
+\end{equation}
+For \(\beta\ge0\),
+\begin{equation}
+\lambda_0e^{-\beta}\le C^A_t(i,j)\le\lambda_0.
+\end{equation}
+Thus \(\beta=\log2\) permits at most a 50\% discount and
+\(\beta=\log4\) at most a 75\% discount. At \(\beta=0\), every off-diagonal
+cost is exactly \(\lambda_0\), so the objective, states, choices, positions,
+trades, costs, and returns equal fixed JM.
+
+The intuitive weakness is same-day double-use. The current gap first enters
+the observation loss and then lowers the current transition barrier. In the
+binary case, let
+\[
+d_t=V_t(1)-V_t(0),\quad
+g_t=L_t(1)-L_t(0),\quad
+a_t=C_t(0,1),\quad b_t=C_t(1,0).
+\]
+Equation~\eqref{eq:dp} becomes
+\begin{equation}
+d_t=g_t+\operatorname{clip}(d_{t-1},-b_t,a_t).
+\label{eq:binary}
+\end{equation}
+On the evidence-supported active boundary under arrival adaptation,
+\begin{equation}
+\left|\frac{\partial d_t}{\partial g_t}\right|
+=
+1+\frac{\beta C_t}{q_{\mathrm{train}}}
+\sech^2\!\left(\frac{|g_t|}{q_{\mathrm{train}}}\right)\ge1.
+\label{eq:amplification}
+\end{equation}
+The inequality is strict when \(\beta>0\), \(\lambda_0>0\), the evidence gap
+is strict, and the relevant clip boundary is active away from kinks and ties.
+At \(\beta=0\) or \(\lambda_0=0\), the derivative equals one.
+This is not a general instability theorem, but it identifies a precise branch
+where the same shock moves the loss difference and simultaneously weakens the
+barrier.
+
+\subsection{Lagged evidence}
+
+The simplest repair changes only the evidence date:
+\begin{equation}
+C^L_t(i,j)=
+\lambda_0\exp\!\left[
+-\beta\tanh\!\left(
+\frac{[L_{t-1}(i)-L_{t-1}(j)]_+}{q_{\mathrm{train}}}
+\right)\right],
+\qquad i\ne j.
+\label{eq:lagged}
+\end{equation}
+The current observation still contributes \(L_t(s_t)\), but the previous
+observation controls the barrier. This removes direct current-day double-use
+while preserving the bounds, scale, and beta-zero identity. On January and
+July refit dates, the previous row's loss is recomputed under the scaler and
+centers fitted through \(t\). The rule is causal at \(t\), but it is not
+strictly \(\F_{t-1}\)-measurable on those refit dates. Reusing stale centers
+only for the evidence term would define a different \(\beta>0\) model, not the
+frozen mechanism tested here. Beta-zero nesting itself is unaffected because
+the loss gap then has no effect on the transition cost.
+
+\subsection{Directed costs and pair balance}
+
+An early project idea assigned constant costs \(a=C(0,1)\) and
+\(b=C(1,0)\) and interpreted them as separate state durations. For a binary
+path,
+\begin{equation}
+aN_{01}+bN_{10}
+=\frac{a+b}{2}N_{\mathrm{switch}}
++\frac{a-b}{2}(s_T-s_0).
+\label{eq:directed}
+\end{equation}
+A constant asymmetric matrix is therefore a symmetric switch cost plus an
+endpoint boundary bias, not independent bull/bear duration control. That early
+interpretation was withdrawn. When costs vary with time, the per-transition
+decomposition remains valid, but the antisymmetric terms need not telescope.
+
+The pair-balanced lagged rule is
+\begin{equation}
+C^B_t(i,j)=\lambda_0\left[
+1-(1-e^{-\beta})
+\tanh\!\left(
+\frac{L_{t-1}(i)-L_{t-1}(j)}
+     {q_{\mathrm{train}}}
+\right)
+\right],
+\qquad i\ne j.
+\label{eq:balanced}
+\end{equation}
+It satisfies
+\begin{equation}
+C^B_t(i,j)+C^B_t(j,i)=2\lambda_0
+\label{eq:pairsum}
+\end{equation}
+at every date. Evidence tilts direction while the pair-average cost remains
+fixed. Its bounds are
+\(\lambda_0e^{-\beta}\le C^B_t(i,j)
+\le\lambda_0(2-e^{-\beta})\).
+It also nests fixed JM exactly at \(\beta=0\).
+
+\subsection{A separation gate that did not survive testing}
+
+The contrast between Germany and Japan suggested a simple hypothesis:
+evidence discounts may work only when the two fitted states are well separated.
+A training-only reliability statistic was frozen:
+\begin{equation}
+D=\|\mu_0-\mu_1\|,\qquad
+\rho_k=\operatorname{median}_{u\in A_k}\|z_u-\mu_k\|,\qquad
+R_{\mathrm{train}}=\frac{D}{D+\rho_0+\rho_1},
+\label{eq:separation}
+\end{equation}
+where \(A_k\) contains training rows strictly nearer center \(k\). The proposed
+gate multiplied \(\beta\) by \(R_{\mathrm{train}}\). It is bounded,
+label-symmetric, and invariant to translation, orthogonal rotations, and
+common positive scaling.
+
+The completed performance-free diagnostic was inconclusive. All
+leave-one-market-out optimizer fits failed the frozen gradient criterion, and
+event reliability did not consistently distinguish whipsaws from persistent
+moves. Germany even had slightly higher median reliability for whipsaw events
+than persistent events. This gate was closed rather than promoted to a P\&L
+sweep. It remains part of the mathematical record because it shows how a
+plausible story can fail before trading performance is opened.
+
+\section{Empirical design and verification}
+
+\subsection{Economic target}
+
+For market \(m\) and a prespecified JM variant \(v\), define
+\begin{equation}
+G_m(v)=
+\operatorname{Sharpe}_{v,m}
+-\max\{\operatorname{Sharpe}_{\mathrm{BH},m},
+       \operatorname{Sharpe}_{\mathrm{HMM},m}\}.
+\label{eq:gap}
+\end{equation}
+A market passes only if \(G_m(v)>0\). The project target requires the same
+prespecified variant to pass all declared markets. The descriptive quantity
+\(\max_v G_m(v)\), which chooses a different variant after seeing each
+market, is an upper envelope and not a deployable model.
+
+MDD, turnover, cash fraction, and switch count explain the risk and activity
+used to obtain Sharpe; they do not replace the benchmark test. A switch count
+is also not a true whipsaw label. Mechanism studies use an explicit 20-day
+reversal definition, still without latent-regime ground truth.
+
+\subsection{Frozen local choices}
+
+The canonical proxy JM grid is
+\[
+\{0,5,15,35,70,150,300,600,1200\}.
+\]
+The HMM smoothing grid is
+\[
+\{0,2,4,6,8,10,20,40,80,160,320,640,1280,2560\}.
+\]
+These are repository choices, not recovered Shu parameters. Arrival and
+lagged mechanism scenarios use
+\(\beta\in\{0,\log2,\log4\}\). The lagged P\&L readout carries forward only
+\(\log4\), selected by a performance-free mechanism rule. The later balanced
+study compares \(\{0,\log4\}\), again without a new beta sweep. Beta is
+scenario-fixed and not estimated to maximize profit.
+
+A local upper-candidate concentration diagnostic was introduced only to warn
+that a grid may be too short when the largest candidate is chosen in more than
+5\% of months. It is not in Shu et al. and never changes a state, trade, cost,
+or return. In fail-closed grid and window audits, it historically governed
+whether performance metrics were opened. In accepted completed P\&L studies it
+is descriptive only and does not hide reported metrics. An endpoint audit
+later confirmed that lambda-domain truncation is real but did not rescue the
+three-market ordering.
+
+\subsection{Implementation contracts}
+
+Before interpreting performance, the following contracts were checked:
+
+\begin{table}[!htbp]
+\centering
+\caption{Verification contracts applied to the adaptive decoders and
+accounting path.}
+\label{tab:verification}
+\small
+\begin{tabular}{p{0.26\textwidth}p{0.64\textwidth}}
+\toprule
+Contract & Observable check \\
+\midrule
+Formula values & Stored penalties equal the stated equations, directions, bounds, and training-only scale \\
+Objective & Reported path objective equals observation losses plus the exact time-indexed transition costs \\
+Beta-zero nesting & Candidate states and full selected trade paths exactly match fixed JM at \(\beta=0\) \\
+Brute-force equivalence & Dynamic programming equals exhaustive enumeration on small binary paths \\
+Toy paths & Weak evidence retains the state; strong destination evidence can trigger the intended transition \\
+Prefix invariance & Truncating future rows leaves all earlier states unchanged; future mutation cannot change the prefix \\
+Causal fit boundaries & Each scaler, center, scale, candidate choice, signal, and position uses only information available by its decision date \\
+Trading identity & Signal at \(t\) equals \(1-s_t\), position earns \(t+2\), and each one-way change costs exactly 0.001 \\
+Concrete dates & Loss \(\rightarrow\) penalty \(\rightarrow\) state \(\rightarrow\) signal \(\rightarrow\) position \(\rightarrow\) trade is reconstructed \\
+Independent replay & Accepted summaries, choices, positions, costs, and decisions are rebuilt from source artifacts \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The final balanced run independently reconstructed nine metric rows, 15,228
+selection-surface rows, and 35,073 timeline rows with maximum numerical error
+0.0. Focused tests passed 89 checks; the final repository suite passed 531.
+These facts establish implementation health. They do not establish that an
+inferred state is the market's unique true regime or that a strategy will
+generalize.
+
+\subsection{Development-sample status}
+
+All US, DE, and JP proxy rows through 2023 have now been inspected repeatedly
+during model development. The adaptive results are therefore exploratory
+development evidence, even when a spec was frozen before a particular readout.
+No claim of an untouched holdout, alpha, robustness, statistical significance,
+stable profit, or live performance is authorized. No reported model or P\&L
+experiment accessed post-2023 rows. A separate authorized source audit did
+inspect public candidate series through July 2026, so those dates are not
+untouched confirmation evidence.
+
+\section{Results}
+
+\subsection{The fixed parent ordering is not recovered}
+
+Table~\ref{tab:paper-proxy} puts the central Sharpe comparison in one place.
+The public proxy does not recover the parent ordering. Fixed JM is below the
+strongest same-sample benchmark in all three markets.
+
+\begin{table}[!htbp]
+\centering
+\caption{Paper Sharpe versus the current proxy fixed baseline. The columns are
+not like-for-like replications because sources and evaluation periods differ.}
+\label{tab:paper-proxy}
+\begin{tabular}{lcc}
+\toprule
+Market & Shu et al.\ \BH{}/HMM/JM & Proxy \BH{}/HMM/fixed JM \\
+\midrule
+US & \(0.48/0.54/0.68\) & \(0.512964/0.653725/0.569865\) \\
+DE & \(0.30/0.35/0.44\) & \(0.289638/0.007599/0.166440\) \\
+JP & \(0.12/0.19/0.31\) & \(0.544589/0.398539/0.329270\) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This is a proxy non-replication, not a refutation of Shu et al. Exact vendor
+series, the 1970 warm-up, final grids, and several conventions are unavailable.
+The Japanese proxy describes a particularly different investment: its price
+index excludes dividends and its outer sample begins after the global
+financial crisis.
+
+\subsection{Full primary-delay proxy results}
+
+Table~\ref{tab:all-results} reports all accepted primary-delay variants.
+Arrival, lagged, and balanced mean \(\beta=\log4\). Turnover uses the corrected
+paper convention. Values are rounded for display; the repository CSVs retain
+full precision.
+
+\begin{table}[p]
+\centering
+\caption{Primary-delay net results on the public proxy development sample
+through 2023. Return, volatility, MDD, turnover, and cash are percentages.}
+\label{tab:all-results}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{llrrrrrrr}
+\toprule
+Market & Model & CAGR & Vol. & Sharpe & MDD & Turnover & Cash & Switches \\
+\midrule
+US & \BH{}       & 9.780 & 20.495 & 0.512964 & -53.963 & 0.000 & 0.000 & 0 \\
+US & HMM          & 8.461 & 12.143 & \textbf{0.653725} & -19.363 & 143.253 & 24.221 & 46 \\
+US & Fixed JM     & 8.512 & 14.595 & 0.569865 & -33.857 & 65.398 & 21.157 & 21 \\
+US & Arrival JM   & 7.297 & 14.223 & 0.501745 & -33.790 & 59.170 & 23.900 & 19 \\
+US & Lagged JM    & 8.508 & 14.026 & 0.586777 & -33.790 & 46.713 & 24.913 & 15 \\
+US & Balanced JM  & 8.870 & 13.856 & 0.616326 & -33.790 & 40.484 & 26.174 & 13 \\
+\addlinespace
+DE & \BH{}       & 4.737 & 22.094 & 0.289638 & -53.876 & 0.000 & 0.000 & 0 \\
+DE & HMM          & -1.031 & 19.240 & 0.007599 & -54.590 & 105.543 & 11.949 & 34 \\
+DE & Fixed JM     & 2.071 & 17.118 & 0.166440 & -38.779 & 99.335 & 18.280 & 32 \\
+DE & Arrival JM   & 4.123 & 18.082 & 0.277070 & -38.779 & 43.459 & 13.107 & 14 \\
+DE & Lagged JM    & 5.259 & 17.987 & \textbf{0.337888} & -38.779 & 24.834 & 13.427 & 8 \\
+DE & Balanced JM  & 5.098 & 17.291 & 0.335543 & -38.779 & 49.667 & 16.876 & 16 \\
+\addlinespace
+JP & \BH{}       & 9.687 & 20.731 & \textbf{0.544589} & -31.799 & 0.000 & 0.000 & 0 \\
+JP & HMM          & 6.075 & 19.127 & 0.398539 & -34.656 & 130.006 & 5.633 & 37 \\
+JP & Fixed JM     & 4.498 & 17.910 & 0.329270 & -32.162 & 45.678 & 27.886 & 13 \\
+JP & Arrival JM   & 5.321 & 16.880 & 0.385254 & -41.348 & 94.869 & 27.524 & 27 \\
+JP & Lagged JM    & 5.792 & 16.772 & 0.413215 & -31.799 & 115.951 & 27.970 & 33 \\
+JP & Balanced JM  & 2.913 & 17.743 & 0.244542 & -41.303 & 137.033 & 22.644 & 39 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+The fixed-JM result differs by market. In the US it lies between \BH{} and HMM.
+In Germany it beats HMM but not \BH{}. In Japan it loses to both. Hence fixed
+JM passes the economic target in \(0/3\) markets.
+
+\subsection{Arrival adaptation}
+
+The arrival study tested the complete frozen beta set. Sharpe at
+\(\beta=0,\log2,\log4\) was:
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+Market & \(\beta=0\) & \(\beta=\log2\) & \(\beta=\log4\) \\
+\midrule
+US & 0.569865 & 0.512427 & 0.501745 \\
+DE & 0.166440 & 0.271817 & 0.277070 \\
+JP & 0.329270 & 0.143204 & 0.385254 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Beta zero reproduced fixed JM exactly. The mechanism changed paths and reduced
+German switches from 32 to 14, so it behaved nontrivially. Economically,
+however, arrival \(\log4\) beat both benchmarks in \(0/3\) markets. It lowered
+US Sharpe and doubled Japanese activity from 13 to 27 switches while worsening
+Japanese MDD by about 9.19 percentage points. Equation
+\eqref{eq:amplification} gives a mathematical reason to suspect the current-day
+double-use, but it does not by itself prove that double-use caused the market
+result.
+
+\subsection{Lagging the evidence}
+
+Before P\&L was opened, a performance-free mechanism study compared
+arrival-day and lagged candidate paths. At \(\beta=\log4\), 20-day whipsaw
+events fell from \(6\) to \(2\) in the US, \(6\) to \(3\) in Germany, and
+\(5\) to \(1\) in Japan: \(17\rightarrow6\) pooled. Across all three markets,
+eleven persistent events still moved before fixed JM; Japan contributed five.
+Only \(\log4\) passed the frozen mechanism
+rule. This supported a mechanism experiment, not a return claim.
+
+In the subsequent readout, lagged-minus-fixed Sharpe was
+\(+0.016913/+0.171448/+0.083945\) in US/DE/JP. Switches changed
+\(21\rightarrow15\), \(32\rightarrow8\), and \(13\rightarrow33\).
+The model therefore reduced selected-strategy activity in the US and Germany
+but increased it sharply in Japan. It beat both economic benchmarks only in
+Germany. The apparent contradiction with the candidate-path whipsaw diagnostic
+is resolved by monthly selection: the selector can choose different lambdas
+when the entire candidate family changes.
+
+A frozen \(2\times2\) diagnostic separated fixed/lagged candidate paths from
+fixed/lagged monthly choices. For equal-market mean Sharpe, the total
+lagged-minus-fixed change was \(+0.090769\). The direct path effect at fixed
+choices was \(-0.137373\), the direct choice effect at fixed paths was
+\(+0.023065\), and the interaction was \(+0.205076\). Shapley accounting
+allocated \(-0.034835\) to the path family and \(+0.125603\) to the choice
+schedule. These are exact decompositions of nonlinear metrics, not causal
+effects. They show that the positive aggregate readout is not evidence that
+lagged paths alone were uniformly better.
+
+\subsection{Pair-balanced lagging}
+
+The pair-balanced mechanism retained 87.5\% of eligible early confirmations
+and produced zero unconfirmed persistent lock-ins, but pooled whipsaws did not
+fall: own-event whipsaws were \(7\) versus \(6\) for one-sided lagging, and
+matched-anchor whipsaws were \(5\) versus \(5\). The mechanism criterion was
+therefore not supported.
+
+The later, explicitly post-result P\&L readout found balanced-minus-lagged
+Sharpe of \(+0.029549/-0.002345/-0.168672\) in US/DE/JP. US turnover and
+switches fell; German turnover and switches rose; Japan deteriorated on Sharpe,
+MDD, turnover, and switch count. Balanced-minus-fixed mean Sharpe was positive
+with two positive markets, but the primary comparison with lagged had negative
+mean Sharpe and only one positive market. Pair balancing was not supported as
+the next model.
+
+\subsection{Final benchmark gaps}
+
+Table~\ref{tab:gaps} reports the most favorable observed JM separately in each
+market. This is deliberately an ex-post upper envelope.
+
+\begin{table}[!htbp]
+\centering
+\caption{Best observed per-market JM and gap to the strongest same-sample
+benchmark. A single deployable variant cannot choose this row after seeing the
+market.}
+\label{tab:gaps}
+\begin{tabular}{llrrrrrr}
+\toprule
+Market & Best JM & Sharpe & \(G_m\) & MDD & Turnover & Cash & Switches \\
+\midrule
+US & Balanced & 0.616326 & -0.037398 & -0.337905 & 0.404844 & 0.261740 & 13 \\
+DE & Lagged   & 0.337888 & +0.048251 & -0.387794 & 0.248337 & 0.134270 & 8 \\
+JP & Lagged   & 0.413215 & -0.131375 & -0.317989 & 1.159509 & 0.279699 & 33 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Only Germany clears both \BH{} and HMM. The US remains below HMM; Japan remains
+well below \BH{}. Fixed and arrival pass \(0/3\) markets; lagged and balanced
+each pass only Germany. No tested variant meets the cross-market objective.
+
+\subsection{Trading-delay sensitivity of the fixed proxy}
+
+Table~\ref{tab:delay} reports the already accepted fixed-baseline delay study.
+Each delay is applied consistently to validation and testing. Samples shorten
+slightly as the offset grows. Adaptive variants were not tested at delays 5
+and 10, so this table cannot support adaptive-delay robustness.
+
+\begin{table}[!htbp]
+\centering
+\caption{Proxy Sharpe at trading delays 1/5/10 days.}
+\label{tab:delay}
+\begin{tabular}{llccc}
+\toprule
+Market & Model & Delay 1 & Delay 5 & Delay 10 \\
+\midrule
+US & \BH{} & 0.513 & 0.507 & 0.515 \\
+US & HMM & 0.654 & 0.741 & 0.479 \\
+US & Fixed JM & 0.570 & 0.548 & 0.604 \\
+\addlinespace
+DE & \BH{} & 0.290 & 0.294 & 0.304 \\
+DE & HMM & 0.008 & 0.017 & 0.166 \\
+DE & Fixed JM & 0.166 & 0.217 & 0.330 \\
+\addlinespace
+JP & \BH{} & 0.545 & 0.534 & 0.535 \\
+JP & HMM & 0.399 & 0.397 & 0.404 \\
+JP & Fixed JM & 0.329 & 0.256 & 0.315 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The paths are not monotonically worse with longer delay because the validation
+selector is itself re-optimized for each delay and the comparison dates change
+slightly. Germany's fixed JM exceeds both comparators at delay 10 on that
+shorter matched sample, whereas Japan never does. These heterogeneous values
+do not reproduce Shu et al.'s broad delay-robustness pattern.
+
+\subsection{Two concrete loss-to-trade traces}
+
+Aggregate metrics can hide what the mechanism actually does.
+Table~\ref{tab:traces} follows two accepted rows through the entire causal
+chain. State 0 is favorable/equity and state 1 is unfavorable/cash.
+
+\begin{table}[!htbp]
+\centering
+\caption{Concrete audited examples. The trade executes at the end of \(t+1\);
+the displayed date is the \(t+2\) position/return row on which the one-way cost
+is booked.}
+\label{tab:traces}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{llrrrrllllr}
+\toprule
+Market/rule & Evidence date & \(\lambda_0\) & \(q\) & Loss source & Loss dest. &
+Penalty & State & Signal/position/trade & \(t+2\) position/return & Net return \\
+\midrule
+DE arrival & 25 Jan 2008 & 150 & 0.9901 & 7.4160 & 1.1158 &
+37.5003 & \(0\to1\) & \(0/0/-1\) & 29 Jan 2008 & -0.000816 \\
+JP lagged & 7 May 2009 & 5 & 0.9414 & 2.1566 & 0.8314 &
+1.4620 & \(1\to0\) on 8 May & \(1/1/+1\) & 12 May 2009 & -0.017226 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+In Germany, arrival evidence cut a potential \(0\to1\) transition cost from
+150 to about 37.5; the state changed on 25 January. The trade executed at the
+end of 28 January; the cash position first earned a return and booked the 0.001
+one-way cost on 29 January. Fixed JM remained favorable on the signal date. In
+Japan, the 7 May lagged loss gap cut the next day's \(1\to0\) cost from 5 to
+about 1.462. The state changed to equity on 8 May and the trade executed at the
+end of 11 May; the equity position first earned a return and booked the 0.001
+cost on 12 May, when it lost roughly 1.72\% net. One date cannot
+explain a full-sample Sharpe, but it makes the model and accounting observable.
+
+\section{Discussion}
+
+\subsection{What has been contributed mathematically}
+
+The study has an explicit time-varying JM objective, a training-only robust
+scale, exact dynamic programming, and an exact fixed-JM special case. For two
+states, Equation~\eqref{eq:binary} compresses the decoder to a scalar
+value-difference recursion. Equation~\eqref{eq:amplification} isolates the
+same-day amplification branch. Equation~\eqref{eq:directed} corrects an early
+mistaken duration interpretation, and Equation~\eqref{eq:pairsum} gives pair
+balancing a precise invariant. These are model properties and implementation
+contracts. No theorem yet bounds false-switch probability, expected detection
+delay, or regret.
+
+The exact loss-gap regularizer was not found in a limited primary-source scan,
+but adjacent literature contains arbitrary transition matrices,
+state-dependent persistence, continuous JMs, sparse feature selection, and
+alternative selection criteria
+\citep{aydinhan2024,nystrup2021,cortese2023}. The defensible phrase is
+candidate mathematical extension, not a global priority claim.
+
+\subsection{What has and has not been contributed economically}
+
+The economic evidence is mixed. Germany is a large local development-sample
+improvement: lagged Sharpe rises from 0.166440 to 0.337888, switches fall from
+32 to 8, turnover falls from 0.993348 to 0.248337, and the strategy clears
+both comparators. Pair balancing moves the US closer to HMM. Lagging improves
+fixed JM Sharpe in Japan. But the final target is not met: the best observed US
+JM still loses to HMM and the best observed Japanese JM still loses to
+\BH{}.
+
+This failure map is scientifically useful because it rejects a simple
+universal story. A mechanism that suppresses candidate-path reversals can
+still increase selected-strategy activity when monthly validation changes its
+lambda schedule. The Japanese upper lambda is selected frequently, and the
+path/choice interaction is large. Saying that the lagged path is simply better
+is therefore too strong; lagging changes both path geometry and economic
+selection, with heterogeneous net effects.
+
+Even if a JM beat both benchmarks, it would demonstrate an economically useful
+signal, not the existence of a unique true latent market state. The models are
+unsupervised descriptions with no regime ground truth. Cash fraction also
+matters: lower risk can arise mechanically from holding less equity. A valid
+performance story requires improved return relative to risk, after equal
+timing and cost, not simply more days in cash.
+
+\subsection{Why the proxy differs from the parent paper}
+
+The evidence supports underidentification rather than one confirmed bug:
+
+\begin{enumerate}
+\item Exact Bloomberg total-return indices and GFD cash series are unavailable.
+The proxy test periods begin in 2007--2009 rather than 1990.
+\item Japan uses a price index without dividends; German and Japanese cash
+rates are different instruments from the parent Treasury bills.
+\item The complete final JM and HMM candidate grids and several tie/calendar
+conventions are undisclosed.
+\item Grid choice is path-discrete and strongly binding. Restricting candidates
+to Table-3-visible values, using a historical author grid, taking their union,
+and adding one predefined endpoint all changed paths, but none restored the
+three-market ordering.
+\item The 5\% boundary diagnostic can label unresolved grid coverage, but it
+cannot change any state or performance number.
+\end{enumerate}
+
+The endpoint audit added only JM \(362.0387\) and HMM smoothing \(1249\), both
+derived before opening endpoint performance. The JM addition lowered US
+Sharpe by 0.0739, raised German Sharpe by 0.0790 while worsening its MDD, and
+left Japan unchanged. The HMM endpoint changed no primary metric. Grid
+truncation is real, but this predefined test did not rescue the proxy.
+
+\subsection{Limitations}
+
+The current evidence has seven principal limits. First, proxy instruments and
+test periods are not definition-equivalent to the parent study. Second, the
+paper's complete grids remain unknown. Third, only three markets are used and
+their crises are correlated. Fourth, adaptive centers were not jointly refit;
+the experiments isolate decoding around frozen fixed-JM geometry. Fifth, beta
+was scenario-fixed rather than estimated, and upper-lambda selection shows
+that the finite adaptive optimum remains unidentified. Sixth, repeated
+inspection through 2023 makes these markets development data. Seventh, no
+confidence interval, multiple-testing correction, or untouched confirmation
+sample supports a performance claim.
+
+\section{Next mathematical hypothesis}
+
+The current objective rewards feature compactness and temporal persistence.
+It never requires a state to distinguish the future return earned by its
+position. Market timing is therefore an indirect consequence. A simple next
+principle is: a useful market state should be both statistically coherent and
+economically different.
+
+For training cutoff \(T\), a candidate predictive JM is
+\begin{equation}
+\min_{\Theta,\mu,S}
+\sum_{u=0}^{T}\frac12\|x_u-\theta_{s_u}\|_2^2
++\gamma\sum_{u=0}^{T-2}
+\rho\!\left(y_{u+2}-\mu_{s_u}\right)
++\lambda\sum_{u=1}^{T}\ind\{s_u\ne s_{u-1}\},
+\label{eq:predictive}
+\end{equation}
+where \(y_{u+2}\) is the excess return matured two trading observations after
+feature date \(u\), \(\mu_k\) is the return location associated with state
+\(k\), and \(\rho\) is a robust prediction loss. The \(u+2\) label is legal
+only if it is already observed by cutoff \(T\). At online date \(t\), inference
+uses \(x_t\) and frozen training parameters; no future return enters the
+decision.
+
+Equation~\eqref{eq:predictive} changes the scientific direction from purely
+unsupervised identification toward economically supervised state formation.
+It has not been implemented or tested. Before an experiment, the relative
+loss normalization, \(\gamma\), robust loss, alternating-fit algorithm,
+state-label rule, nested selection, markets, and success criterion must be
+frozen. Confirmation requires untouched markets or genuinely prospective
+data. Further same-sample sweeps of robust-gap caps, two-day confirmation,
+semi-Markov reversal surcharges, or feature metrics can generate hypotheses
+but cannot manufacture confirmation from the inspected US/DE/JP sample.
+
+\section{Conclusion}
+
+Shu et al.\ begin with an investor, not an algorithm. Persistent unfavorable
+markets create downside risk; a simple market/cash strategy makes the economic
+value of a regime signal visible; HMM supplies a benchmark; and fixed JM asks
+whether paying a constant cost for state changes produces a more useful,
+tradable path. Their 1990--2023 evidence says yes.
+
+We rebuilt that walk-forward question on public proxies and then asked whether every
+switch should pay the same price. Arrival-day, lagged, and pair-balanced
+transition penalties were formulated, implemented, and audited. The
+mathematics is coherent: exact dynamic programming survives, beta zero is
+fixed JM, same-day amplification has an explicit binary recursion, and pair
+balancing has an exact identity.
+
+The economic answer is not yet the desired one. The penalty formulas and
+look-ahead-free accounting behaved as specified. Economic outcomes improved
+clearly in one of three markets and were neutral or adverse in the other two.
+Germany clears \BH{} and HMM; the US does not clear HMM; Japan
+does not clear \BH{}. No all-market performance claim follows. The project has
+advanced from an unexamined fixed barrier to a better-specified mathematical
+family and an honest failure map. The next worthwhile test is not another
+winner search on the same sample, but a frozen economically predictive state
+objective evaluated on evidence that has not already shaped the model.
+
+\appendix
+
+\section{Exact candidate-grid inventory}
+
+The following sets have distinct provenance and must not be conflated:
+
+\begin{description}
+\item[Paper-v3 Table-3 illustrations.]
+JM \([0,5,15,35,70,150]\); HMM \([0,2,4,8,20]\).
+They illustrate persistence and are not disclosed as final CV grids.
+
+\item[Canonical proxy v7.]
+JM \([0,5,15,35,70,150,300,600,1200]\);\\
+HMM
+\([0,2,4,6,8,10,20,40,80,160,320,640,1280,2560]\).
+
+\item[Historical paper-v1 JM.]
+\([10,22,50,100,220,500,1000]\), from an older and materially different
+author design.
+
+\item[Source-union audit.]
+JM \([0,5,10,15,22,35,50,70,100,150,220,500,1000]\);\\
+HMM
+\([0,2,4,6,8,20]\).
+
+\item[Performance-free behavior search.]
+JM tested zero plus \(2^{j/2}\), \(j=-8,\ldots,22\); candidates through
+\(362.0386719675\) were globally eligible and \(512+\) failed the frozen
+occupancy/transition rule. HMM tested every integer \(0,\ldots,2560\);
+\(0,\ldots,1249\) were globally eligible.
+
+\item[Behavior-selected nine-candidate sets.]
+\begingroup\small
+JM \([0,0.353553,1,5.656854,16,32,64,181.019336,256]\);\\
+HMM
+\([0,3,9,32,54,114,166,402,1115]\).\\
+The one-shot endpoint audit added only
+JM \(362.038672\) and HMM \(1249\).
+\endgroup
+\end{description}
+
+No tested grid recovers Shu et al.'s ordering across all three proxy markets.
+The final paper grids remain unidentified. The adaptive experiments reuse the
+canonical v7 lambda grid; they do not expand it.
+
+\clearpage
+\section{Chronology of mathematical and empirical development}
+
+\begin{table}[!htbp]
+\centering
+\caption{Research sequence. Archived means the idea remains part of the
+scientific record but is not current evidence.}
+\label{tab:chronology}
+\small
+\begin{tabular}{p{0.13\textwidth}p{0.23\textwidth}p{0.53\textwidth}}
+\toprule
+Date/stage & Question or model & Outcome \\
+\midrule
+June 2026 & Minute prototype; hand-set additive/multiplicative costs and
+\(\lambda=\log(d-1)\)
+& Time-varying DP and synthetic paths worked, but real paths were 98--99.8\%
+identical and transaction costs dominated. Loss/penalty scales were not
+calibrated. Archived; no market evidence. \\
+\addlinespace
+8 July & Approximate daily P0 and exponential adaptive P1,
+\(\lambda_t=\min\{\exp(b_0+b_1z_t),5000\}\)
+& Superseded data, cadence, HMM, and accounting protocol. Historical Sharpe
+deltas were negative in US/DE and slightly positive in JP. Archived null. \\
+\addlinespace
+8--10 July & Constant asymmetric exit/re-entry costs P2
+& Binary identity~\eqref{eq:directed} disproved the intended independent
+duration interpretation. Claim withdrawn; numbers describe a boundary bias. \\
+\addlinespace
+12 July & Causal fixed baseline v7
+& Reproduced by independent replay. Fixed JM beat both benchmarks in 0/3
+proxy markets. This is the accepted parent for adaptive work. \\
+\addlinespace
+14 July & 4,000-row JM fit window
+& Upper-bound coverage failed in 8/9 market-delay cells, so performance stayed
+sealed. Effect unknown. \\
+\addlinespace
+15--18 July & Table-3, historical, union, behavior-grid, and endpoint audits
+& Grid choice materially changed paths, but no tested domain restored all
+markets. The 5\% rule was confirmed descriptive only. \\
+\addlinespace
+17 July & Arrival evidence, adaptive-confidence-001
+& Formula and causal tests passed; \(\beta=0\) exact. Trade-off result mixed,
+but economic target passed 0/3. Same-day double-use motivated lagging. \\
+\addlinespace
+17 July & Training-prefix separation gate
+& Leave-one-market-out diagnostic inconclusive and event ordering inconsistent.
+Closed before P\&L. \\
+\addlinespace
+17--18 July & Lagged evidence mechanism and P\&L
+& Candidate whipsaws \(17\to6\); selected Sharpe improved over fixed in all
+markets, but only Germany beat both benchmarks. \\
+\addlinespace
+18 July & Path/choice attribution
+& Large interaction; Shapley allocation assigned mean Sharpe gain mainly to
+monthly choices, not uniformly better paths. Diagnostic, not causal inference. \\
+\addlinespace
+18--21 July & Pair-balanced mechanism and P\&L
+& Pair identity exact and latency mostly retained, but whipsaws did not fall.
+US improved; DE was nearly flat versus lagged; Japan worsened. Not supported. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\clearpage
+\section{Accepted experiment provenance}
+
+The accepted evidence used in this manuscript is pinned by configs and
+append-only registry entries:
+
+\begin{itemize}
+\item fixed baseline:
+\path{fixed-baselines-8adb330565d6-3636939b525d-e9614112b234};
+\item fixed assumption audit:
+\path{fixed-baseline-assumption-audit-}\\
+\path{79c94852c8fd-3636939b525d-4cc8cdbccd14};
+\item arrival evidence:
+\path{adaptive-confidence-1b0c327b2db4-3636939b525d-864d671cf973};
+\item separation diagnostic:
+\path{adaptive-separation-}\\
+\path{813f66912526-26cbca8871be-fefc608b9081};
+\item lagged mechanism:
+\path{lagged-evidence-6f964f5724b2-26cbca8871be-d173ca32c86f};
+\item lagged P\&L:
+\path{lagged-pnl-bad599271e2d-643dd3e6d96f-be70588256b2};
+\item lagged attribution:
+\path{lagged-attribution-73a5995c487e-52854fc3c22a-197915169632};
+\item endpoint audit:
+\path{endpoint-grid-audit-05e9d08f619b-77b30ef98fa0-24ca06c297e8};
+\item balanced mechanism:
+\path{balanced-lagged-a7d9914ca1a8-643dd3e6d96f-17961bfd667f};
+\item balanced P\&L:
+\path{balanced-pnl-3ae665413a01-4e747110ba1c-eaae6444a9a5}.
+\end{itemize}
+
+Invalidated runs remain preserved for provenance but supply no accepted claim.
+The final balanced numerical CSVs are byte-identical to two earlier runs
+invalidated for provenance metadata only. The first understated the feature
+columns physically loaded. The second labeled 43 explicitly locked files as
+all files read even though inventory verification integrity-hashed 232 entries.
+The accepted schema-2 lock separately records the 43 explicitly locked inputs,
+all 232 integrity-hashed entries, all loaded feature columns, and the three
+columns used for selection and accounting. Every scientific CSV, trade,
+decision, smoke, and frozen lock is byte-identical across the corrected runs.
+
+\section{Reproduction and availability}
+
+The frozen sample cutoff is 31 December 2023. Repository source, lockfile,
+configs, experiment registry, tests, and scientific ledger are versioned.
+Raw provider downloads and generated run artifacts remain ignored. The core
+commands are:
+
+\begin{verbatim}
+uv python install 3.12.3
+uv sync --locked --extra data
+.venv/bin/python -m pytest -q
+.venv/bin/adaptive-jump fetch --config research.toml
+.venv/bin/adaptive-jump run --study replication
+  --config research.toml
+.venv/bin/adaptive-jump verify
+  --run artifacts/fixed-baselines/<run_id>
+\end{verbatim}
+
+The authors' \href{https://github.com/Yizhan-Oliver-Shu/jump-models}{public
+jump-models repository} is a useful implementation reference, not the empirical
+replication package for Shu et al.
+
+\begin{thebibliography}{99}
+
+\bibitem[Ang and Bekaert(2002)]{ang2002}
+A. Ang and G. Bekaert.
+\newblock International asset allocation with regime shifts.
+\newblock \emph{Review of Financial Studies}, 15(4):1137--1187, 2002.
+
+\bibitem[Ang and Bekaert(2004)]{ang2004}
+A. Ang and G. Bekaert.
+\newblock How regimes affect asset allocation.
+\newblock \emph{Financial Analysts Journal}, 60(2):86--99, 2004.
+
+\bibitem[Ang and Timmermann(2012)]{ang2012}
+A. Ang and A. Timmermann.
+\newblock Regime changes and financial markets.
+\newblock \emph{Annual Review of Financial Economics}, 4(1):313--337, 2012.
+
+\bibitem[Ayd{\i}nhan et al.(2024)]{aydinhan2024}
+A. O. Ayd{\i}nhan, P. N. Kolm, J. M. Mulvey, and Y. Shu.
+\newblock Identifying patterns in financial markets: Extending the statistical
+jump model for regime identification.
+\newblock \emph{Annals of Operations Research}, 2024.
+\newblock doi:10.1007/s10479-024-06035-z.
+
+\bibitem[Bemporad et al.(2018)]{bemporad2018}
+A. Bemporad, V. Breschi, D. Piga, and S. P. Boyd.
+\newblock Fitting jump models.
+\newblock \emph{Automatica}, 96:11--21, 2018.
+
+\bibitem[Bulla et al.(2011)]{bulla2011}
+J. Bulla, S. Mergner, I. Bulla, A. Sesbo\"e, and C. Chesneau.
+\newblock Markov-switching asset allocation: Do profitable strategies exist?
+\newblock \emph{Journal of Asset Management}, 12:310--321, 2011.
+
+\bibitem[Cortese et al.(2023)]{cortese2023}
+F. P. Cortese, P. N. Kolm, and E. Lindstr\"om.
+\newblock What drives cryptocurrency returns? A sparse statistical jump model
+approach.
+\newblock \emph{Digital Finance}, 5:483--518, 2023.
+
+\bibitem[Hamilton(1989)]{hamilton1989}
+J. D. Hamilton.
+\newblock A new approach to the economic analysis of nonstationary time series
+and the business cycle.
+\newblock \emph{Econometrica}, 57(2):357--384, 1989.
+
+\bibitem[Harding and Pagan(2003)]{harding2003}
+D. Harding and A. Pagan.
+\newblock A comparison of two business cycle dating methods.
+\newblock \emph{Journal of Economic Dynamics and Control},
+27(9):1681--1690, 2003.
+
+\bibitem[Hardy(2001)]{hardy2001}
+M. R. Hardy.
+\newblock A regime-switching model of long-term stock returns.
+\newblock \emph{North American Actuarial Journal}, 5(2):41--53, 2001.
+
+\bibitem[Markowitz(1959)]{markowitz1959}
+H. Markowitz.
+\newblock \emph{Portfolio Selection}.
+\newblock Yale University Press, New Haven, CT, 1959.
+
+\bibitem[Nystrup et al.(2015)]{nystrup2015}
+P. Nystrup, B. W. Hansen, H. Madsen, and E. Lindstr\"om.
+\newblock Regime-based versus static asset allocation: Letting the data speak.
+\newblock \emph{Journal of Portfolio Management}, 42(1):103--109, 2015.
+
+\bibitem[Nystrup et al.(2018)]{nystrup2018}
+P. Nystrup, B. W. Hansen, H. O. Larsen, H. Madsen, and E. Lindstr\"om.
+\newblock Dynamic allocation or diversification: A regime-based approach to
+multiple assets.
+\newblock \emph{Journal of Portfolio Management}, 44(2):62--73, 2018.
+
+\bibitem[Nystrup et al.(2020a)]{nystrup2020online}
+P. Nystrup, P. N. Kolm, and E. Lindstr\"om.
+\newblock Greedy online classification of persistent market states using
+realized intraday volatility features.
+\newblock \emph{Journal of Financial Data Science}, 2(3):25--39, 2020.
+
+\bibitem[Nystrup et al.(2020b)]{nystrup2020persistent}
+P. Nystrup, E. Lindstr\"om, and H. Madsen.
+\newblock Learning hidden Markov models with persistent states by penalizing
+jumps.
+\newblock \emph{Expert Systems with Applications}, 150:113307, 2020.
+
+\bibitem[Nystrup et al.(2021)]{nystrup2021}
+P. Nystrup, P. N. Kolm, and E. Lindstr\"om.
+\newblock Feature selection in jump models.
+\newblock \emph{Expert Systems with Applications}, 184:115558, 2021.
+
+\bibitem[Pagan and Sossounov(2003)]{pagan2003}
+A. R. Pagan and K. A. Sossounov.
+\newblock A simple framework for analysing bull and bear markets.
+\newblock \emph{Journal of Applied Econometrics}, 18(1):23--46, 2003.
+
+\bibitem[Roy(1952)]{roy1952}
+A. D. Roy.
+\newblock Safety first and the holding of assets.
+\newblock \emph{Econometrica}, 20(3):431--449, 1952.
+
+\bibitem[Ryd\'en et al.(1998)]{ryden1998}
+T. Ryd\'en, T. Ter\"asvirta, and S. \AA sbrink.
+\newblock Stylized facts of daily return series and the hidden Markov model.
+\newblock \emph{Journal of Applied Econometrics}, 13(3):217--244, 1998.
+
+\bibitem[Schwert(1989)]{schwert1989}
+G. W. Schwert.
+\newblock Why does stock market volatility change over time?
+\newblock \emph{Journal of Finance}, 44(5):1115--1153, 1989.
+
+\bibitem[Shu et al.(2024)]{shu2024}
+Y. Shu, C. Yu, and J. M. Mulvey.
+\newblock Downside risk reduction using regime-switching signals: A statistical
+jump model approach.
+\newblock \emph{Journal of Asset Management}, 25:493--507, 2024.
+\newblock doi:10.1057/s41260-024-00376-x.
+
+\bibitem[Smales(2016)]{smales2016}
+L. Smales.
+\newblock Risk-on/risk-off: Financial market response to investor fear.
+\newblock \emph{Finance Research Letters}, 17:125--134, 2016.
+
+\end{thebibliography}
+
+\end{document}
