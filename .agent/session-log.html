@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">103 session(s) · newest first · 2026-07-21 10:53 UTC</p>
+  <p class="sub">104 session(s) · newest first · 2026-07-21 11:02 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-21T11:02:21Z</span><span class="who">codex · gpt-5</span>
+      </div>
+      <p class="goal">Set the manuscript author to Tan Le, regenerate and verify the final PDF, commit the change, and publish all authorized commits to the existing remote branch.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>paper/manuscript.tex (author set to Tan Le)</code></li><li><code>artifacts/paper/manuscript.pdf (regenerated locally and intentionally ignored)</code></li><li><code>.agent/session-log.jsonl and session-log.html (append-only handoff)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>Tectonic rebuilt the manuscript successfully as a 21-page, 152238-byte PDF.</li><li>First-page PDF text contains Tan Le; no overfull box, undefined citation/reference, fatal, or control-sequence error.</li><li>git diff --check passed.</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>9a01fa7</code></p></div>
+        <div><span class="lbl">Next step</span><p>Owner review of the published manuscript. Add an affiliation only when the owner supplies the exact wording.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>The PDF remains ignored as generated output; the committed LaTeX source contains the author name. Push was explicitly authorized in this session.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-21T10:53:27Z</span><span class="who">codex · gpt-5</span>
