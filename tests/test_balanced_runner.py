@@ -13,6 +13,7 @@ import pytest
 
 from adaptive_jump.artifacts import read_json
 from adaptive_jump.balanced_model import BalancedStudyError, load_balanced_spec
+from adaptive_jump.balanced_performance import _namespaced_inventory_entries
 from adaptive_jump.balanced_runner import (
     _dated_audit,
     _finalize_verified_run,
@@ -39,6 +40,18 @@ def spec():
     return load_balanced_spec(
         ROOT / "research/balanced-lagged-mechanism-001.toml", config
     )
+
+
+def test_namespaced_inventory_entries_records_every_hashed_file():
+    inventories = {
+        "fixed": {"a.csv": "1" * 64, "shared.csv": "2" * 64},
+        "oracle": {"shared.csv": "3" * 64},
+    }
+    assert _namespaced_inventory_entries(inventories) == {
+        "fixed/a.csv": "1" * 64,
+        "fixed/shared.csv": "2" * 64,
+        "oracle/shared.csv": "3" * 64,
+    }
 
 
 def test_candidate_parity_is_strict_unless_prefix_mode_is_explicit():

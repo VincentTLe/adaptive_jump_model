@@ -1,41 +1,59 @@
 # Current Research Status
 
-Last reconciled: 2026-07-18. The append-only experiment registry remains the
+Last reconciled: 2026-07-21. The append-only experiment registry remains the
 authority for lifecycle status; this page is the short human-readable view.
 
 ## Bottom line
 
-The fixed v7 proxy pipeline is reproducible and its accounting is now audited,
-but it does not reproduce the paper's three-market result. No mathematical
-extension has earned a stable-profit claim. The lagged-evidence transition
-penalty passed its performance-free mechanism rule and its frozen development-
-sample P&L rule, but adaptive upper-grid concentration and repeated use of the
-same three markets prevent a confirmation claim. The fixed-model endpoint audit
-confirmed that the JM grid is binding, but its single source-derived extension
-did not rescue the paper ordering. Post-result attribution shows that lagged
-P&L differences cannot be read as a standalone improvement in the state path:
-the monthly selector response and path-choice interaction are material. A
-pair-balanced variant that preserves the fixed pair-average transition scale
-kept most early confirmations without creating lock-in but did not reduce own
-or matched whipsaws, so it is not supported.
+The primary economic target is for a JM-guided strategy to beat both
+same-sample buy-and-hold and the canonical Gaussian HMM after the same delay
+and costs. For market m:
+
+`G_m = Sharpe_JM,m - max(Sharpe_BuyHold,m, Sharpe_HMM,m)`.
+
+No tested JM currently achieves `G_m > 0` in all three markets. The strongest
+tested candidate by market is pair-balanced JM in US, lagged-evidence JM in DE,
+and lagged-evidence JM in JP. Their exact gaps are `-0.037398 / +0.048251 /
+-0.131375`. Thus only Germany passes the economic benchmark; US still loses
+to HMM and JP still loses to buy-and-hold.
+
+The earlier adaptive decision rules mostly asked whether a challenger improved
+fixed JM, changed latency/whipsaw behavior, or preserved a mathematical
+identity. Those remain valid incremental and mechanism findings, but they are
+not model success. Fixed JM and arrival adaptation beat both benchmarks in
+`0/3` markets; lagged and balanced each do so only in DE (`1/3`).
+
+The checked pipeline and accounting are internally consistent: an independent recomputation from 18
+trade paths confirmed identical market dates, t+2 execution, 10-bps costs, no
+post-2023 rows, and the corrected paper turnover convention. The mathematical
+contribution so far is a verified family of causal time-varying JM decoders.
+The economic contribution remains incomplete, and no stable-profit or
+generalization claim is authorized.
 
 ## Accepted evidence
 
 | Role | Accepted experiment / run | Current conclusion |
 | --- | --- | --- |
-| Baseline | `fixed-baselines-001-v7` / `fixed-baselines-8adb330565d6-3636939b525d-e9614112b234` | Valid proxy non-replication |
+| Baseline | `fixed-baselines-001-v7` / `fixed-baselines-8adb330565d6-3636939b525d-e9614112b234` | Valid causal proxy pipeline; fixed JM beats both benchmarks in `0/3` markets |
 | Fixed-model audit | `fixed-baseline-assumption-audit-001` / `fixed-baseline-assumption-audit-79c94852c8fd-3636939b525d-4cc8cdbccd14` | Pipeline reproducible; grids are binding; disclosed values do not rescue all markets |
-| Mathematical challenger | `adaptive-confidence-001` / `adaptive-confidence-1b0c327b2db4-3636939b525d-864d671cf973` | Mechanism operational; frozen performance rule not supported |
+| Mathematical challenger | `adaptive-confidence-001` / `adaptive-confidence-1b0c327b2db4-3636939b525d-864d671cf973` | Mechanism operational; beats both economic benchmarks in `0/3` markets |
 | Mechanism diagnostic | `adaptive-separation-001` / `adaptive-separation-813f66912526-26cbca8871be-fefc608b9081` | Inconclusive; global separation gate not justified |
 | Lagged mechanism | `lagged-evidence-mechanism-001` / `lagged-evidence-6f964f5724b2-26cbca8871be-d173ca32c86f` | Performance-free mechanism rule supported at `beta=log(4)`; no P&L claim |
-| Lagged P&L | `lagged-evidence-performance-001` / `lagged-pnl-bad599271e2d-643dd3e6d96f-be70588256b2` | Frozen development rule supported; Sharpe delta positive in 3/3 markets, but JP whipsaw and adaptive endpoint concentration remain |
+| Lagged P&L | `lagged-evidence-performance-001` / `lagged-pnl-bad599271e2d-643dd3e6d96f-be70588256b2` | Incremental rule versus fixed supported; beats both economic benchmarks only in DE (`1/3`) |
 | Lagged attribution | `lagged-selection-attribution-001` / `lagged-attribution-73a5995c487e-52854fc3c22a-197915169632` | Post-result mechanical diagnostic complete; choice schedule dominates mean Sharpe Shapley allocation, interaction is large, and no causal/performance claim is allowed |
 | Endpoint-grid audit | `endpoint-grid-audit-001` / `endpoint-grid-audit-05e9d08f619b-77b30ef98fa0-24ca06c297e8` | JM endpoint is binding but does not rescue all markets; HMM endpoint is null at the primary delay |
 | Balanced mechanism | `balanced-lagged-mechanism-001` / `balanced-lagged-a7d9914ca1a8-643dd3e6d96f-17961bfd667f` | Pair balance preserved latency (0.875 retention) with zero lock-in but did not reduce whipsaws; not supported |
+| Balanced P&L | `balanced-lagged-performance-001` / `balanced-pnl-3ae665413a01-4e747110ba1c-eaae6444a9a5` | Not supported versus lagged; beats both economic benchmarks only in DE (`1/3`) |
 
 Invalidated runs remain preserved for provenance, but they are not accepted
 evidence. In particular, the `2207...` and `d6fe...` fixed-audit runs and the
-`f505...` separation run must not be used for conclusions.
+`f505...` separation run must not be used for conclusions. Balanced P&L runs
+ending `ceed18fc5288` and `def64a60db4c` are invalidated for access-provenance
+metadata only. The first understated the thirteen feature columns physically
+loaded. The second ambiguously labeled 43 explicitly locked files as all files
+read even though inventory verification integrity-hashed 232 entries. Every
+scientific CSV, trade, decision, smoke, and frozen lock is byte-identical across
+the corrected runs. Only `eaae6444a9a5` is accepted.
 
 ## Paper versus current proxy
 
@@ -68,9 +86,10 @@ explain why the repository says `FAIL`, but not why the underlying proxy
 strategy earned different returns from the paper.
 
 Concrete evidence makes the distinction visible. Canonical v7 passed all
-18/18 boundary checks; at the primary delay the upper-JM candidate was
-selected in only 2.06% of US, 3.63% of DE, and 4.52% of JP months,
-all below the local 5% rule.
+18/18 boundary checks. Using its sealed decision-month denominators, the
+upper-JM candidate was selected in 2.06% of US (4/194), 3.63% of DE (7/193),
+and 4.52% of JP (8/177) months at the primary delay; all were below the local
+5% rule.
 
 | Fixed-JM grid sensitivity versus v7, primary-delay Sharpe | US | DE | JP |
 | --- | ---: | ---: | ---: |
@@ -162,6 +181,23 @@ were `-0.137373` and `+0.023065`, with interaction `+0.205076`. For turnover,
 path and choice Shapley effects were `+0.181900` and `-0.258276`; in JP both
 were positive. These are mechanical allocations of nonlinear metrics, not
 causal effects.
+
+The subsequent pair-balanced P&L readout did not support the challenger.
+Balanced-minus-lagged Sharpe was `+0.029549/-0.002345/-0.168672` in US/DE/JP,
+for an equal-market mean of `-0.047156` and only one positive market. US MDD
+was equal within `1e-9`, turnover fell `0.062284`, cash rose `0.012605`, and
+switches fell `15→13`. DE MDD was equal within `1e-9`, but turnover rose
+`0.248337`, cash rose `0.034491`, and switches rose `8→16`. JP MDD worsened
+`0.095042`, turnover rose `0.210820`, cash fell `0.053263`, and switches
+rose `33→39`.
+
+Balanced-minus-fixed passed separately with mean Delta Sharpe `+0.043613`
+and `2/3` positive markets, but the frozen decision required both contrasts.
+Upper-candidate selection for balanced log4 was `9.84%/45.31%/38.64%`, so the
+finite adaptive optimum remains unidentified. The corrected run passed exact
+source/accounting replay with maximum artifact error `0.0`; its numerical
+outputs are byte-identical to the first run invalidated solely for inaccurate
+access-provenance metadata.
 
 The evidence therefore does not support the simple story that lagging the loss
 made the state path intrinsically better. Much of the readout came through how

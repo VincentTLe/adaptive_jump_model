@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -38,6 +40,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CANONICAL_CONFIG = Path("research.toml")
 CANONICAL_SPEC = Path("research/balanced-lagged-mechanism-001.toml")
 DATE_COLUMNS = ("start", "end", "signal_date", "evidence_date", "fit_date")
+VERIFIER_IMPLEMENTATION_PATH = "src/adaptive_jump/balanced_verifier.py"
 ROOT_FILES = {
     "study.lock.toml",
     "config.lock.toml",
@@ -157,6 +160,57 @@ def _json_equal(actual: Any, expected: Any) -> bool:
 def _assert_json_exact(actual: Any, expected: Any, label: str) -> None:
     if not _json_equal(actual, expected):
         raise BalancedStudyError(f"{label} changed")
+
+
+def _implementation_digest(files: dict[str, str]) -> str:
+    return hashlib.sha256(
+        json.dumps(files, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
+def _valid_hex(value: Any, length: int) -> bool:
+    if not isinstance(value, str) or len(value) != length:
+        return False
+    try:
+        int(value, 16)
+    except ValueError:
+        return False
+    return True
+
+
+def _assert_implementation_compatible(
+    stored: dict[str, Any], current: dict[str, Any]
+) -> None:
+    """Bind scientific code by content while treating Git HEAD as provenance."""
+    expected_keys = {"schema_version", "implementation_sha256", "git_head", "files"}
+    for document in (stored, current):
+        files = document.get("files")
+        if (
+            set(document) != expected_keys
+            or document.get("schema_version") != 1
+            or not isinstance(files, dict)
+            or not files
+            or not all(
+                isinstance(path, str) and _valid_hex(digest, 64)
+                for path, digest in files.items()
+            )
+            or not _valid_hex(document.get("implementation_sha256"), 64)
+            or not _valid_hex(document.get("git_head"), 40)
+            or document["implementation_sha256"] != _implementation_digest(files)
+        ):
+            raise BalancedStudyError("implementation lock schema changed")
+    stored_files = stored["files"]
+    current_files = current["files"]
+    if set(stored_files) != set(current_files):
+        raise BalancedStudyError("implementation file coverage changed")
+    changed = {
+        path
+        for path in stored_files
+        if stored_files[path] != current_files[path]
+        and path != VERIFIER_IMPLEMENTATION_PATH
+    }
+    if changed:
+        raise BalancedStudyError("scientific implementation changed")
 
 
 def _assert_frame_exact(
@@ -421,11 +475,9 @@ def verify_balanced_run(run: str | Path) -> dict[str, Any]:
     _assert_json_exact(
         read_json(path / "source-lock.json"), sources.source_lock, "source lock"
     )
-    implementation = implementation_lock(REPOSITORY_ROOT, spec)
-    _assert_json_exact(
-        read_json(path / "implementation-lock.json"),
-        implementation,
-        "implementation lock",
+    stored_implementation = read_json(path / "implementation-lock.json")
+    _assert_implementation_compatible(
+        stored_implementation, implementation_lock(REPOSITORY_ROOT, spec)
     )
     smoke = run_independent_smoke(config, spec, sources)
     _assert_json_exact(read_json(path / "smoke.json"), smoke, "independent smoke")
@@ -488,7 +540,7 @@ def verify_balanced_run(run: str | Path) -> dict[str, Any]:
         path,
         config,
         spec,
-        implementation,
+        stored_implementation,
         conclusion,
         counts,
         mechanics["passed"],

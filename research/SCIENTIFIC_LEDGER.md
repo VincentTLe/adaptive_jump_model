@@ -638,3 +638,139 @@ The complete final-v3 paper grids remain unidentified.
 - Novelty relative to the full literature has not been established.
 - A reliability gate must earn a separate frozen model experiment before its
   profitability can be evaluated.
+
+### 2026-07-21 — `balanced-lagged-performance-001` (complete, not supported)
+
+- The mechanism study itself authorized no P&L. The owner later explicitly
+  requested a separate full readout, so this study was frozen before any
+  balanced choice, trade, or aggregate metric was opened. It is post-result
+  exploratory evidence on the repeatedly inspected through-2023 sample.
+- It compared fixed, one-sided lagged log4, and pair-balanced log4 under
+  separate monthly eight-year lambda selection, the unchanged
+  `[0, 5, 15, 35, 70, 150, 300, 600, 1200]` grid, t+2 execution, 10-bps
+  one-way costs, and paper turnover. `beta=log(4)` was inherited and remains
+  uncalibrated for profit.
+
+| Market | Model | Sharpe | MDD | Turnover | Cash fraction | Switches |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| US | fixed | `0.569865` | `-0.338568` | `0.653979` | `0.211567` | `21` |
+| US | lagged log4 | `0.586777` | `-0.337905` | `0.467128` | `0.249135` | `15` |
+| US | balanced log4 | `0.616326` | `-0.337905` | `0.404844` | `0.261740` | `13` |
+| DE | fixed | `0.166440` | `-0.387794` | `0.993348` | `0.182804` | `32` |
+| DE | lagged log4 | `0.337888` | `-0.387794` | `0.248337` | `0.134270` | `8` |
+| DE | balanced log4 | `0.335543` | `-0.387794` | `0.496674` | `0.168761` | `16` |
+| JP | fixed | `0.329270` | `-0.321619` | `0.456776` | `0.278862` | `13` |
+| JP | lagged log4 | `0.413215` | `-0.317989` | `1.159509` | `0.279699` | `33` |
+| JP | balanced log4 | `0.244542` | `-0.413031` | `1.370329` | `0.226436` | `39` |
+
+| Market | Balanced minus lagged: Delta Sharpe | Delta MDD | Delta turnover | Delta cash | Delta switches |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| US | `+0.029549` | `0` within `1e-9` | `-0.062284` | `+0.012605` | `-2` |
+| DE | `-0.002345` | `0` within `1e-9` | `+0.248337` | `+0.034491` | `+8` |
+| JP | `-0.168672` | `-0.095042` | `+0.210820` | `-0.053263` | `+6` |
+
+| Market | Balanced minus fixed: Delta Sharpe | Delta MDD | Delta turnover | Delta cash | Delta switches |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| US | `+0.046462` | `+0.000664` | `-0.249135` | `+0.050173` | `-8` |
+| DE | `+0.169103` | `0` within `1e-9` | `-0.496674` | `-0.014043` | `-16` |
+| JP | `-0.084727` | `-0.091411` | `+0.913553` | `-0.052426` | `+26` |
+
+- Frozen decision: balanced-minus-lagged mean Delta Sharpe was `-0.047156`
+  with `1/3` positive markets, so the primary contrast failed.
+  Balanced-minus-fixed mean Delta Sharpe was `+0.043613` with `2/3` positive
+  markets and passed separately. Both were required; result `not_supported`.
+- On the balanced-readout aligned decision months, upper-candidate
+  `lambda=1200` selection was fixed `2.07%/3.65%/4.55%`
+  (`4/193`, `7/192`, `8/176`), lagged `8.81%/45.31%/30.11%`, and balanced
+  `9.84%/45.31%/38.64%` in US/DE/JP. The diagnostic was descriptive only;
+  adaptive finite optima remain unidentified.
+- US smoke opened no metric and checked `12,138` t+2/cost cells, `388` oracle
+  choice rows, and `8,092` oracle trade rows. The corrected run completed
+  parallel US/DE/JP execution and passed completion-time plus separate CLI
+  replay. The latter reconstructed `9` metric rows, `15,228` selection-surface
+  rows, and `35,073` timeline rows with maximum error `0.0` and exact fixed/
+  lagged oracle parity. Focused tests: `89 passed`; full suite: `530 passed`.
+- Concrete active-lambda traces were reconstructed from sealed scalers and
+  centers for US 2010-05-28→2010-06-02, DE 2008-01-28→2008-01-30, and JP
+  2009-05-11→2009-05-13. In each, prior-day loss generated the exact
+  pair-balanced arrival penalty, selected state, `signal=1-state`, t+2
+  position, signed trade, 10-bps cost, and net return.
+- The first run ending `ceed18fc5288` was invalidated after static audit found
+  that its source lock named only three used feature columns although pandas
+  physically loaded thirteen. The corrected lock records all thirteen loaded
+  columns separately from the three used columns. Scientific CSVs, trades,
+  and the decision are byte-identical between runs; only source/
+  implementation/run metadata and inventory differ.
+- Accepted run:
+  `balanced-pnl-3ae665413a01-4e747110ba1c-def64a60db4c`.
+  Pair balancing helped the selected US strategy but increased activity in DE
+  and was adverse in JP. This is a factual development-sample readout, not an
+  OOS, holdout, alpha, robustness, significance, profitability, stable-profit,
+  or paper-replication claim.
+
+### 2026-07-21 — Economic objective correction and manuscript start
+
+- Re-reading Shu, Yu, and Mulvey and their public `jump-models` repository
+  clarified the central target. The paper does not merely compare clustering
+  outputs: it asks whether a persistent regime signal improves a 0/1
+  market-or-cash strategy over both buy-and-hold and HMM after realistic delay
+  and costs. The public repository is a generic JM library and does not contain
+  the paper's HMM, data, monthly validation, accounting pipeline, or final
+  candidate grids.
+- The project-wide primary gap is now
+  `G_m = Sharpe_JM,m - max(Sharpe_BuyHold,m, Sharpe_HMM,m)`. Mathematical
+  improvement over fixed JM and behavior such as latency or whipsaw are useful
+  intermediate evidence, but they are not economic model success.
+- Independent recomputation from 18 accepted trade CSVs reconfirmed identical
+  within-market dates, no duplicate or post-2023 rows, signal at `t` earning
+  `t+2`, exact 10-bps costs, and paper turnover
+  `0.5*252*mean(abs(position change))`.
+- Under the corrected target, fixed JM and arrival-adaptive JM beat both
+  benchmarks in `0/3` markets. Lagged-evidence and pair-balanced JM each beat
+  both only in DE (`1/3`). The best tested gaps are US balanced
+  `-0.037398` versus HMM, DE lagged `+0.048251`, and JP lagged
+  `-0.131375` versus buy-and-hold. No experiment result or historical
+  lifecycle label was changed; only its relationship to the final objective
+  was clarified.
+- The mathematical sequence remains: fixed symmetric transition cost;
+  arrival-day evidence discount; lagged-evidence discount to avoid current-day
+  double use; and pair-balanced signed lagged evidence satisfying
+  `C_t(i,j)+C_t(j,i)=2*lambda0`. Each exactly nested fixed JM at `beta=0` and was
+  checked by formula, objective, toy path, brute force, prefix invariance, and
+  concrete trade timelines.
+- The next proposed mathematical hypothesis adds a past-only predictive loss
+  for the return earned at `t+2` to the JM clustering objective. Its simple
+  principle is that a useful regime should be both feature-coherent and
+  economically different. This hypothesis has not been implemented or run;
+  its parameters and evaluation evidence must be frozen separately.
+- README and the advisor HTML were reduced to the economic question, one
+  five-step workflow, the model equations, one benchmark result table, and the
+  honest conclusion. A self-contained paper draft was started at
+  `paper/manuscript.tex`. This was a documentation and objective-reconciliation
+  task, not a new experiment, so no registry row was added.
+
+### 2026-07-21 — Timing terminology clarification
+
+- An older ledger entry used the phrase “two-day signal delay.” The canonical
+  protocol is a one-trading-day execution delay: a signal formed after day
+  `t` first earns the return at `t+2`. This clarification changes no
+  position, trade, cost, metric, or experiment result.
+
+### 2026-07-21 — Balanced P&L file-provenance correction
+
+- A final response-independent static audit found that the accepted run ending
+  `def64a60db4c` called 43 explicitly locked scientific inputs
+  `files_read_sha256`, while `verify_inventory` also integrity-hashed all 232
+  immutable entries across the four source inventories.
+- That ambiguity did not affect any state, choice, trade, metric, or decision,
+  but it made the file-access provenance incomplete. The run was marked
+  `INVALID_IMPLEMENTATION`, and the same spec was refrozen for a metadata-only
+  correction after every numerical result was already known.
+- Source-lock schema 2 records `43` explicitly locked inputs and `232`
+  integrity-hashed inventory entries in separate maps with matching counts.
+  The direct regression test verifies source namespacing and complete entry
+  retention.
+- The new run passed completion-time verification and a separate CLI replay:
+  `9` metric rows, `15,228` selection-surface rows, `35,073` timeline rows,
+  maximum error `0.0`, and exact fixed/lagged oracle parity.
+- Accepted run: `balanced-pnl-3ae665413a01-4e747110ba1c-eaae6444a9a5`.

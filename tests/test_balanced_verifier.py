@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 from pathlib import Path
 from types import SimpleNamespace
@@ -22,6 +24,7 @@ from adaptive_jump.balanced_replay import independent_lagged_penalty
 from adaptive_jump.balanced_sources import SourcePaths
 from adaptive_jump.balanced_verifier import (
     MarketReplay,
+    _assert_implementation_compatible,
     _mechanical_checks,
     _smoke_coverage_exact,
     expected_files,
@@ -293,7 +296,21 @@ def _market_replay(market: str, spec: SimpleNamespace) -> MarketReplay:
 def synthetic_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     spec = _spec()
     config = SimpleNamespace(sha256="6" * 64)
-    implementation = {"implementation_sha256": "7" * 64, "git_head": "8" * 40}
+    implementation_files = {
+        "research/balanced-lagged-mechanism-001.toml": "7" * 64,
+        "src/adaptive_jump/balanced_model.py": "8" * 64,
+        "src/adaptive_jump/balanced_verifier.py": "9" * 64,
+    }
+    implementation = {
+        "schema_version": 1,
+        "implementation_sha256": hashlib.sha256(
+            json.dumps(
+                implementation_files, sort_keys=True, separators=(",", ":")
+            ).encode()
+        ).hexdigest(),
+        "git_head": "a" * 40,
+        "files": implementation_files,
+    }
     source_lock = {"schema_version": 1, "performance_files_accessed": False}
     sources = SourcePaths(
         fixed_dir=tmp_path,
@@ -499,6 +516,49 @@ def synthetic_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     return build
 
 
+def _lock(files: dict[str, str], head: str = "a" * 40) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "implementation_sha256": hashlib.sha256(
+            json.dumps(files, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
+        "git_head": head,
+        "files": files,
+    }
+
+
+def test_implementation_lock_allows_later_head_and_verifier_revision() -> None:
+    stored_files = {
+        "src/adaptive_jump/balanced_model.py": "1" * 64,
+        "src/adaptive_jump/balanced_verifier.py": "2" * 64,
+    }
+    current_files = {**stored_files, "src/adaptive_jump/balanced_verifier.py": "3" * 64}
+    _assert_implementation_compatible(
+        _lock(stored_files, "4" * 40), _lock(current_files, "5" * 40)
+    )
+
+
+def test_implementation_lock_rejects_scientific_file_change() -> None:
+    stored_files = {
+        "src/adaptive_jump/balanced_model.py": "1" * 64,
+        "src/adaptive_jump/balanced_verifier.py": "2" * 64,
+    }
+    current_files = {**stored_files, "src/adaptive_jump/balanced_model.py": "3" * 64}
+    with pytest.raises(BalancedStudyError, match="scientific implementation changed"):
+        _assert_implementation_compatible(_lock(stored_files), _lock(current_files))
+
+
+def test_implementation_lock_rejects_inconsistent_digest() -> None:
+    files = {
+        "src/adaptive_jump/balanced_model.py": "1" * 64,
+        "src/adaptive_jump/balanced_verifier.py": "2" * 64,
+    }
+    stored = _lock(files)
+    stored["implementation_sha256"] = "3" * 64
+    with pytest.raises(BalancedStudyError, match="implementation lock schema changed"):
+        _assert_implementation_compatible(stored, _lock(files))
+
+
 def test_independent_penalty_formula_and_pair_balance() -> None:
     loss = np.array([[0.0, 2.0], [1.0, 0.0], [0.5, 0.2]])
     beta = math.log(4.0)
@@ -646,6 +706,29 @@ def test_valid_synthetic_artifact_verifies(synthetic_run) -> None:
     assert result["status"] == "verified"
     assert result["lifecycle"] == "complete"
     assert result["markets_reconstructed"] == 3
+
+
+def test_valid_artifact_accepts_later_live_head(
+    synthetic_run, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_dir = synthetic_run("later-head")
+    stored = read_json(run_dir / "implementation-lock.json")
+    current = {**stored, "git_head": "b" * 40}
+    monkeypatch.setattr(
+        "adaptive_jump.balanced_verifier.implementation_lock",
+        lambda _root, _spec: current,
+    )
+    assert verify_balanced_run(run_dir)["status"] == "verified"
+
+
+def test_metadata_head_remains_bound_to_stored_lock(synthetic_run) -> None:
+    run_dir = synthetic_run("metadata-head")
+    metadata_path = run_dir / "run.json"
+    metadata = read_json(metadata_path)
+    metadata["git_head"] = "b" * 40
+    write_json(metadata_path, metadata)
+    with pytest.raises(BalancedStudyError, match="balanced run metadata changed"):
+        verify_balanced_run(run_dir)
 
 
 def test_valid_verifying_lifecycle_verifies(synthetic_run) -> None:
