@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import argparse
 import hashlib
 import itertools
 import json
 import math
+import subprocess
 import tomllib
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
@@ -22,6 +22,7 @@ from threadpoolctl import threadpool_limits
 
 from adaptive_jump.artifacts import (
     TRADE_COLUMNS,
+    ArtifactError,
     read_json,
     read_trade_path,
     sha256_file,
@@ -31,6 +32,8 @@ from adaptive_jump.artifacts import (
 )
 from adaptive_jump.backtest import apply_signal, performance_metrics
 from adaptive_jump.config import ResearchConfig, load_config
+from adaptive_jump.monitor import study_runtime
+from adaptive_jump.monitor.events import EventObserver, emit_event
 from adaptive_jump.simple_jm_controls import (
     ControlPath,
     build_confirmed_control_path,
@@ -97,7 +100,7 @@ DEVELOPMENT_CUTOFF = pd.Timestamp("2023-12-31")
 PAPER_TURNOVER_SCALE = 0.5
 
 
-class SimpleJMSuiteError(RuntimeError):
+class SimpleJMSuiteError(ArtifactError):
     """Raised when the frozen suite cannot be run or verified exactly."""
 
 
@@ -135,9 +138,11 @@ class VariantOutput:
     boundary: dict[str, Any]
 
 
-def load_suite_spec(repo_root: Path, path: Path) -> SuiteSpec:
+def load_simple_jm_spec(config: ResearchConfig, path: Path) -> SuiteSpec:
     """Load the immutable study contract and prove it was registered frozen."""
-    resolved = path.resolve()
+    repo_root = config.path.parent.resolve()
+    candidate = path if path.is_absolute() else repo_root / path
+    resolved = candidate.resolve()
     payload = resolved.read_bytes()
     digest = hashlib.sha256(payload).hexdigest()
     try:
@@ -177,14 +182,20 @@ def load_suite_spec(repo_root: Path, path: Path) -> SuiteSpec:
     return SuiteSpec(resolved, digest, document, canonical_root, lambda50_root)
 
 
-def run_simple_jm_suite(repo_root: Path, spec_path: Path) -> Path:
+def run_simple_jm_study(
+    config: ResearchConfig,
+    spec: SuiteSpec,
+    observer: EventObserver | None = None,
+) -> Path:
     """Run A, then DD-only, then the remaining frozen variants end to end."""
-    repo_root = repo_root.resolve()
-    spec = load_suite_spec(repo_root, spec_path)
+    repo_root = config.path.parent.resolve()
     verify_inventory(spec.canonical_root)
     lambda_inventory = _verify_custom_inventory(spec.lambda50_root)
     canonical_inventory = read_json(spec.canonical_root / "inventory.json")["files"]
-    config = load_config(spec.canonical_root / "config.lock.toml")
+    if sha256_file(spec.canonical_root / "config.lock.toml") != config.sha256:
+        raise SimpleJMSuiteError(
+            "active config does not match the sealed source config"
+        )
     _validate_protocol(config, spec)
     sources, explicit = _load_sources(
         spec, config, canonical_inventory, lambda_inventory
@@ -194,7 +205,7 @@ def run_simple_jm_suite(repo_root: Path, spec_path: Path) -> Path:
     code_digest = _mapping_digest(code_hashes)
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     run_id = f"simple-jm-suite-{spec.sha256[:12]}-{code_digest[:12]}-{timestamp}"
-    run_dir = repo_root / "artifacts" / EXPERIMENT_ID / run_id
+    run_dir = repo_root / config.artifact_root / EXPERIMENT_ID / run_id
     run_dir.mkdir(parents=True)
     (run_dir / "study.lock.toml").write_bytes(spec.path.read_bytes())
     (run_dir / "config.lock.toml").write_bytes(
@@ -220,7 +231,7 @@ def run_simple_jm_suite(repo_root: Path, spec_path: Path) -> Path:
         {"schema_version": 1, "files": code_hashes, "bundle_sha256": code_digest},
     )
 
-    print("stage A: static lambda=50", flush=True)
+    _emit_stage(observer, "stage_started", "static_lambda50", completed=0, total=3)
     outputs: dict[tuple[str, str], VariantOutput | ControlPath] = {}
     for market in MARKETS:
         expected = lambda_inventory[f"{market}/jm-missing-states.csv"]
@@ -233,9 +244,9 @@ def run_simple_jm_suite(repo_root: Path, spec_path: Path) -> Path:
         outputs[(market, "static_lambda50")] = control
     stage_a = _stage_summary(sources, outputs, ("static_lambda50",), config)
     stage_a.to_csv(run_dir / "stage-a-static-summary.csv", index=False)
-    _print_stage(stage_a, "static_lambda50")
+    _emit_stage(observer, "stage_completed", "static_lambda50", completed=3, total=3)
 
-    print("US smoke: DD-only, return-aware, robust-L1", flush=True)
+    _emit_stage(observer, "stage_started", "us_smoke", completed=0, total=3)
     smoke = []
     for variant in ("dd_only", "return_aware", "robust_l1"):
         evidence = run_us_prefix_smoke(
@@ -245,17 +256,18 @@ def run_simple_jm_suite(repo_root: Path, spec_path: Path) -> Path:
             variant=variant,
         )
         smoke.append(asdict(evidence))
-        print(f"  {variant}: prefix invariant", flush=True)
     pd.DataFrame.from_records(smoke).to_csv(run_dir / "us-smoke.csv", index=False)
+    _emit_stage(observer, "stage_completed", "us_smoke", completed=3, total=3)
 
-    print("stage B: DD-only, US/DE/JP in parallel", flush=True)
+    _emit_stage(observer, "stage_started", "dd_only", completed=0, total=3)
     dd_outputs = _parallel_fit(spec, config, ("dd_only",), workers=3)
     outputs.update(dd_outputs)
     stage_b = _stage_summary(sources, outputs, ("dd_only",), config)
     stage_b.to_csv(run_dir / "stage-b-dd-only-summary.csv", index=False)
-    _print_stage(stage_b, "dd_only")
+    _emit_variant_events(observer, dd_outputs)
+    _emit_stage(observer, "stage_completed", "dd_only", completed=3, total=3)
 
-    print("stage C: two-observation confirmation", flush=True)
+    _emit_stage(observer, "stage_started", "confirmed_2d", completed=0, total=3)
     for market in MARKETS:
         source = sources[market]
         control = build_confirmed_control_path(
@@ -263,8 +275,10 @@ def run_simple_jm_suite(repo_root: Path, spec_path: Path) -> Path:
             source.canonical_signal,
         )
         outputs[(market, "confirmed_2d")] = control
+    _emit_stage(observer, "stage_completed", "confirmed_2d", completed=3, total=3)
 
-    print("stages D/E: return-aware and robust-L1, six parallel jobs", flush=True)
+    for variant in ("return_aware", "robust_l1"):
+        _emit_stage(observer, "stage_started", variant, completed=0, total=3)
     custom = _parallel_fit(
         spec,
         config,
@@ -272,6 +286,9 @@ def run_simple_jm_suite(repo_root: Path, spec_path: Path) -> Path:
         workers=6,
     )
     outputs.update(custom)
+    _emit_variant_events(observer, custom)
+    for variant in ("return_aware", "robust_l1"):
+        _emit_stage(observer, "stage_completed", variant, completed=3, total=3)
 
     math_receipt = _verify_math_contracts()
     aligned, summary = _finalize_paths(sources, outputs, config)
@@ -312,8 +329,7 @@ def run_simple_jm_suite(repo_root: Path, spec_path: Path) -> Path:
         },
     )
     write_inventory(run_dir)
-    receipt = verify_simple_jm_run(run_dir)
-    print(json.dumps(receipt, sort_keys=True), flush=True)
+    verify_simple_jm_run(run_dir)
     return run_dir
 
 
@@ -335,16 +351,15 @@ def verify_simple_jm_run(run_dir: Path) -> dict[str, Any]:
     if not isinstance(implementation_files, dict):
         raise SimpleJMSuiteError("implementation lock is invalid")
     repo_root = run_dir.parents[2]
-    for relative, expected_hash in implementation_files.items():
-        path = repo_root / relative
-        if not path.is_file() or sha256_file(path) != expected_hash:
-            raise SimpleJMSuiteError(f"executed implementation is unavailable: {path}")
     implementation_digest = _mapping_digest(implementation_files)
     if (
         implementation.get("bundle_sha256") != implementation_digest
         or metadata.get("implementation_sha256") != implementation_digest
     ):
         raise SimpleJMSuiteError("implementation digest mismatch")
+    implementation_source_commit = _implementation_source_commit(
+        repo_root, implementation_files
+    )
     source_lock = read_json(run_dir / "source-lock.json")
     for path_text, evidence in source_lock["explicitly_read_scientific_inputs"].items():
         path = Path(path_text)
@@ -415,6 +430,8 @@ def verify_simple_jm_run(run_dir: Path) -> dict[str, Any]:
     return {
         "schema_version": 1,
         "run_id": metadata["run_id"],
+        "status": metadata["status"],
+        "implementation_source_commit": implementation_source_commit,
         "metric_rows": len(expected),
         "trace_rows": len(trace),
         "degeneracy_rows": len(degeneracy),
@@ -675,6 +692,119 @@ def _mapping_digest(mapping: dict[str, str]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def _implementation_source_commit(
+    repo_root: Path, implementation_files: dict[str, Any]
+) -> str | None:
+    """Resolve the lock from current files or one complete Git snapshot."""
+    if not implementation_files:
+        raise SimpleJMSuiteError("implementation lock contains no files")
+    expected: dict[str, str] = {}
+    for relative, digest in implementation_files.items():
+        path = Path(relative) if isinstance(relative, str) else Path()
+        valid_path = (
+            isinstance(relative, str)
+            and relative == path.as_posix()
+            and not path.is_absolute()
+            and ".." not in path.parts
+            and ":" not in relative
+        )
+        valid_digest = (
+            isinstance(digest, str)
+            and len(digest) == 64
+            and all(character in "0123456789abcdef" for character in digest)
+        )
+        if not valid_path or not valid_digest:
+            raise SimpleJMSuiteError(
+                "implementation lock contains an invalid file entry"
+            )
+        expected[relative] = digest
+
+    if all(
+        (repo_root / relative).is_file() and sha256_file(repo_root / relative) == digest
+        for relative, digest in expected.items()
+    ):
+        return None
+
+    paths = sorted(expected)
+    try:
+        history = subprocess.run(
+            ["git", "log", "--all", "--full-history", "--format=%H", "--", *paths],
+            cwd=repo_root,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as exc:
+        raise SimpleJMSuiteError("cannot inspect implementation history") from exc
+    if history.returncode != 0:
+        raise SimpleJMSuiteError("cannot inspect implementation history")
+
+    try:
+        for commit in dict.fromkeys(history.stdout.splitlines()):
+            matched = True
+            for relative, digest in expected.items():
+                blob = subprocess.run(
+                    ["git", "show", f"{commit}:{relative}"],
+                    cwd=repo_root,
+                    check=False,
+                    capture_output=True,
+                )
+                if (
+                    blob.returncode != 0
+                    or hashlib.sha256(blob.stdout).hexdigest() != digest
+                ):
+                    matched = False
+                    break
+            if matched:
+                return commit
+    except OSError as exc:
+        raise SimpleJMSuiteError("cannot inspect implementation history") from exc
+    raise SimpleJMSuiteError(
+        "no single Git commit contains the complete locked implementation"
+    )
+
+
+def _emit_stage(
+    observer: EventObserver | None,
+    kind: str,
+    stage: str,
+    *,
+    completed: int,
+    total: int,
+) -> None:
+    emit_event(
+        observer,
+        kind=kind,
+        stage=stage,
+        completed=completed,
+        total=total,
+    )
+
+
+def _emit_variant_events(
+    observer: EventObserver | None,
+    outputs: dict[tuple[str, str], VariantOutput],
+) -> None:
+    if observer is None:
+        return
+    for variant in FITTED_VARIANTS:
+        for market in MARKETS:
+            output = outputs.get((market, variant))
+            if output is None:
+                continue
+            study_runtime.emit_selected_signal(
+                observer,
+                output.selection,
+                variant,
+                delay=1,
+                market=market,
+            )
+            boundary = pd.DataFrame.from_records(
+                [{"model": variant, "delay": 1, **output.boundary}]
+            )
+            study_runtime.emit_boundary_rows(observer, boundary, market)
+
+
 def _parallel_fit(
     spec: SuiteSpec,
     config: ResearchConfig,
@@ -700,7 +830,6 @@ def _parallel_fit(
             _, market, variant, _ = futures[future]
             result = future.result()
             output[(market, variant)] = result
-            print(f"  complete: {market}/{variant}", flush=True)
     if len(output) != len(tasks):
         raise SimpleJMSuiteError("parallel fit did not return every market/variant")
     return output
@@ -783,16 +912,6 @@ def _stage_summary(
             )
         rows.extend(_metric_rows(market, _align_paths(paths), config))
     return pd.DataFrame.from_records(rows)
-
-
-def _print_stage(summary: pd.DataFrame, variant: str) -> None:
-    rows = summary.loc[summary["model"] == variant]
-    for row in rows.itertuples():
-        print(
-            f"  {row.market}: Sharpe={row.sharpe:.6f}, "
-            f"G={row.gap_vs_stronger_control:.6f}",
-            flush=True,
-        )
 
 
 def _finalize_paths(
@@ -1535,23 +1654,3 @@ def _brute_force_value(loss: np.ndarray, penalty: float) -> float:
         * sum(left != right for left, right in zip(path, path[1:], strict=False))
         for path in itertools.product(range(loss.shape[1]), repeat=len(loss))
     )
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--repo", type=Path, default=Path.cwd())
-    parser.add_argument(
-        "--spec", type=Path, default=Path("research/simple-jm-suite-001.toml")
-    )
-    parser.add_argument("--verify", type=Path)
-    args = parser.parse_args()
-    if args.verify:
-        print(json.dumps(verify_simple_jm_run(args.verify), sort_keys=True))
-        return 0
-    spec_path = args.spec if args.spec.is_absolute() else args.repo / args.spec
-    print(run_simple_jm_suite(args.repo, spec_path))
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

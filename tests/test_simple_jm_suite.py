@@ -1,5 +1,7 @@
 import hashlib
 import json
+import subprocess
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -7,8 +9,9 @@ import pandas as pd
 import pytest
 
 import adaptive_jump.simple_jm_suite as suite
-from adaptive_jump.artifacts import TRADE_COLUMNS
+from adaptive_jump.artifacts import TRADE_COLUMNS, ArtifactError
 from adaptive_jump.config import load_config
+from adaptive_jump.walkforward import SelectionResult
 
 
 def test_implementation_hashes_cover_result_code_and_environment_lock() -> None:
@@ -31,6 +34,10 @@ def test_implementation_hashes_cover_result_code_and_environment_lock() -> None:
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_runner_error_follows_artifact_error_contract() -> None:
+    assert issubclass(suite.SimpleJMSuiteError, ArtifactError)
 
 
 def _trade_frame(
@@ -331,20 +338,138 @@ post_2023_access = false
     return spec
 
 
-def test_load_suite_spec_accepts_matching_frozen_registry(tmp_path: Path) -> None:
+def test_load_simple_jm_spec_accepts_matching_frozen_registry(tmp_path: Path) -> None:
     spec_path = _write_suite_contract(tmp_path)
+    config = replace(
+        load_config(ROOT / "research.toml"), path=tmp_path / "research.toml"
+    )
 
-    loaded = suite.load_suite_spec(tmp_path, spec_path)
+    loaded = suite.load_simple_jm_spec(config, spec_path)
 
     assert loaded.sha256 == hashlib.sha256(spec_path.read_bytes()).hexdigest()
     assert loaded.canonical_root == (tmp_path / "canonical").resolve()
     assert loaded.lambda50_root == (tmp_path / "lambda50").resolve()
 
 
-def test_load_suite_spec_rejects_registry_hash_mismatch(tmp_path: Path) -> None:
+def test_load_simple_jm_spec_rejects_registry_hash_mismatch(tmp_path: Path) -> None:
     spec_path = _write_suite_contract(tmp_path, registered_hash="0" * 64)
+    config = replace(
+        load_config(ROOT / "research.toml"), path=tmp_path / "research.toml"
+    )
 
     with pytest.raises(
         suite.SimpleJMSuiteError, match="no matching pre-result FROZEN registry row"
     ):
-        suite.load_suite_spec(tmp_path, spec_path)
+        suite.load_simple_jm_spec(config, spec_path)
+
+
+def test_runner_events_use_existing_contract_without_stdout(capsys) -> None:
+    events = []
+    suite._emit_stage(events.append, "stage_started", "dd_only", completed=0, total=3)
+    suite._emit_stage(events.append, "stage_completed", "dd_only", completed=3, total=3)
+    dates = pd.bdate_range("2023-01-02", periods=2)
+    signal = pd.Series([0.0, 1.0], index=dates, name="selected_signal")
+    selection = SelectionResult(
+        signal=signal,
+        choices=pd.DataFrame({"decision_date": [dates[-1]], "selected": [35.0]}),
+        surface=pd.DataFrame(),
+        candidate_returns=pd.DataFrame(),
+    )
+    output = suite.VariantOutput(
+        market="us",
+        variant="dd_only",
+        states=pd.DataFrame(),
+        refits=pd.DataFrame(),
+        selection=selection,
+        selected_state=1.0 - signal,
+        signal=signal,
+        full_trades=pd.DataFrame(),
+        boundary={
+            "upper_candidate": 1200.0,
+            "selected_months": 1,
+            "total_months": 2,
+            "fraction": 0.5,
+            "limit": 0.05,
+            "passed": False,
+            "descriptive_only": True,
+        },
+    )
+
+    suite._emit_variant_events(events.append, {("us", "dd_only"): output})
+
+    assert [event.kind for event in events] == [
+        "stage_started",
+        "stage_completed",
+        "selected_signal",
+        "boundary_diagnostic",
+    ]
+    assert events[2].market == events[3].market == "us"
+    assert events[2].model == events[3].model == "dd_only"
+    assert capsys.readouterr().out == ""
+
+
+def _git(repo: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
+
+
+def test_implementation_source_requires_one_complete_historical_snapshot(
+    tmp_path: Path,
+) -> None:
+    _git(tmp_path, "init", "-q")
+    first = tmp_path / "first.py"
+    second = tmp_path / "second.py"
+    first.write_text("first-old\n", encoding="utf-8")
+    second.write_text("second-old\n", encoding="utf-8")
+    _git(tmp_path, "add", "first.py", "second.py")
+    _git(
+        tmp_path,
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.com",
+        "commit",
+        "-qm",
+        "first",
+    )
+    first_commit = _git(tmp_path, "rev-parse", "HEAD")
+    old_mapping = {
+        "first.py": hashlib.sha256(first.read_bytes()).hexdigest(),
+        "second.py": hashlib.sha256(second.read_bytes()).hexdigest(),
+    }
+
+    first.write_text("first-new\n", encoding="utf-8")
+    second.write_text("second-new\n", encoding="utf-8")
+    _git(tmp_path, "add", "first.py", "second.py")
+    _git(
+        tmp_path,
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.com",
+        "commit",
+        "-qm",
+        "second",
+    )
+    mixed_mapping = {
+        "first.py": old_mapping["first.py"],
+        "second.py": hashlib.sha256(second.read_bytes()).hexdigest(),
+    }
+
+    assert suite._implementation_source_commit(tmp_path, old_mapping) == first_commit
+    with pytest.raises(suite.SimpleJMSuiteError, match="no single Git commit"):
+        suite._implementation_source_commit(tmp_path, mixed_mapping)
+
+
+def test_implementation_source_accepts_matching_non_git_export(tmp_path: Path) -> None:
+    source = tmp_path / "runner.py"
+    source.write_text("exact source\n", encoding="utf-8")
+    mapping = {"runner.py": hashlib.sha256(source.read_bytes()).hexdigest()}
+
+    assert suite._implementation_source_commit(tmp_path, mapping) is None
