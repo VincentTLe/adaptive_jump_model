@@ -891,6 +891,64 @@ losses were 2.1566 and 0.8314, reducing the next day's \(1\to0\) barrier from 5
 to 1.4620. One date cannot explain full-sample Sharpe, but the examples make the
 loss, penalty, state, signal, position, trade, and cost timing observable.
 
+\subsection{Separation does not forecast next-month switching}
+
+A final frozen diagnostic, \texttt{separation-turnover-001}, asked whether the
+scaled-DD state geometry available at each monthly decision predicts the
+following selection month's switching. For the refit active at decision date
+\(d\) under the selected raw \(\lambda\), the separation
+\(S_d=\lvert c_1-c_0\rvert\) is the absolute distance between the two stored
+standardized DD centers, with \(S_d=0\) for collapsed one-state fits. The
+contract was frozen and registered before any outcome window was opened. Its
+rule required a negative per-market Spearman correlation between \(S_d\) and
+the next window's switch count in all three markets, with a one-sided
+permutation \(p<0.05\) (10{,}000 draws, fixed seed) in at least two, before
+any separation gate could be considered.
+
+\begin{table}[!htbp]
+\centering
+\caption{Separation versus next-month switches. The fitted-only column
+excludes collapsed one-state months, which cannot switch by construction.}
+\label{tab:separation}
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+Market & \(\rho\) & One-sided \(p\) & \(n\) & Collapsed & Fitted-only \(\rho\) \\
+\midrule
+US & +0.035 & 0.68 & 193 & 0  & +0.035 \\
+DE & +0.320 & 1.00 & 192 & 43 & +0.303 \\
+JP & +0.155 & 0.98 & 176 & 63 & -0.142 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The association is positive, not negative, so the outcome is
+\emph{not supported} and no gate formula was fit. Table~\ref{tab:separation}
+also separates the mechanism. Collapsed months mechanically contribute zero
+switches, and excluding them alone flips the Japanese association negative,
+while the German association stays positive even on fitted months. German
+separation spikes around stress periods and drops to zero from mid-2020
+through 2023, when every German selection used a collapsed fit. Decision-time
+separation therefore behaves as a coincident stress proxy rather than a
+forward stability signal (Figure~\ref{fig:separation}).
+
+\newcommand{\sepfig}{../artifacts/separation-turnover-001/separation-turnover-8674ff4d9470-20260722T083551Z/separation-turnover-paper.png}
+\IfFileExists{\sepfig}{
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.98\textwidth]{\sepfig}
+\caption{Decision-time separation against next-month switches of the
+three-times DD strategy. Open circles mark collapsed one-state fits, which
+cannot switch by construction. The German spotlight shows separation and
+switching moving together around stress periods, and the collapsed regime from
+mid-2020 through 2023.}
+\label{fig:separation}
+\end{figure}
+}{
+\noindent\emph{The retained separation-turnover artifact is required to render
+this figure.}
+}
+
 \subsection{Interpretation and limitations}
 
 No single tested variant passes all three markets. The local winners are
@@ -999,8 +1057,16 @@ uv sync --locked --extra data
 .venv/bin/adaptive-jump run --study dd-loss-scale --config research.toml
 .venv/bin/adaptive-jump verify --run artifacts/dd-loss-scale-001/<run_id>
 .venv/bin/adaptive-jump figures --run artifacts/dd-loss-scale-001/<run_id>
+.venv/bin/python -m adaptive_jump.separation_turnover --run \
+  artifacts/dd-loss-scale-001/<run_id>
 tectonic paper/manuscript.tex --outdir artifacts/paper
 \end{verbatim}
+
+The separation diagnostic of Table~\ref{tab:separation} is the sealed output
+\path{separation-turnover-8674ff4d9470-20260722T083551Z} under
+\path{artifacts/separation-turnover-001}; its frozen contract, per-decision
+table, summary, and both chart renderings regenerate from the command above
+against the retained scale-control run.
 
 The accepted simple suite now has both a central run/verify path and an exact
 historical implementation commit. A full fresh-checkout reproduction claim for
