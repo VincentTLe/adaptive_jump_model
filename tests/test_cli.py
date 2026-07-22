@@ -130,6 +130,60 @@ def test_grid_evaluation_cli_uses_frozen_spec(
     assert calls[0][1].hmm_grid[-1] == 1115
 
 
+def test_simple_jm_cli_uses_shared_runner(
+    monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    expected = ROOT / "artifacts/simple-jm-fixture"
+    calls = []
+    events = []
+    loaded_spec = object()
+
+    def observer(event):
+        events.append(event)
+
+    def fake_load(config, path):
+        calls.append(("load", config, path))
+        return loaded_spec
+
+    def fake_run(config, spec, selected_observer):
+        calls.append(("run", config, spec, selected_observer))
+        return expected
+
+    monkeypatch.setattr("adaptive_jump.cli.load_simple_jm_spec", fake_load)
+    monkeypatch.setattr("adaptive_jump.cli.run_simple_jm_study", fake_run)
+    monkeypatch.setattr(
+        "adaptive_jump.cli._artifacts.verify_run",
+        lambda artifact: {"run_id": artifact.name, "status": "complete"},
+    )
+    monkeypatch.setattr(
+        "adaptive_jump.cli.child_observer_from_environment", lambda: observer
+    )
+
+    assert (
+        main(
+            [
+                "run",
+                "--study",
+                "simple-jm-suite",
+                "--config",
+                str(ROOT / "research.toml"),
+            ]
+        )
+        == 0
+    )
+    assert Path(capsys.readouterr().out.strip()) == expected
+    assert calls[0][0] == "load"
+    assert calls[0][2].name == "simple-jm-suite-001.toml"
+    assert calls[1][0] == "run"
+    assert calls[1][2] is loaded_spec
+    assert calls[1][3] is observer
+    assert events[0].kind == "artifact_verified"
+    assert events[0].payload == {
+        "run_id": "simple-jm-fixture",
+        "status": "complete",
+    }
+
+
 def test_window_study_cli_uses_frozen_spec_without_manifest(
     monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
@@ -198,6 +252,23 @@ def test_window_study_cli_rejects_manifest_override(capsys) -> None:
 
     assert result == 2
     assert "only valid for replication" in capsys.readouterr().err
+
+
+def test_verify_run_dispatches_simple_jm_suite(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run = tmp_path / "simple-jm-fixture"
+    run.mkdir()
+    (run / "run.json").write_text(
+        json.dumps({"study_kind": "simple-jm-suite-001"}), encoding="utf-8"
+    )
+    expected = {"run_id": run.name, "status": "complete"}
+    monkeypatch.setattr(
+        "adaptive_jump.simple_jm_suite.verify_simple_jm_run",
+        lambda selected: expected if selected == run.resolve() else None,
+    )
+
+    assert verify_run(run) == expected
 
 
 def _manifest_fixture(tmp_path: Path) -> tuple[Path, Path]:
