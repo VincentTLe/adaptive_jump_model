@@ -17,6 +17,17 @@ scaled DD in JP. Their gaps are `+0.253822 / +0.048251 / -0.116539`. This
 ex-post envelope passes in US and DE, but it mixes different models and is not
 a deployable cross-market rule; JP still loses buy-and-hold.
 
+The first true out-of-sample test is now complete. `holdout-2026-001` opened
+the previously untouched 2024-01-02 to 2026-06-30 window once, after a fresh
+v7 replication byte-matched the sealed baseline on all 123 scientific files.
+DD-only JM beat neither buy-and-hold nor HMM in any market: net Sharpe was
+US `1.0521` B&H versus `0.7750` DD-only, DE all four models identical at
+`0.9041` (the German JM never left equity), and JP `1.2701` B&H versus `1.1696`
+DD-only. The window was a broad bull, so rotating to cash was penalized. This
+is `not_supported`, 0/3; the development edge did not generalize. It does not
+refute the JM class, and the sample is now spent development data. The
+lagged-log4 batch remains available under the same frozen contract.
+
 The five-variant simple suite found that DD-only improved fixed-JM Sharpe in
 all three markets and beat both controls in US. The completed loss-scale
 control multiplied DD observation loss by three and left data, grid, timing,
@@ -50,6 +61,7 @@ or generalization claim is authorized.
 | Simple challengers | `simple-jm-suite-001` / `simple-jm-suite-2d3d2a779b13-544237a59943-20260721T145043479851Z` | No cross-market winner; DD-only beats both controls in US and improves fixed-JM Sharpe in all three, but passes only `1/3` and is loss-scale confounded |
 | DD loss-scale control | `dd-loss-scale-001` / `dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z` | Mechanism verified; scaled DD beats both controls only in US (`1/3`), so the result is `not_supported` |
 | Separation-turnover diagnostic | `separation-turnover-001` / `separation-turnover-8674ff4d9470-20260722T083551Z` | Not supported; decision-time DD center separation associates positively (US `+0.035`, DE `+0.320`, JP `+0.155`) with next-month switches, JP flips negative once collapsed one-state months are excluded, so no separation gate is justified |
+| One-shot 2024-2026 holdout | `holdout-2026-001` / `holdout-20260722T111757Z` | Not supported, 0/3; on the first untouched window DD-only beat neither benchmark in any market (US B&H `1.0521` vs DD-only `0.7750`; DE all four `0.9041`; JP B&H `1.2701` vs DD-only `1.1696`). Broad bull penalized cash rotation; development edge did not generalize |
 
 Invalidated runs remain preserved for provenance, but they are not accepted
 evidence. In particular, the `2207...` and `d6fe...` fixed-audit runs and the

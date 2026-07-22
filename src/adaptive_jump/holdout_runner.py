@@ -211,7 +211,93 @@ def readout(
         "created_at_utc": datetime.now(UTC).isoformat(),
     }
     write_json(out_dir / "summary.json", summary)
+    render_holdout_figure(out_dir)
     return summary
+
+
+MODEL_ORDER = ("buy_and_hold", "hmm", "fixed_jm", "dd_only")
+MODEL_LABELS = {
+    "buy_and_hold": "Buy & hold",
+    "hmm": "HMM",
+    "fixed_jm": "Fixed JM",
+    "dd_only": "DD-only JM",
+}
+MODEL_COLORS = {
+    "buy_and_hold": "#52514e",
+    "hmm": "#eda100",
+    "fixed_jm": "#eb6834",
+    "dd_only": "#2a78d6",
+}
+MARKET_LABELS = {"us": "US", "de": "Germany", "jp": "Japan"}
+
+
+def render_holdout_figure(out_dir: Path) -> Path:
+    """Render the holdout-window Sharpe comparison from the sealed metrics."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    table = pd.read_csv(out_dir / "holdout-metrics.csv")
+    holdout = table.loc[table["window"] == "holdout"]
+    markets = [m for m in ("us", "de", "jp") if m in set(holdout["market"])]
+    with plt.rc_context(
+        {
+            "font.family": "DejaVu Sans",
+            "font.size": 11,
+            "axes.titleweight": "bold",
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+            "axes.grid": True,
+            "axes.grid.axis": "y",
+            "grid.alpha": 0.55,
+            "grid.color": "#d9d9d9",
+            "figure.facecolor": "white",
+            "savefig.facecolor": "white",
+            "text.color": "#0b0b0b",
+            "axes.labelcolor": "#52514e",
+            "xtick.color": "#52514e",
+            "ytick.color": "#52514e",
+            "svg.fonttype": "none",
+        }
+    ):
+        figure, axis = plt.subplots(figsize=(9.2, 4.6))
+        width = 0.2
+        base = range(len(markets))
+        for index, model in enumerate(MODEL_ORDER):
+            values = [
+                float(
+                    holdout.loc[
+                        (holdout["market"] == market) & (holdout["model"] == model),
+                        "sharpe",
+                    ].iloc[0]
+                )
+                for market in markets
+            ]
+            offsets = [b + (index - 1.5) * width for b in base]
+            bars = axis.bar(
+                offsets,
+                values,
+                width,
+                color=MODEL_COLORS[model],
+                label=MODEL_LABELS[model],
+            )
+            axis.bar_label(bars, fmt="%.2f", padding=2, fontsize=8)
+        axis.set_xticks(list(base), [MARKET_LABELS[m] for m in markets])
+        axis.set_ylabel("Net Sharpe on the 2024-01 to 2026-06 holdout")
+        axis.set_title(
+            "One-shot holdout: no jump-model variant beats buy-and-hold\n"
+            "on the untouched 2024-2026 window",
+            loc="left",
+            fontsize=12,
+        )
+        axis.legend(loc="upper left", frameon=False, fontsize=9, ncols=4)
+        axis.margins(y=0.18)
+        figure.tight_layout()
+        target = out_dir / "holdout-sharpe.png"
+        figure.savefig(target)
+        plt.close(figure)
+    return target
 
 
 def main(argv: list[str] | None = None) -> int:

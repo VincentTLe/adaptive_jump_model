@@ -61,3 +61,31 @@ def test_spec_requires_frozen_registration(tmp_path: Path) -> None:
     (tmp_path / "research" / "experiment_registry.jsonl").write_text("")
     with pytest.raises(holdout.HoldoutError):
         holdout.load_holdout_spec(tmp_path)
+
+
+def test_render_holdout_figure(tmp_path: Path) -> None:
+    metrics = pd.DataFrame(
+        [
+            {"market": m, "model": model, "window": "holdout", "sharpe": s}
+            for m, model, s in [
+                ("us", "buy_and_hold", 1.05),
+                ("us", "hmm", 0.53),
+                ("us", "fixed_jm", 0.57),
+                ("us", "dd_only", 0.78),
+                ("de", "buy_and_hold", 0.90),
+                ("de", "hmm", 0.90),
+                ("de", "fixed_jm", 0.90),
+                ("de", "dd_only", 0.90),
+                ("jp", "buy_and_hold", 1.27),
+                ("jp", "hmm", 1.27),
+                ("jp", "fixed_jm", 1.27),
+                ("jp", "dd_only", 1.17),
+            ]
+        ]
+    )
+    metrics.to_csv(tmp_path / "holdout-metrics.csv", index=False)
+    from adaptive_jump.holdout_runner import render_holdout_figure
+
+    target = render_holdout_figure(tmp_path)
+    assert target.exists()
+    assert target.stat().st_size > 1000
