@@ -59,6 +59,7 @@ from adaptive_jump.walkforward import (
 )
 
 EXPERIMENT_ID = "simple-jm-suite-001"
+LOSS_SCALE_EXPERIMENT_ID = "dd-loss-scale-001"
 MARKETS = ("us", "de", "jp")
 CONTROLS = ("buy_and_hold", "hmm", "fixed_jm")
 CHALLENGERS = (
@@ -70,6 +71,9 @@ CHALLENGERS = (
 )
 ALL_MODELS = (*CONTROLS, *CHALLENGERS)
 FITTED_VARIANTS = ("dd_only", "return_aware", "robust_l1")
+SCALED_DD_VARIANT = "dd_scaled_3x"
+LOSS_SCALE_MODELS = (*CONTROLS, "dd_only", SCALED_DD_VARIANT)
+DD_OBSERVATION_LOSS_SCALE = 3.0
 FEATURE_COLUMNS = (
     "date",
     "equity_simple",
@@ -111,6 +115,22 @@ class SuiteSpec:
     document: dict[str, Any]
     canonical_root: Path
     lambda50_root: Path
+
+
+@dataclass(frozen=True)
+class LossScaleSpec:
+    path: Path
+    sha256: str
+    document: dict[str, Any]
+    canonical_root: Path
+    dd_parent_root: Path
+
+
+@dataclass(frozen=True)
+class LossScaleMarketSource:
+    market: str
+    features: pd.DataFrame
+    controls: dict[str, pd.DataFrame]
 
 
 @dataclass(frozen=True)
@@ -171,15 +191,83 @@ def load_simple_jm_spec(path: str | Path, config: ResearchConfig) -> SuiteSpec:
     )
     if not all(required):
         raise SimpleJMSuiteError("suite contract does not match the frozen identity")
+    _require_frozen_registration(repo_root, EXPERIMENT_ID, digest)
+    canonical_root = (repo_root / canonical_name).resolve()
+    lambda50_root = (repo_root / lambda50_name).resolve()
+    for root in (canonical_root, lambda50_root):
+        if not root.is_dir() or root.is_symlink() or repo_root not in root.parents:
+            raise SimpleJMSuiteError(f"unsafe or missing source root: {root}")
+    return SuiteSpec(resolved, digest, document, canonical_root, lambda50_root)
+
+
+def load_dd_loss_scale_spec(path: str | Path, config: ResearchConfig) -> LossScaleSpec:
+    """Load the registered frozen DD loss-scale control."""
+    repo_root = config.path.parent.resolve()
+    candidate = Path(path)
+    resolved = (
+        repo_root / candidate if not candidate.is_absolute() else candidate
+    ).resolve()
+    payload = resolved.read_bytes()
+    digest = hashlib.sha256(payload).hexdigest()
+    try:
+        document = tomllib.loads(payload.decode("utf-8"))
+    except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
+        raise SimpleJMSuiteError(f"invalid loss-scale TOML: {exc}") from exc
+    sources = document.get("sources")
+    model = document.get("model")
+    execution = document.get("execution")
+    valid_sections = all(
+        isinstance(section, dict) for section in (sources, model, execution)
+    )
+    if not valid_sections:
+        raise SimpleJMSuiteError("loss-scale contract does not match frozen identity")
+    canonical_name = sources.get("canonical_run_root")
+    parent_name = sources.get("dd_parent_run_root")
+    required = (
+        document.get("schema_version") == 1,
+        document.get("experiment_id") == LOSS_SCALE_EXPERIMENT_ID,
+        document.get("parent_id") == EXPERIMENT_ID,
+        document.get("status") == "FROZEN_BEFORE_RESULTS",
+        document.get("claim_class") == "EXPLORATORY",
+        sources.get("markets") == list(MARKETS),
+        sources.get("cutoff") == "2023-12-31",
+        sources.get("post_2023_access") is False,
+        isinstance(canonical_name, str) and bool(canonical_name),
+        isinstance(parent_name, str) and bool(parent_name),
+        model.get("label") == SCALED_DD_VARIANT,
+        model.get("features") == ["dd_10"],
+        model.get("observation_loss_scale") == DD_OBSERVATION_LOSS_SCALE,
+        execution.get("primary_delay_trading_days") == 1,
+        execution.get("signal_to_return_offset") == 2,
+        execution.get("one_way_cost_bps") == 10,
+    )
+    if not all(required):
+        raise SimpleJMSuiteError("loss-scale contract does not match frozen identity")
+    _require_frozen_registration(repo_root, LOSS_SCALE_EXPERIMENT_ID, digest)
+    roots = (
+        (repo_root / canonical_name).resolve(),
+        (repo_root / parent_name).resolve(),
+    )
+    if any(
+        not root.is_dir() or root.is_symlink() or repo_root not in root.parents
+        for root in roots
+    ):
+        raise SimpleJMSuiteError("unsafe or missing loss-scale source root")
+    return LossScaleSpec(resolved, digest, document, *roots)
+
+
+def _require_frozen_registration(
+    repo_root: Path, experiment_id: str, digest: str
+) -> None:
     registry = repo_root / "research" / "experiment_registry.jsonl"
     try:
-        registry_rows = registry.read_text(encoding="utf-8").splitlines()
+        rows = registry.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError) as exc:
         raise SimpleJMSuiteError(
             f"cannot read experiment registry: {registry}"
         ) from exc
     frozen = False
-    for number, raw in enumerate(registry_rows, start=1):
+    for number, raw in enumerate(rows, start=1):
         if not raw.strip():
             continue
         try:
@@ -190,28 +278,20 @@ def load_simple_jm_spec(path: str | Path, config: ResearchConfig) -> SuiteSpec:
             ) from exc
         if not isinstance(row, dict):
             raise SimpleJMSuiteError(f"invalid experiment registry row {number}")
-        experiment_id = row.get("experiment_id")
-        status = row.get("status")
+        registered_id, status = row.get("experiment_id"), row.get("status")
         if (
-            not isinstance(experiment_id, str)
-            or not experiment_id
+            not isinstance(registered_id, str)
+            or not registered_id
             or not isinstance(status, str)
         ):
             raise SimpleJMSuiteError(f"invalid experiment registry row {number}")
-        if (
-            experiment_id == EXPERIMENT_ID
+        frozen |= (
+            registered_id == experiment_id
             and status == "FROZEN"
             and row.get("frozen_spec_hash") == digest
-        ):
-            frozen = True
+        )
     if not frozen:
         raise SimpleJMSuiteError("no matching pre-result FROZEN registry row")
-    canonical_root = (repo_root / canonical_name).resolve()
-    lambda50_root = (repo_root / lambda50_name).resolve()
-    for root in (canonical_root, lambda50_root):
-        if not root.is_dir() or root.is_symlink() or repo_root not in root.parents:
-            raise SimpleJMSuiteError(f"unsafe or missing source root: {root}")
-    return SuiteSpec(resolved, digest, document, canonical_root, lambda50_root)
 
 
 def run_simple_jm_study(
@@ -478,6 +558,176 @@ def _validate_protocol(config: ResearchConfig, spec: SuiteSpec) -> None:
     )
     if not all(checks):
         raise SimpleJMSuiteError("canonical config and frozen suite protocol disagree")
+
+
+def _validate_loss_scale_protocol(config: ResearchConfig, spec: LossScaleSpec) -> None:
+    model = spec.document["model"]
+    checks = (
+        config.replication_cutoff == date(2023, 12, 31),
+        config.model_protocol.n_states == model["states"] == 2,
+        config.model_protocol.fit_window == model["fit_window_observations"] == 3000,
+        config.jm_protocol.lambda_grid == tuple(model["lambda_grid"]),
+        config.jm_protocol.refit_months == tuple(model["refit_months"]) == (1, 7),
+        config.jm_protocol.n_init == model["n_init"] == 10,
+        config.jm_protocol.random_state == model["random_state"] == 0,
+        config.jm_protocol.max_iter == model["max_iter"] == 1000,
+        config.jm_protocol.tol == model["normalized_tol"] == 1e-8,
+        math.isclose(
+            model["optimizer_tol"], model["normalized_tol"] * DD_OBSERVATION_LOSS_SCALE
+        ),
+        config.selection_protocol.validation_years == 8,
+    )
+    if not all(checks):
+        raise SimpleJMSuiteError(
+            "canonical config and frozen loss-scale protocol disagree"
+        )
+
+
+def _load_loss_scale_sources(
+    spec: LossScaleSpec, config: ResearchConfig
+) -> dict[str, LossScaleMarketSource]:
+    source_rows = spec.document["sources"]
+    roots = {
+        "canonical": (
+            spec.canonical_root,
+            source_rows["canonical_inventory_sha256"],
+        ),
+        "dd_parent": (
+            spec.dd_parent_root,
+            source_rows["dd_parent_inventory_sha256"],
+        ),
+    }
+    for label, (root, digest) in roots.items():
+        if sha256_file(root / "inventory.json") != digest:
+            raise SimpleJMSuiteError(f"{label} source inventory hash changed")
+        verify_inventory(root)
+        files = read_json(root / "inventory.json").get("files")
+        if not isinstance(files, dict):
+            raise SimpleJMSuiteError(f"{label} source inventory is invalid")
+    canonical_metadata = read_json(spec.canonical_root / "run.json")
+    parent_metadata = read_json(spec.dd_parent_root / "run.json")
+    if (
+        canonical_metadata.get("run_id") != source_rows["canonical_run_id"]
+        or canonical_metadata.get("status") != "complete"
+        or canonical_metadata.get("config_sha256") != config.sha256
+        or parent_metadata.get("run_id") != source_rows["dd_parent_run_id"]
+        or parent_metadata.get("study_kind") != EXPERIMENT_ID
+        or parent_metadata.get("status") != "complete"
+        or sha256_file(spec.canonical_root / "config.lock.toml") != config.sha256
+        or sha256_file(spec.dd_parent_root / "config.lock.toml") != config.sha256
+    ):
+        raise SimpleJMSuiteError("loss-scale source identity changed")
+
+    output = {}
+    for market in MARKETS:
+        feature_path = spec.canonical_root / market / "features.csv"
+        features = pd.read_csv(feature_path, usecols=list(FEATURE_COLUMNS))
+        features["date"] = pd.to_datetime(features["date"], errors="raise")
+        controls = {
+            model: read_trade_path(
+                spec.canonical_root / market / "trades" / f"{model}-delay-1.csv",
+                1,
+                10,
+            )
+            for model in CONTROLS
+        }
+        controls["dd_only"] = read_trade_path(
+            spec.dd_parent_root / market / "dd_only" / "trades.csv",
+            1,
+            10,
+        )
+        if features["date"].max() > DEVELOPMENT_CUTOFF or any(
+            path["date"].max() > DEVELOPMENT_CUTOFF for path in controls.values()
+        ):
+            raise SimpleJMSuiteError(f"{market}: source crosses the cutoff")
+        output[market] = LossScaleMarketSource(market, features, controls)
+    return output
+
+
+def _loss_scale_contrasts(summary: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    metrics = (
+        "sharpe",
+        "maximum_drawdown",
+        "turnover",
+        "cash_fraction",
+        "switch_count",
+    )
+    for market in MARKETS:
+        indexed = summary.loc[summary["market"] == market].set_index("model")
+        if not {"dd_only", SCALED_DD_VARIANT}.issubset(indexed.index):
+            raise SimpleJMSuiteError(f"{market}: loss-scale contrast is incomplete")
+        ordinary, scaled = indexed.loc["dd_only"], indexed.loc[SCALED_DD_VARIANT]
+        row = {
+            "market": market,
+            "primary_gap": float(scaled["gap_vs_stronger_control"]),
+            "market_pass": bool(scaled["market_pass"]),
+        }
+        row.update(
+            {
+                f"delta_{metric}": float(scaled[metric]) - float(ordinary[metric])
+                for metric in metrics
+            }
+        )
+        rows.append(row)
+    return pd.DataFrame.from_records(rows)
+
+
+def _verify_loss_scale_math() -> dict[str, bool]:
+    X = np.asarray([[-2.0], [-1.8], [1.7], [2.0]])
+    centers = np.asarray([[-2.0], [2.0]])
+    base = feature_loss_matrix(X, centers)
+    root = math.sqrt(DD_OBSERVATION_LOSS_SCALE)
+    scaled = feature_loss_matrix(X * root, centers * root)
+    penalty = 0.9
+    scaled_path, scaled_dp_value = dp(scaled, jump_penalty_to_mx(penalty, 2))
+    base_path, base_dp_value = dp(
+        base,
+        jump_penalty_to_mx(penalty / DD_OBSERVATION_LOSS_SCALE, 2),
+    )
+    scaled_brute = _brute_force_value(scaled, penalty)
+    base_brute = _brute_force_value(base, penalty / DD_OBSERVATION_LOSS_SCALE)
+    every_path = True
+    for path in itertools.product(range(2), repeat=len(base)):
+        switches = sum(
+            left != right for left, right in zip(path[:-1], path[1:], strict=True)
+        )
+        scaled_value = sum(scaled[row, state] for row, state in enumerate(path))
+        scaled_value += penalty * switches
+        base_value = sum(base[row, state] for row, state in enumerate(path))
+        base_value += penalty / DD_OBSERVATION_LOSS_SCALE * switches
+        every_path &= math.isclose(
+            scaled_value,
+            DD_OBSERVATION_LOSS_SCALE * base_value,
+            rel_tol=0,
+            abs_tol=1e-12,
+        )
+    equivalent = (
+        np.allclose(
+            scaled,
+            DD_OBSERVATION_LOSS_SCALE * base,
+            rtol=0,
+            atol=1e-14,
+        )
+        and every_path
+        and np.array_equal(scaled_path, base_path)
+        and math.isclose(float(scaled_dp_value), scaled_brute, rel_tol=0, abs_tol=1e-12)
+        and math.isclose(float(base_dp_value), base_brute, rel_tol=0, abs_tol=1e-12)
+        and math.isclose(
+            scaled_brute / DD_OBSERVATION_LOSS_SCALE,
+            base_brute,
+            rel_tol=0,
+            abs_tol=1e-12,
+        )
+    )
+    if not equivalent:
+        raise SimpleJMSuiteError("scaled DD mathematical identity failed")
+    return {
+        "loss_scale_three_formula": True,
+        "every_toy_path_objective_identity": True,
+        "lambda_one_third_path_equivalence": True,
+        "brute_force_equivalence": True,
+    }
 
 
 def _verify_custom_inventory(run_root: Path) -> dict[str, str]:

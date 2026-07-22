@@ -216,6 +216,29 @@ def test_math_contract_receipt_covers_nested_and_brute_force_checks() -> None:
     }
 
 
+def test_loss_scale_math_receipt_covers_every_toy_path() -> None:
+    assert suite._verify_loss_scale_math() == {
+        "loss_scale_three_formula": True,
+        "every_toy_path_objective_identity": True,
+        "lambda_one_third_path_equivalence": True,
+        "brute_force_equivalence": True,
+    }
+
+
+def test_loss_scale_math_checks_dp_objective_against_brute_force(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real_dp = suite.dp
+
+    def wrong_objective(*args, **kwargs):
+        path, value = real_dp(*args, **kwargs)
+        return path, value + 1.0
+
+    monkeypatch.setattr(suite, "dp", wrong_objective)
+    with pytest.raises(suite.SimpleJMSuiteError, match="mathematical identity"):
+        suite._verify_loss_scale_math()
+
+
 def _valid_trace(**overrides: object) -> pd.DataFrame:
     row: dict[str, object] = {
         "market": "us",
