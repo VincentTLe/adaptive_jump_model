@@ -13,6 +13,7 @@ from dataclasses import asdict, dataclass, replace
 from datetime import UTC, date, datetime
 from multiprocessing import get_context
 from pathlib import Path
+from time import monotonic
 from typing import Any
 
 import numpy as np
@@ -319,6 +320,7 @@ def run_simple_jm_study(
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     run_id = f"simple-jm-suite-{spec.sha256[:12]}-{code_digest[:12]}-{timestamp}"
     run_dir = repo_root / config.artifact_root / EXPERIMENT_ID / run_id
+    started = monotonic()
     run_dir.mkdir(parents=True)
     (run_dir / "study.lock.toml").write_bytes(spec.path.read_bytes())
     (run_dir / "config.lock.toml").write_bytes(
@@ -343,10 +345,17 @@ def run_simple_jm_study(
         run_dir / "implementation-lock.json",
         {"schema_version": 1, "files": code_hashes, "bundle_sha256": code_digest},
     )
+    _start_run(
+        run_dir / "run.json",
+        study_kind=EXPERIMENT_ID,
+        run_id=run_id,
+        spec_sha256=spec.sha256,
+        implementation_sha256=code_digest,
+    )
 
     _emit_stage(observer, "stage_started", "fixed_jm", completed=0, total=15)
     outputs: dict[tuple[str, str], VariantOutput | ControlPath] = {}
-    for market in MARKETS:
+    for completed, market in enumerate(MARKETS, start=1):
         expected = lambda_inventory[f"{market}/jm-missing-states.csv"]
         control = build_static_lambda50_path(
             sources[market].features.loc[:, ["date", "equity_simple", "cash_return"]],
@@ -355,6 +364,9 @@ def run_simple_jm_study(
             expected_sha256=expected,
         )
         outputs[(market, "static_lambda50")] = control
+        _emit_variant_completed(
+            observer, market, "static_lambda50", completed=completed, total=15
+        )
     stage_a = _stage_summary(sources, outputs, ("static_lambda50",), config)
     stage_a.to_csv(run_dir / "stage-a-static-summary.csv", index=False)
 
@@ -369,24 +381,38 @@ def run_simple_jm_study(
         smoke.append(asdict(evidence))
     pd.DataFrame.from_records(smoke).to_csv(run_dir / "us-smoke.csv", index=False)
 
-    dd_outputs = _parallel_fit(spec, config, ("dd_only",), workers=3)
+    dd_outputs = _parallel_fit(
+        spec,
+        config,
+        ("dd_only",),
+        workers=3,
+        observer=observer,
+        progress_offset=3,
+        progress_total=15,
+    )
     outputs.update(dd_outputs)
     stage_b = _stage_summary(sources, outputs, ("dd_only",), config)
     stage_b.to_csv(run_dir / "stage-b-dd-only-summary.csv", index=False)
 
-    for market in MARKETS:
+    for completed, market in enumerate(MARKETS, start=7):
         source = sources[market]
         control = build_confirmed_control_path(
             source.features.loc[:, ["date", "equity_simple", "cash_return"]],
             source.canonical_signal,
         )
         outputs[(market, "confirmed_2d")] = control
+        _emit_variant_completed(
+            observer, market, "confirmed_2d", completed=completed, total=15
+        )
 
     custom = _parallel_fit(
         spec,
         config,
         ("return_aware", "robust_l1"),
         workers=6,
+        observer=observer,
+        progress_offset=9,
+        progress_total=15,
     )
     outputs.update(custom)
     _emit_stage(observer, "stage_completed", "fixed_jm", completed=15, total=15)
@@ -420,20 +446,8 @@ def run_simple_jm_study(
             "one_way_cost_bps": 10,
         },
     )
-    write_json(
-        run_dir / "run.json",
-        {
-            "schema_version": 1,
-            "study_kind": EXPERIMENT_ID,
-            "run_id": run_id,
-            "status": "complete",
-            "spec_sha256": spec.sha256,
-            "implementation_sha256": code_digest,
-            "created_at_utc": datetime.now(UTC).isoformat(),
-            "conclusion": decisions["conclusion"],
-        },
-    )
     write_inventory(run_dir)
+    _finish_run(run_dir / "run.json", decisions["conclusion"], started)
     verify_simple_jm_run(run_dir)
     return run_dir
 
@@ -452,6 +466,7 @@ def run_dd_loss_scale_study(
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     run_id = f"dd-loss-scale-{spec.sha256[:12]}-{code_digest[:12]}-{timestamp}"
     run_dir = repo_root / config.artifact_root / LOSS_SCALE_EXPERIMENT_ID / run_id
+    started = monotonic()
     run_dir.mkdir(parents=True)
     (run_dir / "study.lock.toml").write_bytes(spec.path.read_bytes())
     (run_dir / "config.lock.toml").write_bytes(
@@ -460,6 +475,13 @@ def run_dd_loss_scale_study(
     write_json(
         run_dir / "implementation-lock.json",
         {"schema_version": 1, "files": code_hashes, "bundle_sha256": code_digest},
+    )
+    _start_run(
+        run_dir / "run.json",
+        study_kind=LOSS_SCALE_EXPERIMENT_ID,
+        run_id=run_id,
+        spec_sha256=spec.sha256,
+        implementation_sha256=code_digest,
     )
 
     _emit_stage(observer, "stage_started", "fixed_jm", completed=0, total=3)
@@ -474,7 +496,14 @@ def run_dd_loss_scale_study(
     )
     smoke["variant"] = SCALED_DD_VARIANT
     pd.DataFrame.from_records([smoke]).to_csv(run_dir / "us-smoke.csv", index=False)
-    outputs = _parallel_fit(spec, config, (SCALED_DD_VARIANT,), workers=3)
+    outputs = _parallel_fit(
+        spec,
+        config,
+        (SCALED_DD_VARIANT,),
+        workers=3,
+        observer=observer,
+        progress_total=3,
+    )
     _emit_stage(observer, "stage_completed", "fixed_jm", completed=3, total=3)
     _emit_stage(observer, "stage_started", "selection", completed=0, total=3)
     _emit_variant_events(observer, outputs, (SCALED_DD_VARIANT,))
@@ -526,20 +555,8 @@ def run_dd_loss_scale_study(
             "one_way_cost_bps": 10,
         },
     )
-    write_json(
-        run_dir / "run.json",
-        {
-            "schema_version": 1,
-            "study_kind": LOSS_SCALE_EXPERIMENT_ID,
-            "run_id": run_id,
-            "status": "complete",
-            "spec_sha256": spec.sha256,
-            "implementation_sha256": code_digest,
-            "created_at_utc": datetime.now(UTC).isoformat(),
-            "conclusion": decision["conclusion"],
-        },
-    )
     write_inventory(run_dir)
+    _finish_run(run_dir / "run.json", decision["conclusion"], started)
     verify_dd_loss_scale_run(run_dir)
     return run_dir
 
@@ -1444,6 +1461,25 @@ def _emit_stage(
     )
 
 
+def _emit_variant_completed(
+    observer: EventObserver | None,
+    market: str,
+    variant: str,
+    *,
+    completed: int,
+    total: int,
+) -> None:
+    emit_event(
+        observer,
+        kind="variant_completed",
+        stage="fixed_jm",
+        market=market,
+        model=variant,
+        completed=completed,
+        total=total,
+    )
+
+
 def _emit_variant_events(
     observer: EventObserver | None,
     outputs: dict[tuple[str, str], VariantOutput],
@@ -1475,6 +1511,9 @@ def _parallel_fit(
     variants: tuple[str, ...],
     *,
     workers: int,
+    observer: EventObserver | None = None,
+    progress_offset: int = 0,
+    progress_total: int | None = None,
 ) -> dict[tuple[str, str], VariantOutput]:
     tasks = [
         (
@@ -1485,6 +1524,9 @@ def _parallel_fit(
         )
         for variant, market in itertools.product(variants, MARKETS)
     ]
+    total = len(tasks) if progress_total is None else progress_total
+    if progress_offset < 0 or progress_offset + len(tasks) > total:
+        raise SimpleJMSuiteError("parallel fit progress range is invalid")
     output = {}
     with ProcessPoolExecutor(
         max_workers=workers, mp_context=get_context("forkserver")
@@ -1494,9 +1536,53 @@ def _parallel_fit(
             _, market, variant, _ = futures[future]
             result = future.result()
             output[(market, variant)] = result
+            _emit_variant_completed(
+                observer,
+                market,
+                variant,
+                completed=progress_offset + len(output),
+                total=total,
+            )
     if len(output) != len(tasks):
         raise SimpleJMSuiteError("parallel fit did not return every market/variant")
     return output
+
+
+def _start_run(
+    metadata_path: Path,
+    *,
+    study_kind: str,
+    run_id: str,
+    spec_sha256: str,
+    implementation_sha256: str,
+) -> None:
+    write_json(
+        metadata_path,
+        {
+            "schema_version": 1,
+            "study_kind": study_kind,
+            "run_id": run_id,
+            "status": "running",
+            "spec_sha256": spec_sha256,
+            "implementation_sha256": implementation_sha256,
+            "created_at_utc": datetime.now(UTC).isoformat(),
+        },
+    )
+
+
+def _finish_run(metadata_path: Path, conclusion: str, started: float) -> None:
+    metadata = read_json(metadata_path)
+    if metadata.get("status") != "running":
+        raise SimpleJMSuiteError("run metadata is not in the running state")
+    metadata.update(
+        {
+            "status": "complete",
+            "conclusion": conclusion,
+            "finished_at_utc": datetime.now(UTC).isoformat(),
+            "runtime_seconds": monotonic() - started,
+        }
+    )
+    write_json(metadata_path, metadata)
 
 
 def _fit_market_task(

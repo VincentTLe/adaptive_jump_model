@@ -9,13 +9,37 @@ from adaptive_jump.artifacts import (
     TRADE_COLUMNS,
     ArtifactError,
     read_json,
+    verify_inventory,
     write_inventory,
     write_json,
 )
 
 
+@pytest.fixture(autouse=True)
+def _verify_synthetic_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep unit fixtures small while preserving the production verifier call."""
+    monkeypatch.setattr(figures, "verify_run", verify_inventory)
+
+
 def test_figure_error_uses_shared_artifact_error_hierarchy() -> None:
     assert issubclass(figures.SimpleJMFigureError, ArtifactError)
+
+
+def test_load_calls_shared_run_verifier(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run = _write_run(tmp_path)
+    verified = []
+
+    def verify(path: Path) -> None:
+        verified.append(Path(path))
+        verify_inventory(path)
+
+    monkeypatch.setattr(figures, "verify_run", verify)
+
+    figures.load_figure_run(run)
+
+    assert verified == [run.resolve()]
 
 
 def _trade_frame(dates: pd.DatetimeIndex, signal: list[float]) -> pd.DataFrame:

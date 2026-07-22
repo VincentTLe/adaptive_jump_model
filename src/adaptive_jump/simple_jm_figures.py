@@ -20,7 +20,7 @@ from adaptive_jump.artifacts import (  # noqa: E402
     ArtifactError,
     read_json,
     read_trade_path,
-    verify_inventory,
+    verify_run,
 )
 
 MARKETS: Final = ("us", "de", "jp")
@@ -96,7 +96,7 @@ def load_figure_run(run_dir: str | Path) -> FigureRun:
             )
         if metadata.get("run_id") != root.name:
             raise SimpleJMFigureError("run directory and identity disagree")
-        verify_inventory(root)
+        verify_run(root)
         summary = pd.read_csv(root / "summary.csv")
         models = (
             WEALTH_MODELS if study_kind == "simple-jm-suite-001" else LOSS_SCALE_MODELS

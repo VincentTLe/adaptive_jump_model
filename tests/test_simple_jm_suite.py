@@ -4,6 +4,7 @@ import subprocess
 import tomllib
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -706,6 +707,87 @@ variants = {}
         match="suite contract does not match the frozen identity",
     ):
         suite.load_simple_jm_spec(spec_path, config)
+
+
+def test_run_metadata_uses_running_then_complete_lifecycle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    metadata_path = tmp_path / "run.json"
+    suite._start_run(
+        metadata_path,
+        study_kind=suite.LOSS_SCALE_EXPERIMENT_ID,
+        run_id="loss-scale-test",
+        spec_sha256="a" * 64,
+        implementation_sha256="b" * 64,
+    )
+
+    running = suite.read_json(metadata_path)
+    assert running["status"] == "running"
+    assert "finished_at_utc" not in running
+    assert pd.Timestamp(running["created_at_utc"]).tz is not None
+
+    monkeypatch.setattr(suite, "monotonic", lambda: 12.5)
+    suite._finish_run(metadata_path, "not_supported", started=10.0)
+
+    complete = suite.read_json(metadata_path)
+    assert complete["status"] == "complete"
+    assert complete["conclusion"] == "not_supported"
+    assert complete["runtime_seconds"] == pytest.approx(2.5)
+    assert pd.Timestamp(complete["finished_at_utc"]).tz is not None
+    assert complete["created_at_utc"] == running["created_at_utc"]
+    with pytest.raises(suite.SimpleJMSuiteError, match="running state"):
+        suite._finish_run(metadata_path, "not_supported", started=10.0)
+
+
+def test_parallel_fit_emits_monotonic_parent_progress(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class ImmediateFuture:
+        def __init__(self, value: object) -> None:
+            self.value = value
+
+        def result(self) -> object:
+            return self.value
+
+    class InlineExecutor:
+        def __init__(self, **_: object) -> None:
+            pass
+
+        def __enter__(self) -> "InlineExecutor":
+            return self
+
+        def __exit__(self, *_: object) -> None:
+            pass
+
+        def submit(self, function, task) -> ImmediateFuture:
+            return ImmediateFuture(function(task))
+
+    monkeypatch.setattr(suite, "ProcessPoolExecutor", InlineExecutor)
+    monkeypatch.setattr(suite, "as_completed", lambda futures: futures)
+    monkeypatch.setattr(
+        suite,
+        "_fit_market_task",
+        lambda task: (task[1], task[2]),
+    )
+    events = []
+
+    output = suite._parallel_fit(
+        SimpleNamespace(canonical_root=tmp_path),
+        object(),
+        ("dd_only",),
+        workers=3,
+        observer=events.append,
+        progress_offset=3,
+        progress_total=6,
+    )
+
+    assert set(output) == {(market, "dd_only") for market in suite.MARKETS}
+    assert [event.completed for event in events] == [4, 5, 6]
+    assert all(event.total == 6 for event in events)
+    assert [event.market for event in events] == list(suite.MARKETS)
+    assert {event.kind for event in events} == {"variant_completed"}
+    assert {event.stage for event in events} == {"fixed_jm"}
+    assert {event.model for event in events} == {"dd_only"}
 
 
 def test_runner_events_use_existing_contract_without_stdout(capsys) -> None:
