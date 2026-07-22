@@ -44,6 +44,14 @@ because it beats both controls only in the US. No tested JM variant beats both
 benchmarks in all three markets, so this is exploratory evidence—not an alpha,
 robustness, generalization, or profitability claim.
 
+The first true out-of-sample test is now complete. On the previously untouched
+2024-01-02 to 2026-06-30 window, DD-only beat neither buy-and-hold nor the HMM
+in any market (net Sharpe US `1.0521` B&H vs `0.7750` DD-only; DE all four
+models `0.9041`; JP `1.2701` B&H vs `1.1696` DD-only). The window was a broad
+bull, so cash rotation was penalized; the development edge did not generalize.
+The holdout was opened once, after a fresh 2023 replication byte-matched the
+sealed baseline on all 123 scientific files. See `research/holdout-2026-001.toml`.
+
 Turnover is `0.5 * 252 * mean(abs(position change))`: the factor one-half
 counts an equity-to-cash-to-equity round trip once. Transaction costs still
 charge the full one-way position change.
