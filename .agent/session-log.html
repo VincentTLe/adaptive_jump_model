@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">112 session(s) · newest first · 2026-07-22 12:06 UTC</p>
+  <p class="sub">113 session(s) · newest first · 2026-07-22 19:19 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-22T19:19:56Z</span><span class="who">claude-code · claude-opus-4-8</span>
+      </div>
+      <p class="goal">Corrected an overclaim in the holdout write-up after the owner caught it. Prior framing said &#x27;the development edge did not generalize&#x27;; that conflated walk-forward leakage (none on any window) with selection bias (the only axis on which 2024-2026 is special).</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>research/STATUS.md, TASK.md, README.md, paper/manuscript.tex (holdout subsection + abstract + conclusion) - now report BOTH windows</code></li><li><code>research/experiment_registry.jsonl - appended an INTERPRETATION CORRECTION entry (append-only; prior EXPERIMENT_COMPLETE preserved)</code></li><li><code>artifacts/paper/manuscript.pdf rebuilt (1.23 MB)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>Fair numbers (both walk-forward): full 2008-2026 DD-only beats both controls in US 0.8903 vs stronger HMM 0.6326 (+0.258), loses DE/JP -&gt; 1/3 unchanged from dev; isolated 2024-2026 window frozen rule not_supported 0/3 but ~620 days, bootstrap CIs span zero, broad bull -&gt; fails-to-confirm, does NOT refute</li><li>grep sweep: no stray &#x27;did not generalize&#x27; left in docs/code</li><li>correction is docs-only, no src/tests touched; last full suite still 472 passed</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>ed2ca81 (pushed to cleanup/research-protocol)</code></p></div>
+        <div><span class="lbl">Next step</span><p>A conclusive out-of-sample test needs a longer selection-independent sample or a drawdown-conditional readout (2.5 bull years cannot separate variants). Lagged-log4 batch 2 available under the same frozen contract. Semi-Markov dwell cost remains the standing math candidate.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>LESSON for the next agent: keep the frozen binary rule&#x27;s output (window 0/3) but never editorialize past it. Walk-forward causal != selection-clean. The 2024-2026 window is selection-clean but short and bull-dominated; the full walk-forward through 2026 keeps DD-only&#x27;s US edge. Report both, always.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-22T12:06:56Z</span><span class="who">claude-code · claude-opus-4-8</span>
