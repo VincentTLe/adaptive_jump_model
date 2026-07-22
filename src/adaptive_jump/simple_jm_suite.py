@@ -437,6 +437,112 @@ def run_simple_jm_study(
     return run_dir
 
 
+def run_dd_loss_scale_study(
+    config: ResearchConfig,
+    spec: LossScaleSpec,
+    observer: EventObserver | None = None,
+) -> Path:
+    """Run US smoke, then the frozen three-market scale-three DD control."""
+    repo_root = config.path.parent.resolve()
+    _validate_loss_scale_protocol(config, spec)
+    sources = _load_loss_scale_sources(spec, config)
+    code_hashes = _implementation_hashes(repo_root)
+    code_digest = _mapping_digest(code_hashes)
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    run_id = f"dd-loss-scale-{spec.sha256[:12]}-{code_digest[:12]}-{timestamp}"
+    run_dir = repo_root / config.artifact_root / LOSS_SCALE_EXPERIMENT_ID / run_id
+    run_dir.mkdir(parents=True)
+    (run_dir / "study.lock.toml").write_bytes(spec.path.read_bytes())
+    (run_dir / "config.lock.toml").write_bytes(
+        (spec.canonical_root / "config.lock.toml").read_bytes()
+    )
+    write_json(
+        run_dir / "implementation-lock.json",
+        {"schema_version": 1, "files": code_hashes, "bundle_sha256": code_digest},
+    )
+
+    _emit_stage(observer, "stage_started", "fixed_jm", completed=0, total=3)
+    smoke = asdict(
+        run_us_prefix_smoke(
+            sources["us"].features,
+            config.model_protocol,
+            config.jm_protocol,
+            variant="dd_only",
+            observation_loss_scale=DD_OBSERVATION_LOSS_SCALE,
+        )
+    )
+    smoke["variant"] = SCALED_DD_VARIANT
+    pd.DataFrame.from_records([smoke]).to_csv(run_dir / "us-smoke.csv", index=False)
+    outputs = _parallel_fit(spec, config, (SCALED_DD_VARIANT,), workers=3)
+    _emit_stage(observer, "stage_completed", "fixed_jm", completed=3, total=3)
+    _emit_stage(observer, "stage_started", "selection", completed=0, total=3)
+    _emit_variant_events(observer, outputs, (SCALED_DD_VARIANT,))
+    _emit_stage(observer, "stage_completed", "selection", completed=3, total=3)
+
+    aligned, summary = _finalize_paths(
+        sources,
+        outputs,
+        config,
+        (SCALED_DD_VARIANT,),
+    )
+    summary.to_csv(run_dir / "summary.csv", index=False, float_format="%.17g")
+    _loss_scale_contrasts(summary).to_csv(
+        run_dir / "dd-scale-contrast.csv",
+        index=False,
+        float_format="%.17g",
+    )
+    _build_fit_degeneracy(outputs, (SCALED_DD_VARIANT,)).to_csv(
+        run_dir / "fit-degeneracy.csv", index=False
+    )
+    decision = _decision(summary, (SCALED_DD_VARIANT,))
+    write_json(run_dir / "decision.json", decision)
+    traces = _build_traces(
+        sources,
+        outputs,
+        aligned,
+        config,
+        (SCALED_DD_VARIANT,),
+    )
+    _validate_traces(traces)
+    traces.to_csv(run_dir / "traces.csv", index=False, float_format="%.17g")
+    _write_market_artifacts(
+        run_dir,
+        sources,
+        outputs,
+        aligned,
+        LOSS_SCALE_MODELS,
+    )
+    write_json(
+        run_dir / "verification.json",
+        {
+            "schema_version": 1,
+            "math_contracts": _verify_loss_scale_math(),
+            "us_smoke": [smoke],
+            "observation_loss_scale": DD_OBSERVATION_LOSS_SCALE,
+            "cutoff": DEVELOPMENT_CUTOFF.date().isoformat(),
+            "paper_turnover_scale": PAPER_TURNOVER_SCALE,
+            "t_plus_2_offset": 2,
+            "one_way_cost_bps": 10,
+        },
+    )
+    write_json(
+        run_dir / "run.json",
+        {
+            "schema_version": 1,
+            "study_kind": LOSS_SCALE_EXPERIMENT_ID,
+            "run_id": run_id,
+            "status": "complete",
+            "spec_sha256": spec.sha256,
+            "implementation_sha256": code_digest,
+            "created_at_utc": datetime.now(UTC).isoformat(),
+            "conclusion": decision["conclusion"],
+        },
+    )
+    write_inventory(run_dir)
+    verify_dd_loss_scale_run(run_dir)
+    return run_dir
+
+
 def verify_simple_jm_run(run_dir: Path) -> dict[str, Any]:
     """Independently replay metrics, decisions, source hashes, and timing."""
     run_dir = run_dir.resolve()

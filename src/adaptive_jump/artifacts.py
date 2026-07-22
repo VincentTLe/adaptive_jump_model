@@ -153,6 +153,10 @@ def verify_run(run: str | Path) -> dict[str, Any]:
         from adaptive_jump.simple_jm_suite import verify_simple_jm_run
 
         return verify_simple_jm_run(run_dir)
+    if study_kind == "dd-loss-scale-001":
+        from adaptive_jump.simple_jm_suite import verify_dd_loss_scale_run
+
+        return verify_dd_loss_scale_run(run_dir)
     if study_kind is not None:
         raise ArtifactError(f"unsupported study kind: {study_kind}")
     verify_inventory(run_dir)

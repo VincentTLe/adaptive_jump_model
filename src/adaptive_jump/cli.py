@@ -33,7 +33,12 @@ from adaptive_jump.monitor.child_events import (
 from adaptive_jump.monitor.events import EventObserver, emit_artifact_verified
 from adaptive_jump.reporting import build_report
 from adaptive_jump.simple_jm_figures import render_figures
-from adaptive_jump.simple_jm_suite import load_simple_jm_spec, run_simple_jm_study
+from adaptive_jump.simple_jm_suite import (
+    load_dd_loss_scale_spec,
+    load_simple_jm_spec,
+    run_dd_loss_scale_study,
+    run_simple_jm_study,
+)
 from adaptive_jump.walkforward import (
     BaselineStudy,
     SelectionProgress,
@@ -453,6 +458,7 @@ def build_parser() -> argparse.ArgumentParser:
             "persistence-calibration",
             "persistence-grid-evaluation",
             "simple-jm-suite",
+            "dd-loss-scale",
         ],
     )
     run.add_argument("--config", required=True, help="path to research.toml")
@@ -502,6 +508,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                     research / "simple-jm-suite-001.toml", config
                 )
                 artifact = run_simple_jm_study(config, spec, observer)
+            elif arguments.study == "dd-loss-scale":
+                spec = load_dd_loss_scale_spec(
+                    research / "dd-loss-scale-001.toml", config
+                )
+                artifact = run_dd_loss_scale_study(config, spec, observer)
             else:
                 artifact = run_calibration_study(
                     config, research / "persistence-calibrated-search.toml"
