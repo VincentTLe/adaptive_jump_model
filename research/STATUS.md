@@ -1,6 +1,6 @@
 # Current Research Status
 
-Last reconciled: 2026-07-21. The append-only experiment registry remains the
+Last reconciled: 2026-07-22. The append-only experiment registry remains the
 authority for lifecycle status; this page is the short human-readable view.
 
 ## Bottom line
@@ -12,23 +12,26 @@ and costs. For market m:
 `G_m = Sharpe_JM,m - max(Sharpe_BuyHold,m, Sharpe_HMM,m)`.
 
 No tested JM currently achieves `G_m > 0` in all three markets. The strongest
-tested candidate by market is pair-balanced JM in US, lagged-evidence JM in DE,
-and lagged-evidence JM in JP. Their exact gaps are `-0.037398 / +0.048251 /
--0.131375`. Thus only Germany passes the economic benchmark; US still loses
-to HMM and JP still loses to buy-and-hold.
+observed candidate by market is DD-only in US, lagged-evidence JM in DE, and
+scaled DD in JP. Their gaps are `+0.253822 / +0.048251 / -0.116539`. This
+ex-post envelope passes in US and DE, but it mixes different models and is not
+a deployable cross-market rule; JP still loses buy-and-hold.
 
-The earlier adaptive decision rules mostly asked whether a challenger improved
-fixed JM, changed latency/whipsaw behavior, or preserved a mathematical
-identity. Those remain valid incremental and mechanism findings, but they are
-not model success. Fixed JM and arrival adaptation beat both benchmarks in
-`0/3` markets; lagged and balanced each do so only in DE (`1/3`).
+The five-variant simple suite found that DD-only improved fixed-JM Sharpe in
+all three markets and beat both controls in US. The completed loss-scale
+control multiplied DD observation loss by three and left data, grid, timing,
+cost, and selection unchanged. Its Sharpe stayed above fixed JM in all three
+markets, but it also passed only US. This weakens a pure loss-scale explanation
+without proving that the Sortino features are harmful.
 
-The checked pipeline and accounting are internally consistent: an independent recomputation from 18
-trade paths confirmed identical market dates, t+2 execution, 10-bps costs, no
-post-2023 rows, and the corrected paper turnover convention. The mathematical
-contribution so far is a verified family of causal time-varying JM decoders.
-The economic contribution remains incomplete, and no stable-profit or
-generalization claim is authorized.
+The shared pipeline and accounting are internally consistent. Current source
+reproduced the accepted simple result and can run both the simple suite and the
+scale control. Independent checks confirmed identical market dates, a one-day
+trading delay (decision at t, trade at the close of t+1, first return/cost row
+at t+2), 10-bps costs, no post-2023 rows, and the paper turnover convention.
+The mathematical contribution is a verified family of causal time-varying JM
+decoders. The economic contribution remains incomplete, and no stable-profit
+or generalization claim is authorized.
 
 ## Accepted evidence
 
@@ -44,6 +47,8 @@ generalization claim is authorized.
 | Endpoint-grid audit | `endpoint-grid-audit-001` / `endpoint-grid-audit-05e9d08f619b-77b30ef98fa0-24ca06c297e8` | JM endpoint is binding but does not rescue all markets; HMM endpoint is null at the primary delay |
 | Balanced mechanism | `balanced-lagged-mechanism-001` / `balanced-lagged-a7d9914ca1a8-643dd3e6d96f-17961bfd667f` | Pair balance preserved latency (0.875 retention) with zero lock-in but did not reduce whipsaws; not supported |
 | Balanced P&L | `balanced-lagged-performance-001` / `balanced-pnl-3ae665413a01-4e747110ba1c-eaae6444a9a5` | Not supported versus lagged; beats both economic benchmarks only in DE (`1/3`) |
+| Simple challengers | `simple-jm-suite-001` / `simple-jm-suite-2d3d2a779b13-544237a59943-20260721T145043479851Z` | No cross-market winner; DD-only beats both controls in US and improves fixed-JM Sharpe in all three, but passes only `1/3` and is loss-scale confounded |
+| DD loss-scale control | `dd-loss-scale-001` / `dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z` | Mechanism verified; scaled DD beats both controls only in US (`1/3`), so the result is `not_supported` |
 
 Invalidated runs remain preserved for provenance, but they are not accepted
 evidence. In particular, the `2207...` and `d6fe...` fixed-audit runs and the
@@ -54,6 +59,19 @@ loaded. The second ambiguously labeled 43 explicitly locked files as all files
 read even though inventory verification integrity-hashed 232 entries. Every
 scientific CSV, trade, decision, smoke, and frozen lock is byte-identical across
 the corrected runs. Only `eaae6444a9a5` is accepted.
+The first simple-suite run ending `20260721T124416567215Z` is likewise retained
+for provenance but is not the accepted artifact: 27 of 45 traces lacked point
+losses, its real-data smoke compared only two overlapping rows, and its exact
+executed runner source was no longer available after a verifier-only edit. Its
+metrics were valid. The intermediate `20260721T135918520651Z` run reproduces
+every metric and supplies the missing evidence, but it is also superseded: full
+tests exposed that its added refit diagnostics changed the canonical checkpoint
+schema, and its implementation lock omitted four result-affecting helpers plus
+the environment lockfiles. The accepted `20260721T145043479851Z` run restores
+the canonical schema, keeps diagnostics local to DD-only, and locks all twelve
+result or environment files. Its summary and every scientific path are
+byte-identical to the intermediate run.
+
 
 ## Paper versus current proxy
 
@@ -157,7 +175,82 @@ code failure:
 Items 1--4 concern the fixed-model paper gap. Item 5 motivates the next
 mathematical model; it does not explain the fixed-JM non-replication.
 
-## Latest model decision and next step
+## Latest simple-suite decision
+
+No frozen simple challenger wins in all three markets. DD-only is the only
+variant that passes any market, and it passes US only:
+
+| Variant | US G | DE G | JP G | Passes |
+| --- | ---: | ---: | ---: | ---: |
+| Static lambda 50 | `-0.067542` | `-0.133419` | `-0.360656` | `0/3` |
+| DD-only | `+0.253822` | `-0.063196` | `-0.120698` | `1/3` |
+| Confirmed 2d | `-0.034433` | `-0.139713` | `-0.247362` | `0/3` |
+| Return-aware | `-0.093860` | `-0.139896` | `-0.215320` | `0/3` |
+| Robust L1 | `-0.280928` | `-0.116256` | `-0.183230` | `0/3` |
+
+DD-only Sharpe was `0.907547/0.226442/0.423891` in US/DE/JP, improving
+canonical fixed JM by `+0.337682/+0.060001/+0.094622`. US MDD improved from
+`-0.338568` to `-0.193635`, turnover fell `0.653979->0.342561`, cash fell
+`0.211567->0.135690`, and switches fell `21->11`. In DE, MDD worsened
+`-0.387794->-0.428325` despite lower turnover and six fewer switches. In JP,
+MDD worsened `-0.321619->-0.432405`, turnover rose `0.456776->0.667596`,
+cash fell `0.278862->0.087284`, and switches rose `13->19`.
+
+The mechanisms did what their formulas said, but not what the economic target
+needed. Confirmation removed fixed-JM one-day excursions and cut switches in
+US/DE, yet passed `0/3`. Return-aware gamma 1 changed only two US signal days
+and zero JP signal days; it was economically neutral or worse. Robust L1
+changed paths materially but increased activity in US/JP and passed `0/3`.
+
+### DD loss-scale control
+
+The frozen control used
+`L_DD,scaled = 3 * 0.5 * (z_DD - theta)^2` with the same raw grid and every
+other protocol field unchanged. It completed with result `not_supported`:
+
+| Market | Scaled Sharpe | G | MDD | Turnover | Cash | Switches |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| US | `0.884130` | `+0.230405` | `-0.195311` | `0.467128` | `0.141374` | `15` |
+| DE | `0.195916` | `-0.093722` | `-0.445175` | `0.496674` | `0.112097` | `16` |
+| JP | `0.428050` | `-0.116539` | `-0.345290` | `0.808143` | `0.138873` | `23` |
+
+Scaled minus ordinary DD-only was:
+
+| Market | Delta Sharpe | Delta MDD | Delta turnover | Delta cash | Delta switches |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| US | `-0.023417` | `-0.001676` | `+0.124567` | `+0.005685` | `+4` |
+| DE | `-0.030526` | `-0.016850` | `-0.310421` | `-0.001478` | `-10` |
+| JP | `+0.004159` | `+0.087115` | `+0.140547` | `+0.051590` | `+4` |
+
+A positive MDD delta means a less-negative drawdown. Formula, toy-path,
+lambda-third path, brute-force, prefix, timing, cost, turnover, and concrete
+trace checks passed. Raw lambda moved upward in `73.7%/81.3%/66.1%` of paired
+US/DE/JP months, as expected when observation loss triples. The upper endpoint
+was selected in `0%/22.9%/29.0%`, and selected one-state fits occurred in
+`0/194`, `44/193`, and `63/177` months. Thus the mechanism behaved as intended
+mathematically, but finite-grid binding and state collapse remain material in
+DE and JP.
+
+Fit collapse is also material. DD-only occupied only one training state in
+`95/132/124` fit-by-lambda rows in US/DE/JP, and monthly CV selected such a fit
+in `0/43/75` months. Return-aware counts were `63/85/93` fitted rows and
+`24/53/78` selected months; robust-L1 counts were `75/91/98` and `62/83/87`.
+The DP makes an unavailable state's loss infinite, so states, trades, and P&L
+remain deterministic. Economically, however, a selected collapsed candidate
+is a one-state rule, not evidence of two recovered regimes. These fits were
+reported and retained; none was removed after seeing performance.
+
+
+The final accepted run independently replayed `24` metric rows, all `45`
+complete loss-to-trade traces, and `9` collapse summaries, with maximum metric
+difference `2.37e-14` under the frozen `1e-12` tolerance. It locked `31`
+explicit scientific inputs, all `153` upstream inventory entries, and `12`
+result or environment files; the US smoke compared `128` unchanged prefix rows
+for each fitted variant. Independent audit and all `613` repository tests
+passed. No post-2023 row was accessed. This remains repeatedly inspected
+exploratory development evidence, not a performance or generalization claim.
+
+## Earlier adaptive model evidence
 
 Lagged-Evidence JM at `beta=log(4)` passed formula, beta-zero nesting,
 brute-force objective, prefix-invariance, toy paths, t+2 accounting, plus completion-time and separate CLI

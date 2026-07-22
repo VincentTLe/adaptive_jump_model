@@ -17,10 +17,13 @@ The canonical fixed Jump Model (JM) uses two fitted centers and solves
 \]
 
 The active proxy protocol uses v7 features `DD10`, `Sortino20`, and
-`Sortino60`; a 3,000-observation training prefix; `StandardScaler`; Jan/Jul
-refits; raw lambdas `[0, 5, 15, 35, 70, 150, 300, 600, 1200]`; monthly
-trailing-eight-year Sharpe selection; two-day signal delay; and 10 bps
-one-way cost. The sample is capped at 2023-12-31.
+`Sortino60`. `DD10` is downside deviation, not drawdown:
+`sqrt(EWM mean(min(excess return, 0)^2))` with half-life 10. The protocol uses
+a 3,000-observation training prefix; `StandardScaler`; Jan/Jul refits; raw
+lambdas `[0, 5, 15, 35, 70, 150, 300, 600, 1200]`; monthly trailing-eight-year
+Sharpe selection; a one-trading-day execution delay, where a signal after `t`
+first earns at `t+2`; and 10 bps one-way cost. The sample is capped at
+2023-12-31.
 
 ## Mathematical developments
 
@@ -774,3 +777,203 @@ The complete final-v3 paper grids remain unidentified.
   `9` metric rows, `15,228` selection-surface rows, `35,073` timeline rows,
   maximum error `0.0`, and exact fixed/lagged oracle parity.
 - Accepted run: `balanced-pnl-3ae665413a01-4e747110ba1c-eaae6444a9a5`.
+
+### 2026-07-21 — Frozen simple-JM challenger suite
+
+- Scientific question: can one prespecified simple causal JM variant beat both
+  same-sample buy-and-hold and Gaussian HMM in US, DE, and JP under the
+  canonical through-2023 `t+2`, 10-bps protocol? The primary gap was
+  `G_m(v) = Sharpe_v,m - max(Sharpe_BH,m, Sharpe_HMM,m)`; the same variant had
+  to satisfy `G_m>0` in all three markets.
+- Five definitions were frozen together before stage-A performance was opened.
+  The execution order was static lambda 50, DD-only, then confirmation,
+  return-aware, and robust L1. The raw nine-value lambda grid, 3,000-row
+  window, Jan/Jul refits, trailing-eight-year monthly selection, dates, delay,
+  cost, and comparators did not change after results.
+- Static lambda 50 solved the ordinary squared-loss JM with a constant
+  illustrative paper-visible penalty and no monthly lambda reselection.
+- DD-only used
+  `sum_t 0.5*(z_DD,t-theta_s,t)^2 + lambda*sum_t I(s_t != s_t-1)`.
+  It retained the canonical four-field complete-row calendar, so the three US
+  startup rows with DD and excess return but missing Sortino were not admitted.
+- Two-observation confirmation post-processed the sealed selected fixed state:
+  initialize at the first finite state; thereafter accept `s_t` only when
+  `s_t=s_(t-1)`, otherwise retain the previously accepted state. This is causal
+  and adds the smallest nontrivial confirmation latency.
+- Return-aware JM fitted
+  `0.5*||z_t-theta_s||^2 + gamma*0.5*m_t*(y_(t+2)-mu_s)^2` plus the fixed
+  switch cost. `m_t=1` only when the full-calendar `t+2` target had matured by
+  the refit cutoff. Target mean and population scale used only matured targets
+  in the past-only window. Gamma zero routed exactly through every sealed fixed
+  candidate state, choice, signal, position, cost, and return; gamma one was
+  the only new fit. Online decoding used features only.
+- Robust L1 replaced squared feature loss by raw cityblock loss
+  `||z_t-theta_s||_1`; its M-step used componentwise medians and its fixed-cost
+  path remained an exact dynamic program.
+- Verification covered formulas, stored objectives, toy confirmation paths,
+  brute-force DP equivalence, randomized fit recomputation, prefix invariance,
+  canonical row masking, matured-target exclusion, exact discrete gamma-zero
+  routing, `t+2`, 10-bps accounting, paper turnover, and the 2023 cutoff.
+  Focused tests were `63 passed` after adding the CSV route regression.
+- Accepted run:
+  `simple-jm-suite-2d3d2a779b13-93b7ba818774-20260721T124416567215Z`.
+  Independent replay reconstructed `24` common-sample metric rows and `45`
+  concrete traces. Maximum metric difference was `2.37e-14`, below `1e-12`.
+- No variant met the cross-market rule. Gaps in US/DE/JP were static lambda 50
+  `-0.067542/-0.133419/-0.360656`; DD-only
+  `+0.253822/-0.063196/-0.120698`; confirmed 2d
+  `-0.034433/-0.139713/-0.247362`; return-aware
+  `-0.093860/-0.139896/-0.215320`; and robust L1
+  `-0.280928/-0.116256/-0.183230`.
+- DD-only was the useful result. Relative to fixed JM, Sharpe changed
+  `+0.337682/+0.060001/+0.094622` in US/DE/JP. It beat both controls in US
+  with Sharpe `0.907547`, MDD `-0.193635`, turnover `0.342561`, cash fraction
+  `0.135690`, and `11` switches. It remained below buy-and-hold in DE and JP.
+  Its MDD worsened by `0.040531` in DE and `0.110785` in JP; JP turnover rose
+  by `0.210820` and switches rose `13->19`.
+- Confirmation behaved as intended mechanically: fixed-JM one-day excursions
+  were delayed/removed and switches changed `21->19`, `32->26`, and `13->13`.
+  It improved Sharpe only in US and passed the economic target in `0/3`.
+- Return-aware gamma one was almost behaviorally null: it differed from fixed
+  on two US signal days and zero JP signal days; DE changed more but switches
+  rose `32->36`. Robust L1 changed paths materially but increased switches in
+  US/JP and worsened MDD in all three. Both passed `0/3`.
+- DD-only is scale-confounded. Three standardized squared feature coordinates
+  contribute a different observation-loss scale than one coordinate while the
+  same raw lambda grid is held fixed. DE selected lambda zero in `123/193`
+  months; JP selected the upper `1200` in `32/176` post-initial OOS months
+  (`18.18%`). The result therefore does not yet prove that Sortino features are
+  noise.
+- The next minimal diagnostic hypothesis is one scale-matched DD control:
+  `L_DD,scaled = 3 * 0.5*(z_DD-theta)^2`, with exactly the same raw lambda grid
+  and all other protocol fields unchanged. It asks whether the DD result
+  survives after separating feature removal from effective regularization.
+  Its outcome is not known and must be frozen before performance.
+- This is repeatedly inspected exploratory development evidence. It supports
+  no alpha, profitability, robustness, paper-replication, holdout, or
+  generalization claim.
+
+### 2026-07-21 — Corrected simple-suite evidence artifact
+
+- A response-independent final audit found that the first complete run ending
+  `20260721T124416567215Z` had valid deterministic metrics but did not satisfy
+  the full frozen evidence contract. Static lambda 50, DD-only, and confirmed
+  2d supplied no point losses in `27/45` concrete traces; DD refit centers were
+  absent; the real-US smoke compared only two overlapping rows; and a later
+  verifier-only edit meant the exact executed runner was no longer available.
+- No candidate state, choice, signal, position, trade, return, metric, or
+  decision was changed in response. The correction records centers and active
+  state count, replays each fixed-JM trace refit and terminal online DP,
+  strengthens each US prefix comparison to `128` rows, and locks all six
+  implementation files including the canonical fixed-JM code.
+- Corrected accepted run:
+  `simple-jm-suite-2d3d2a779b13-fe3e1f0b6d22-20260721T135918520651Z`.
+  It locks `31` explicitly read scientific inputs and integrity-checks all
+  `153` source-inventory entries. Its `24` metric rows are numerically identical
+  to the first run in Sharpe, MDD, turnover, cash, switches, and primary gap.
+- All `45/45` traces now retain fit date, objective, scaler, centers, point loss
+  for each reachable state, transition penalty, terminal cumulative DP values,
+  raw state, post-filter state, signal, t+2 position, turnover, cost, gross
+  return, and net return. A collapsed state's NaN-center loss is represented as
+  positive infinity, matching the upstream DP's unreachable-state rule.
+- One-state collapse is not rare. DD-only collapsed in `95/132/124`
+  fit-by-lambda rows in US/DE/JP and monthly CV selected a collapsed fit in
+  `0/43/75` of `194/193/177` choice months. Return-aware counts were
+  `63/85/93` fit rows and `24/53/78` selected months. Robust-L1 counts were
+  `75/91/98` and `62/83/87`. These fits were retained, not excluded after
+  results.
+- The route and P&L remain mathematically determined, but a one-state candidate
+  cannot be interpreted as two recovered regimes. For DD-only, this strengthens
+  the existing loss-scale confound and makes the prespecified three-times-loss
+  control the minimal next diagnostic.
+- Completion-time and separate CLI verification both passed: `24` metric rows,
+  `45` traces, `9` collapse rows, and maximum metric replay difference
+  `2.37e-14`. The focused simple-JM test set passed `81` tests before this run.
+  No post-2023 model or P&L data was accessed, and no performance, alpha,
+  profitability, holdout, replication, robustness, or generalization claim is
+  authorized.
+
+### 2026-07-21 — Final provenance-complete simple-suite artifact
+
+- After the intermediate corrected run was complete, full repository tests
+  exposed that adding refit diagnostics directly to the canonical fixed-JM
+  record schema broke checkpoint/parallel contracts. Static audit also found
+  that its six-file implementation lock omitted result-affecting helpers.
+- The compatibility correction restored the canonical default refit schema and
+  made centers/state-collapse diagnostics opt-in only for DD-only. The lock was
+  expanded to `artifacts.py`, `backtest.py`, `config.py`, `walkforward.py`,
+  `pyproject.toml`, and `uv.lock`, for twelve result/environment files total.
+- Final accepted run:
+  `simple-jm-suite-2d3d2a779b13-544237a59943-20260721T145043479851Z`.
+  It locks `31` explicitly read scientific inputs, all `153` upstream inventory
+  entries, and the exact twelve-file implementation/environment bundle.
+- The built-in verifier passes `24` metric rows, `45` complete loss-to-trade
+  traces, and `9` fit-degeneracy rows; maximum metric replay error is
+  `2.3647750424515834e-14`. The decision remains `not_supported`: DD-only passes
+  US only and every other frozen challenger passes `0/3` markets.
+- Independent audit validated all `115` immutable artifact entries, all `1,692`
+  selected-fit mappings, all traces, accounting, cutoff, and gamma-zero route.
+  Maximum loss/DP errors were `1.78e-15`/`9.09e-13`; accounting error was zero,
+  and the latest scientific date was `2023-12-29`.
+- All scientific outputs are unchanged: `summary.csv` and every trade, state,
+  refit, trace, smoke, and source-lock file are byte-identical to the
+  intermediate corrected run. Only run metadata, the implementation lock, and
+  inventory differ, so this correction cannot strengthen the economic result.
+- Focused simple-JM tests passed `82`; the full repository suite passed `613`.
+  No post-2023 model or P&L row was accessed. This repeatedly inspected
+  exploratory result supports no alpha, profitability, performance, holdout,
+  paper-replication, robustness, or generalization claim.
+
+### 2026-07-22 — `dd-loss-scale-001` (complete, not supported)
+
+- Question: did DD-only improve because removing Sortino features helped, or
+  because reducing three observation-loss coordinates to one made the unchanged
+  lambda grid effectively stronger?
+- The frozen control used
+  `Q_3 = 3 * 0.5 * (z_DD - theta)^2 = 3 Q_1`. It kept the raw grid
+  `[0, 5, 15, 35, 70, 150, 300, 600, 1200]`, complete-row mask,
+  3,000-observation window, Jan/Jul refits, monthly trailing-eight-year
+  online-state Sharpe selection, one-day trading delay, 10-bps cost, paper
+  turnover, comparators, and through-2023 sample unchanged.
+- The objective tolerance was mechanically scaled from `1e-8` to `3e-8`, so
+  its value relative to `Q_3` remained unchanged. Formula equality, every toy
+  path, lambda-third path equivalence, DP/brute-force equivalence, US
+  prefix-invariance, monthly selection, concrete loss-to-trade traces, `t+2`
+  accounting, costs, turnover, source identities, and cutoff all passed.
+- Completed run:
+  `dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z`.
+  Frozen spec hash:
+  `e1e84ddbbdda749f832a2d5a17e3fd8d8d064b6315f74f7c68dec9826d3f7feb`.
+  Implementation hash:
+  `65ccb507abbad7fd6878c0cfc09d8ba82f9914ad1f60d28f9f8315373a370759`;
+  producing HEAD:
+  `ba61b06e644824500d5351473e6631d24d7f9da9`.
+- Completion-time and separate CLI replay verified `15` metric rows, `9`
+  complete traces, and `3` degeneracy rows. Maximum metric replay error was
+  `5.218048215738236e-15`. US smoke preserved all `128` prefix rows after
+  appending `128` future rows. No post-2023 model or P&L row was accessed.
+
+| Market | Scaled Sharpe | G | MDD | Turnover | Cash | Switches |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| US | `0.884130` | `+0.230405` | `-0.195311` | `0.467128` | `0.141374` | `15` |
+| DE | `0.195916` | `-0.093722` | `-0.445175` | `0.496674` | `0.112097` | `16` |
+| JP | `0.428050` | `-0.116539` | `-0.345290` | `0.808143` | `0.138873` | `23` |
+
+- Scaled-minus-ordinary-DD Sharpe was
+  `-0.023417/-0.030526/+0.004159`; MDD delta
+  `-0.001676/-0.016850/+0.087115`; turnover delta
+  `+0.124567/-0.310421/+0.140547`; cash delta
+  `+0.005685/-0.001478/+0.051590`; and switch delta `+4/-10/+4` in
+  US/DE/JP. A positive MDD delta means a less-negative drawdown.
+- Raw lambda moved upward in `73.7%/81.3%/66.1%` of paired months. The upper
+  endpoint was selected in `0%/22.9%/29.0%`, and monthly validation selected
+  one-state fits in `0/194`, `44/193`, and `63/177` US/DE/JP months.
+  Thus loss scaling produced the intended regularization response, but the
+  finite grid binds and two-state interpretation weakens in DE/JP.
+- Scaled DD retained a positive Sharpe advantage over fixed JM in all three
+  markets, weakening a pure loss-scale explanation for the original DD result.
+  It does not prove that Sortino features are harmful. The official decision is
+  `not_supported` because scaled DD beats both economic controls only in US.
+  This repeatedly inspected exploratory result supports no performance, alpha,
+  profitability, robustness, holdout, paper-replication, or generalization
+  claim.
