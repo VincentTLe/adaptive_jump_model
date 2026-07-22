@@ -7,10 +7,15 @@ import pytest
 import adaptive_jump.simple_jm_figures as figures
 from adaptive_jump.artifacts import (
     TRADE_COLUMNS,
+    ArtifactError,
     read_json,
     write_inventory,
     write_json,
 )
+
+
+def test_figure_error_uses_shared_artifact_error_hierarchy() -> None:
+    assert issubclass(figures.SimpleJMFigureError, ArtifactError)
 
 
 def _trade_frame(dates: pd.DatetimeIndex, signal: list[float]) -> pd.DataFrame:

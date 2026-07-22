@@ -32,6 +32,7 @@ from adaptive_jump.monitor.child_events import (
 )
 from adaptive_jump.monitor.events import EventObserver, emit_artifact_verified
 from adaptive_jump.reporting import build_report
+from adaptive_jump.simple_jm_figures import render_figures
 from adaptive_jump.simple_jm_suite import load_simple_jm_spec, run_simple_jm_study
 from adaptive_jump.walkforward import (
     BaselineStudy,
@@ -460,6 +461,11 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--run", required=True, help="path to one run directory")
     report = commands.add_parser("report", help="report a verified sealed run")
     report.add_argument("--run", required=True, help="path to one run directory")
+    figures = commands.add_parser(
+        "figures", help="render figures from a completed simple-JM run"
+    )
+    figures.add_argument("--run", required=True, help="path to one run directory")
+    figures.add_argument("--output-root", help="base output directory")
     commands.add_parser("monitor").add_argument("--config", required=True)
     return parser
 
@@ -508,6 +514,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if arguments.command == "report":
             print(build_report(arguments.run))
+            return 0
+        if arguments.command == "figures":
+            for output in render_figures(arguments.run, arguments.output_root):
+                print(output)
             return 0
         if arguments.command == "monitor":
             from adaptive_jump.monitor.server import run_monitor_server

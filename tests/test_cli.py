@@ -75,6 +75,50 @@ def test_monitor_cli_delegates_to_the_loopback_server(monkeypatch) -> None:
     assert calls == ["research.toml"]
 
 
+def test_figures_cli_delegates_and_prints_each_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    run = tmp_path / "sealed-run"
+    output_root = tmp_path / "reports"
+    outputs = (output_root / "regimes.png", output_root / "wealth.pdf")
+    calls = []
+
+    def render(run_dir, destination):
+        calls.append((run_dir, destination))
+        return outputs
+
+    monkeypatch.setattr("adaptive_jump.cli.render_figures", render)
+
+    assert (
+        main(
+            [
+                "figures",
+                "--run",
+                str(run),
+                "--output-root",
+                str(output_root),
+            ]
+        )
+        == 0
+    )
+    assert capsys.readouterr().out.splitlines() == [str(path) for path in outputs]
+    assert calls == [(str(run), str(output_root))]
+
+
+def test_figures_cli_uses_shared_artifact_error_handling(
+    monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    def reject(_run, _output_root):
+        raise ArtifactError("invalid figure artifact")
+
+    monkeypatch.setattr("adaptive_jump.cli.render_figures", reject)
+
+    assert main(["figures", "--run", "bad-run"]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == "adaptive-jump: invalid figure artifact\n"
+
+
 def test_calibration_cli_uses_frozen_spec(monkeypatch, capsys) -> None:
     expected = ROOT / "artifacts/calibration-fixture"
     calls = []

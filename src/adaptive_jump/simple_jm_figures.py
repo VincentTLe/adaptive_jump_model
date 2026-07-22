@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
@@ -59,7 +58,7 @@ LINE_STYLES: Final = {
 }
 
 
-class SimpleJMFigureError(RuntimeError):
+class SimpleJMFigureError(ArtifactError):
     """Raised when a run cannot safely support the declared figures."""
 
 
@@ -293,28 +292,3 @@ def _save_formats(figure: plt.Figure, stem: Path) -> tuple[Path, ...]:
     figure.savefig(pdf, bbox_inches="tight")
     plt.close(figure)
     return png, svg, pdf
-
-
-def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Render regime figures from a completed simple-jm-suite artifact."
-    )
-    parser.add_argument("run_dir", type=Path, help="sealed simple-JM run directory")
-    parser.add_argument(
-        "--output-root",
-        type=Path,
-        default=None,
-        help="base output directory; defaults to artifacts/reports",
-    )
-    return parser
-
-
-def main(argv: list[str] | None = None) -> int:
-    args = _parser().parse_args(argv)
-    for path in render_figures(args.run_dir, args.output_root):
-        print(path)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
