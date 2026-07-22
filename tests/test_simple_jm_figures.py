@@ -52,15 +52,24 @@ def _buy_and_hold(dates: pd.DatetimeIndex) -> pd.DataFrame:
     return frame
 
 
-def _write_run(tmp_path: Path, start: str = "2020-02-18") -> Path:
-    run = tmp_path / "simple-jm-suite-test-run"
+def _write_run(
+    tmp_path: Path,
+    start: str = "2020-02-18",
+    study_kind: str = "simple-jm-suite-001",
+) -> Path:
+    run = tmp_path / f"{study_kind}-test-run"
     dates = pd.bdate_range(start, periods=14)
     # Four decisions at rows 1, 3, 5, 7 first affect recorded positions,
     # costs, and returns on the t+2 accounting rows 3, 5, 7, 9.
     signal = [1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1]
     rows = []
+    models = (
+        figures.WEALTH_MODELS
+        if study_kind == "simple-jm-suite-001"
+        else figures.LOSS_SCALE_MODELS
+    )
     for market in figures.MARKETS:
-        for model in figures.WEALTH_MODELS:
+        for model in models:
             frame = (
                 _buy_and_hold(dates)
                 if model == "buy_and_hold"
@@ -85,7 +94,7 @@ def _write_run(tmp_path: Path, start: str = "2020-02-18") -> Path:
         run / "run.json",
         {
             "schema_version": 1,
-            "study_kind": "simple-jm-suite-001",
+            "study_kind": study_kind,
             "status": "complete",
             "run_id": run.name,
         },
@@ -182,6 +191,20 @@ def test_render_writes_two_figures_in_png_svg_and_pdf(tmp_path: Path) -> None:
     assert all(path.parent == tmp_path / "reports" / run.name for path in outputs)
     assert all(path.stat().st_size > 1000 for path in outputs)
     assert all(run not in path.parents for path in outputs)
+
+
+def test_render_writes_one_loss_scale_regime_figure(tmp_path: Path) -> None:
+    run = _write_run(tmp_path, study_kind="dd-loss-scale-001")
+
+    loaded = figures.load_figure_run(run)
+    outputs = figures.render_figures(run, tmp_path / "reports")
+
+    assert loaded.study_kind == "dd-loss-scale-001"
+    assert set(loaded.paths["us"]) == set(figures.LOSS_SCALE_MODELS)
+    assert len(outputs) == 3
+    assert {path.stem for path in outputs} == {"dd-loss-scale-causal-regimes"}
+    assert {path.suffix for path in outputs} == {".png", ".svg", ".pdf"}
+    assert all(path.stat().st_size > 1000 for path in outputs)
 
 
 def test_render_rejects_output_inside_the_sealed_run(tmp_path: Path) -> None:

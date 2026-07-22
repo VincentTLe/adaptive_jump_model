@@ -1,4 +1,4 @@
-"""Static regime figures generated only from a completed simple-JM artifact."""
+"""Static regime figures generated only from completed JM artifacts."""
 
 from __future__ import annotations
 
@@ -26,6 +26,8 @@ from adaptive_jump.artifacts import (  # noqa: E402
 MARKETS: Final = ("us", "de", "jp")
 REGIME_MODELS: Final = ("fixed_jm", "dd_only", "hmm")
 WEALTH_MODELS: Final = ("buy_and_hold", *REGIME_MODELS)
+LOSS_SCALE_MODELS: Final = ("buy_and_hold", "dd_only", "dd_scaled_3x")
+SUPPORTED_STUDIES: Final = ("simple-jm-suite-001", "dd-loss-scale-001")
 TRADING_DELAY_DAYS: Final = 1
 RETURN_ACCOUNTING_OFFSET: Final = TRADING_DELAY_DAYS + 1
 COST_BPS: Final = 10.0
@@ -36,6 +38,7 @@ MODEL_LABELS: Final = {
     "buy_and_hold": "Buy & Hold",
     "fixed_jm": "Fixed JM",
     "dd_only": "DD-only JM",
+    "dd_scaled_3x": "3x DD-loss JM",
     "hmm": "Gaussian HMM",
 }
 
@@ -46,6 +49,7 @@ COLORS: Final = {
     "buy_and_hold": "#111111",
     "fixed_jm": "#0072B2",
     "dd_only": "#E69F00",
+    "dd_scaled_3x": "#CC79A7",
     "hmm": "#009E73",
     "bear": "#D55E00",
     "grid": "#D8DEE9",
@@ -54,6 +58,7 @@ LINE_STYLES: Final = {
     "buy_and_hold": (0, (6, 2)),
     "fixed_jm": "-",
     "dd_only": (0, (4, 1, 1, 1)),
+    "dd_scaled_3x": "-",
     "hmm": (0, (1, 1)),
 }
 
@@ -68,6 +73,7 @@ class FigureRun:
 
     run_dir: Path
     run_id: str
+    study_kind: str
     paths: dict[str, dict[str, pd.DataFrame]]
 
 
@@ -79,18 +85,22 @@ def load_figure_run(run_dir: str | Path) -> FigureRun:
 
     try:
         metadata = read_json(root / "run.json")
+        study_kind = metadata.get("study_kind")
         if (
             metadata.get("schema_version") != 1
-            or metadata.get("study_kind") != "simple-jm-suite-001"
+            or study_kind not in SUPPORTED_STUDIES
             or metadata.get("status") != "complete"
         ):
             raise SimpleJMFigureError(
-                "run metadata must describe a completed simple-jm-suite-001 artifact"
+                "run metadata must describe a supported completed JM artifact"
             )
         if metadata.get("run_id") != root.name:
             raise SimpleJMFigureError("run directory and identity disagree")
         verify_inventory(root)
         summary = pd.read_csv(root / "summary.csv")
+        models = (
+            WEALTH_MODELS if study_kind == "simple-jm-suite-001" else LOSS_SCALE_MODELS
+        )
         paths = {
             market: {
                 model: read_trade_path(
@@ -98,19 +108,21 @@ def load_figure_run(run_dir: str | Path) -> FigureRun:
                     delay=TRADING_DELAY_DAYS,
                     cost_bps=COST_BPS,
                 )
-                for model in WEALTH_MODELS
+                for model in models
             }
             for market in MARKETS
         }
     except (ArtifactError, FileNotFoundError, OSError, pd.errors.ParserError) as exc:
         raise SimpleJMFigureError(f"invalid figure input: {exc}") from exc
 
-    _validate_inputs(summary, paths)
-    return FigureRun(root, root.name, paths)
+    _validate_inputs(summary, paths, models)
+    return FigureRun(root, root.name, str(study_kind), paths)
 
 
 def _validate_inputs(
-    summary: pd.DataFrame, paths: dict[str, dict[str, pd.DataFrame]]
+    summary: pd.DataFrame,
+    paths: dict[str, dict[str, pd.DataFrame]],
+    models: tuple[str, ...],
 ) -> None:
     """Check the summary coverage and common through-2023 samples."""
     if (
@@ -118,7 +130,7 @@ def _validate_inputs(
         or summary.duplicated(["market", "model"]).any()
     ):
         raise SimpleJMFigureError("invalid summary market/model rows")
-    expected = {(market, model) for market in MARKETS for model in WEALTH_MODELS}
+    expected = {(market, model) for market in MARKETS for model in models}
     observed = set(summary[["market", "model"]].itertuples(index=False, name=None))
     if not expected.issubset(observed):
         raise SimpleJMFigureError("summary is missing a plotted path")
@@ -148,7 +160,7 @@ def _indexed_wealth(returns: pd.Series, base: float = 100.0) -> pd.Series:
 def render_figures(
     run_dir: str | Path, output_root: str | Path | None = None
 ) -> tuple[Path, ...]:
-    """Validate one sealed run and render two figures in three formats."""
+    """Validate one sealed run and render its study-specific figures."""
     run = load_figure_run(run_dir)
     if output_root is None:
         if len(run.run_dir.parents) < 3:
@@ -176,12 +188,24 @@ def render_figures(
             "svg.fonttype": "none",
         }
     ):
-        outputs.extend(
-            _save_formats(_causal_regime_figure(run), destination / "us-causal-regimes")
-        )
-        outputs.extend(
-            _save_formats(_shu_style_figure(run), destination / "shu-style-net-wealth")
-        )
+        if run.study_kind == "simple-jm-suite-001":
+            outputs.extend(
+                _save_formats(
+                    _causal_regime_figure(run), destination / "us-causal-regimes"
+                )
+            )
+            outputs.extend(
+                _save_formats(
+                    _shu_style_figure(run), destination / "shu-style-net-wealth"
+                )
+            )
+        else:
+            outputs.extend(
+                _save_formats(
+                    _loss_scale_regime_figure(run),
+                    destination / "dd-loss-scale-causal-regimes",
+                )
+            )
     return tuple(outputs)
 
 
@@ -263,6 +287,59 @@ def _shu_style_figure(run: FigureRun) -> plt.Figure:
     )
     axes[-1].set_xlabel("Date")
     figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.90), pad=0.8)
+    return figure
+
+
+def _loss_scale_regime_figure(run: FigureRun) -> plt.Figure:
+    figure, axes = plt.subplots(3, 2, figsize=(10.0, 8.4), sharey="row")
+    compared_models = ("dd_only", "dd_scaled_3x")
+    for row, market in enumerate(MARKETS):
+        paths = run.paths[market]
+        wealth = _indexed_wealth(paths["buy_and_hold"]["equity_simple"])
+        for column, model in enumerate(compared_models):
+            axis = axes[row, column]
+            frame = paths[model]
+            axis.plot(frame["date"], wealth, color=COLORS["market"], linewidth=1.2)
+            _shade_zero(axis, frame["date"], frame["position"])
+            switches = int(frame["one_way_turnover"].gt(0).sum())
+            cash = 100.0 * (1.0 - float(frame["position"].mean()))
+            axis.text(
+                0.02,
+                0.95,
+                f"{switches} switches · {cash:.1f}% cash",
+                transform=axis.transAxes,
+                va="top",
+                fontsize=9.5,
+                bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.82},
+            )
+            if row == 0:
+                title = (
+                    "Original DD loss Q1"
+                    if model == "dd_only"
+                    else "Scaled DD loss Q3 = 3Q1"
+                )
+                axis.set_title(title, fontsize=12)
+            if column == 0:
+                axis.set_ylabel(f"{MARKET_LABELS[market]}\nmarket wealth")
+            if row == len(MARKETS) - 1:
+                axis.set_xlabel("Date")
+
+    figure.legend(
+        handles=[
+            Line2D([0], [0], color=COLORS["market"], lw=1.5, label="Market proxy"),
+            Patch(
+                facecolor="#FBE3D8",
+                edgecolor=COLORS["bear"],
+                hatch="////",
+                label="Cash position (1-day delay)",
+            ),
+        ],
+        loc="upper center",
+        ncols=2,
+        bbox_to_anchor=(0.5, 1.0),
+        frameon=False,
+    )
+    figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.94), pad=0.9)
     return figure
 
 

@@ -468,7 +468,7 @@ def build_parser() -> argparse.ArgumentParser:
     report = commands.add_parser("report", help="report a verified sealed run")
     report.add_argument("--run", required=True, help="path to one run directory")
     figures = commands.add_parser(
-        "figures", help="render figures from a completed simple-JM run"
+        "figures", help="render figures from a completed JM run"
     )
     figures.add_argument("--run", required=True, help="path to one run directory")
     figures.add_argument("--output-root", help="base output directory")
