@@ -67,9 +67,19 @@ class HMMResult:
 
 
 @dataclass
-class _FixedJMFit:
+class FixedJMFit:
+    """Fitted fixed-JM candidates sharing one past-only feature scaler."""
+
     scaler: StandardScaler
     models: dict[float, JumpModel]
+    observation_loss_scale: float = 1.0
+
+    def transform(self, features: pd.DataFrame) -> np.ndarray:
+        """Apply the fitted standardization and declared loss scaling."""
+        scaled = self.scaler.transform(features)
+        if self.observation_loss_scale != 1.0:
+            scaled = scaled * math.sqrt(self.observation_loss_scale)
+        return scaled
 
 
 def fixed_jm_states(
@@ -78,6 +88,7 @@ def fixed_jm_states(
     jm_protocol: JMProtocol,
     *,
     feature_columns: tuple[str, ...] = FEATURE_COLUMNS,
+    observation_loss_scale: float = 1.0,
     include_fit_diagnostics: bool = False,
     initial: FixedJMResult | None = None,
     checkpoint_every: int = 50,
@@ -87,13 +98,16 @@ def fixed_jm_states(
     """Generate causal terminal online states for every frozen lambda."""
     if checkpoint_every < 1:
         raise ModelError("JM checkpoint interval must be positive")
+    observation_loss_scale = _validated_observation_loss_scale(observation_loss_scale)
+    if initial is not None and observation_loss_scale != 1.0:
+        raise ModelError("scaled JM does not support checkpoint resume")
     complete, all_dates = _complete_model_frame(
         frame, (*feature_columns, "excess_return")
     )
     fit_window = model_protocol.fit_window
     penalties = jm_protocol.lambda_grid
     states = pd.DataFrame(index=all_dates, columns=penalties, dtype=float)
-    fit: _FixedJMFit | None = None
+    fit: FixedJMFit | None = None
     last_anchor: tuple[int, int] | None = None
     records: list[dict[str, object]] = []
     first_terminal = fit_window - 1
@@ -121,11 +135,12 @@ def fixed_jm_states(
         refit_window = complete.iloc[
             last_refit_terminal - fit_window + 1 : last_refit_terminal + 1
         ]
-        fit = _fit_fixed_jm(
+        fit = fit_fixed_jm_window(
             refit_window,
             model_protocol,
             jm_protocol,
             feature_columns=feature_columns,
+            observation_loss_scale=observation_loss_scale,
         )
         refit_date = pd.Timestamp(refit_window.iloc[-1]["date"])
         last_anchor = (refit_date.year, refit_date.month)
@@ -135,11 +150,12 @@ def fixed_jm_states(
         anchor = (current_date.year, current_date.month)
         scheduled = current_date.month in jm_protocol.refit_months
         if fit is None or (scheduled and anchor != last_anchor):
-            fit = _fit_fixed_jm(
+            fit = fit_fixed_jm_window(
                 window,
                 model_protocol,
                 jm_protocol,
                 feature_columns=feature_columns,
+                observation_loss_scale=observation_loss_scale,
             )
             last_anchor = anchor
             records.extend(
@@ -157,7 +173,7 @@ def fixed_jm_states(
                 total,
             )
 
-        scaled = fit.scaler.transform(window.loc[:, feature_columns])
+        scaled = fit.transform(window.loc[:, feature_columns])
         for penalty, fitted_model in fit.models.items():
             states.loc[current_date, penalty] = terminal_online_state(
                 fitted_model, scaled
@@ -466,21 +482,25 @@ def smoothed_hmm_states(
     return candidates
 
 
-def _fit_fixed_jm(
+def fit_fixed_jm_window(
     window: pd.DataFrame,
     model_protocol: ModelProtocol,
     jm_protocol: JMProtocol,
     *,
-    feature_columns: tuple[str, ...],
-) -> _FixedJMFit:
+    feature_columns: tuple[str, ...] = FEATURE_COLUMNS,
+    observation_loss_scale: float = 1.0,
+) -> FixedJMFit:
+    """Fit every fixed-JM penalty on one past-only training window."""
     if len(window) != model_protocol.fit_window:
         raise ModelError("JM fit window length violates the protocol")
+    observation_loss_scale = _validated_observation_loss_scale(observation_loss_scale)
     features = window.loc[:, feature_columns]
     returns = window.loc[:, "excess_return"]
     scaler = StandardScaler().fit(features)
-    scaled = pd.DataFrame(
-        scaler.transform(features), index=features.index, columns=features.columns
-    )
+    scaled_values = scaler.transform(features)
+    if observation_loss_scale != 1.0:
+        scaled_values = scaled_values * math.sqrt(observation_loss_scale)
+    scaled = pd.DataFrame(scaled_values, index=features.index, columns=features.columns)
     models: dict[float, JumpModel] = {}
     for penalty in jm_protocol.lambda_grid:
         fitted = JumpModel(
@@ -497,11 +517,27 @@ def _fit_fixed_jm(
         if not np.isin(labels, [0, 1]).all():
             raise ModelError(f"JM lambda {penalty:g} produced invalid states")
         models[penalty] = fitted
-    return _FixedJMFit(scaler=scaler, models=models)
+    return FixedJMFit(
+        scaler=scaler,
+        models=models,
+        observation_loss_scale=observation_loss_scale,
+    )
+
+
+def _validated_observation_loss_scale(value: float) -> float:
+    if isinstance(value, bool):
+        raise ModelError("JM observation loss scale must be finite and positive")
+    try:
+        scale = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ModelError("JM observation loss scale must be a real scalar") from exc
+    if not math.isfinite(scale) or scale <= 0:
+        raise ModelError("JM observation loss scale must be finite and positive")
+    return scale
 
 
 def _jm_fit_records(
-    fit: _FixedJMFit,
+    fit: FixedJMFit,
     window: pd.DataFrame,
     fit_date: pd.Timestamp,
     *,

@@ -18,20 +18,26 @@ from jumpmodels.jump import (
 )
 from scipy.spatial.distance import cdist
 
+from adaptive_jump.models import ModelError
+
+
+class L1JumpModelError(ModelError):
+    """Raised when an L1 Jump Model input violates its contract."""
+
 
 def l1_loss_matrix(X: np.ndarray, centers: np.ndarray) -> np.ndarray:
     """Return raw cityblock loss for every observation-state pair."""
     values = np.asarray(X, dtype=float)
     locations = np.asarray(centers, dtype=float)
     if values.ndim != 2 or not len(values) or not values.shape[1]:
-        raise ValueError("X must be a non-empty 2-d matrix")
+        raise L1JumpModelError("X must be a non-empty 2-d matrix")
     if locations.ndim != 2 or locations.shape[1] != values.shape[1]:
-        raise ValueError("centers must be a 2-d matrix matching X features")
+        raise L1JumpModelError("centers must be a 2-d matrix matching X features")
     if not np.isfinite(values).all():
-        raise ValueError("X must be finite")
+        raise L1JumpModelError("X must be finite")
     valid_center = np.isfinite(locations).all(axis=1) | np.isnan(locations).all(axis=1)
     if not valid_center.all():
-        raise ValueError("each center must be entirely finite or unavailable")
+        raise L1JumpModelError("each center must be entirely finite or unavailable")
     return cdist(values, locations, "cityblock")
 
 
@@ -42,15 +48,15 @@ def componentwise_median_centers(
     values = np.asarray(X, dtype=float)
     assignments = np.asarray(labels)
     if values.ndim != 2 or not len(values) or not values.shape[1]:
-        raise ValueError("X must be a non-empty 2-d matrix")
+        raise L1JumpModelError("X must be a non-empty 2-d matrix")
     if not np.isfinite(values).all():
-        raise ValueError("X must be finite")
+        raise L1JumpModelError("X must be finite")
     if assignments.shape != (len(values),):
-        raise ValueError("labels must contain one assignment per observation")
+        raise L1JumpModelError("labels must contain one assignment per observation")
     if not isinstance(n_components, int) or isinstance(n_components, bool):
-        raise ValueError("n_components must be a positive integer")
+        raise L1JumpModelError("n_components must be a positive integer")
     if n_components < 1 or not np.isin(assignments, np.arange(n_components)).all():
-        raise ValueError("labels must identify a configured component")
+        raise L1JumpModelError("labels must identify a configured component")
 
     centers = np.full((n_components, values.shape[1]), np.nan)
     for component in range(n_components):
@@ -71,9 +77,9 @@ def solve_l1_path(
     try:
         penalty = float(jump_penalty)
     except (TypeError, ValueError) as exc:
-        raise ValueError("jump_penalty must be a real scalar") from exc
+        raise L1JumpModelError("jump_penalty must be a real scalar") from exc
     if not math.isfinite(penalty) or penalty < 0:
-        raise ValueError("jump_penalty must be finite and nonnegative")
+        raise L1JumpModelError("jump_penalty must be finite and nonnegative")
     loss = l1_loss_matrix(X, centers)
     penalty_mx = jump_penalty_to_mx(penalty, len(centers))
     return dp(loss, penalty_mx, return_value_mx=return_value_mx)
@@ -93,7 +99,7 @@ class L1JumpModel(JumpModel):
         verbose: int = 0,
     ) -> None:
         if n_components != 2:
-            raise ValueError("L1JumpModel supports exactly two components")
+            raise L1JumpModelError("L1JumpModel supports exactly two components")
         super().__init__(
             n_components=n_components,
             jump_penalty=jump_penalty,
@@ -108,7 +114,9 @@ class L1JumpModel(JumpModel):
     def fit(self, X, ret_ser, sort_by: str = "cumret"):
         """Fit by deterministic multi-start coordinate descent."""
         if sort_by != "cumret":
-            raise ValueError("L1JumpModel states must be sorted by cumulative return")
+            raise L1JumpModelError(
+                "L1JumpModel states must be sorted by cumulative return"
+            )
         values = np.asarray(X, dtype=float)
         if (
             values.ndim != 2
@@ -116,13 +124,15 @@ class L1JumpModel(JumpModel):
             or not values.shape[1]
             or not np.isfinite(values).all()
         ):
-            raise ValueError("X must be a finite 2-d matrix with at least two rows")
+            raise L1JumpModelError(
+                "X must be a finite 2-d matrix with at least two rows"
+            )
         try:
             penalty = float(self.jump_penalty)
         except (TypeError, ValueError) as exc:
-            raise ValueError("jump_penalty must be a real scalar") from exc
+            raise L1JumpModelError("jump_penalty must be a real scalar") from exc
         if not math.isfinite(penalty) or penalty < 0:
-            raise ValueError("jump_penalty must be finite and nonnegative")
+            raise L1JumpModelError("jump_penalty must be finite and nonnegative")
 
         self.prob_vecs = None
         self.feat_weights = None

@@ -7,8 +7,10 @@ import pandas as pd
 import pytest
 from jumpmodels.jump import JumpModel
 
+from adaptive_jump.models import ModelError
 from adaptive_jump.simple_jm_l1 import (
     L1JumpModel,
+    L1JumpModelError,
     componentwise_median_centers,
     l1_loss_matrix,
     solve_l1_path,
@@ -46,6 +48,10 @@ def _persistent_sample() -> tuple[pd.DataFrame, pd.Series]:
         index=values.index,
     )
     return values, returns
+
+
+def test_l1_error_uses_model_hierarchy() -> None:
+    assert issubclass(L1JumpModelError, ModelError)
 
 
 def test_l1_loss_matrix_is_unscaled_cityblock_distance() -> None:
@@ -161,15 +167,15 @@ def test_solver_rejects_invalid_jump_penalty(jump_penalty: float) -> None:
     values = np.array([[0.0], [1.0]])
     centers = np.array([[0.0], [1.0]])
 
-    with pytest.raises(ValueError, match="finite and nonnegative"):
+    with pytest.raises(L1JumpModelError, match="finite and nonnegative"):
         solve_l1_path(values, centers, jump_penalty)
 
 
 def test_model_rejects_non_two_state_or_nonfinite_fit() -> None:
-    with pytest.raises(ValueError, match="exactly two"):
+    with pytest.raises(L1JumpModelError, match="exactly two"):
         L1JumpModel(n_components=3)
     model = L1JumpModel(n_init=2)
     values = np.array([[0.0], [np.inf]])
 
-    with pytest.raises(ValueError, match="finite 2-d"):
+    with pytest.raises(L1JumpModelError, match="finite 2-d"):
         model.fit(values, np.array([0.01, -0.01]))

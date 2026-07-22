@@ -26,8 +26,10 @@ from jumpmodels.jump import (
 )
 from scipy.spatial.distance import cdist
 
+from adaptive_jump.models import ModelError
 
-class ReturnAwareError(ValueError):
+
+class ReturnAwareError(ModelError):
     """Raised when a return-aware fit would violate the frozen contract."""
 
 

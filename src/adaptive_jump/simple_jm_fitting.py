@@ -16,10 +16,13 @@ from adaptive_jump.config import JMProtocol, ModelProtocol
 from adaptive_jump.models import (
     FEATURE_COLUMNS,
     FixedJMResult,
-    _fit_fixed_jm,
+    ModelError,
+    fit_fixed_jm_window,
     fixed_jm_states,
     terminal_online_state,
 )
+from adaptive_jump.monitor import model_runtime as runtime
+from adaptive_jump.monitor.events import EventObserver
 from adaptive_jump.simple_jm_l1 import L1JumpModel
 from adaptive_jump.simple_jm_return import (
     ReturnAwareJumpModel,
@@ -31,7 +34,7 @@ VariantKind = Literal["robust_l1", "return_aware"]
 CANONICAL_REQUIRED = (*FEATURE_COLUMNS, "excess_return")
 
 
-class SimpleJMFitError(ValueError):
+class SimpleJMFitError(ModelError):
     """Raised when a challenger fit violates its frozen causal protocol."""
 
 
@@ -95,6 +98,9 @@ def dd_only_states(
     frame: pd.DataFrame,
     model_protocol: ModelProtocol,
     jm_protocol: JMProtocol,
+    *,
+    observation_loss_scale: float = 1.0,
+    observer: EventObserver | None = None,
 ) -> FixedJMResult:
     """Fit upstream squared-loss JM on DD10 using the canonical row calendar."""
     mask = canonical_complete_mask(frame)
@@ -105,7 +111,9 @@ def dd_only_states(
         model_protocol,
         jm_protocol,
         feature_columns=("dd_10",),
+        observation_loss_scale=observation_loss_scale,
         include_fit_diagnostics=True,
+        observer=observer,
     )
     expected_first = pd.Timestamp(
         frame.loc[mask, "date"].iloc[model_protocol.fit_window - 1]
@@ -127,6 +135,7 @@ def fixed_jm_trace_receipt(
     refit_record: pd.Series | dict[str, object],
     signal_date: pd.Timestamp,
     expected_state: float,
+    observation_loss_scale: float = 1.0,
 ) -> FixedJMTraceReceipt:
     """Replay one fixed-JM refit and its online state for an auditable trace."""
     if model_protocol.n_states != 2 or not feature_columns:
@@ -176,11 +185,12 @@ def fixed_jm_trace_receipt(
         tol=jm_protocol.tol,
         refit_months=jm_protocol.refit_months,
     )
-    fitted = _fit_fixed_jm(
+    fitted = fit_fixed_jm_window(
         fit_window,
         model_protocol,
         one_penalty,
         feature_columns=feature_columns,
+        observation_loss_scale=observation_loss_scale,
     )
     model = fitted.models[penalty]
     objective = float(model.val_)
@@ -199,7 +209,7 @@ def fixed_jm_trace_receipt(
     ):
         raise SimpleJMFitError("trace scaler does not match sealed evidence")
 
-    scaled = fitted.scaler.transform(online_window.loc[:, feature_columns])
+    scaled = fitted.transform(online_window.loc[:, feature_columns])
     loss = feature_loss_matrix(scaled, model.centers_)
     safe_loss = np.where(np.isnan(loss), np.inf, loss)
     values = dp(
@@ -233,6 +243,7 @@ def custom_variant_states(
     jm_protocol: JMProtocol,
     *,
     variant: VariantKind,
+    observer: EventObserver | None = None,
 ) -> FixedJMResult:
     """Generate causal terminal states for L1 or return-aware JM."""
     if variant not in ("robust_l1", "return_aware"):
@@ -250,6 +261,14 @@ def custom_variant_states(
     fitted: _CustomFit | None = None
     last_anchor: tuple[int, int] | None = None
     first_terminal = model_protocol.fit_window - 1
+    total = len(complete) - first_terminal
+    runtime.emit_fixed_jm_started(
+        observer,
+        model_protocol.fit_window,
+        jm_protocol.lambda_grid,
+        0,
+        total,
+    )
     for terminal in range(first_terminal, len(complete)):
         window = complete.iloc[terminal - first_terminal : terminal + 1]
         current_date = pd.Timestamp(window.iloc[-1]["date"])
@@ -265,16 +284,34 @@ def custom_variant_states(
             )
             last_anchor = anchor
             records.extend(_custom_fit_records(fitted, window, current_date, variant))
+            runtime.emit_fixed_jm_refit(
+                observer,
+                current_date.date(),
+                terminal - first_terminal,
+                total,
+            )
 
         scaled = fitted.scaler.transform(window.loc[:, FEATURE_COLUMNS])
         for penalty, model in fitted.models.items():
             states.loc[current_date, penalty] = terminal_online_state(model, scaled)
+        completed = terminal - first_terminal + 1
+        runtime.emit_fixed_jm_terminal(
+            observer,
+            current_date.date(),
+            completed,
+            total,
+            [
+                (penalty, int(states.loc[current_date, penalty]))
+                for penalty in jm_protocol.lambda_grid
+            ],
+        )
 
     states.index.name = "date"
     observed = states.dropna(how="all")
     expected_first = pd.Timestamp(complete.iloc[first_terminal]["date"])
     if observed.empty or observed.index[0] != expected_first:
         raise SimpleJMFitError("custom JM state calendar is incomplete")
+    runtime.emit_stage_completed(observer, "fixed_jm", total)
     return FixedJMResult(states=states, refits=pd.DataFrame.from_records(records))
 
 
@@ -284,6 +321,7 @@ def run_us_prefix_smoke(
     jm_protocol: JMProtocol,
     *,
     variant: Literal["dd_only", "robust_l1", "return_aware"],
+    observation_loss_scale: float = 1.0,
 ) -> SmokeEvidence:
     """Fit two real US prefixes and require identical overlapping outputs."""
     mask = canonical_complete_mask(frame)
@@ -308,8 +346,20 @@ def run_us_prefix_smoke(
     long_end = complete_dates[long_complete_rows - 1]
     short = frame.loc[pd.to_datetime(frame["date"]) <= short_end].copy()
     long = frame.loc[pd.to_datetime(frame["date"]) <= long_end].copy()
-    short_result = _fit_smoke_variant(short, model_protocol, one_penalty, variant)
-    long_result = _fit_smoke_variant(long, model_protocol, one_penalty, variant)
+    short_result = _fit_smoke_variant(
+        short,
+        model_protocol,
+        one_penalty,
+        variant,
+        observation_loss_scale,
+    )
+    long_result = _fit_smoke_variant(
+        long,
+        model_protocol,
+        one_penalty,
+        variant,
+        observation_loss_scale,
+    )
     short_states = short_result.states[penalty].dropna()
     overlap = long_result.states.loc[short_states.index, penalty]
     invariant = short_states.equals(overlap)
@@ -333,9 +383,15 @@ def _fit_smoke_variant(
     model_protocol: ModelProtocol,
     jm_protocol: JMProtocol,
     variant: str,
+    observation_loss_scale: float,
 ) -> FixedJMResult:
     if variant == "dd_only":
-        return dd_only_states(frame, model_protocol, jm_protocol)
+        return dd_only_states(
+            frame,
+            model_protocol,
+            jm_protocol,
+            observation_loss_scale=observation_loss_scale,
+        )
     return custom_variant_states(
         frame,
         model_protocol,

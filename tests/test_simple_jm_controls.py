@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from adaptive_jump.artifacts import sha256_file
+from adaptive_jump.backtest import BacktestError
 from adaptive_jump.simple_jm_controls import (
     SIGNAL_TO_RETURN_OFFSET,
     SimpleJMControlError,
@@ -42,6 +43,10 @@ def test_confirmation_preserves_leading_missing_and_is_prefix_invariant() -> Non
     assert full.iloc[:2].isna().all()
     np.testing.assert_array_equal(full.iloc[2:].to_numpy(), [0, 0, 1, 1, 0])
     pd.testing.assert_series_equal(full.iloc[:5], prefix)
+
+
+def test_control_error_uses_backtest_hierarchy() -> None:
+    assert issubclass(SimpleJMControlError, BacktestError)
 
 
 @pytest.mark.parametrize(

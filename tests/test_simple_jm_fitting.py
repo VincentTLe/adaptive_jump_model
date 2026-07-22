@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 from adaptive_jump.config import JMProtocol, ModelProtocol
+from adaptive_jump.models import ModelError
 from adaptive_jump.simple_jm_fitting import (
     SimpleJMFitError,
     canonical_complete_mask,
@@ -128,6 +129,31 @@ def test_dd_only_excludes_unused_feature_missing_rows_and_keeps_all_dates() -> N
     assert first_refit["scaler_mean"] == pytest.approx([expected_training_rows.mean()])
 
 
+def test_dd_only_observer_is_output_neutral() -> None:
+    frame = _causal_refit_frame().iloc[:8]
+    model_protocol = _model_protocol(8)
+    jm_protocol = _jm_protocol((0.5,))
+    events = []
+
+    baseline = dd_only_states(frame, model_protocol, jm_protocol)
+    observed = dd_only_states(
+        frame,
+        model_protocol,
+        jm_protocol,
+        observer=events.append,
+    )
+
+    pd.testing.assert_frame_equal(observed.states, baseline.states, check_exact=True)
+    pd.testing.assert_frame_equal(observed.refits, baseline.refits, check_exact=True)
+    assert {event.kind for event in events} == {
+        "stage_started",
+        "refit",
+        "terminal_state",
+        "stage_completed",
+    }
+    assert {event.stage for event in events} == {"fixed_jm"}
+
+
 def test_fixed_jm_trace_receipt_reproduces_refit_objective_and_online_state() -> None:
     frame = _causal_refit_frame().iloc[:8].copy()
     model_protocol = _model_protocol(8)
@@ -167,6 +193,37 @@ def test_fixed_jm_trace_receipt_reproduces_refit_objective_and_online_state() ->
     assert receipt.collapsed_to_one_state is (receipt.active_state_count == 1)
 
 
+def test_scaled_dd_trace_replays_scaled_fit_and_online_loss() -> None:
+    frame = _causal_refit_frame().iloc[:8].copy()
+    model_protocol = _model_protocol(8)
+    jm_protocol = _jm_protocol((0.5,))
+    fitted = dd_only_states(
+        frame,
+        model_protocol,
+        jm_protocol,
+        observation_loss_scale=3.0,
+    )
+    refit = fitted.refits.iloc[0]
+    signal_date = pd.Timestamp(refit["fit_date"])
+    expected_state = int(fitted.states.loc[signal_date, 0.5])
+
+    receipt = fixed_jm_trace_receipt(
+        frame,
+        model_protocol,
+        jm_protocol,
+        feature_columns=("dd_10",),
+        penalty=0.5,
+        refit_record=refit,
+        signal_date=signal_date,
+        expected_state=expected_state,
+        observation_loss_scale=3.0,
+    )
+
+    assert receipt.objective == pytest.approx(refit["objective"], abs=1e-12)
+    assert receipt.online_state == expected_state
+    assert np.isfinite(receipt.point_loss).all()
+
+
 @pytest.mark.parametrize("variant", ["robust_l1", "return_aware"])
 def test_custom_fit_refits_causally_and_is_prefix_invariant(variant: str) -> None:
     frame = _causal_refit_frame()
@@ -203,6 +260,40 @@ def test_custom_fit_refits_causally_and_is_prefix_invariant(variant: str) -> Non
         assert (short.refits["matured_targets"] == 6).all()
 
 
+@pytest.mark.parametrize("variant", ["robust_l1", "return_aware"])
+def test_custom_fit_observer_is_output_neutral(variant: str) -> None:
+    frame = _causal_refit_frame().iloc[:8]
+    model_protocol = _model_protocol(8)
+    jm_protocol = _jm_protocol((0.5,))
+    events = []
+
+    baseline = custom_variant_states(
+        frame,
+        model_protocol,
+        jm_protocol,
+        variant=variant,
+    )
+    observed = custom_variant_states(
+        frame,
+        model_protocol,
+        jm_protocol,
+        variant=variant,
+        observer=events.append,
+    )
+
+    pd.testing.assert_frame_equal(observed.states, baseline.states, check_exact=True)
+    pd.testing.assert_frame_equal(observed.refits, baseline.refits, check_exact=True)
+    assert {event.kind for event in events} == {
+        "stage_started",
+        "refit",
+        "terminal_state",
+        "stage_completed",
+    }
+    assert {event.stage for event in events} == {"fixed_jm"}
+    terminals = [event for event in events if event.kind == "terminal_state"]
+    assert terminals[-1].payload["states"] == [{"candidate": 0.5, "state": 0}]
+
+
 def test_us_smoke_compares_a_meaningful_prefix_not_only_two_rows() -> None:
     dates = pd.bdate_range("2020-01-02", periods=20)
     frame = _frame(dates, np.sin(np.arange(len(dates), dtype=float)))
@@ -235,6 +326,10 @@ def test_canonical_mask_rejects_missing_nonfinite_and_bad_dates() -> None:
     duplicated.loc[2, "date"] = duplicated.loc[1, "date"]
     with pytest.raises(SimpleJMFitError, match="increasing and unique"):
         canonical_complete_mask(duplicated)
+
+
+def test_simple_jm_fit_error_uses_model_hierarchy() -> None:
+    assert issubclass(SimpleJMFitError, ModelError)
 
 
 @pytest.mark.parametrize("variant", ["robust_l1", "return_aware"])

@@ -5,10 +5,12 @@ from jumpmodels.jump import JumpModel
 
 from adaptive_jump.config import HMMProtocol, JMProtocol, ModelProtocol
 from adaptive_jump.models import (
+    FixedJMFit,
     FixedJMResult,
     HMMResult,
     ModelError,
     best_hmm_terminal_fit,
+    fit_fixed_jm_window,
     fixed_jm_states,
     hmm_states,
     smoothed_hmm_states,
@@ -118,6 +120,104 @@ def test_fixed_jm_observer_is_output_neutral() -> None:
     assert len(terminals) == 9
     assert terminals[-1].completed == terminals[-1].total == 9
     assert terminals[-1].payload["states"] == [{"candidate": 5.0, "state": 1}]
+
+
+def test_fixed_jm_default_loss_scale_is_exactly_unchanged() -> None:
+    model, jm = _protocols()
+
+    implicit = fixed_jm_states(_frame(), model, jm, include_fit_diagnostics=True)
+    explicit = fixed_jm_states(
+        _frame(),
+        model,
+        jm,
+        observation_loss_scale=1.0,
+        include_fit_diagnostics=True,
+    )
+
+    pd.testing.assert_frame_equal(explicit.states, implicit.states, check_exact=True)
+    assert explicit.refits.to_csv(index=False) == implicit.refits.to_csv(index=False)
+
+
+def test_scale_three_matches_one_third_lambda_in_fit_and_online_path() -> None:
+    model, _ = _protocols()
+    frame = _frame()
+    base_protocol = JMProtocol((5.0 / 3.0,), 4, 0, 100, 1e-8, (1, 7))
+    scaled_protocol = JMProtocol((5.0,), 4, 0, 100, 1e-8, (1, 7))
+    window = frame.iloc[: model.fit_window]
+
+    base_fit = fit_fixed_jm_window(
+        window,
+        model,
+        base_protocol,
+        feature_columns=("dd_10",),
+    )
+    scaled_fit = fit_fixed_jm_window(
+        window,
+        model,
+        scaled_protocol,
+        feature_columns=("dd_10",),
+        observation_loss_scale=3.0,
+    )
+    base_path = fixed_jm_states(
+        frame,
+        model,
+        base_protocol,
+        feature_columns=("dd_10",),
+    )
+    scaled_path = fixed_jm_states(
+        frame,
+        model,
+        scaled_protocol,
+        feature_columns=("dd_10",),
+        observation_loss_scale=3.0,
+    )
+
+    assert isinstance(scaled_fit, FixedJMFit)
+    assert scaled_fit.observation_loss_scale == 3.0
+    np.testing.assert_array_equal(
+        scaled_fit.models[5.0].labels_,
+        base_fit.models[5.0 / 3.0].labels_,
+    )
+    np.testing.assert_allclose(
+        scaled_fit.models[5.0].centers_ / np.sqrt(3.0),
+        base_fit.models[5.0 / 3.0].centers_,
+        rtol=0,
+        atol=1e-15,
+    )
+    assert scaled_fit.models[5.0].val_ / 3.0 == pytest.approx(
+        base_fit.models[5.0 / 3.0].val_,
+        rel=0,
+        abs=1e-15,
+    )
+    pd.testing.assert_series_equal(
+        scaled_path.states[5.0],
+        base_path.states[5.0 / 3.0],
+        check_names=False,
+        check_exact=True,
+    )
+
+
+@pytest.mark.parametrize("scale", [True, 0.0, -1.0, np.inf, np.nan])
+def test_fixed_jm_rejects_invalid_observation_loss_scale(scale: float) -> None:
+    model, jm = _protocols()
+
+    with pytest.raises(ModelError, match="loss scale"):
+        fixed_jm_states(_frame(), model, jm, observation_loss_scale=scale)
+
+
+def test_scaled_fixed_jm_rejects_checkpoint_resume() -> None:
+    model, jm = _protocols()
+    frame = _frame()
+    initial = fixed_jm_states(frame, model, jm)
+
+    with pytest.raises(ModelError, match="checkpoint resume"):
+        fixed_jm_states(
+            frame,
+            model,
+            jm,
+            observation_loss_scale=3.0,
+            initial=initial,
+        )
 
 
 def test_fixed_jm_resumes_exactly_from_causal_checkpoint() -> None:

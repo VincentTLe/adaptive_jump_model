@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from adaptive_jump.artifacts import sha256_file
-from adaptive_jump.backtest import apply_signal
+from adaptive_jump.backtest import BacktestError, apply_signal
 
 DEVELOPMENT_CUTOFF = date(2023, 12, 31)
 LAMBDA50_COLUMN = "50.0"
@@ -22,7 +22,7 @@ ONE_WAY_COST_BPS = 10.0
 SIGNAL_TO_RETURN_OFFSET = PRIMARY_DELAY_TRADING_DAYS + 1
 
 
-class SimpleJMControlError(ValueError):
+class SimpleJMControlError(BacktestError):
     """Raised when a simple-JM control violates its frozen contract."""
 
 

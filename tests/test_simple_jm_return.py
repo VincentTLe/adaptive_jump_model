@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 from jumpmodels.jump import dp, jump_penalty_to_mx
 
+from adaptive_jump.models import ModelError
 from adaptive_jump.simple_jm_return import (
     ReturnAwareError,
     ReturnAwareJumpModel,
@@ -42,6 +43,10 @@ def _separated_data() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     mask[-2:] = False
     target[-2:] = np.nan
     return X, target, mask
+
+
+def test_return_aware_error_uses_model_hierarchy() -> None:
+    assert issubclass(ReturnAwareError, ModelError)
 
 
 def test_target_alignment_uses_full_calendar_and_masks_final_two_rows() -> None:
