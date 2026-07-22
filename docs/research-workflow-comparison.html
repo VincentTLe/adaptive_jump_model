@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Can a Jump Model beat HMM and Buy &amp; Hold?</title>
+  <link rel="icon" href="data:,">
   <style>
     :root {
       color-scheme: dark;
@@ -101,7 +102,7 @@
     }
     .plain-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 16px;
     }
     .plain-grid article {
@@ -122,6 +123,20 @@
     .gap-positive { color: var(--green); }
     .gap-negative { color: var(--red); }
     .note { color: var(--muted); font-size: .92rem; }
+    .chart-figure { margin: 22px 0 30px; overflow-x: auto; }
+    .chart-figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: white;
+    }
+    .chart-figure figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: .9rem;
+    }
     ul { padding-left: 21px; }
     li { margin: 7px 0; }
     details {
@@ -138,6 +153,7 @@
       .flow, .plain-grid { grid-template-columns: 1fr; }
       .step { min-height: auto; }
       .step:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -25px; }
+      .chart-figure img { min-width: 700px; }
       table { min-width: 0; }
       thead {
         position: absolute;
@@ -178,17 +194,19 @@
 </head>
 <body>
   <header>
-    <div class="eyebrow">Research brief · 21 July 2026</div>
+    <div class="eyebrow">Research brief · 22 July 2026</div>
     <h1>Can a Jump Model beat HMM and Buy &amp; Hold?</h1>
     <p class="lead">We rebuilt Shu et al.'s market-or-cash idea on a past-only
-      public proxy sample, then developed evidence-adaptive switch penalties.
-      The target is simple: higher net Sharpe than both benchmarks on the same
-      dates.</p>
+      public proxy sample, then tested five deliberately simple Jump Model
+      changes and one loss-scale diagnostic. The target is simple: higher net
+      Sharpe than both benchmarks on the same dates.</p>
     <div class="verdict">
-      <strong>Answer so far: only Germany passes.</strong>
-      At least one tested JM variant beats both benchmarks only in Germany.
-      The best observed variant still loses to HMM in the US and to
-      buy-and-hold in Japan.
+      <strong>Latest result: scaling the DD loss by three does not create a
+        cross-market winner.</strong>
+      Scaled DD still beats fixed JM Sharpe in all three markets, but beats both
+      HMM and buy-and-hold only in the US. The result is
+      <code>not_supported</code>; raw loss scale is not the main explanation
+      for the DD result.
     </div>
   </header>
 
@@ -212,124 +230,267 @@
         <li class="step"><span class="number">1</span><strong>Daily data</strong><p>Equity log return for HMM; downside-risk features for JM.</p></li>
         <li class="step"><span class="number">2</span><strong>Online models</strong><p>Fit HMM from returns and JM from features, using past data only.</p></li>
         <li class="step"><span class="number">3</span><strong>State</strong><p>Label the current observation favorable or unfavorable.</p></li>
-        <li class="step"><span class="number">4</span><strong>Position</strong><p>Favorable means 100% market; unfavorable means 100% cash. Signal at t earns t+2.</p></li>
+        <li class="step"><span class="number">4</span><strong>Position</strong><p>Decide after t, trade at the close of t+1, and first earn at t+2.</p></li>
         <li class="step"><span class="number">5</span><strong>Test</strong><p>Charge 10 bps per change and compare net Sharpe with HMM and buy-and-hold.</p></li>
       </ol>
+      <p><strong>How lambda is chosen:</strong> at each month-end, every
+        candidate is replayed online over the preceding eight calendar years.
+        Its validation strategy uses the same one-day trading delay and 10-bps
+        cost; the candidate with the highest validation Sharpe is used for the
+        next month. HMM smoothing is selected the same way.</p>
+      <p class="note">This is the core procedure in Shu et al. Section 3.4.3.
+        The exact candidate grids, 252-return eligibility floor,
+        10<sup>&minus;12</sup> tie rule, and 5% boundary diagnostic are
+        repository conventions because the paper does not publish them.</p>
+    </section>
+
+    <section aria-labelledby="regime-title">
+      <h2 id="regime-title">3. What regimes did the models actually see?</h2>
+      <p>The diagnostic below deliberately shows only one market. The black
+        line is US market-proxy wealth. Orange hatching is the actual delayed
+        Cash position: a decision after day t is traded at the close of t+1
+        and first affects the return/cost row at t+2.</p>
+      <p class="note">The figure reads accepted daily trade files without
+        refitting a model. A regime is a model description, not observed
+        market ground truth.</p>
+
+      <h3>US regime paths</h3>
+      <p>DD-only made 11 switches, versus 21 for fixed JM and 46 for HMM. It is
+        the only tested simple variant that beat both same-sample controls in
+        one market. The shaded periods show when each strategy was actually in
+        Cash.</p>
+      <figure class="chart-figure">
+        <img src="../artifacts/reports/simple-jm-suite-2d3d2a779b13-0e026376c2cb-20260722T030918585813Z/us-causal-regimes.svg"
+          alt="Three US panels showing market-proxy wealth and delayed Cash positions for fixed JM, DD-only JM, and HMM">
+        <figcaption>US, 2007–2023. All panels use the same dates and one-day
+          trading delay.
+          <a href="../artifacts/reports/simple-jm-suite-2d3d2a779b13-0e026376c2cb-20260722T030918585813Z/us-causal-regimes.svg">Open full-size SVG.</a></figcaption>
+      </figure>
+
+      <h3>Net wealth in all three markets</h3>
+      <p>Each panel compares Buy &amp; Hold, fixed JM, DD-only JM, and HMM after
+        10-bps one-way costs. DD-only finishes above both controls only in the
+        US; Germany and Japan prevent a cross-market claim.</p>
+      <figure class="chart-figure">
+        <img src="../artifacts/reports/simple-jm-suite-2d3d2a779b13-0e026376c2cb-20260722T030918585813Z/shu-style-net-wealth.svg"
+          alt="Net wealth for Buy and Hold, fixed JM, DD-only JM, and HMM in the US, Germany, and Japan">
+        <figcaption>Orange hatching marks the delayed DD-only Cash position.
+          <a href="../artifacts/reports/simple-jm-suite-2d3d2a779b13-0e026376c2cb-20260722T030918585813Z/shu-style-net-wealth.svg">Open full-size SVG.</a></figcaption>
+      </figure>
+
+      <h3>Ordinary DD loss versus three-times DD loss</h3>
+      <p>Each row below holds the market path fixed and changes only the DD
+        observation-loss multiplier. Scaling changed relatively few delayed
+        position days in the US and Germany, but visibly more in Japan. It
+        increased switches by 4 in the US and Japan and reduced them by 10 in
+        Germany, so the trading effect was not uniform.</p>
+      <figure class="chart-figure">
+        <img src="../artifacts/reports/dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z/dd-loss-scale-causal-regimes.svg"
+          alt="Paired ordinary and three-times DD-loss delayed Cash regimes for the US, Germany, and Japan">
+        <figcaption>US, Germany, and Japan through 2023. Black is market-proxy
+          wealth; hatching is the delayed Cash position. Each paired row uses
+          the same dates and y-axis.
+          <a href="../artifacts/reports/dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z/dd-loss-scale-causal-regimes.svg">Open full-size SVG.</a></figcaption>
+      </figure>
     </section>
 
     <section aria-labelledby="math-title">
-      <h2 id="math-title">3. What did we change mathematically?</h2>
+      <h2 id="math-title">4. Five simple changes we tested</h2>
+      <p>All challengers keep the same causal timeline and training window of 3,000 complete observations,
+        training window, January/July refits, one-day trading delay, 10-bps
+        cost, and raw &lambda; grid unless the card says otherwise. Only one
+        idea changes at a time.</p>
+      <div class="formula">Fixed JM: minimize &Sigma;<sub>t</sub> L<sub>t</sub>(s<sub>t</sub>) + &lambda; &Sigma;<sub>t&ge;1</sub> 1[s<sub>t</sub> &ne; s<sub>t-1</sub>]</div>
       <div class="plain-grid">
         <article>
-          <h3>Fixed JM</h3>
-          <p>A constant λ makes all state changes equally expensive. This
-            reduces noisy switching but can react late.</p>
+          <h3>1. Static &lambda; = 50</h3>
+          <p>Remove monthly &lambda; selection and use the source-visible
+            illustrative value 50 everywhere.</p>
         </article>
         <article>
-          <h3>Evidence-adaptive JM</h3>
-          <p>Discount the switch cost when the destination state fits the data
-            much better. Arrival evidence was responsive but noisy.</p>
+          <h3>2. DD-only</h3>
+          <p>Cluster only 10-day exponentially weighted downside deviation:
+            squared negative excess returns, then a square root. Ask whether
+            the two Sortino features add signal or mostly noise.</p>
         </article>
         <article>
-          <h3>Lagged evidence</h3>
-          <p>Use the previous observation's loss gap. This removes direct reuse
-            of the current loss. It is the best tested JM variant in DE and JP,
-            although buy-and-hold still wins in JP.</p>
+          <h3>3. Confirm twice</h3>
+          <p>Accept a new raw state only after seeing it on two consecutive
+            observations. This is a simple anti-whipsaw rule.</p>
+        </article>
+        <article>
+          <h3>4. Return-aware</h3>
+          <p>During fitting, also group only matured t+2 excess returns
+            (&gamma; = 1). Online decoding still uses today&apos;s features only.</p>
+        </article>
+        <article>
+          <h3>5. Robust L1</h3>
+          <p>Replace squared distance and mean centers with absolute distance
+            and median centers, reducing sensitivity to outliers.</p>
         </article>
       </div>
-
-      <div class="formula">C_t(i,j) = λ₀ exp{-β tanh([L_{t-1}(i)-L_{t-1}(j)]₊ / q_train)}, i ≠ j</div>
-      <p class="note"><strong>Pair-balanced:</strong> tilt the two directions
-        oppositely while keeping C_t(i,j) + C_t(j,i) = 2λ₀, so the pair-average
-        transition cost stays fixed.</p>
-      <p class="note">q_train is a positive robust loss scale estimated from
-        the 3,000-day training prefix only. Arrival and Lagged used β = 0,
-        log(2), log(4); Balanced used 0 and log(4). β was scenario-fixed, not
-        learned for profit, and β = 0 exactly equals fixed JM. On January/July
-        refit dates, the prior loss is evaluated under parameters available at
-        t, so the rule is causal at t but not strictly known at t−1. Formula,
-        objective, toy paths, brute force, timing, and prefix invariance were
-        verified.</p>
+      <p class="note">The return-aware idea is no longer untested. It was
+        implemented with &gamma; = 1, checked against the exact &gamma; = 0
+        fixed-JM route, and run in all three markets. It passed 0/3.</p>
     </section>
 
     <section aria-labelledby="result-title">
-      <h2 id="result-title">4. What is the result?</h2>
-      <p>For each market, the table shows the strongest benchmark and the
-        best observed JM variant. This is a descriptive upper envelope:
-        US uses Balanced, while DE and JP use Lagged. It is not one universal
-        model or one deployable selection rule. The economic gap is:</p>
-      <div class="formula">G_m = Sharpe(best JM) − max[Sharpe(Buy &amp; Hold), Sharpe(HMM)]</div>
-      <div class="table-wrap" tabindex="0" role="region" aria-label="Primary benchmark results">
+      <h2 id="result-title">5. What is the result?</h2>
+      <p>Each row below is one prespecified challenger. For market m and the
+        same variant v, a positive gap means that variant beat both controls:</p>
+      <div class="formula">G<sub>m</sub>(v) = Sharpe<sub>v,m</sub> &minus; max[Sharpe<sub>Buy &amp; Hold,m</sub>, Sharpe<sub>HMM,m</sub>]</div>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Simple challenger economic gaps">
         <table>
-          <caption>Net Sharpe comparison on identical dates through 2023</caption>
+          <caption>Gap versus the stronger same-sample benchmark, through 2023</caption>
           <thead>
             <tr>
-              <th>Market</th>
-              <th>Strongest benchmark</th>
-              <th>Fixed JM</th>
-              <th>Best observed JM</th>
-              <th>G_m</th>
-              <th>Result</th>
+              <th>Variant</th>
+              <th>US G</th>
+              <th>DE G</th>
+              <th>JP G</th>
+              <th>Markets passed</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td data-label="Market">US</td><td data-label="Benchmark">HMM 0.653725</td><td data-label="Fixed JM">0.569865</td><td data-label="Best observed">Balanced 0.616326</td>
-              <td data-label="Gap" class="gap-negative">−0.037398</td><td data-label="Result" class="fail">No</td>
+              <td data-label="Variant">Static &lambda; = 50</td><td data-label="US G" class="gap-negative">&minus;0.067542</td><td data-label="DE G" class="gap-negative">&minus;0.133419</td><td data-label="JP G" class="gap-negative">&minus;0.360656</td><td data-label="Passed" class="fail">0/3</td>
             </tr>
             <tr>
-              <td data-label="Market">DE</td><td data-label="Benchmark">B&amp;H 0.289638</td><td data-label="Fixed JM">0.166440</td><td data-label="Best observed">Lagged 0.337888</td>
-              <td data-label="Gap" class="gap-positive">+0.048251</td><td data-label="Result" class="pass">Yes</td>
+              <td data-label="Variant">DD-only</td><td data-label="US G" class="gap-positive">+0.253822</td><td data-label="DE G" class="gap-negative">&minus;0.063196</td><td data-label="JP G" class="gap-negative">&minus;0.120698</td><td data-label="Passed">1/3</td>
             </tr>
             <tr>
-              <td data-label="Market">JP</td><td data-label="Benchmark">B&amp;H 0.544589</td><td data-label="Fixed JM">0.329270</td><td data-label="Best observed">Lagged 0.413215</td>
-              <td data-label="Gap" class="gap-negative">−0.131375</td><td data-label="Result" class="fail">No</td>
+              <td data-label="Variant">Confirm twice</td><td data-label="US G" class="gap-negative">&minus;0.034433</td><td data-label="DE G" class="gap-negative">&minus;0.139713</td><td data-label="JP G" class="gap-negative">&minus;0.247362</td><td data-label="Passed" class="fail">0/3</td>
+            </tr>
+            <tr>
+              <td data-label="Variant">Return-aware</td><td data-label="US G" class="gap-negative">&minus;0.093860</td><td data-label="DE G" class="gap-negative">&minus;0.139896</td><td data-label="JP G" class="gap-negative">&minus;0.215320</td><td data-label="Passed" class="fail">0/3</td>
+            </tr>
+            <tr>
+              <td data-label="Variant">Robust L1</td><td data-label="US G" class="gap-negative">&minus;0.280928</td><td data-label="DE G" class="gap-negative">&minus;0.116256</td><td data-label="JP G" class="gap-negative">&minus;0.183230</td><td data-label="Passed" class="fail">0/3</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p class="note">Net results use identical market dates, t+2 execution,
-        and 10-bps one-way costs through 2023. Arrival-adaptive JM beats both
-        benchmarks in 0/3 markets; lagged and balanced each do so only in DE.</p>
-      <details>
-        <summary>Risk and activity of each best-observed JM</summary>
-        <ul>
-          <li>US Balanced: MDD −0.337905, turnover 0.404844, cash 26.17%, 13 switches.</li>
-          <li>DE Lagged: MDD −0.387794, turnover 0.248337, cash 13.43%, 8 switches.</li>
-          <li>JP Lagged: MDD −0.317989, turnover 1.159509, cash 27.97%, 33 switches.</li>
-        </ul>
-        <p class="note">Turnover annualizes 0/1 position changes and counts a
-          full exit-and-reentry as one unit. Its formula is
-          0.5 × 252 × mean absolute position change.</p>
-      </details>
+      <p><strong>DD-only is the useful result:</strong> its Sharpe is higher
+        than fixed JM in all three markets, but it clears both benchmarks only
+        in the US. The table below gives its absolute strategy metrics, not
+        only changes from another model.</p>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="DD-only absolute results">
+        <table>
+          <caption>DD-only net performance, risk, and activity on identical dates</caption>
+          <thead>
+            <tr>
+              <th>Market</th>
+              <th>Sharpe</th>
+              <th>MDD</th>
+              <th>Turnover</th>
+              <th>Cash</th>
+              <th>Switches</th>
+              <th>Stronger control</th>
+              <th>G</th>
+              <th>Pass?</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td data-label="Market">US</td><td data-label="Sharpe">0.907547</td><td data-label="MDD">&minus;0.193635</td><td data-label="Turnover">0.342561</td><td data-label="Cash">13.57%</td><td data-label="Switches">11</td><td data-label="Stronger control">HMM 0.653725</td><td data-label="G" class="gap-positive">+0.253822</td><td data-label="Pass" class="pass">Yes</td>
+            </tr>
+            <tr>
+              <td data-label="Market">DE</td><td data-label="Sharpe">0.226442</td><td data-label="MDD">&minus;0.428325</td><td data-label="Turnover">0.807095</td><td data-label="Cash">11.36%</td><td data-label="Switches">26</td><td data-label="Stronger control">B&amp;H 0.289638</td><td data-label="G" class="gap-negative">&minus;0.063196</td><td data-label="Pass" class="fail">No</td>
+            </tr>
+            <tr>
+              <td data-label="Market">JP</td><td data-label="Sharpe">0.423891</td><td data-label="MDD">&minus;0.432405</td><td data-label="Turnover">0.667596</td><td data-label="Cash">8.73%</td><td data-label="Switches">19</td><td data-label="Stronger control">B&amp;H 0.544589</td><td data-label="G" class="gap-negative">&minus;0.120698</td><td data-label="Pass" class="fail">No</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Net results use identical market dates, a one-day
+        trading delay, and 10-bps one-way costs through 2023. Turnover is
+        0.5 &times; 252 &times; mean absolute position change.</p>
+
+      <h3>Loss-scale diagnostic</h3>
+      <p>The table compares scaled DD with ordinary DD on the same dates.
+        Positive &Delta;MDD means the drawdown became less negative and
+        therefore improved.</p>
+      <div class="formula">Q<sub>3</sub> = 3Q<sub>1</sub>, so J<sub>3</sub>(&lambda;) = 3J<sub>1</sub>(&lambda;/3)</div>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="DD loss-scale diagnostic">
+        <table>
+          <caption>Three-times DD loss minus ordinary DD loss, through 2023</caption>
+          <thead>
+            <tr>
+              <th>Market</th>
+              <th>Scaled Sharpe</th>
+              <th>G</th>
+              <th>&Delta; Sharpe</th>
+              <th>&Delta; MDD</th>
+              <th>&Delta; turnover</th>
+              <th>&Delta; cash</th>
+              <th>&Delta; switches</th>
+              <th>Pass?</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td data-label="Market">US</td><td data-label="Scaled Sharpe">0.884130</td><td data-label="G" class="gap-positive">+0.230405</td><td data-label="Delta Sharpe">&minus;0.023417</td><td data-label="Delta MDD">&minus;0.001676</td><td data-label="Delta turnover">+0.124567</td><td data-label="Delta cash">+0.005685</td><td data-label="Delta switches">+4</td><td data-label="Pass" class="pass">Yes</td></tr>
+            <tr><td data-label="Market">DE</td><td data-label="Scaled Sharpe">0.195916</td><td data-label="G" class="gap-negative">&minus;0.093722</td><td data-label="Delta Sharpe">&minus;0.030526</td><td data-label="Delta MDD">&minus;0.016850</td><td data-label="Delta turnover">&minus;0.310421</td><td data-label="Delta cash">&minus;0.001478</td><td data-label="Delta switches">&minus;10</td><td data-label="Pass" class="fail">No</td></tr>
+            <tr><td data-label="Market">JP</td><td data-label="Scaled Sharpe">0.428050</td><td data-label="G" class="gap-negative">&minus;0.116539</td><td data-label="Delta Sharpe">+0.004159</td><td data-label="Delta MDD">+0.087115</td><td data-label="Delta turnover">+0.140547</td><td data-label="Delta cash">+0.051590</td><td data-label="Delta switches">+4</td><td data-label="Pass" class="fail">No</td></tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <section aria-labelledby="meaning-title">
-      <h2 id="meaning-title">5. What does this mean?</h2>
+      <h2 id="meaning-title">6. What does this mean?</h2>
       <ul>
         <li><strong>The checked implementation path is internally consistent:</strong>
           losses, penalties, states, signals, positions, trades, costs, and
           returns were checked end to end.</li>
-        <li><strong>The mathematics moved:</strong> we built and verified a
-          past-only family of time-varying JM transition costs.</li>
+        <li><strong>Simplicity helped in one market:</strong> DD-only raised
+          fixed-JM Sharpe by +0.337682 / +0.060001 / +0.094622 in US / DE / JP,
+          but crossed both benchmarks only in the US.</li>
         <li><strong>The market objective is not met:</strong> no tested JM
           beats both benchmarks in all three markets. This is development
           evidence, not a profitability claim.</li>
       </ul>
-      <p>The next mathematical question should connect states more directly to
-        future economic usefulness. A simple candidate is to fit state centers
-        with both feature-clustering loss and a past-only t+2 return prediction
-        loss. That would test whether regimes are not only compact, but also
-        informative for the position we will take. It has not been run.</p>
+      <p><strong>The loss-scale control retained the DD clue:</strong>
+        multiplying DD loss by three moved Sharpe by only
+        &minus;0.023 / &minus;0.031 / +0.004 in US / DE / JP, and scaled DD
+        still beat fixed-JM Sharpe in all three. That makes feature removal the
+        stronger explanation than the original raw loss scale, but does not
+        prove that Sortino features are harmful. The selector moved raw
+        &lambda; upward in 73.7% / 81.3% / 66.1% of paired months and selected
+        the upper endpoint in 0% / 22.9% / 29.0%; the finite grid still binds
+        in DE and JP.</p>
+      <p><strong>One-state-collapse caveat:</strong> some fitted two-state
+        candidates left only one reachable state. Collapsed fit&times;&lambda;
+        rows (US / DE / JP) were: DD-only 95 / 132 / 124; return-aware
+        63 / 85 / 93; and L1 75 / 91 / 98. Outer CV selected those candidates
+        in 0 / 43 / 75, 24 / 53 / 78, and 62 / 83 / 87 months, respectively.
+        The deterministic route and P&amp;L remain valid, but these candidates
+        behaved as one reachable state, weakening the two-regime
+        interpretation. Scaled DD selected collapsed fits in 0 / 44 / 63 of
+        194 / 193 / 177 US / DE / JP months, so the same warning remains
+        important.</p>
+      <p><strong>Return prediction was tested, not postponed:</strong> the
+        return-aware model was nearly identical to fixed JM and never improved
+        Sharpe. This weakens that exact &gamma; = 1 formulation; it does not
+        prove that all predictive regime models fail.</p>
 
       <details>
         <summary>Protocol, limitations, and evidence links</summary>
+        <p><strong>Reproducibility status:</strong> the fixed baseline is
+          runnable, and the shared runner now reproduces and verifies the five
+          simple challengers. The fresh run reproduced 24 metric rows, 45
+          traces, and 9 collapse summaries. The scale run separately verified
+          15 metric rows, 9 complete loss-to-trade traces, and 3 collapse
+          summaries.</p>
         <ul>
-          <li>HMM input: equity log return. JM features: DD-10, Sortino-20, Sortino-60.</li>
+          <li>HMM input: equity log return. JM features: downside deviation DD-10 and Sortino-20/60.</li>
           <li>Rolling model window: 3,000 observations. JM refits in January
             and July; HMM refits daily.</li>
           <li>Monthly selection: preceding eight calendar years.</li>
           <li>Frozen λ grid: 0, 5, 15, 35, 70, 150, 300, 600, 1200.</li>
+          <li>The five simple ideas and their order were frozen before their
+            performance was opened. This remains exploratory development
+            evidence, not a confirmatory study.</li>
           <li>The evaluated proxy sample begins in 2007–2009, not the paper's
             exact 1990–2023 Bloomberg/GFD sample. Exact paper Sharpe is not the target.</li>
           <li>The same through-2023 markets have been inspected repeatedly;
