@@ -508,7 +508,7 @@ def fit_fixed_jm_window(
             jump_penalty=penalty,
             random_state=jm_protocol.random_state,
             max_iter=jm_protocol.max_iter,
-            tol=jm_protocol.tol,
+            tol=jm_protocol.tol * observation_loss_scale,
             n_init=jm_protocol.n_init,
         ).fit(scaled, ret_ser=returns, sort_by="cumret")
         if not math.isfinite(float(fitted.val_)):

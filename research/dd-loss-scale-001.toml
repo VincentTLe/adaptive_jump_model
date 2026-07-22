@@ -29,7 +29,7 @@ fit_rows = "canonical complete-row mask requiring dd_10, sortino_20, sortino_60,
 standardizer = "StandardScaler ddof=0 fit on each past-only training window"
 observation_loss = "3 * 0.5 * (z_dd_t - theta_state)^2"
 observation_loss_scale = 3
-scale_provenance = "THEORY: match the three coordinate count of the canonical v7 squared loss; not estimated from outcomes"
+scale_provenance = "THEORY: match the three coordinate count of the canonical v7 squared loss; not estimated from outcomes; the absolute optimizer tolerance is scaled by the same factor to preserve its normalized meaning"
 transition_loss = "lambda * I(state_t != state_t_minus_1)"
 lambda_grid = [0, 5, 15, 35, 70, 150, 300, 600, 1200]
 fit_window_observations = 3000
@@ -37,7 +37,8 @@ refit_months = [1, 7]
 n_init = 10
 random_state = 0
 max_iter = 1000
-tol = 1e-8
+normalized_tol = 1e-8
+optimizer_tol = 3e-8
 state_label = "state 0 has higher training cumulative excess return"
 monthly_selection = "monthly trailing-eight-calendar-year net Sharpe on online inferred regimes"
 
@@ -62,7 +63,7 @@ claim_restriction = "Repeatedly inspected through-2023 development evidence; no 
 required = [
   "default observation_loss_scale=1 is exactly unchanged",
   "scaled fit loss equals three times ordinary DD feature loss",
-  "scaled lambda path is equivalent to ordinary DD at lambda divided by three for the same data and starts",
+  "scaled lambda path is equivalent to ordinary DD at lambda divided by three for the same data and starts after scaling the absolute optimizer tolerance by three",
   "canonical complete-row calendar and training-only scaler",
   "US prefix invariance before three-market execution",
   "monthly trailing-eight-year online-state Sharpe selection",

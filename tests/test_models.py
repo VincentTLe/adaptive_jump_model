@@ -174,6 +174,7 @@ def test_scale_three_matches_one_third_lambda_in_fit_and_online_path() -> None:
 
     assert isinstance(scaled_fit, FixedJMFit)
     assert scaled_fit.observation_loss_scale == 3.0
+    assert scaled_fit.models[5.0].tol == pytest.approx(3e-8)
     np.testing.assert_array_equal(
         scaled_fit.models[5.0].labels_,
         base_fit.models[5.0 / 3.0].labels_,
