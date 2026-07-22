@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">110 session(s) · newest first · 2026-07-22 06:12 UTC</p>
+  <p class="sub">111 session(s) · newest first · 2026-07-22 08:41 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-22T08:41:38Z</span><span class="who">claude-code · claude-fable-5</span>
+      </div>
+      <p class="goal">Owner-requested repository cleanup and simplification, then complete the pending separation exploratory: separation-turnover-001 answered not_supported (decision-time DD center separation does not forecast fewer next-month scaled-DD switches).</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>data/legacy-cold/legacy-minute-data.tar.zst (5.2G minute-era raw+processed compressed to 1.1G; originals removed after tar+zstd verification)</code></li><li><code>artifacts cold studies compressed per-study/per-run to tar.zst (1.1G -&gt; ~450M); accepted audit run 79c9...cd14 restored after suite verify flagged its source-lock dependency</code></li><li><code>src/adaptive_jump/runtime/ (events, checkpoints, model_runtime, study_runtime, child_events moved out of monitor/)</code></li><li><code>src/adaptive_jump/simple_jm_verifier.py (+ mirrored tests; verify split out of simple_jm_suite.py 2487 -&gt; 1988 lines; shared seam helpers made public)</code></li><li><code>src/adaptive_jump/artifacts.py finish_run_metadata + runtime/checkpoints.py clear_checkpoint_tree (deduped from window/grid runners)</code></li><li><code>research/separation-turnover-001.toml (frozen pre-outcome, sha 8674ff4d9470), registry FROZEN + EXPERIMENT_COMPLETE appended</code></li><li><code>src/adaptive_jump/separation_turnover.py + tests/test_separation_turnover.py</code></li><li><code>TASK.md (result recorded; dd-loss-scale task archived), research/STATUS.md row, README.md code map</code></li><li><code>~/research/lagged-evidence-performance-001.toml stale draft and ~/trade-equity-fixed-jm-quick.png removed; ~/image.png kept (SkillOpt diagram, unrelated)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>pytest: 465 passed (baseline 461 before new module)</li><li>ruff check + format: clean</li><li>sealed replays after every refactor step: fixed-baselines 7.33e-15, simple-jm-suite 2.36e-14, dd-loss-scale 5.22e-15 max metric error, implementation locks resolve to producing commits via git history</li><li>separation-turnover in-run checks passed: inventory hash, one-to-one refit join, exact window partition, switch-total consistency, no post-2023 rows</li><li>result: rho +0.035/+0.320/+0.155 US/DE/JP (p one-sided 0.68/1.00/0.98, 10000 permutations, seed 20260722); JP flips to -0.142 fitted-only; collapsed months (0/43/63) confound; chart visually inspected</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>f015b30 (+7 local commits on cleanup/research-protocol, not pushed)</code></p></div>
+        <div><span class="lbl">Next step</span><p>Separation gate is dead per frozen rule. Remaining candidates from the ledger: capped gap, two-day confirmation, semi-Markov dwell cost - each needs a fresh frozen question. Push the 8 local commits when the owner approves.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Compressed artifact tars must be untarred before verifying those old runs; suite verify needs artifacts/fixed-baseline-assumption-audit/...4cc8cdbccd14 live (source-lock dependency).</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-22T06:12:21Z</span><span class="who">codex · gpt-5</span>
