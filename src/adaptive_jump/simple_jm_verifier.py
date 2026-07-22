@@ -37,18 +37,18 @@ from adaptive_jump.simple_jm_suite import (
     LossScaleMarketSource,
     SimpleJMSuiteError,
     VariantOutput,
-    _build_traces,
-    _decision,
-    _fit_degeneracy_row,
-    _load_loss_scale_sources,
-    _loss_scale_contrasts,
-    _mapping_digest,
-    _metric_rows,
-    _trade_route_equal,
-    _validate_loss_scale_protocol,
-    _validate_traces,
-    _verify_loss_scale_math,
+    build_decision,
+    build_traces,
+    fit_degeneracy_row,
     load_dd_loss_scale_spec,
+    load_loss_scale_sources,
+    loss_scale_contrasts,
+    mapping_digest,
+    metric_rows,
+    trade_route_equal,
+    validate_loss_scale_protocol,
+    validate_traces,
+    verify_loss_scale_math,
 )
 from adaptive_jump.walkforward import select_monthly_candidate
 
@@ -165,7 +165,7 @@ def _replay_scaled_selector(
     replayed_trades = (full_trades.set_index("date").reindex(dates).reset_index()).loc[
         :, TRADE_COLUMNS
     ]
-    if not _trade_route_equal(replayed_trades, stored_trades):
+    if not trade_route_equal(replayed_trades, stored_trades):
         raise SimpleJMSuiteError(f"{market}: scaled t+2 trade replay changed")
 
     stored_choices = pd.read_csv(target / "choices.csv")
@@ -214,7 +214,7 @@ def _verify_fit_degeneracy(
     for market, variant in itertools.product(MARKETS, variants):
         target = run_dir / market / variant
         expected_rows.append(
-            _fit_degeneracy_row(
+            fit_degeneracy_row(
                 market,
                 variant,
                 pd.read_csv(target / "refits.csv"),
@@ -305,7 +305,7 @@ def verify_simple_jm_run(run_dir: Path) -> dict[str, Any]:
     if not isinstance(implementation_files, dict):
         raise SimpleJMSuiteError("implementation lock is invalid")
     repo_root = run_dir.parents[2]
-    implementation_digest = _mapping_digest(implementation_files)
+    implementation_digest = mapping_digest(implementation_files)
     if (
         implementation.get("bundle_sha256") != implementation_digest
         or metadata.get("implementation_sha256") != implementation_digest
@@ -349,7 +349,7 @@ def verify_simple_jm_run(run_dir: Path) -> dict[str, Any]:
         routed_fixed = (
             sealed_fixed.set_index("date").reindex(dates).reset_index()
         ).loc[:, TRADE_COLUMNS]
-        if not _trade_route_equal(routed_fixed, paths["fixed_jm"]):
+        if not trade_route_equal(routed_fixed, paths["fixed_jm"]):
             raise SimpleJMSuiteError(f"{market}: gamma-zero trade route changed")
         for model, path in paths.items():
             if (
@@ -357,7 +357,7 @@ def verify_simple_jm_run(run_dir: Path) -> dict[str, Any]:
                 or path["date"].max() > DEVELOPMENT_CUTOFF
             ):
                 raise SimpleJMSuiteError(f"{market}/{model}: invalid common dates")
-        recalculated = _metric_rows(market, paths, config)
+        recalculated = metric_rows(market, paths, config)
         rows.extend(recalculated)
     expected = pd.DataFrame.from_records(rows)
     for column in (
@@ -376,10 +376,10 @@ def verify_simple_jm_run(run_dir: Path) -> dict[str, Any]:
             max_difference = max(max_difference, float(finite.max()))
         if not np.allclose(left, right, rtol=0, atol=1e-12, equal_nan=True):
             raise SimpleJMSuiteError(f"stored metric mismatch: {column}")
-    if read_json(run_dir / "decision.json") != _decision(expected):
+    if read_json(run_dir / "decision.json") != build_decision(expected):
         raise SimpleJMSuiteError("stored decision does not match recomputed metrics")
     trace = pd.read_csv(run_dir / "traces.csv")
-    _validate_traces(trace)
+    validate_traces(trace)
     _verify_trace_trade_rows(run_dir, trace)
     degeneracy = _verify_fit_degeneracy(run_dir)
     return {
@@ -408,7 +408,7 @@ def verify_dd_loss_scale_run(run_dir: Path) -> dict[str, Any]:
         raise SimpleJMSuiteError("run metadata is not a completed loss-scale study")
     implementation = read_json(run_dir / "implementation-lock.json")
     files = implementation.get("files")
-    digest = _mapping_digest(files) if isinstance(files, dict) else ""
+    digest = mapping_digest(files) if isinstance(files, dict) else ""
     if (
         not isinstance(files, dict)
         or implementation.get("bundle_sha256") != digest
@@ -423,8 +423,8 @@ def verify_dd_loss_scale_run(run_dir: Path) -> dict[str, Any]:
         path=repo_root / "research.toml",
     )
     spec = load_dd_loss_scale_spec(run_dir / "study.lock.toml", config)
-    _validate_loss_scale_protocol(config, spec)
-    sources = _load_loss_scale_sources(spec, config)
+    validate_loss_scale_protocol(config, spec)
+    sources = load_loss_scale_sources(spec, config)
     rows = []
     replayed_outputs: dict[tuple[str, str], VariantOutput | ControlPath] = {}
     aligned_paths: dict[str, dict[str, pd.DataFrame]] = {}
@@ -451,7 +451,7 @@ def verify_dd_loss_scale_run(run_dir: Path) -> dict[str, Any]:
                 .reset_index()
                 .loc[:, TRADE_COLUMNS]
             )
-            if not _trade_route_equal(sealed, paths[model]):
+            if not trade_route_equal(sealed, paths[model]):
                 raise SimpleJMSuiteError(f"{market}/{model}: source route changed")
         if any(
             not path["date"].equals(dates) or path["date"].max() > DEVELOPMENT_CUTOFF
@@ -460,7 +460,7 @@ def verify_dd_loss_scale_run(run_dir: Path) -> dict[str, Any]:
             raise SimpleJMSuiteError(f"{market}: invalid common dates")
         aligned_paths[market] = paths
         rows.extend(
-            _metric_rows(
+            metric_rows(
                 market,
                 paths,
                 config,
@@ -469,7 +469,7 @@ def verify_dd_loss_scale_run(run_dir: Path) -> dict[str, Any]:
         )
     expected = pd.DataFrame.from_records(rows)
     stored = pd.read_csv(run_dir / "summary.csv")
-    expected_contrast = _loss_scale_contrasts(expected)
+    expected_contrast = loss_scale_contrasts(expected)
     stored_contrast = pd.read_csv(run_dir / "dd-scale-contrast.csv")
     try:
         pd.testing.assert_frame_equal(
@@ -490,7 +490,7 @@ def verify_dd_loss_scale_run(run_dir: Path) -> dict[str, Any]:
         )
     except AssertionError as exc:
         raise SimpleJMSuiteError("loss-scale stored metrics changed") from exc
-    decision = _decision(expected, (SCALED_DD_VARIANT,))
+    decision = build_decision(expected, (SCALED_DD_VARIANT,))
     if (
         read_json(run_dir / "decision.json") != decision
         or metadata.get("conclusion") != decision["conclusion"]
@@ -498,15 +498,15 @@ def verify_dd_loss_scale_run(run_dir: Path) -> dict[str, Any]:
         raise SimpleJMSuiteError("loss-scale decision changed")
     verification = read_json(run_dir / "verification.json")
     if (
-        verification.get("math_contracts") != _verify_loss_scale_math()
+        verification.get("math_contracts") != verify_loss_scale_math()
         or verification.get("observation_loss_scale") != DD_OBSERVATION_LOSS_SCALE
         or not verification["us_smoke"][0]["prefix_invariant"]
     ):
         raise SimpleJMSuiteError("loss-scale verification receipt is invalid")
     traces = pd.read_csv(run_dir / "traces.csv")
-    _validate_traces(traces)
+    validate_traces(traces)
     _verify_trace_trade_rows(run_dir, traces)
-    expected_traces = _build_traces(
+    expected_traces = build_traces(
         sources,
         replayed_outputs,
         aligned_paths,

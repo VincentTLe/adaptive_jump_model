@@ -315,7 +315,7 @@ def run_simple_jm_study(
     )
 
     code_hashes = _implementation_hashes(repo_root)
-    code_digest = _mapping_digest(code_hashes)
+    code_digest = mapping_digest(code_hashes)
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     run_id = f"simple-jm-suite-{spec.sha256[:12]}-{code_digest[:12]}-{timestamp}"
     run_dir = repo_root / config.artifact_root / EXPERIMENT_ID / run_id
@@ -425,10 +425,10 @@ def run_simple_jm_study(
     summary.to_csv(run_dir / "summary.csv", index=False, float_format="%.17g")
     degeneracy = _build_fit_degeneracy(outputs)
     degeneracy.to_csv(run_dir / "fit-degeneracy.csv", index=False)
-    decisions = _decision(summary)
+    decisions = build_decision(summary)
     write_json(run_dir / "decision.json", decisions)
-    traces = _build_traces(sources, outputs, aligned, config)
-    _validate_traces(traces)
+    traces = build_traces(sources, outputs, aligned, config)
+    validate_traces(traces)
     traces.to_csv(run_dir / "traces.csv", index=False, float_format="%.17g")
     _write_market_artifacts(run_dir, sources, outputs, aligned)
     write_json(
@@ -460,10 +460,10 @@ def run_dd_loss_scale_study(
 ) -> Path:
     """Run US smoke, then the frozen three-market scale-three DD control."""
     repo_root = config.path.parent.resolve()
-    _validate_loss_scale_protocol(config, spec)
-    sources = _load_loss_scale_sources(spec, config)
+    validate_loss_scale_protocol(config, spec)
+    sources = load_loss_scale_sources(spec, config)
     code_hashes = _implementation_hashes(repo_root)
-    code_digest = _mapping_digest(code_hashes)
+    code_digest = mapping_digest(code_hashes)
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     run_id = f"dd-loss-scale-{spec.sha256[:12]}-{code_digest[:12]}-{timestamp}"
     run_dir = repo_root / config.artifact_root / LOSS_SCALE_EXPERIMENT_ID / run_id
@@ -517,7 +517,7 @@ def run_dd_loss_scale_study(
         (SCALED_DD_VARIANT,),
     )
     summary.to_csv(run_dir / "summary.csv", index=False, float_format="%.17g")
-    _loss_scale_contrasts(summary).to_csv(
+    loss_scale_contrasts(summary).to_csv(
         run_dir / "dd-scale-contrast.csv",
         index=False,
         float_format="%.17g",
@@ -525,16 +525,16 @@ def run_dd_loss_scale_study(
     _build_fit_degeneracy(outputs, (SCALED_DD_VARIANT,)).to_csv(
         run_dir / "fit-degeneracy.csv", index=False
     )
-    decision = _decision(summary, (SCALED_DD_VARIANT,))
+    decision = build_decision(summary, (SCALED_DD_VARIANT,))
     write_json(run_dir / "decision.json", decision)
-    traces = _build_traces(
+    traces = build_traces(
         sources,
         outputs,
         aligned,
         config,
         (SCALED_DD_VARIANT,),
     )
-    _validate_traces(traces)
+    validate_traces(traces)
     traces.to_csv(run_dir / "traces.csv", index=False, float_format="%.17g")
     _write_market_artifacts(
         run_dir,
@@ -547,7 +547,7 @@ def run_dd_loss_scale_study(
         run_dir / "verification.json",
         {
             "schema_version": 1,
-            "math_contracts": _verify_loss_scale_math(),
+            "math_contracts": verify_loss_scale_math(),
             "us_smoke": [smoke],
             "observation_loss_scale": DD_OBSERVATION_LOSS_SCALE,
             "cutoff": DEVELOPMENT_CUTOFF.date().isoformat(),
@@ -580,7 +580,7 @@ def _validate_protocol(config: ResearchConfig, spec: SuiteSpec) -> None:
         raise SimpleJMSuiteError("canonical config and frozen suite protocol disagree")
 
 
-def _validate_loss_scale_protocol(config: ResearchConfig, spec: LossScaleSpec) -> None:
+def validate_loss_scale_protocol(config: ResearchConfig, spec: LossScaleSpec) -> None:
     model = spec.document["model"]
     checks = (
         config.replication_cutoff == date(2023, 12, 31),
@@ -603,7 +603,7 @@ def _validate_loss_scale_protocol(config: ResearchConfig, spec: LossScaleSpec) -
         )
 
 
-def _load_loss_scale_sources(
+def load_loss_scale_sources(
     spec: LossScaleSpec, config: ResearchConfig
 ) -> dict[str, LossScaleMarketSource]:
     source_rows = spec.document["sources"]
@@ -697,12 +697,12 @@ def _replay_parent_dd_control(
         .reset_index()
         .loc[:, TRADE_COLUMNS]
     )
-    if not _trade_route_equal(sealed, routed):
+    if not trade_route_equal(sealed, routed):
         raise SimpleJMSuiteError(f"{market}: parent DD trade route changed")
     return replayed
 
 
-def _loss_scale_contrasts(summary: pd.DataFrame) -> pd.DataFrame:
+def loss_scale_contrasts(summary: pd.DataFrame) -> pd.DataFrame:
     rows = []
     metrics = (
         "sharpe",
@@ -731,7 +731,7 @@ def _loss_scale_contrasts(summary: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame.from_records(rows)
 
 
-def _verify_loss_scale_math() -> dict[str, bool]:
+def verify_loss_scale_math() -> dict[str, bool]:
     X = np.asarray([[-2.0], [-1.8], [1.7], [2.0]])
     centers = np.asarray([[-2.0], [2.0]])
     base = feature_loss_matrix(X, centers)
@@ -1020,7 +1020,7 @@ def _implementation_hashes(repo_root: Path) -> dict[str, str]:
     return {path: sha256_file(repo_root / path) for path in paths}
 
 
-def _mapping_digest(mapping: dict[str, str]) -> str:
+def mapping_digest(mapping: dict[str, str]) -> str:
     payload = json.dumps(mapping, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(payload).hexdigest()
 
@@ -1248,7 +1248,7 @@ def _stage_summary(
             paths[variant] = (
                 item.full_trades if isinstance(item, VariantOutput) else item.trades
             )
-        rows.extend(_metric_rows(market, _align_paths(paths), config))
+        rows.extend(metric_rows(market, _align_paths(paths), config))
     return pd.DataFrame.from_records(rows)
 
 
@@ -1268,7 +1268,7 @@ def _finalize_paths(
                 item.full_trades if isinstance(item, VariantOutput) else item.trades
             )
         aligned[market] = _align_paths(paths)
-        rows.extend(_metric_rows(market, aligned[market], config, challengers=variants))
+        rows.extend(metric_rows(market, aligned[market], config, challengers=variants))
     return aligned, pd.DataFrame.from_records(rows)
 
 
@@ -1306,7 +1306,7 @@ def _align_paths(paths: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     return output
 
 
-def _trade_route_equal(sealed: pd.DataFrame, routed: pd.DataFrame) -> bool:
+def trade_route_equal(sealed: pd.DataFrame, routed: pd.DataFrame) -> bool:
     if tuple(sealed.columns) != TRADE_COLUMNS or tuple(routed.columns) != TRADE_COLUMNS:
         return False
     if not sealed["date"].equals(routed["date"]):
@@ -1328,7 +1328,7 @@ def _trade_route_equal(sealed: pd.DataFrame, routed: pd.DataFrame) -> bool:
     )
 
 
-def _metric_rows(
+def metric_rows(
     market: str,
     paths: dict[str, pd.DataFrame],
     config: ResearchConfig,
@@ -1373,7 +1373,7 @@ def _metric_rows(
     return rows
 
 
-def _decision(
+def build_decision(
     summary: pd.DataFrame, variants: tuple[str, ...] = CHALLENGERS
 ) -> dict[str, Any]:
     decisions = []
@@ -1435,7 +1435,7 @@ def _strict_bool(value: object) -> bool:
     raise SimpleJMSuiteError("collapse flag is not boolean")
 
 
-def _fit_degeneracy_row(
+def fit_degeneracy_row(
     market: str,
     variant: str,
     refits: pd.DataFrame,
@@ -1484,7 +1484,7 @@ def _build_fit_degeneracy(
         if not isinstance(item, VariantOutput):
             raise SimpleJMSuiteError(f"{market}/{variant}: fitted output missing")
         rows.append(
-            _fit_degeneracy_row(
+            fit_degeneracy_row(
                 market,
                 variant,
                 item.refits,
@@ -1546,7 +1546,7 @@ def _write_market_artifacts(
                     )
 
 
-def _build_traces(
+def build_traces(
     sources: dict[str, MarketSource] | dict[str, LossScaleMarketSource],
     outputs: dict[tuple[str, str], VariantOutput | ControlPath],
     aligned: dict[str, dict[str, pd.DataFrame]],
@@ -1804,7 +1804,7 @@ def _encode_trace_array(value: object) -> str:
     return json.dumps(clean(array.tolist()), separators=(",", ":"), allow_nan=False)
 
 
-def _validate_traces(traces: pd.DataFrame) -> None:
+def validate_traces(traces: pd.DataFrame) -> None:
     """Require a complete loss-to-t+2 trade chain for every concrete trace."""
     required = {
         "market",
