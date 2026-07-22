@@ -30,3 +30,6 @@ reports/
 
 # Local notebooks checkpoints
 .ipynb_checkpoints/
+
+# Cold storage for retired minute-era data
+data/legacy-cold/
