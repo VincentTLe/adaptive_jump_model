@@ -33,6 +33,13 @@ from jumpmodels.jump import (
 from scipy.spatial.distance import cdist
 
 
+def loss_matrix(X: np.ndarray, centers_: np.ndarray) -> np.ndarray:
+    """Return the discrete JM loss ``0.5 * squared Euclidean distance``."""
+    return 0.5 * cdist(
+        np.asarray(X, dtype=float), np.asarray(centers_, dtype=float), "sqeuclidean"
+    )
+
+
 def lam_to_penalty_seq(lam_seq: np.ndarray, n_c: int) -> np.ndarray:
     """Expand a per-period scalar penalty ``lam_seq`` (T,) into (T, n_c, n_c)
     matrices with ``lam_seq[t]`` off-diagonal and 0 on the diagonal."""
@@ -45,6 +52,117 @@ def lam_to_penalty_seq(lam_seq: np.ndarray, n_c: int) -> np.ndarray:
         raise ValueError("lam_seq must be nonnegative")
     off = 1.0 - np.eye(n_c)
     return lam[:, None, None] * off[None, :, :]
+
+
+def robust_loss_scale(loss_mx: np.ndarray) -> float:
+    """Raw median absolute deviation of finite training-prefix losses.
+
+    The caller is responsible for passing losses from the training prefix only.
+    Unavailable-state losses are ignored; a zero result is rejected rather than
+    replaced by a numerical or future-dependent fallback.
+    """
+    loss = np.asarray(loss_mx, dtype=float)
+    if loss.ndim != 2 or loss.shape[0] == 0 or loss.shape[1] < 2:
+        raise ValueError(
+            "loss_mx must be a non-empty 2-d matrix with at least two states"
+        )
+    if np.isneginf(loss).any():
+        raise ValueError("loss_mx must not contain negative infinity")
+    finite_loss = loss[np.isfinite(loss)]
+    if finite_loss.size == 0:
+        raise ValueError("loss_mx must contain a finite loss")
+    center = float(np.median(finite_loss))
+    q_train = float(np.median(np.abs(finite_loss - center)))
+    if not np.isfinite(q_train) or q_train <= 0:
+        raise ValueError("robust training loss scale must be finite and positive")
+    return q_train
+
+
+def evidence_penalty_seq(
+    loss_mx: np.ndarray,
+    lambda0: float,
+    beta: float,
+    q_train: float,
+) -> np.ndarray:
+    r"""Build directed arrival-day transition penalties from state losses.
+
+    For previous state ``i`` and arrival-day state ``j`` this returns
+
+    ``lambda0 * exp(-beta * tanh(max(L_t(i) - L_t(j), 0) / q_train))``.
+
+    The diagonal is zero. Matrix rows are previous states and columns are
+    destination states, matching :func:`dp_tv`.
+    """
+    loss = np.asarray(loss_mx, dtype=float)
+    if loss.ndim != 2 or loss.shape[0] == 0 or loss.shape[1] < 2:
+        raise ValueError(
+            "loss_mx must be a non-empty 2-d matrix with at least two states"
+        )
+    if np.isneginf(loss).any():
+        raise ValueError("loss_mx must not contain negative infinity")
+    loss = replace_nan_by_inf(loss)
+    if not np.isfinite(loss).any(axis=1).all():
+        raise ValueError("each loss_mx row must contain at least one finite state loss")
+    try:
+        lambda0 = float(lambda0)
+        beta = float(beta)
+        q_train = float(q_train)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("lambda0, beta, and q_train must be real scalars") from exc
+    if not np.isfinite(lambda0) or lambda0 < 0:
+        raise ValueError("lambda0 must be finite and nonnegative")
+    if not np.isfinite(beta) or beta < 0:
+        raise ValueError("beta must be finite and nonnegative")
+    if not np.isfinite(q_train) or q_train <= 0:
+        raise ValueError("q_train must be finite and positive")
+
+    n_s, n_c = loss.shape
+    if beta == 0.0:
+        return lam_to_penalty_seq(np.full(n_s, lambda0), n_c)
+
+    previous_loss = loss[:, :, None]
+    destination_loss = loss[:, None, :]
+    with np.errstate(invalid="ignore", over="ignore"):
+        evidence = np.maximum(previous_loss - destination_loss, 0.0) / q_train
+    # An unavailable destination receives no evidence discount. An unavailable
+    # previous state and finite destination has infinite evidence, attaining the
+    # lower penalty bound exactly.
+    evidence = np.where(np.isposinf(destination_loss), 0.0, evidence)
+    penalty = lambda0 * np.exp(-beta * np.tanh(evidence))
+    states = np.arange(n_c)
+    penalty[:, states, states] = 0.0
+    if not np.isfinite(penalty).all():
+        raise ValueError("evidence penalties must be finite")
+    return penalty
+
+
+def lagged_evidence_penalty_seq(
+    loss_mx: np.ndarray,
+    lambda0: float,
+    beta: float,
+    q_train: float,
+) -> np.ndarray:
+    r"""Build transition penalties at t from the state-loss gap at t-1.
+
+    The current loss therefore enters the DP objective once, through
+    ``L_t(s_t)``. ``penalty_seq[0]`` is the fixed-lambda matrix because no
+    lagged observation exists and the DP never reads an incoming transition at
+    t=0.
+    """
+    loss = np.asarray(loss_mx, dtype=float)
+    if loss.ndim != 2 or loss.shape[0] == 0 or loss.shape[1] < 2:
+        raise ValueError(
+            "loss_mx must be a non-empty 2-d matrix with at least two states"
+        )
+    if np.isneginf(loss).any():
+        raise ValueError("loss_mx must not contain negative infinity")
+    finite = np.isfinite(replace_nan_by_inf(loss))
+    if not finite.any(axis=1).all():
+        raise ValueError("each loss_mx row must contain at least one finite state loss")
+
+    lagged_loss = np.zeros_like(loss)
+    lagged_loss[1:] = loss[:-1]
+    return evidence_penalty_seq(lagged_loss, lambda0, beta, q_train)
 
 
 def dp_tv(loss_mx: np.ndarray, penalty_seq: np.ndarray, return_value_mx: bool = False):
@@ -80,7 +198,7 @@ def _do_E_step_tv(
     return_value_mx: bool = False,
 ):
     """E-step (loss matrix + DP) for the discrete time-varying model."""
-    loss_mx = 0.5 * cdist(X, centers_, "sqeuclidean")
+    loss_mx = loss_matrix(X, centers_)
     if return_value_mx:
         return dp_tv(loss_mx, penalty_seq, return_value_mx=True)
     labels_, val_ = dp_tv(loss_mx, penalty_seq)

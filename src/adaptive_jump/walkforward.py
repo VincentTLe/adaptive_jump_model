@@ -17,7 +17,12 @@ from adaptive_jump.backtest import (
     buy_and_hold,
     performance_metrics,
 )
-from adaptive_jump.config import ResearchConfig, SelectionProtocol
+from adaptive_jump.config import (
+    LEGACY_COMPARISON_SAMPLE,
+    PAPER_COMPARISON_SAMPLE,
+    ResearchConfig,
+    SelectionProtocol,
+)
 from adaptive_jump.models import (
     FixedJMResult,
     HMMResult,
@@ -167,6 +172,7 @@ def open_baseline_metrics(
                 expected_shortfall_quantile=(
                     metrics_protocol.expected_shortfall_quantile
                 ),
+                turnover_scale=metrics_protocol.turnover_scale,
             )
             rows.append({"model": model_name, "delay": delay, **values})
     return pd.DataFrame.from_records(rows)
@@ -181,7 +187,7 @@ def baseline_paths(
     returns = frame[["date", "equity_simple", "cash_return"]]
     dates = pd.to_datetime(returns["date"], errors="raise")
     oos = dates >= pd.Timestamp(study.oos_start)
-    output: dict[int, dict[str, pd.DataFrame]] = {}
+    unaligned: dict[int, dict[str, pd.DataFrame]] = {}
     for delay in config.backtest_protocol.robustness_delays:
         paths = {"buy_and_hold": buy_and_hold(returns)}
         for model_name in ("hmm", "fixed_jm"):
@@ -192,27 +198,52 @@ def baseline_paths(
                 delay_trading_days=delay,
                 one_way_cost_bps=config.backtest_protocol.one_way_cost_bps,
             )
-        oos_paths = {
+        unaligned[delay] = {
             model_name: path.loc[oos].reset_index(drop=True)
             for model_name, path in paths.items()
         }
-        metric_columns = [
-            "cash_return",
-            "position",
-            "one_way_turnover",
-            "strategy_return",
-        ]
-        complete = pd.concat(
-            [path[metric_columns].notna().all(axis=1) for path in oos_paths.values()],
-            axis=1,
-        ).all(axis=1)
-        if not complete.any():
-            raise WalkForwardError("no common OOS metric rows")
-        output[delay] = {
+
+    metric_columns = [
+        "cash_return",
+        "position",
+        "one_way_turnover",
+        "strategy_return",
+    ]
+    sample = config.metrics_protocol.comparison_sample
+    if sample == LEGACY_COMPARISON_SAMPLE:
+        output: dict[int, dict[str, pd.DataFrame]] = {}
+        for delay, paths in unaligned.items():
+            complete = pd.concat(
+                [path[metric_columns].notna().all(axis=1) for path in paths.values()],
+                axis=1,
+            ).all(axis=1)
+            if not complete.any():
+                raise WalkForwardError("no common OOS metric rows")
+            output[delay] = {
+                model_name: path.loc[complete].reset_index(drop=True)
+                for model_name, path in paths.items()
+            }
+        return output
+    if sample != PAPER_COMPARISON_SAMPLE:
+        raise WalkForwardError("unknown comparison sample rule")
+
+    complete = pd.concat(
+        [
+            path[metric_columns].notna().all(axis=1)
+            for paths in unaligned.values()
+            for path in paths.values()
+        ],
+        axis=1,
+    ).all(axis=1)
+    if not complete.any():
+        raise WalkForwardError("no common OOS metric rows across delays")
+    return {
+        delay: {
             model_name: path.loc[complete].reset_index(drop=True)
-            for model_name, path in oos_paths.items()
+            for model_name, path in paths.items()
         }
-    return output
+        for delay, paths in unaligned.items()
+    }
 
 
 def select_monthly_candidate(
@@ -231,6 +262,10 @@ def select_monthly_candidate(
     """Select a state path monthly using only trailing validation returns."""
     if checkpoint_every < 1:
         raise WalkForwardError("selection checkpoint interval must be positive")
+    if protocol.tie_rule not in {"lower_smoothing", "higher_smoothing"}:
+        raise WalkForwardError(
+            "selection tie rule must be lower_smoothing or higher_smoothing"
+        )
     prepared, states = _align_selection_inputs(returns, candidate_states)
     dates = pd.DatetimeIndex(prepared["date"])
     candidates = tuple(sorted(float(value) for value in states.columns))
@@ -434,11 +469,13 @@ def _score_decision(
     if not eligible:
         return None
     best = max(score for _, score in eligible)
-    return min(
+    tied = [
         candidate
         for candidate, score in eligible
         if best - score <= protocol.tie_tolerance
-    )
+    ]
+    choose = min if protocol.tie_rule == "lower_smoothing" else max
+    return choose(tied)
 
 
 def _compose_selected_signal(

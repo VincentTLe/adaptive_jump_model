@@ -11,6 +11,7 @@ from typing import Any
 import pandas as pd
 
 from adaptive_jump.artifacts import read_json, verify_run
+from adaptive_jump.calibration import CalibrationRules
 from adaptive_jump.config import ResearchConfig, load_config
 
 MODEL_NAMES = {
@@ -24,10 +25,20 @@ def build_report(run: str | Path) -> Path:
     """Verify one sealed run, then write its deterministic report outside it."""
     run_dir = Path(run).resolve()
     metadata = read_json(run_dir / "run.json")
+    if metadata.get("study_kind") == "persistence_calibration":
+        verify_run(run_dir)
+        target = run_dir / "report.html"
+        if not target.is_file():
+            raise FileNotFoundError(target)
+        return target
     if metadata.get("study_kind") == "jm_train_window_sensitivity":
         from adaptive_jump.window_reporting import build_window_report
 
         return build_window_report(run_dir)
+    if metadata.get("study_kind") == "persistence_grid_evaluation":
+        from adaptive_jump.grid_runner import build_grid_report
+
+        return build_grid_report(run_dir)
     verification = verify_run(run_dir)
     manifest = read_json(run_dir / "data-manifest.json")
     config = load_config(run_dir / "config.lock.toml")
@@ -50,6 +61,81 @@ def build_report(run: str | Path) -> Path:
             claim=claim,
             metrics=metrics,
         ),
+        encoding="utf-8",
+    )
+    return target
+
+
+def write_calibration_report(
+    run_dir: Path,
+    run_id: str,
+    rules: CalibrationRules,
+    search: Any,
+) -> Path:
+    """Write the sealed English report from calibration diagnostics."""
+    candidates = search.diagnostics.candidate_diagnostics
+    selected_rows = []
+    for model, grid in search.diagnostics.grids.items():
+        for candidate in grid:
+            row = candidates.loc[
+                (candidates["model"] == model) & (candidates["candidate"] == candidate)
+            ].iloc[0]
+            selected_rows.append(
+                (
+                    MODEL_NAMES[model],
+                    _number(candidate),
+                    _number(row["aggregate_switch_rate"]),
+                    "Valid and behavior-distinct",
+                )
+            )
+    market_rows = [
+        (
+            market.upper(),
+            rules.exclusive_ends[market].isoformat(),
+            int(
+                search.diagnostics.market_diagnostics.loc[
+                    search.diagnostics.market_diagnostics["market"] == market,
+                    "observations",
+                ].max()
+            ),
+        )
+        for market in ("us", "de", "jp")
+    ]
+    attempted_hmm = int((candidates["model"] == "hmm").sum())
+    budget = len(search.diagnostics.grids["fixed_jm"])
+    target = run_dir / "report.html"
+    target.write_text(
+        f"""<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="run-id" content="{_text(run_id)}"><title>Persistence Calibration Report</title>
+<style>{_css()}</style></head>
+<body><main>
+<header><div class="eyebrow">Exploratory pre-OOS calibration</div>
+<h1>Persistence-calibrated parameter search</h1>
+<p class="lead">A behavior-based search for compact Jump Model and HMM candidate grids. It uses no strategy performance for selection.</p>
+<div class="verdict"><span>Current evidence</span><strong>Parameter region identified; OOS remains sealed</strong></div></header>
+<section><h2>What was searched</h2><div class="grid three">
+<article><b>{len(search.attempted_jm)}</b><span>JM penalties attempted</span></article>
+<article><b>{attempted_hmm}</b><span>HMM smoothing windows attempted</span></article>
+<article><b>{budget} + {budget}</b><span>equal selected budgets</span></article>
+</div><p>Candidates were retained only when both states occupied at least 5% of days and each market had at least two transitions. Duplicate three-market state paths kept the lower smoothing value.</p></section>
+<section><h2>Selected behavior grid</h2>
+<p>Switch rate means state changes per 252 observations. Values span the observed persistence range; they were not chosen for return performance.</p>
+{_table(("Model", "Parameter", "Aggregate switch rate", "Reason retained"), selected_rows)}</section>
+<section><h2>Calibration samples</h2>
+{_table(("Market", "First forbidden OOS date", "Pre-OOS observations"), market_rows)}</section>
+<section><h2>Evidence boundary</h2>
+<div class="note"><b>No Sharpe, trades, or OOS performance was calculated.</b>
+<p>This report identifies a usable numerical search region. It does not show that either model predicts markets, improves returns, or reproduces the paper.</p></div></section>
+<section><h2>Run identity</h2><dl>
+<dt>Run ID</dt><dd>{_text(run_id)}</dd>
+<dt>Study hash</dt><dd>{_text(rules.sha256)}</dd>
+<dt>Claim class</dt><dd>EXPLORATORY</dd>
+</dl></section>
+<footer>Generated only from the sealed calibration diagnostics and frozen study lock.</footer>
+</main></body></html>
+""",
         encoding="utf-8",
     )
     return target
@@ -195,7 +281,7 @@ def _results_section(
                 _percent(row.volatility),
                 f"{float(row.sharpe):.3f}",
                 _percent(row.maximum_drawdown),
-                f"{float(row.turnover):.2f}",
+                _percent(row.turnover),
             )
         )
     primary = int(config.backtest_protocol.primary_delay)

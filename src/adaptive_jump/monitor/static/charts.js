@@ -86,11 +86,131 @@
     });
   }
 
+  function finite(value) { return value !== null && value !== "" && Number.isFinite(Number(value)); }
+
+  function story(view) {
+    if (!view.rows.length) {
+      empty("replay-market-chart");
+      empty("replay-feature-chart");
+      return;
+    }
+    const dates = view.rows.map((row) => row.date);
+    const updateDuration = motion ? Math.min(220, view.frameDuration * 0.6) : 0;
+    const compact = document.getElementById("replay-feature-chart").offsetWidth < 600;
+    const storyPoints = view.rows.filter((row) => finite(row.strategy_wealth_100)).length;
+    const showStorySymbols = storyPoints < 3;
+    const volume = view.volumeAvailable;
+    const wealthAxis = volume ? 2 : 1;
+    const laneAxis = volume ? 3 : 2;
+    const grids = volume
+      ? [{ left: 68, right: 42, top: 34, height: "35%" }, { left: 68, right: 42, top: "44%", height: "8%" }, { left: 68, right: 42, top: "58%", height: "18%" }, { left: 68, right: 42, top: "82%", height: "11%" }]
+      : [{ left: 68, right: 42, top: 34, height: "44%" }, { left: 68, right: 42, top: "57%", height: "19%" }, { left: 68, right: 42, top: "82%", height: "11%" }];
+    const categoryAxis = (gridIndex, labels) => ({
+      type: "category", gridIndex, data: dates, boundaryGap: true,
+      axisLabel: { color: colors.muted, show: labels, hideOverlap: true },
+      axisLine: { lineStyle: { color: colors.line } }, axisTick: { show: false },
+    });
+    const xAxis = [categoryAxis(0, false)];
+    const yAxis = [{ type: "value", scale: true, gridIndex: 0, axisLabel: { color: colors.muted }, splitLine: { lineStyle: { color: colors.line } } }];
+    if (volume) {
+      xAxis.push(categoryAxis(1, false));
+      yAxis.push({ type: "value", gridIndex: 1, axisLabel: { color: colors.muted }, splitLine: { show: false } });
+    }
+    xAxis.push(categoryAxis(wealthAxis, false));
+    yAxis.push({ type: "value", name: "Wealth", scale: true, gridIndex: wealthAxis, axisLabel: { color: colors.muted }, splitLine: { lineStyle: { color: colors.line } } });
+    xAxis.push(categoryAxis(laneAxis, true));
+    yAxis.push({ type: "category", gridIndex: laneAxis, data: ["Position", "Signal"], axisLabel: { color: colors.muted }, axisLine: { lineStyle: { color: colors.line } } });
+    const candles = view.rows.map((row) => {
+      const raw = [row.open, row.close, row.low, row.high];
+      const values = raw.map(Number);
+      return raw.every(finite) && new Set(values).size > 1 ? values : "-";
+    });
+    const series = [];
+    if (view.candlesAvailable) series.push({
+      name: "OHLC", type: "candlestick", xAxisIndex: 0, yAxisIndex: 0, data: candles,
+      itemStyle: { color: colors.green, color0: colors.red, borderColor: colors.green, borderColor0: colors.red },
+    });
+    series.push({
+      name: "Close", type: "line", xAxisIndex: 0, yAxisIndex: 0, showSymbol: false,
+      connectNulls: false, data: view.rows.map((row) => finite(row.close) ? Number(row.close) : null),
+      lineStyle: { color: colors.amber, width: 1.3 }, itemStyle: { color: colors.amber },
+      markLine: { silent: true, symbol: ["none", "none"], label: { show: false }, lineStyle: { color: colors.text, type: "dashed" }, data: [{ xAxis: view.currentDate }] },
+    });
+    const enterMarket = [];
+    const moveToCash = [];
+    view.rows.forEach((row) => {
+      if (!finite(row.one_way_turnover) || Number(row.one_way_turnover) <= 0 || !finite(row.close)) return;
+      const marker = [row.date, Number(row.close), Number(row.transaction_cost) * 10_000];
+      (Number(row.position) === 1 ? enterMarket : moveToCash).push(marker);
+    });
+    series.push(
+      {
+        name: "Enter market", type: "scatter", xAxisIndex: 0, yAxisIndex: 0,
+        data: enterMarket, symbol: "triangle", symbolSize: 13,
+        itemStyle: { color: colors.green, borderColor: colors.text, borderWidth: 1 },
+      },
+      {
+        name: "Move to cash", type: "scatter", xAxisIndex: 0, yAxisIndex: 0,
+        data: moveToCash, symbol: "triangle", symbolRotate: 180, symbolSize: 13,
+        itemStyle: { color: colors.red, borderColor: colors.text, borderWidth: 1 },
+      },
+    );
+    if (volume) series.push({
+      name: "Volume", type: "bar", xAxisIndex: 1, yAxisIndex: 1,
+      data: view.rows.map((row) => finite(row.volume) ? Number(row.volume) : null),
+      itemStyle: { color: colors.muted },
+    });
+    series.push(
+      {
+        name: "Strategy", type: "line", xAxisIndex: wealthAxis, yAxisIndex: wealthAxis,
+        showSymbol: showStorySymbols, connectNulls: false,
+        data: view.rows.map((row) => finite(row.strategy_wealth_100) ? Number(row.strategy_wealth_100) : null),
+        lineStyle: { color: colors.green, width: 2 }, itemStyle: { color: colors.green },
+      },
+      {
+        name: "Buy & hold", type: "line", xAxisIndex: wealthAxis, yAxisIndex: wealthAxis,
+        showSymbol: showStorySymbols, connectNulls: false,
+        data: view.rows.map((row) => finite(row.buy_hold_wealth_100) ? Number(row.buy_hold_wealth_100) : null),
+        lineStyle: { color: colors.amber, width: 1.5 }, itemStyle: { color: colors.amber },
+      },
+    );
+    const stateData = [];
+    view.rows.forEach((row, index) => {
+      if (row.position === 0 || row.position === 1) stateData.push([index, 0, row.position]);
+      if (row.signal === 0 || row.signal === 1) stateData.push([index, 1, row.signal]);
+    });
+    series.push({
+      name: "State", type: "heatmap", xAxisIndex: laneAxis, yAxisIndex: laneAxis, data: stateData,
+      itemStyle: { color: (item) => item.value[2] === 1 ? colors.green : colors.blue, borderWidth: 0 },
+    });
+    render("replay-market-chart", {
+      ...baseOption(), animationDurationUpdate: updateDuration, animationEasingUpdate: "linear",
+      grid: grids, xAxis, yAxis, series, legend: { show: false },
+      tooltip: { trigger: "axis", backgroundColor: "#171d23", borderColor: colors.line, textStyle: { color: colors.text } },
+    });
+    render("replay-feature-chart", {
+      ...baseOption(),
+      animationDurationUpdate: updateDuration,
+      animationEasingUpdate: "linear",
+      grid: { left: 68, right: 55, top: 48, bottom: 38 },
+      xAxis: { type: "category", data: dates, boundaryGap: false, axisLabel: { color: colors.muted, hideOverlap: true }, axisLine: { lineStyle: { color: colors.line } } },
+      yAxis: [
+        { type: "value", name: compact ? "" : "DD-10", axisLabel: { color: colors.muted, formatter: (item) => `${(item * 100).toFixed(1)}%` }, splitLine: { lineStyle: { color: colors.line } } },
+        { type: "value", name: compact ? "" : "Sortino", axisLabel: { color: colors.muted }, splitLine: { show: false } },
+      ],
+      series: [
+        { name: "DD-10", type: "line", showSymbol: showStorySymbols, connectNulls: false, data: view.rows.map((row) => row.dd_10), lineStyle: { color: colors.red }, itemStyle: { color: colors.red } },
+        { name: "Sortino-20", type: "line", yAxisIndex: 1, showSymbol: showStorySymbols, connectNulls: false, data: view.rows.map((row) => row.sortino_20), lineStyle: { color: colors.blue }, itemStyle: { color: colors.blue } },
+        { name: "Sortino-60", type: "line", yAxisIndex: 1, showSymbol: showStorySymbols, connectNulls: false, data: view.rows.map((row) => row.sortino_60), lineStyle: { color: colors.amber }, itemStyle: { color: colors.amber }, markLine: { silent: true, symbol: ["none", "none"], label: { show: false }, data: [{ yAxis: 0 }, { xAxis: view.currentDate }] } },
+      ],
+    });
+  }
+
   function resize() {
     pending.forEach((option, id) => render(id, option));
     instances.forEach((instance) => instance.resize());
   }
 
   window.addEventListener("resize", resize);
-  window.MonitorCharts = { resource, comparison, resize };
+  window.MonitorCharts = { resource, comparison, story, resize };
 })();

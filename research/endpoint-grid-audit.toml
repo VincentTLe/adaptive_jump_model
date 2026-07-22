@@ -1,0 +1,137 @@
+schema_version = 1
+experiment_id = "endpoint-grid-audit-001"
+protocol_status = "FROZEN"
+frozen_at_utc = "2026-07-18T02:31:40Z"
+claim_class = "EXPLORATORY"
+stage = "ENDPOINT_GRID_AUDIT"
+hypothesis = "Completing each behavior-calibrated grid with its last globally valid eligible endpoint may reveal whether the earlier upper-bound concentration was a finite-grid truncation effect."
+primary_estimand = "paired endpoint-minus-base path and metric deltas, separately for fixed JM and HMM"
+post_2023_access = false
+adaptive_experiment = false
+performance_claim_allowed = false
+
+[parent]
+experiment_id = "fixed-baselines-001-v7"
+config_path = "research.toml"
+config_sha256 = "8adb330565d64f8ed6edd986f0422dbba72585eda4efd34b0c1b41b95450d81b"
+run_id = "fixed-baselines-8adb330565d6-3636939b525d-e9614112b234"
+run_inventory_sha256 = "08e42044c25ef80e92f4b565034652a6b87fe94de0e9122eee1a418395239d55"
+data_manifest_sha256 = "3636939b525d604c5c4180d7e3abb6192b53b81a068f009ad6ca83a945e53a84"
+data_cutoff = "2023-12-31"
+
+[calibration]
+experiment_id = "persistence-calibrated-search-001"
+run_id = "persistence-calibration-83beedafca37-08e42044c25e-766fdbd33604"
+spec_sha256 = "83beedafca3781d708f0a5ed74bd19127998e441f4242843c07127bcc90487b3"
+run_inventory_sha256 = "77b30ef98fa01fb6c311cfd6e2cbc35b2fb61e42e812389a84452b4785f5099f"
+selection_sha256 = "4f38899360f9240ad572dfe4c510a378881f1a3bc312807ecef2f96f1ae311a2"
+metrics_opened = false
+
+[base_grid]
+experiment_id = "persistence-grid-evaluation-001"
+run_id = "grid-eval-684fb4d81a9a-3636939b525d-9c81579e9de4"
+spec_sha256 = "684fb4d81a9a5bca01db07b914b8f21029200d59b24107a685d2b747255df80e"
+run_inventory_sha256 = "16060c2b05bd6a8d2ae1760b445cf0c0fcb837fe1d267fcf3501625a87eda04c"
+artifact_subdir = "persistence-grid-evaluation"
+required_status = "boundary_failed"
+metrics_opened = false
+candidate_budget_per_model = 9
+
+[endpoint_derivation]
+selection_rule = "maximum candidate with globally_valid and eligible"
+jm_path = "lambda_j = 2^(j/2)"
+jm_next_candidate = "endpoint * sqrt(2)"
+hmm_path = "integer k with unit steps"
+hmm_next_candidate = "endpoint + 1"
+first_higher_candidate_must_be_globally_invalid = true
+hand_entered_fallback_allowed = false
+
+[protocol]
+features = ["dd_10", "sortino_20", "sortino_60"]
+fit_window_observations = 3000
+validation_calendar_years = 8
+jm_refit_months = [1, 7]
+hmm_raw_fit = "reuse exact frozen-v7 raw states"
+monthly_objective = "annualized strategy excess Sharpe"
+tie_rule = "lower_smoothing"
+signal_to_return_offset = 2
+primary_delay = 1
+robustness_delays = [1, 5, 10]
+one_way_cost_bps = 10
+comparison_sample = "per-market intersection across all five paths and all delays"
+turnover = "half_mean_one_way_turnover_times_252"
+turnover_scale_source = "config.metrics_protocol.turnover_scale"
+
+[paths]
+materialized = ["B&H", "J0", "J1", "K0", "K1"]
+J0 = "fixed JM on the selected nine-candidate calibration grid"
+J1 = "J0 plus the derived JM endpoint"
+K0 = "HMM smoothing on the selected nine-candidate calibration grid"
+K1 = "K0 plus the derived HMM endpoint"
+
+[cells]
+A = ["J0", "K0"]
+B = ["J1", "K0"]
+C = ["J0", "K1"]
+D = ["J1", "K1"]
+composition_only = true
+fit_only_one_new_jm_candidate = true
+refit_hmm = false
+
+[boundary]
+upper_candidate_month_fraction_limit = 0.05
+descriptive_only = true
+seals_metrics = false
+additional_expansion_allowed = false
+
+[smoke]
+market = "us"
+terminal_dates = 20
+performance_metrics_opened = false
+run_before_market_evaluation = true
+require_full_run_prefix_match = true
+
+[decision]
+endpoint_effect = "report J1 minus J0 and K1 minus K0 for Sharpe, maximum drawdown, turnover, cash fraction, and switch count"
+finite_optimum_identified = "false if either endpoint remains the most-selected candidate above the descriptive boundary limit"
+primary_delay = 1
+d_rescue_gate = "J1 Sharpe > K1 Sharpe and J1 Sharpe > buy-and-hold Sharpe and abs(J1 MDD) < abs(buy-and-hold MDD) in every market"
+mdd_absolute_deadband = 1e-9
+mdd_deadband_rule = "improvement less than or equal to deadband is neutral and not better"
+all_markets_required = true
+binding_pairs = ["J1-J0", "K1-K0"]
+binding_components = ["monthly_choices", "signal_days", "comparable_state_days", "delayed_position_days", "trade_turnover_days", "reported_metrics"]
+binding_rule = "binding iff any component changes"
+metric_change_tolerance = 1e-12
+change_trace_delay = 1
+change_trace_signal_to_position_offset = 2
+winner_selection_allowed = false
+paper_replication_claim_allowed = false
+
+[control]
+parity_scope_label = "selection-behavior parity; base witness contains no trades or metrics"
+base_grid_artifact_role = "behavior-parity witness only; never a candidate-state or signal input"
+jm_current_recomputation = "recompute all nine J0 candidates plus one derived endpoint"
+hmm_current_recomputation = "recompute all nine K0 smoothings plus one derived endpoint from locked parent raw HMM states"
+parity_components = [
+  "complete J0 candidate-state matrix",
+  "complete J0 refit evidence",
+  "complete K0 candidate-state matrix",
+  "J0 and K0 monthly choices",
+  "J0 and K0 CV surfaces",
+  "J0 and K0 candidate returns",
+  "J0 and K0 selected signals",
+  "J0 and K0 boundary diagnostics",
+]
+exact_comparison = true
+metrics_before_parity_allowed = false
+receipt_fields = ["source_hashes", "artifact_hashes", "current_hashes", "counts"]
+
+[execution]
+process_start_method = "forkserver"
+market_workers = 3
+numerical_threads = 1
+
+[storage]
+artifact_subdir = "endpoint-grid-audit"
+generated_outputs_tracked = false

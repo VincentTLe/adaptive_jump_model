@@ -1,5 +1,6 @@
 import asyncio
 import json
+import threading
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -7,13 +8,16 @@ from adaptive_jump.monitor.api import MonitorServices, create_app
 from adaptive_jump.monitor.audit import AuditStore
 from adaptive_jump.monitor.event_store import EventStore
 from adaptive_jump.monitor.events import ResearchEvent
-from adaptive_jump.monitor.evidence import OutcomeLocked
+from adaptive_jump.monitor.evidence import EvidenceError, OutcomeLocked
 from adaptive_jump.monitor.http_security import HttpSecurityConfig, RequestSecurity
 from adaptive_jump.monitor.queue import QueueStore, StudyDefinition
 from adaptive_jump.monitor.security import AuthenticationError, Principal
 
 
 class _Authenticator:
+    credential_header = "Cf-Access-Jwt-Assertion"
+    challenge = "Cloudflare-Access"
+
     def authenticate(self, assertion):
         if assertion == "owner-token":
             return Principal("owner@example.com", "owner")
@@ -33,6 +37,31 @@ class _Evidence:
         if run_id != "open-run":
             raise OutcomeLocked(f"outcomes remain locked for {run_id}")
         return {"run_id": run_id, "metrics": [{"sharpe": 0.7}]}
+
+    def market_data(self, run_id, market):
+        if market != "us":
+            raise EvidenceError(f"market is unavailable: {market}")
+        return {
+            "run_id": run_id,
+            "market": market,
+            "source": {"provider": "yahoo", "source_id": "^SP500TR"},
+            "rows": [{"date": "2023-12-29", "close": 10327.83}],
+        }
+
+    def market_story(self, run_id, market, model, delay):
+        if market != "us":
+            raise EvidenceError(f"market is unavailable: {market}")
+        return {
+            "run_id": run_id,
+            "market": market,
+            "model": model,
+            "protocol": {
+                "delay_trading_days": delay,
+                "effective_return_offset": delay + 1,
+                "one_way_cost_bps": 10,
+            },
+            "rows": [{"date": "2023-12-29", "position": 1.0}],
+        }
 
 
 def _app(tmp_path: Path):
@@ -153,6 +182,14 @@ def test_event_api_reconnects_and_keeps_outcomes_server_locked(tmp_path: Path) -
     observer = services.events.observer(job.job_id)
     observer(ResearchEvent("stage_started", "hmm"))
     observer(ResearchEvent("metric_ready", "metrics", visibility="outcome"))
+    replay_thread_ids = []
+    original_replay = services.events.replay
+
+    def replay(*args, **kwargs):
+        replay_thread_ids.append(threading.get_ident())
+        return original_replay(*args, **kwargs)
+
+    services.events.replay = replay
 
     status, _headers, body = _request(
         app,
@@ -168,6 +205,97 @@ def test_event_api_reconnects_and_keeps_outcomes_server_locked(tmp_path: Path) -
         token="owner-token",
     )
     assert status == 200 and body["events"] == []
+    assert replay_thread_ids and set(replay_thread_ids) != {threading.get_ident()}
+
+
+def test_market_data_requires_one_verified_completed_job(tmp_path: Path) -> None:
+    app, services = _app(tmp_path)
+    job = services.queue.enqueue("study-a")
+
+    unavailable = _request(
+        app,
+        f"/api/jobs/{job.job_id}/markets/us/ohlcv",
+        token="viewer-token",
+    )
+    assert unavailable[0] == 409
+    story_unavailable = _request(
+        app,
+        f"/api/jobs/{job.job_id}/markets/us/story?model=fixed_jm&delay=1",
+        token="viewer-token",
+    )
+    assert story_unavailable[0] == 409
+
+    services.queue.claim_next()
+    observer = services.events.observer(job.job_id)
+    observer(
+        ResearchEvent(
+            "artifact_verified",
+            "verification",
+            visibility="decision",
+            payload={"run_id": "verified-run", "status": "complete"},
+        )
+    )
+    services.queue.finish(job.job_id, "succeeded", 0)
+
+    response = _request(
+        app,
+        f"/api/jobs/{job.job_id}/markets/us/ohlcv",
+        token="viewer-token",
+    )
+    assert response[0] == 200
+    assert response[2]["job_id"] == job.job_id
+    assert response[2]["run_id"] == "verified-run"
+    assert response[2]["source"]["source_id"] == "^SP500TR"
+
+    story = _request(
+        app,
+        f"/api/jobs/{job.job_id}/markets/us/story?model=hmm&delay=5",
+        token="viewer-token",
+    )
+    assert story[0] == 200
+    assert story[2]["job_id"] == job.job_id
+    assert story[2]["model"] == "hmm"
+    assert story[2]["protocol"]["effective_return_offset"] == 6
+
+    invalid_story = _request(
+        app,
+        f"/api/jobs/{job.job_id}/markets/us/story?model=p2&delay=2",
+        token="viewer-token",
+    )
+    assert invalid_story[0] == 422
+    invalid_delay = _request(
+        app,
+        f"/api/jobs/{job.job_id}/markets/us/story?model=fixed_jm&delay=2",
+        token="viewer-token",
+    )
+    assert invalid_delay[0] == 422
+
+    unknown_market = _request(
+        app,
+        f"/api/jobs/{job.job_id}/markets/xx/ohlcv",
+        token="viewer-token",
+    )
+    assert unknown_market[0] == 409
+
+    duplicate = services.queue.enqueue("study-a")
+    services.queue.claim_next()
+    duplicate_observer = services.events.observer(duplicate.job_id)
+    for _ in range(2):
+        duplicate_observer(
+            ResearchEvent(
+                "artifact_verified",
+                "verification",
+                visibility="decision",
+                payload={"run_id": "verified-run", "status": "complete"},
+            )
+        )
+    services.queue.finish(duplicate.job_id, "succeeded", 0)
+    rejected = _request(
+        app,
+        f"/api/jobs/{duplicate.job_id}/markets/us/ohlcv",
+        token="viewer-token",
+    )
+    assert rejected[0] == 409
 
 
 def test_evidence_outcomes_use_backend_lock_status(tmp_path: Path) -> None:

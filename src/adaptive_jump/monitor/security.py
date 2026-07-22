@@ -1,18 +1,23 @@
-"""Cloudflare Access JWT authentication for the loopback monitor origin."""
+"""Local and Cloudflare authentication for the loopback monitor origin."""
 
 from __future__ import annotations
 
+import base64
+import binascii
+import hmac
 import os
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol
 from urllib.parse import urlsplit
 
 import jwt
 
 ACCESS_ASSERTION_HEADER = "Cf-Access-Jwt-Assertion"
+AUTHORIZATION_HEADER = "Authorization"
 ALGORITHM = "RS256"
 _MAX_ASSERTION_BYTES = 16_384
+_MAX_BASIC_BYTES = 1_024
 KeyResolver = Callable[[str], Any]
 
 
@@ -24,6 +29,58 @@ class AuthenticationError(ValueError):
 class Principal:
     email: str
     role: str
+
+
+class Authenticator(Protocol):
+    credential_header: str
+    challenge: str
+
+    def authenticate(self, credential: str) -> Principal: ...
+
+
+class LocalAuthenticator:
+    """Authenticate one local owner through browser-native HTTP Basic auth."""
+
+    credential_header = AUTHORIZATION_HEADER
+    challenge = 'Basic realm="Adaptive Jump Monitor", charset="UTF-8"'
+    username = "owner"
+    principal = Principal("local-owner@localhost", "owner")
+
+    def __init__(self, password: str) -> None:
+        if (
+            not _plain_value(password)
+            or not password.isascii()
+            or not 16 <= len(password) <= 256
+        ):
+            raise AuthenticationError(
+                "local monitor password must contain 16 to 256 ASCII characters"
+            )
+        self._password = password
+
+    def authenticate(self, credential: str) -> Principal:
+        if (
+            not isinstance(credential, str)
+            or not credential
+            or len(credential.encode("utf-8")) > _MAX_BASIC_BYTES
+        ):
+            raise AuthenticationError("local monitor credentials are missing")
+        try:
+            scheme, encoded = credential.split(" ", 1)
+            decoded = base64.b64decode(encoded, validate=True).decode("utf-8")
+            username, separator, password = decoded.partition(":")
+        except (ValueError, UnicodeError, binascii.Error) as exc:
+            raise AuthenticationError("local monitor credentials are invalid") from exc
+        valid = (
+            scheme.lower() == "basic"
+            and bool(separator)
+            and username.isascii()
+            and password.isascii()
+            and hmac.compare_digest(username, self.username)
+            and hmac.compare_digest(password, self._password)
+        )
+        if not valid:
+            raise AuthenticationError("local monitor credentials are invalid")
+        return self.principal
 
 
 @dataclass(frozen=True)
@@ -87,6 +144,9 @@ class AccessConfig:
 
 class AccessAuthenticator:
     """Verify Cloudflare-signed assertions and resolve exact-email roles."""
+
+    credential_header = ACCESS_ASSERTION_HEADER
+    challenge = "Cloudflare-Access"
 
     def __init__(
         self, config: AccessConfig, key_resolver: KeyResolver | None = None

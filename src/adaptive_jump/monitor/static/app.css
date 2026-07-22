@@ -88,7 +88,36 @@ tbody tr:last-child td { border-bottom: 0; }
 .replay-controls button { width: 40px; padding: 0; }
 .replay-controls input { width: 100%; accent-color: var(--blue); }
 .replay-controls output { color: var(--muted); font-variant-numeric: tabular-nums; }
-.replay-frame pre { min-height: 300px; max-height: 560px; padding: 16px; margin: 0; overflow: auto; color: #c9d5df; font: 12px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; }
+.replay-filter-bar { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)) minmax(240px, 2fr); gap: 12px; align-items: end; margin-bottom: 14px; }
+.replay-filter-bar label { display: grid; gap: 5px; color: var(--muted); font-size: 11px; text-transform: uppercase; }
+.replay-filter-bar select { height: 38px; padding: 0 10px; text-transform: none; }
+.replay-filter-bar > span { align-self: center; color: var(--muted); font-size: 12px; text-align: right; }
+.replay-summary { grid-template-columns: repeat(5, 1fr); }
+.replay-market-chart { width: 100%; height: 620px; }
+.replay-feature-chart { width: 100%; height: 270px; }
+.replay-feature-panel { margin-top: 18px; }
+.replay-market-panel .panel-heading { height: auto; min-height: 48px; padding-block: 10px; }
+.replay-market-chart.ready + .fallback, .replay-feature-chart.ready + .fallback { display: none; }
+.decision-flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
+.decision-flow div { min-width: 0; padding: 12px 14px; border-right: 1px solid var(--line); }
+.decision-flow div:last-child { border-right: 0; }
+.decision-flow span { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; }
+.decision-flow strong { display: block; margin-top: 6px; overflow-wrap: anywhere; font-size: 13px; }
+.replay-legend { display: flex; flex-wrap: wrap; gap: 15px; padding: 10px 15px 0; color: var(--muted); font-size: 11px; }
+.replay-legend span { display: inline-flex; gap: 6px; align-items: center; }
+.replay-legend i { width: 14px; height: 8px; border: 1px solid var(--line); }
+.legend-strategy, .legend-market { background: var(--green); }
+.legend-buy-hold { background: var(--amber); }
+.legend-cash { background: var(--blue); }
+.legend-enter { background: var(--green); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.legend-exit { background: var(--red); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.runtime-audit { margin-top: 18px; }
+.runtime-audit summary { display: flex; justify-content: space-between; padding: 15px; cursor: pointer; }
+.runtime-audit summary span { color: var(--muted); font-size: 12px; }
+.audit-controls { display: grid; grid-template-columns: minmax(180px, 1fr) auto; gap: 12px; align-items: center; padding: 12px 15px; border-top: 1px solid var(--line); }
+.audit-controls input { width: 100%; accent-color: var(--blue); }
+.audit-controls output { color: var(--muted); font-variant-numeric: tabular-nums; }
+.runtime-audit pre { min-height: 220px; max-height: 460px; padding: 16px; margin: 0; overflow: auto; color: #c9d5df; font: 12px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; }
 .run-selector { display: flex; gap: 8px; margin-bottom: 18px; overflow-x: auto; }
 .run-selector button { text-align: left; white-space: nowrap; }
 .run-selector button.active { color: var(--green); border-color: var(--green); }
@@ -104,16 +133,24 @@ tbody tr:last-child td { border-bottom: 0; }
 .diagnostic-grid { grid-template-columns: 1fr; }
 .diagnostic-grid > div + div { border-top: 1px solid var(--line); border-left: 0; }
 .receipt-strip { grid-template-columns: repeat(2, 1fr); }
+.decision-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 600px) { .topbar { min-height: 68px; height: auto; padding: 10px 16px; }
 .session { flex-direction: column; gap: 3px; align-items: flex-end; text-align: right; }
 .view-tabs { padding-inline: 12px; }
 main { padding: 20px 14px 45px; }
-.view-heading { align-items: flex-start; }
+.view-heading { flex-wrap: wrap; align-items: flex-start; }
+.view-heading select { max-width: 100%; }
 .view h1 { font-size: 24px; }
 .summary-strip { grid-template-columns: 1fr; }
 .summary-strip div { border-right: 0; }
 .receipt-strip { grid-template-columns: 1fr; }
+.replay-filter-bar { grid-template-columns: 1fr; }
+.replay-filter-bar > span { text-align: left; }
+.replay-summary { grid-template-columns: 1fr; }
+.decision-flow { grid-template-columns: 1fr; }
+.decision-flow div { border-right: 0; border-bottom: 1px solid var(--line); }
+.decision-flow div:last-child { border-bottom: 0; }
 .stage-track { grid-template-columns: 1fr; padding: 12px; }
 .stage-track li { min-height: 42px; padding: 11px 8px 8px 32px; border-top: 0; border-left: 3px solid var(--gray); }
 .stage-track li::before { top: 12px; left: 9px; }
@@ -123,4 +160,6 @@ main { padding: 20px 14px 45px; }
 .replay-controls { grid-template-columns: repeat(5, 40px); overflow-x: auto; }
 .replay-controls input, .replay-controls output { grid-column: 1 / -1; }
 .chart { height: 230px; }
+.replay-market-chart { height: 560px; }
+.replay-feature-chart { height: 250px; }
 }

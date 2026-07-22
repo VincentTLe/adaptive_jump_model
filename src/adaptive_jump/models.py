@@ -15,6 +15,7 @@ import pandas as pd
 from hmmlearn.base import ConvergenceMonitor
 from hmmlearn.hmm import GaussianHMM
 from jumpmodels.jump import JumpModel
+from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from threadpoolctl import threadpool_limits
 
@@ -66,9 +67,19 @@ class HMMResult:
 
 
 @dataclass
-class _FixedJMFit:
+class FixedJMFit:
+    """Fitted fixed-JM candidates sharing one past-only feature scaler."""
+
     scaler: StandardScaler
     models: dict[float, JumpModel]
+    observation_loss_scale: float = 1.0
+
+    def transform(self, features: pd.DataFrame) -> np.ndarray:
+        """Apply the fitted standardization and declared loss scaling."""
+        scaled = self.scaler.transform(features)
+        if self.observation_loss_scale != 1.0:
+            scaled = scaled * math.sqrt(self.observation_loss_scale)
+        return scaled
 
 
 def fixed_jm_states(
@@ -77,6 +88,8 @@ def fixed_jm_states(
     jm_protocol: JMProtocol,
     *,
     feature_columns: tuple[str, ...] = FEATURE_COLUMNS,
+    observation_loss_scale: float = 1.0,
+    include_fit_diagnostics: bool = False,
     initial: FixedJMResult | None = None,
     checkpoint_every: int = 50,
     progress: Callable[[FixedJMResult], None] | None = None,
@@ -85,13 +98,16 @@ def fixed_jm_states(
     """Generate causal terminal online states for every frozen lambda."""
     if checkpoint_every < 1:
         raise ModelError("JM checkpoint interval must be positive")
+    observation_loss_scale = _validated_observation_loss_scale(observation_loss_scale)
+    if initial is not None and observation_loss_scale != 1.0:
+        raise ModelError("scaled JM does not support checkpoint resume")
     complete, all_dates = _complete_model_frame(
         frame, (*feature_columns, "excess_return")
     )
     fit_window = model_protocol.fit_window
     penalties = jm_protocol.lambda_grid
     states = pd.DataFrame(index=all_dates, columns=penalties, dtype=float)
-    fit: _FixedJMFit | None = None
+    fit: FixedJMFit | None = None
     last_anchor: tuple[int, int] | None = None
     records: list[dict[str, object]] = []
     first_terminal = fit_window - 1
@@ -119,11 +135,12 @@ def fixed_jm_states(
         refit_window = complete.iloc[
             last_refit_terminal - fit_window + 1 : last_refit_terminal + 1
         ]
-        fit = _fit_fixed_jm(
+        fit = fit_fixed_jm_window(
             refit_window,
             model_protocol,
             jm_protocol,
             feature_columns=feature_columns,
+            observation_loss_scale=observation_loss_scale,
         )
         refit_date = pd.Timestamp(refit_window.iloc[-1]["date"])
         last_anchor = (refit_date.year, refit_date.month)
@@ -133,14 +150,22 @@ def fixed_jm_states(
         anchor = (current_date.year, current_date.month)
         scheduled = current_date.month in jm_protocol.refit_months
         if fit is None or (scheduled and anchor != last_anchor):
-            fit = _fit_fixed_jm(
+            fit = fit_fixed_jm_window(
                 window,
                 model_protocol,
                 jm_protocol,
                 feature_columns=feature_columns,
+                observation_loss_scale=observation_loss_scale,
             )
             last_anchor = anchor
-            records.extend(_jm_fit_records(fit, window, current_date))
+            records.extend(
+                _jm_fit_records(
+                    fit,
+                    window,
+                    current_date,
+                    include_fit_diagnostics=include_fit_diagnostics,
+                )
+            )
             runtime.emit_fixed_jm_refit(
                 observer,
                 current_date.date(),
@@ -148,7 +173,7 @@ def fixed_jm_states(
                 total,
             )
 
-        scaled = fit.scaler.transform(window.loc[:, feature_columns])
+        scaled = fit.transform(window.loc[:, feature_columns])
         for penalty, fitted_model in fit.models.items():
             states.loc[current_date, penalty] = terminal_online_state(
                 fitted_model, scaled
@@ -327,21 +352,49 @@ def best_hmm_terminal_fit(
     values = np.asarray(log_returns, dtype=float).reshape(-1, 1)
     if len(values) != model_protocol.fit_window or not np.isfinite(values).all():
         raise ModelError("HMM window must contain the frozen number of finite returns")
+    if (
+        not isinstance(hmm_protocol.kmeans_n_init, int)
+        or hmm_protocol.kmeans_n_init < 1
+    ):
+        raise ModelError("HMM KMeans n_init must be a positive integer")
+    if not math.isfinite(hmm_protocol.covars_prior) or hmm_protocol.covars_prior < 0:
+        raise ModelError("HMM covariance prior must be finite and non-negative")
 
     accepted: list[tuple[float, int, int, tuple[float, float]]] = []
     failures: list[str] = []
     for seed in hmm_protocol.seeds:
         try:
             with _quiet_hmmlearn():
+                means = (
+                    KMeans(
+                        n_clusters=model_protocol.n_states,
+                        init="k-means++",
+                        n_init=hmm_protocol.kmeans_n_init,
+                        random_state=seed,
+                    )
+                    .fit(values)
+                    .cluster_centers_
+                )
                 model = GaussianHMM(
                     n_components=model_protocol.n_states,
                     covariance_type="diag",
                     min_covar=hmm_protocol.min_covar,
+                    startprob_prior=1.0,
+                    transmat_prior=1.0,
+                    means_prior=0.0,
+                    means_weight=0.0,
+                    covars_prior=hmm_protocol.covars_prior,
+                    covars_weight=1.0,
                     n_iter=hmm_protocol.n_iter,
                     tol=hmm_protocol.tol,
                     algorithm="viterbi",
                     random_state=seed,
+                    verbose=False,
+                    params="stmc",
+                    init_params="stc",
+                    implementation="log",
                 )
+                model.means_ = means
                 model.monitor_ = _SymmetricConvergenceMonitor(
                     hmm_protocol.tol, hmm_protocol.n_iter, False
                 )
@@ -409,6 +462,7 @@ def smoothed_hmm_states(
     *,
     threshold: float = 0.5,
     min_periods: int = 1,
+    require_full_window: bool = False,
 ) -> pd.DataFrame:
     """Apply the preregistered causal majority filter to HMM states."""
     values = pd.Series(states, dtype=float)
@@ -421,27 +475,32 @@ def smoothed_hmm_states(
         if window == 0:
             candidates[window] = values
             continue
-        mean = values.rolling(window=window, min_periods=min_periods).mean()
+        required = window if require_full_window else min_periods
+        mean = values.rolling(window=window, min_periods=required).mean()
         candidates[window] = (mean > threshold).astype(float).where(mean.notna())
     candidates.columns.name = "k"
     return candidates
 
 
-def _fit_fixed_jm(
+def fit_fixed_jm_window(
     window: pd.DataFrame,
     model_protocol: ModelProtocol,
     jm_protocol: JMProtocol,
     *,
-    feature_columns: tuple[str, ...],
-) -> _FixedJMFit:
+    feature_columns: tuple[str, ...] = FEATURE_COLUMNS,
+    observation_loss_scale: float = 1.0,
+) -> FixedJMFit:
+    """Fit every fixed-JM penalty on one past-only training window."""
     if len(window) != model_protocol.fit_window:
         raise ModelError("JM fit window length violates the protocol")
+    observation_loss_scale = _validated_observation_loss_scale(observation_loss_scale)
     features = window.loc[:, feature_columns]
     returns = window.loc[:, "excess_return"]
     scaler = StandardScaler().fit(features)
-    scaled = pd.DataFrame(
-        scaler.transform(features), index=features.index, columns=features.columns
-    )
+    scaled_values = scaler.transform(features)
+    if observation_loss_scale != 1.0:
+        scaled_values = scaled_values * math.sqrt(observation_loss_scale)
+    scaled = pd.DataFrame(scaled_values, index=features.index, columns=features.columns)
     models: dict[float, JumpModel] = {}
     for penalty in jm_protocol.lambda_grid:
         fitted = JumpModel(
@@ -449,7 +508,7 @@ def _fit_fixed_jm(
             jump_penalty=penalty,
             random_state=jm_protocol.random_state,
             max_iter=jm_protocol.max_iter,
-            tol=jm_protocol.tol,
+            tol=jm_protocol.tol * observation_loss_scale,
             n_init=jm_protocol.n_init,
         ).fit(scaled, ret_ser=returns, sort_by="cumret")
         if not math.isfinite(float(fitted.val_)):
@@ -458,11 +517,31 @@ def _fit_fixed_jm(
         if not np.isin(labels, [0, 1]).all():
             raise ModelError(f"JM lambda {penalty:g} produced invalid states")
         models[penalty] = fitted
-    return _FixedJMFit(scaler=scaler, models=models)
+    return FixedJMFit(
+        scaler=scaler,
+        models=models,
+        observation_loss_scale=observation_loss_scale,
+    )
+
+
+def _validated_observation_loss_scale(value: float) -> float:
+    if isinstance(value, bool):
+        raise ModelError("JM observation loss scale must be finite and positive")
+    try:
+        scale = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ModelError("JM observation loss scale must be a real scalar") from exc
+    if not math.isfinite(scale) or scale <= 0:
+        raise ModelError("JM observation loss scale must be finite and positive")
+    return scale
 
 
 def _jm_fit_records(
-    fit: _FixedJMFit, window: pd.DataFrame, fit_date: pd.Timestamp
+    fit: FixedJMFit,
+    window: pd.DataFrame,
+    fit_date: pd.Timestamp,
+    *,
+    include_fit_diagnostics: bool = False,
 ) -> list[dict[str, object]]:
     common: dict[str, object] = {
         "fit_date": fit_date,
@@ -472,10 +551,26 @@ def _jm_fit_records(
         "scaler_mean": fit.scaler.mean_.tolist(),
         "scaler_scale": fit.scaler.scale_.tolist(),
     }
-    return [
-        {**common, "lambda": penalty, "objective": float(model.val_)}
-        for penalty, model in fit.models.items()
-    ]
+    records = []
+    for penalty, model in fit.models.items():
+        record = {
+            **common,
+            "lambda": penalty,
+            "objective": float(model.val_),
+        }
+        if include_fit_diagnostics:
+            active_state_count = int(
+                np.unique(np.asarray(model.labels_, dtype=int)).size
+            )
+            record.update(
+                {
+                    "centers": np.asarray(model.centers_, dtype=float).tolist(),
+                    "active_state_count": active_state_count,
+                    "collapsed_to_one_state": active_state_count == 1,
+                }
+            )
+        records.append(record)
+    return records
 
 
 def _complete_model_frame(

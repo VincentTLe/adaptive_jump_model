@@ -1,0 +1,91 @@
+schema_version = 1
+experiment_id = "persistence-calibrated-search-001"
+frozen_at_utc = "2026-07-15T09:44:15Z"
+claim_class = "EXPLORATORY"
+stage = "DOMAIN_CALIBRATION"
+objective = "Find small equal-budget JM and HMM candidate sets spanning distinct nondegenerate persistence behavior without using outer performance."
+outer_performance_access = false
+strategy_metrics_allowed = false
+extension_access = false
+adaptive_experiment = false
+
+[source]
+paper = "Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3"
+paper_sha256 = "141e48bd5ccaefe5d2c276a3c8772716b583b1df91517109d54a2452f4cb3af1"
+complete_cross_validation_grids_disclosed = false
+
+[parent]
+experiment_id = "fixed-baselines-001-v7"
+config_path = "research.toml"
+config_sha256 = "8adb330565d64f8ed6edd986f0422dbba72585eda4efd34b0c1b41b95450d81b"
+run_id = "fixed-baselines-8adb330565d6-3636939b525d-e9614112b234"
+run_inventory_sha256 = "08e42044c25ef80e92f4b565034652a6b87fe94de0e9122eee1a418395239d55"
+data_manifest_sha256 = "3636939b525d604c5c4180d7e3abb6192b53b81a068f009ad6ca83a945e53a84"
+artifact_git_sha = "e9614112b234abcff26f33c446a0a692bf31c262"
+data_cutoff = "2023-12-31"
+
+[calibration]
+date_rule = "model-eligible dates strictly before each market OOS start"
+us_exclusive_end = "2007-12-04"
+de_exclusive_end = "2008-01-03"
+jp_exclusive_end = "2009-05-07"
+jm_state_label_uses_excess_returns = true
+strategy_returns_allowed = false
+outer_rows_allowed = false
+future_mutation_must_be_output_neutral = true
+
+[jm_path]
+include_zero = true
+formula = "lambda_j = 2^(j/2)"
+initial_j_min = -8
+initial_j_max = 22
+hard_j_max = 30
+upper_stop_consecutive_globally_invalid = 3
+fail_without_upper_stop = true
+n_init = 10
+random_state = 0
+reuse_parent_values_when_identity_matches = true
+
+[hmm_path]
+k_min = 0
+k_max = 2560
+k_step = 1
+reuse_parent_raw_states = true
+refit_hmm = false
+
+[validity]
+minimum_state_fraction_each = 0.05
+minimum_transitions_each_market = 2
+switch_rate_unit = "transitions_per_252_observations"
+candidate_validity = "must pass every market"
+duplicate_rule = "identical paths in every market"
+duplicate_tie_break = "lower_smoothing"
+
+[compression]
+aggregate_switch_rate = "geometric_mean_across_markets"
+maximum_candidates_per_model = 9
+common_budget_rule = "min(9, valid_unique_jm_count, valid_unique_hmm_count)"
+minimum_common_budget = 3
+targets = "equally_spaced_log_aggregate_switch_rate_including_endpoints"
+nearest_target_tie_break = "lower_smoothing"
+require_equal_model_budgets = true
+
+[parallel]
+task_unit = "market_and_lambda"
+process_workers = 16
+blas_threads_per_worker = 1
+start_method = "forkserver"
+require_serial_parallel_equality = true
+candidate_checkpointing = true
+
+[freeze_gate]
+outer_selection_allowed = false
+outer_metrics_allowed = false
+derived_grid_lock_required = true
+derived_grid_review_required = true
+result_driven_expansion_allowed = false
+
+[storage]
+artifact_subdir = "persistence-calibrated-search"
+report_language = "English"
+generated_outputs_tracked = false

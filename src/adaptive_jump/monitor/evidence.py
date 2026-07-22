@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import io
 import json
+import math
+import re
 import threading
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -12,9 +16,13 @@ from typing import Any
 import pandas as pd
 
 from adaptive_jump import artifacts
+from adaptive_jump.config import load_config
 from adaptive_jump.window_verifier import verify_window_run
 
 Verifier = Callable[[str | Path], dict[str, Any]]
+_MonitorRun = tuple[Path, dict[str, Any], dict[str, Any], str]
+_FIXED_RUN_ID = re.compile(r"fixed-baselines-(?:[0-9a-f]{12}-){2}[0-9a-f]{12}\Z")
+_MARKET_ID = re.compile(r"[a-z]{2}\Z")
 
 
 class EvidenceError(RuntimeError):
@@ -136,6 +144,206 @@ class EvidenceStore:
         self._require_unchanged(run_dir, seal)
         return result
 
+    def market_data(self, run_id: str, market: str) -> dict[str, Any]:
+        """Return hash-checked raw OHLCV for one verified fixed-baseline run."""
+        run_dir, receipt, metadata, seal = self._monitor_run(run_id, market)
+        manifest = artifacts.read_json(run_dir / "data-manifest.json")
+        source = _equity_source(manifest, market)
+        payload = self._read_raw_source(source)
+        rows, observed = _parse_ohlcv(payload)
+        manifest_quality = source.get("quality")
+        if not isinstance(manifest_quality, dict):
+            raise EvidenceError("market source quality metadata is invalid")
+        expected_rows = manifest_quality.get("rows")
+        if isinstance(expected_rows, int) and expected_rows != observed["rows"]:
+            raise EvidenceError("raw row count disagrees with the data manifest")
+
+        result = {
+            "run_id": run_id,
+            "run_status": receipt["status"],
+            "market": market,
+            "acquisition_run_id": manifest.get("run_id"),
+            "data_manifest_sha256": metadata.get("data_manifest_sha256"),
+            "source": {
+                "provider": source.get("provider"),
+                "source_id": source.get("source_id"),
+                "currency": source.get("currency"),
+                "frequency": source.get("frequency"),
+                "classification": source.get("source_classification"),
+                "value_field": source.get("value_field"),
+                "deviations": source.get("deviations", []),
+                "raw_sha256": source["raw"]["sha256"],
+                "raw_bytes": source["raw"]["bytes"],
+            },
+            "coverage": {
+                "first_date": rows[0]["date"] if rows else None,
+                "last_date": rows[-1]["date"] if rows else None,
+                "rows": len(rows),
+            },
+            "quality": {
+                **observed,
+                "candles_available": observed["distinct_ohlc_rows"] > 0,
+                "volume_available": observed["nonzero_volume_rows"] > 0,
+                "price_rendering": (
+                    "candlestick_with_close_fallback"
+                    if observed["distinct_ohlc_rows"] > 0
+                    else "close_line"
+                ),
+                "volume_rendering": (
+                    "bars" if observed["nonzero_volume_rows"] > 0 else "hidden"
+                ),
+                "manifest": manifest_quality,
+            },
+            "rows": rows,
+        }
+        self._require_unchanged(run_dir, seal)
+        return result
+
+    def market_story(
+        self, run_id: str, market: str, model: str, delay: int
+    ) -> dict[str, Any]:
+        """Return validated daily features and opened trade evidence for replay."""
+        if model not in artifacts.SELECTION_MODELS:
+            raise EvidenceError(f"story model is unavailable: {model}")
+        run_dir, receipt, metadata, seal = self._monitor_run(run_id, market)
+        metrics_opened = metadata.get("metrics_opened") is True
+        if not metrics_opened or receipt["status"] != "complete":
+            raise OutcomeLocked(f"outcomes remain locked for {run_id}")
+        try:
+            config = load_config(run_dir / "config.lock.toml")
+            allowed_delays = set(config.backtest_protocol.robustness_delays)
+            if type(delay) is not int or delay not in allowed_delays:
+                raise EvidenceError(f"story delay is unavailable: {delay}")
+            if market not in {item.id for item in config.markets}:
+                raise EvidenceError(f"market is unavailable: {market}")
+            trade_root = run_dir / market / "trades"
+            strategy = artifacts.read_trade_path(
+                trade_root / f"{model}-delay-{delay}.csv",
+                delay,
+                config.backtest_protocol.one_way_cost_bps,
+            )
+            buy_hold = artifacts.read_trade_path(
+                trade_root / f"buy_and_hold-delay-{delay}.csv",
+                delay,
+                config.backtest_protocol.one_way_cost_bps,
+            )
+        except (artifacts.ArtifactError, OSError, ValueError) as exc:
+            raise EvidenceError(f"verified story accounting failed: {exc}") from exc
+        shared = ["date", "equity_simple", "cash_return"]
+        if not strategy[shared].equals(buy_hold[shared]):
+            raise EvidenceError("verified story trade samples do not match")
+        feature_path = run_dir / market / "features.csv"
+        features = _read_story_features(feature_path).set_index("date")
+        if not strategy["date"].isin(features.index).all():
+            raise EvidenceError("verified story features do not cover the trade path")
+        feature_columns = ["excess_return", "dd_10", "sortino_20", "sortino_60"]
+        selected = features.loc[strategy["date"], feature_columns]
+        rows = strategy.copy()
+        rows[feature_columns] = selected.to_numpy()
+        rows["buy_hold_return"] = buy_hold["strategy_return"].to_numpy()
+        for prefix, returns in (
+            ("strategy", rows["strategy_return"]),
+            ("buy_hold", rows["buy_hold_return"]),
+        ):
+            wealth = (1.0 + returns).cumprod() * 100.0
+            rows[f"{prefix}_wealth_100"] = wealth
+            rows[f"{prefix}_drawdown"] = wealth / wealth.cummax().clip(lower=100) - 1
+        rows["date"] = rows["date"].dt.date.astype(str)
+        result_columns = [
+            "date",
+            *feature_columns,
+            *artifacts.TRADE_COLUMNS[1:],
+            "strategy_wealth_100",
+            "strategy_drawdown",
+            "buy_hold_return",
+            "buy_hold_wealth_100",
+            "buy_hold_drawdown",
+        ]
+        records = json.loads(rows[result_columns].to_json(orient="records"))
+        self._require_unchanged(run_dir, seal)
+        return {
+            "run_id": run_id,
+            "market": market,
+            "model": model,
+            "protocol": {
+                "delay_trading_days": delay,
+                "effective_return_offset": delay + 1,
+                "one_way_cost_bps": config.backtest_protocol.one_way_cost_bps,
+            },
+            "coverage": {
+                "first_date": records[0]["date"],
+                "last_date": records[-1]["date"],
+                "rows": len(records),
+            },
+            "rows": records,
+        }
+
+    def _monitor_run(self, run_id: str, market: str) -> _MonitorRun:
+        if not isinstance(run_id, str) or _FIXED_RUN_ID.fullmatch(run_id) is None:
+            raise EvidenceError("verified fixed-baseline run identity is invalid")
+        if not isinstance(market, str) or _MARKET_ID.fullmatch(market) is None:
+            raise EvidenceError(f"market is unavailable: {market}")
+        run_dir = (self.artifact_root / "fixed-baselines" / run_id).resolve()
+        if run_dir.name != run_id or not run_dir.is_relative_to(self.artifact_root):
+            raise EvidenceError("verified run path is invalid")
+        receipt, metadata, seal = self._verify_monitor_run(run_id, run_dir)
+        return run_dir, receipt, metadata, seal
+
+    def _verify_monitor_run(
+        self, run_id: str, run_dir: Path
+    ) -> tuple[dict[str, Any], dict[str, Any], str]:
+        if not run_dir.is_dir():
+            raise EvidenceError(f"verified run is unavailable: {run_id}")
+        with self._lock:
+            try:
+                seal = self._seal_identity(run_dir)
+                metadata = artifacts.read_json(run_dir / "run.json")
+                cached = self._receipts.get(run_id)
+                if cached is not None and cached[0] == seal:
+                    receipt = cached[1]
+                else:
+                    receipt = artifacts.verify_run(run_dir)
+                    receipt = json.loads(json.dumps(receipt, allow_nan=False))
+                    self._receipts[run_id] = (seal, receipt)
+            except (artifacts.ArtifactError, OSError, ValueError) as exc:
+                raise EvidenceError(
+                    f"verified run validation failed: {run_id}"
+                ) from exc
+        if (
+            metadata.get("run_id") != run_id
+            or receipt.get("run_id") != run_id
+            or receipt.get("status") != metadata.get("status")
+        ):
+            raise EvidenceError("verifier returned a different run identity")
+        return receipt, metadata, seal
+
+    def _read_raw_source(self, source: dict[str, Any]) -> bytes:
+        raw = source.get("raw")
+        if not isinstance(raw, dict):
+            raise EvidenceError("market source raw metadata is invalid")
+        relative = raw.get("path")
+        expected_hash = raw.get("sha256")
+        expected_bytes = raw.get("bytes")
+        if (
+            not isinstance(relative, str)
+            or not isinstance(expected_hash, str)
+            or not isinstance(expected_bytes, int)
+        ):
+            raise EvidenceError("market source raw identity is invalid")
+        raw_root = (self.project_root / "data/raw").resolve()
+        path = (self.project_root / relative).resolve()
+        if not path.is_relative_to(raw_root) or not path.is_file():
+            raise EvidenceError("market source path is outside the raw-data root")
+        try:
+            payload = path.read_bytes()
+        except OSError as exc:
+            raise EvidenceError("market source cannot be read") from exc
+        if len(payload) != expected_bytes:
+            raise EvidenceError("market source byte count does not match its manifest")
+        if hashlib.sha256(payload).hexdigest() != expected_hash:
+            raise EvidenceError("market source hash does not match its manifest")
+        return payload
+
     def _verify(
         self, run_id: str
     ) -> tuple[EvidenceDefinition, Path, dict[str, Any], str]:
@@ -207,3 +415,86 @@ def _read_records(path: Path) -> list[dict[str, Any]]:
         raise EvidenceError(f"verified evidence file is missing: {path.name}")
     frame = pd.read_csv(path)
     return json.loads(frame.to_json(orient="records", date_format="iso"))
+
+
+def _equity_source(manifest: dict[str, Any], market: str) -> dict[str, Any]:
+    sources = manifest.get("sources")
+    if not isinstance(sources, list):
+        raise EvidenceError("data manifest sources are invalid")
+    matches = [
+        source
+        for source in sources
+        if isinstance(source, dict)
+        and source.get("market") == market
+        and source.get("kind") == "equity"
+    ]
+    if len(matches) != 1:
+        raise EvidenceError(f"market is unavailable: {market}")
+    return matches[0]
+
+
+def _read_story_features(path: Path) -> pd.DataFrame:
+    try:
+        frame = pd.read_csv(path)
+    except (FileNotFoundError, OSError, pd.errors.ParserError) as exc:
+        raise EvidenceError("verified story features cannot be read") from exc
+    columns = ["excess_return", "dd_10", "sortino_20", "sortino_60"]
+    if "date" not in frame or any(column not in frame for column in columns):
+        raise EvidenceError("verified story feature schema is invalid")
+    try:
+        dates = pd.to_datetime(frame["date"], errors="raise")
+    except (TypeError, ValueError) as exc:
+        raise EvidenceError("verified story feature dates are invalid") from exc
+    if dates.duplicated().any() or not dates.is_monotonic_increasing:
+        raise EvidenceError("verified story feature dates are invalid")
+    numeric = frame[columns].apply(pd.to_numeric, errors="coerce")
+    invalid = frame[columns].notna() & numeric.isna()
+    finite = numeric.map(lambda value: pd.isna(value) or math.isfinite(float(value)))
+    if invalid.any().any() or not finite.all().all():
+        raise EvidenceError("verified story features contain invalid values")
+    numeric.insert(0, "date", dates)
+    return numeric
+
+
+def _parse_ohlcv(payload: bytes) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    try:
+        frame = pd.read_csv(io.BytesIO(payload))
+    except (OSError, UnicodeError, pd.errors.ParserError) as exc:
+        raise EvidenceError("market source CSV is invalid") from exc
+    required = ["Date", "Open", "High", "Low", "Close", "Volume"]
+    if any(column not in frame.columns for column in required):
+        raise EvidenceError("market source does not contain OHLCV columns")
+
+    dates = []
+    for value in frame["Date"]:
+        try:
+            timestamp = pd.Timestamp(value)
+        except (TypeError, ValueError) as exc:
+            raise EvidenceError("market source contains an invalid date") from exc
+        if pd.isna(timestamp):
+            raise EvidenceError("market source contains an invalid date")
+        dates.append(timestamp.date().isoformat())
+
+    numeric = frame[["Open", "High", "Low", "Close", "Volume"]].apply(
+        pd.to_numeric, errors="coerce"
+    )
+    finite = numeric.map(lambda value: math.isfinite(float(value)))
+    clean = numeric.where(finite)
+    ohlc = clean[["Open", "High", "Low", "Close"]]
+    complete = ohlc.notna().all(axis=1)
+    valid = complete & (ohlc["Low"] <= ohlc[["Open", "Close"]].min(axis=1))
+    valid &= ohlc["High"] >= ohlc[["Open", "Close"]].max(axis=1)
+    distinct = valid & (ohlc.nunique(axis=1) > 1)
+    output = clean.rename(columns=str.lower)
+    output.insert(0, "date", dates)
+    rows = json.loads(output.to_json(orient="records"))
+    return rows, {
+        "rows": len(rows),
+        "duplicate_dates": len(dates) - len(set(dates)),
+        "dates_sorted": dates == sorted(dates),
+        "complete_ohlc_rows": int(complete.sum()),
+        "valid_ohlc_rows": int(valid.sum()),
+        "distinct_ohlc_rows": int(distinct.sum()),
+        "missing_close_rows": int(clean["Close"].isna().sum()),
+        "nonzero_volume_rows": int((clean["Volume"] > 0).sum()),
+    }

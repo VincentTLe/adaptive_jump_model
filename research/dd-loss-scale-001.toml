@@ -1,0 +1,74 @@
+schema_version = 1
+experiment_id = "dd-loss-scale-001"
+parent_id = "simple-jm-suite-001"
+claim_class = "EXPLORATORY"
+frozen_at_utc = "2026-07-22T01:58:12Z"
+status = "FROZEN_BEFORE_RESULTS"
+
+[question]
+text = "Does DD-only retain its economic result when its one-coordinate observation loss is multiplied by three while every other causal protocol choice is unchanged?"
+rationale = "DD-only removed two Sortino coordinates but kept the raw lambda grid. Because the parent features are standardized, this also changed the typical observation-loss scale relative to lambda. A prespecified factor of three separates feature removal from this effective-regularization change without calibrating a new grid."
+
+[sources]
+canonical_config = "research.toml"
+canonical_run_id = "fixed-baselines-8adb330565d6-3636939b525d-e9614112b234"
+canonical_run_root = "artifacts/fixed-baselines/fixed-baselines-8adb330565d6-3636939b525d-e9614112b234"
+canonical_inventory_sha256 = "08e42044c25ef80e92f4b565034652a6b87fe94de0e9122eee1a418395239d55"
+dd_parent_run_id = "simple-jm-suite-2d3d2a779b13-544237a59943-20260721T145043479851Z"
+dd_parent_run_root = "artifacts/simple-jm-suite-001/simple-jm-suite-2d3d2a779b13-544237a59943-20260721T145043479851Z"
+dd_parent_inventory_sha256 = "5071a92f0f7870118393e463cfcc767ee923202197a0307b1ae00fa21b2058d4"
+markets = ["us", "de", "jp"]
+cutoff = "2023-12-31"
+post_2023_access = false
+
+[model]
+label = "dd_scaled_3x"
+states = 2
+features = ["dd_10"]
+fit_rows = "canonical complete-row mask requiring dd_10, sortino_20, sortino_60, and excess_return"
+standardizer = "StandardScaler ddof=0 fit on each past-only training window"
+observation_loss = "3 * 0.5 * (z_dd_t - theta_state)^2"
+observation_loss_scale = 3
+scale_provenance = "THEORY: match the three coordinate count of the canonical v7 squared loss; not estimated from outcomes; the absolute optimizer tolerance is scaled by the same factor to preserve its normalized meaning"
+transition_loss = "lambda * I(state_t != state_t_minus_1)"
+lambda_grid = [0, 5, 15, 35, 70, 150, 300, 600, 1200]
+fit_window_observations = 3000
+refit_months = [1, 7]
+n_init = 10
+random_state = 0
+max_iter = 1000
+normalized_tol = 1e-8
+optimizer_tol = 3e-8
+state_label = "state 0 has higher training cumulative excess return"
+monthly_selection = "monthly trailing-eight-calendar-year net Sharpe on online inferred regimes"
+
+[execution]
+order = "US prefix-invariance smoke first; then independent US, DE, and JP fits in parallel"
+primary_delay_trading_days = 1
+signal_to_return_offset = 2
+one_way_cost_bps = 10
+turnover = "0.5 * 252 * mean(abs(position change))"
+comparison_dates = "per-market intersection of complete t+2 metric rows across buy-and-hold, HMM, fixed JM, ordinary DD-only, and scaled DD-only"
+
+[evaluation]
+primary_gap = "Sharpe_scaled_DD,m - max(Sharpe_buy_hold,m, Sharpe_HMM,m)"
+market_pass = "primary_gap > 0"
+cross_market_support = "scaled DD passes US, DE, and JP"
+mechanism_contrast = "scaled DD minus ordinary DD-only on identical dates"
+primary_metrics = ["sharpe", "maximum_drawdown", "turnover", "cash_fraction", "switch_count"]
+interpretation = "If scaled DD remains close to ordinary DD, feature removal is the stronger explanation; if the effect largely disappears, effective regularization is the stronger explanation; an intermediate result supports both. No threshold is fitted after results."
+claim_restriction = "Repeatedly inspected through-2023 development evidence; no alpha, profitability, robustness, replication, holdout, generalization, or performance claim."
+
+[verification]
+required = [
+  "default observation_loss_scale=1 is exactly unchanged",
+  "scaled fit loss equals three times ordinary DD feature loss",
+  "scaled lambda path is equivalent to ordinary DD at lambda divided by three for the same data and starts after scaling the absolute optimizer tolerance by three",
+  "canonical complete-row calendar and training-only scaler",
+  "US prefix invariance before three-market execution",
+  "monthly trailing-eight-year online-state Sharpe selection",
+  "t+2 signal-position-return identity",
+  "10-bps cost and paper turnover identity",
+  "concrete loss-to-penalty-to-state-to-signal-to-position-to-trade rows",
+  "no date later than 2023-12-31",
+]

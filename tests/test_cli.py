@@ -75,6 +75,181 @@ def test_monitor_cli_delegates_to_the_loopback_server(monkeypatch) -> None:
     assert calls == ["research.toml"]
 
 
+def test_figures_cli_delegates_and_prints_each_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    run = tmp_path / "sealed-run"
+    output_root = tmp_path / "reports"
+    outputs = (output_root / "regimes.png", output_root / "wealth.pdf")
+    calls = []
+
+    def render(run_dir, destination):
+        calls.append((run_dir, destination))
+        return outputs
+
+    monkeypatch.setattr("adaptive_jump.cli.render_figures", render)
+
+    assert (
+        main(
+            [
+                "figures",
+                "--run",
+                str(run),
+                "--output-root",
+                str(output_root),
+            ]
+        )
+        == 0
+    )
+    assert capsys.readouterr().out.splitlines() == [str(path) for path in outputs]
+    assert calls == [(str(run), str(output_root))]
+
+
+def test_figures_cli_uses_shared_artifact_error_handling(
+    monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    def reject(_run, _output_root):
+        raise ArtifactError("invalid figure artifact")
+
+    monkeypatch.setattr("adaptive_jump.cli.render_figures", reject)
+
+    assert main(["figures", "--run", "bad-run"]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == "adaptive-jump: invalid figure artifact\n"
+
+
+def test_calibration_cli_uses_frozen_spec(monkeypatch, capsys) -> None:
+    expected = ROOT / "artifacts/calibration-fixture"
+    calls = []
+
+    def fake_run(config, spec):
+        calls.append((config, spec))
+        return expected
+
+    monkeypatch.setattr("adaptive_jump.cli.run_calibration_study", fake_run)
+    monkeypatch.setattr(
+        "adaptive_jump.cli._artifacts.verify_run",
+        lambda artifact: {"run_id": artifact.name, "status": "complete"},
+    )
+    arguments = [
+        "run",
+        "--study",
+        "persistence-calibration",
+        "--config",
+        str(ROOT / "research.toml"),
+    ]
+
+    assert main(arguments) == 0
+    assert Path(capsys.readouterr().out.strip()) == expected
+    assert calls[0][1].name == "persistence-calibrated-search.toml"
+
+
+def test_grid_evaluation_cli_uses_frozen_spec(
+    monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    expected = ROOT / "artifacts/grid-fixture"
+    calls = []
+
+    def fake_run(config, spec, observer):
+        calls.append((config, spec, observer))
+        return expected
+
+    monkeypatch.setattr("adaptive_jump.cli.run_grid_evaluation", fake_run)
+    monkeypatch.setattr(
+        "adaptive_jump.cli._artifacts.verify_run",
+        lambda artifact: {"run_id": artifact.name, "status": "boundary_failed"},
+    )
+    arguments = [
+        "run",
+        "--study",
+        "persistence-grid-evaluation",
+        "--config",
+        str(ROOT / "research.toml"),
+    ]
+
+    assert main(arguments) == 0
+    assert Path(capsys.readouterr().out.strip()) == expected
+    assert calls[0][1].jm_grid[-1] == 256.0
+    assert calls[0][1].hmm_grid[-1] == 1115
+
+
+@pytest.mark.parametrize(
+    ("study", "spec_name", "loader_name", "runner_name"),
+    [
+        (
+            "simple-jm-suite",
+            "simple-jm-suite-001.toml",
+            "load_simple_jm_spec",
+            "run_simple_jm_study",
+        ),
+        (
+            "dd-loss-scale",
+            "dd-loss-scale-001.toml",
+            "load_dd_loss_scale_spec",
+            "run_dd_loss_scale_study",
+        ),
+    ],
+)
+def test_simple_jm_cli_uses_shared_runner(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys,
+    study: str,
+    spec_name: str,
+    loader_name: str,
+    runner_name: str,
+) -> None:
+    expected = ROOT / "artifacts" / f"{study}-fixture"
+    calls = []
+    events = []
+    loaded_spec = object()
+
+    def observer(event):
+        events.append(event)
+
+    def fake_load(path, config):
+        calls.append(("load", config, path))
+        return loaded_spec
+
+    def fake_run(config, spec, selected_observer):
+        calls.append(("run", config, spec, selected_observer))
+        return expected
+
+    monkeypatch.setattr(f"adaptive_jump.cli.{loader_name}", fake_load)
+    monkeypatch.setattr(f"adaptive_jump.cli.{runner_name}", fake_run)
+    monkeypatch.setattr(
+        "adaptive_jump.cli._artifacts.verify_run",
+        lambda artifact: {"run_id": artifact.name, "status": "complete"},
+    )
+    monkeypatch.setattr(
+        "adaptive_jump.cli.child_observer_from_environment", lambda: observer
+    )
+
+    assert (
+        main(
+            [
+                "run",
+                "--study",
+                study,
+                "--config",
+                str(ROOT / "research.toml"),
+            ]
+        )
+        == 0
+    )
+    assert Path(capsys.readouterr().out.strip()) == expected
+    assert calls[0][0] == "load"
+    assert calls[0][2].name == spec_name
+    assert calls[1][0] == "run"
+    assert calls[1][2] is loaded_spec
+    assert calls[1][3] is observer
+    assert events[0].kind == "artifact_verified"
+    assert events[0].payload == {
+        "run_id": expected.name,
+        "status": "complete",
+    }
+
+
 def test_window_study_cli_uses_frozen_spec_without_manifest(
     monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
@@ -143,6 +318,33 @@ def test_window_study_cli_rejects_manifest_override(capsys) -> None:
 
     assert result == 2
     assert "only valid for replication" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("study_kind", "verifier_name"),
+    [
+        ("simple-jm-suite-001", "verify_simple_jm_run"),
+        ("dd-loss-scale-001", "verify_dd_loss_scale_run"),
+    ],
+)
+def test_verify_run_dispatches_simple_jm_suite(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    study_kind: str,
+    verifier_name: str,
+) -> None:
+    run = tmp_path / f"{study_kind}-fixture"
+    run.mkdir()
+    (run / "run.json").write_text(
+        json.dumps({"study_kind": study_kind}), encoding="utf-8"
+    )
+    expected = {"run_id": run.name, "status": "complete"}
+    monkeypatch.setattr(
+        f"adaptive_jump.simple_jm_suite.{verifier_name}",
+        lambda selected: expected if selected == run.resolve() else None,
+    )
+
+    assert verify_run(run) == expected
 
 
 def _manifest_fixture(tmp_path: Path) -> tuple[Path, Path]:

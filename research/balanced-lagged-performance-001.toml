@@ -1,0 +1,132 @@
+schema_version = 1
+experiment_id = "balanced-lagged-performance-001"
+frozen_at_utc = "2026-07-21T05:23:08Z"
+claim_class = "EXPLORATORY"
+stage = "POST_RESULT_DEVELOPMENT_SAMPLE_PNL_STUDY"
+question = "Does the pair-balanced signed lagged penalty at beta=log(4) improve net performance over both the one-sided lagged penalty and fixed JM under the unchanged causal selection and accounting protocol?"
+hypothesis = "Preserving the pair-average transition scale may reduce economically harmful selection/path interactions enough to improve equal-market net Sharpe, even though the preceding mechanism-only whipsaw rule was not supported."
+performance_claim_allowed = false
+paper_replication_claim_allowed = false
+holdout_claim_allowed = false
+post_2023_access = false
+provider_access = false
+result_driven_changes = [
+  "The owner explicitly requested a complete P&L readout after balanced-lagged-mechanism-001 was known not supported; this study is therefore post-result and the full through-2023 sample is repeatedly inspected development data.",
+  "No balanced monthly choice, selected signal, delayed position, trade, cost, return, Sharpe, drawdown, turnover, cash fraction, or P&L decision was computed or opened before this freeze.",
+  "The balanced beta=log(4) value is inherited unchanged from the completed mechanism study and is UNCALIBRATED for profit; neither beta nor the raw lambda grid may change after metrics are opened.",
+]
+
+[fixed_source]
+experiment_id = "fixed-baselines-001-v7"
+run_id = "fixed-baselines-8adb330565d6-3636939b525d-e9614112b234"
+run_inventory_sha256 = "08e42044c25ef80e92f4b565034652a6b87fe94de0e9122eee1a418395239d55"
+data_manifest_sha256 = "3636939b525d604c5c4180d7e3abb6192b53b81a068f009ad6ca83a945e53a84"
+config_sha256 = "8adb330565d64f8ed6edd986f0422dbba72585eda4efd34b0c1b41b95450d81b"
+data_cutoff = "2023-12-31"
+
+[lagged_source]
+experiment_id = "lagged-evidence-mechanism-001"
+run_id = "lagged-evidence-6f964f5724b2-26cbca8871be-d173ca32c86f"
+run_inventory_sha256 = "643dd3e6d96ffd903de2012b6e1ac84bb0b3fad1f80cfb119989d4be88f094c8"
+spec_sha256 = "6f964f5724b23cffff43c37ca050af1dd7eb37a3c7e7588462a86571e8825ed1"
+
+[balanced_source]
+experiment_id = "balanced-lagged-mechanism-001"
+run_id = "balanced-lagged-a7d9914ca1a8-643dd3e6d96f-17961bfd667f"
+run_inventory_sha256 = "4e747110ba1c9094b4e080514b646ed8b00f273729f4a1bb7771215c2748b162"
+run_json_sha256 = "0568b29b97e68167cd3f2989bef7e6b2e9b0dfb3dee32dadffe4c8d6cdab740e"
+spec_sha256 = "a7d9914ca1a8ab8660cd262c1f759c2e6b25972062536dc151492c8b92ff4cfc"
+required_result = "not_supported"
+required_beta_label = "log4"
+candidate_sha256 = { us = "860e50c6e8e6354ded06390fd456191f9f2d946a177ab380cb3f612fc2aab3dd", de = "448fc91b162d89c9a3d651e19fef08661955d3a043b04205ba14f7db76282412", jp = "3875c439500fcc32cc12ac1b679d9e6f7f83d496ab99afa83fc960fbc1e637b3" }
+
+[lagged_performance_oracle]
+experiment_id = "lagged-evidence-performance-001"
+run_id = "lagged-pnl-bad599271e2d-643dd3e6d96f-be70588256b2"
+run_inventory_sha256 = "52854fc3c22a1f9828372f603702e60b5d4fd0bc9c85d7343df40fe8043bd30e"
+run_json_sha256 = "efc7e93dc33b3490442afa536b312d6a91adfd58d252a645e335f9dfc9ecb98e"
+spec_sha256 = "bad599271e2df32d7f8e292d56534bd0de8ba4a868e73c489c07dafe40b6565b"
+role = "fixed and lagged choices, signals, trades, and metrics parity oracle only; it cannot determine or rescue the balanced result"
+
+[model]
+objective = "sum_t L_t(s_t) + sum_t>=1 C_t(s_(t-1),s_t)"
+balanced_formula = "C_t(i,j)=lambda0*(1-(1-exp(-log(4)))*tanh((L_(t-1)(i)-L_(t-1)(j))/q_train)) for i!=j; zero diagonal"
+lagged_formula = "C_t(i,j)=lambda0*exp(-log(4)*tanh(max(L_(t-1)(i)-L_(t-1)(j),0)/q_train)) for i!=j; zero diagonal"
+models = ["fixed", "lagged_log4", "balanced_log4"]
+primary_challenger = "balanced_log4"
+primary_baseline = "lagged_log4"
+required_benchmark = "fixed"
+beta = 1.3862943611198906
+beta_provenance = "UNCALIBRATED inherited mechanism value; not selected using balanced P&L"
+raw_lambda_grid = [0.0, 5.0, 15.0, 35.0, 70.0, 150.0, 300.0, 600.0, 1200.0]
+lambda_provenance = "SOURCE_FIXED v7 grid; no expansion"
+fitted_parameters = "sealed v7 scalers and centers; no refit or state regeneration in the P&L runner"
+candidate_paths = "hash-pinned fixed, one-sided-lagged-log4, and pair-balanced-log4 state tables"
+
+[protocol]
+markets = ["us", "de", "jp"]
+outer_start = { us = "2007-12-04", de = "2008-01-03", jp = "2009-05-07" }
+outer_end = "2023-12-29"
+sample = "exact sealed v7 fixed-JM delay-1 trade dates per market"
+selection = "separate monthly lambda selection for fixed, lagged_log4, and balanced_log4 candidates"
+selection_objective = "annualized net strategy excess Sharpe over the previous eight calendar years"
+minimum_valid_returns = 252
+tie_rule = "lower lambda within the existing numerical tie tolerance"
+selection_surface_required = true
+primary_delay_trading_days = 1
+signal_to_return_offset = 2
+one_way_cost_bps = 10
+turnover = "0.5*252*mean(abs(position change))"
+metrics = ["cagr", "volatility", "sharpe", "maximum_drawdown", "calmar", "expected_shortfall_5pct", "turnover", "leverage", "cash_fraction", "switch_count"]
+boundary_rule = "descriptive only; cannot stop, hide, or change metrics"
+
+[decision]
+primary_contrast = "balanced_log4_minus_lagged_log4"
+required_fixed_contrast = "balanced_log4_minus_fixed"
+contrast_rule = "for each contrast, equal-market mean Delta Sharpe must be strictly positive and at least two of three market Delta Sharpes must be strictly positive"
+study_supported = "both the primary lagged contrast and required fixed contrast satisfy the contrast rule"
+study_not_supported = "otherwise"
+secondary_metrics = ["maximum_drawdown", "turnover", "cash_fraction", "switch_count"]
+maximum_drawdown_reporting_deadband = 1e-9
+raw_metrics_always_reported = true
+selection_or_grid_change_after_results = false
+non_finite_primary_metrics = "error; never omit a market"
+claim_scope = "even a supported result is preliminary repeatedly-inspected development evidence and only motivates an untouched future test"
+
+[verification]
+registry_and_spec_lock_exact = true
+source_inventory_and_run_hashes_exact = true
+balanced_candidate_hashes_exact = true
+fixed_and_lagged_choices_signals_trades_metrics_equal_oracle = true
+same_dates_information_selection_cost_and_delay = true
+signal_equals_one_minus_selected_state = true
+t_plus_2_position_identity = true
+ten_bps_cost_identity = true
+paper_turnover_recomputed = true
+full_selection_surface_saved = true
+concrete_state_signal_position_trade_cost_return_trace = true
+all_dates_no_later_than_2023 = true
+independent_metric_and_decision_recomputation = true
+artifact_allowlist_and_inventory_exact = true
+git_head_is_informational_only = true
+
+[execution]
+us_smoke_before_metrics = true
+full_markets_parallel = true
+market_workers = 3
+threadpool_limit_per_worker = 1
+expected_runtime_minutes = 10
+gpu_required = false
+
+[storage]
+artifact_subdir = "balanced-lagged-performance-001"
+summary_csv = "summary.csv"
+choices_csv = "choices.csv"
+selection_surface_csv = "selection-surface.csv"
+boundaries_csv = "boundaries.csv"
+change_traces_csv = "change-traces.csv"
+selected_timeline_csv = "selected-timeline.csv"
+decision_json = "decision.json"
+source_lock_json = "source-lock.json"
+implementation_lock_json = "implementation-lock.json"
+generated_outputs_tracked = false

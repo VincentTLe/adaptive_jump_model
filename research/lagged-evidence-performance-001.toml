@@ -1,0 +1,111 @@
+schema_version = 1
+experiment_id = "lagged-evidence-performance-001"
+frozen_at_utc = "2026-07-18T09:14:51Z"
+claim_class = "EXPLORATORY"
+stage = "DEVELOPMENT_SAMPLE_PNL_STUDY"
+question = "Does the performance-free-selected lagged evidence penalty at beta=log(4) improve fixed-JM net performance under the unchanged causal selection and accounting protocol?"
+hypothesis = "Using t-1 rather than arrival-day evidence will retain useful early switches while avoiding enough false switches for positive market-equal net Sharpe improvement."
+performance_claim_allowed = false
+paper_replication_claim_allowed = false
+post_2023_access = false
+extension_access = false
+
+[fixed_source]
+experiment_id = "fixed-baselines-001-v7"
+run_id = "fixed-baselines-8adb330565d6-3636939b525d-e9614112b234"
+run_inventory_sha256 = "08e42044c25ef80e92f4b565034652a6b87fe94de0e9122eee1a418395239d55"
+data_manifest_sha256 = "3636939b525d604c5c4180d7e3abb6192b53b81a068f009ad6ca83a945e53a84"
+config_sha256 = "8adb330565d64f8ed6edd986f0422dbba72585eda4efd34b0c1b41b95450d81b"
+data_cutoff = "2023-12-31"
+
+[arrival_source]
+experiment_id = "adaptive-confidence-001"
+run_id = "adaptive-confidence-1b0c327b2db4-3636939b525d-864d671cf973"
+run_inventory_sha256 = "26cbca8871be6ac6f53aa2156904c48d0743f86ab1cbe6b44410f93056e7c80b"
+spec_sha256 = "1b0c327b2db44f39be183b153e6feaae6c53e2cad1e56e782f1ef7eda3849cc3"
+role = "secondary mechanism control only; cannot determine or rescue the primary result"
+
+[lagged_source]
+experiment_id = "lagged-evidence-mechanism-001"
+run_id = "lagged-evidence-6f964f5724b2-26cbca8871be-d173ca32c86f"
+run_inventory_sha256 = "643dd3e6d96ffd903de2012b6e1ac84bb0b3fad1f80cfb119989d4be88f094c8"
+spec_sha256 = "6f964f5724b23cffff43c37ca050af1dd7eb37a3c7e7588462a86571e8825ed1"
+required_result = "supported"
+required_selected_beta_label = "log4"
+
+[model]
+objective = "sum_t L_t(s_t) + sum_t>=1 C_t(s_(t-1),s_t)"
+formula = "C_t(i,j)=lambda0*exp(-log(4)*tanh(max(L_(t-1)(i)-L_(t-1)(j),0)/q_train)) for i!=j; zero diagonal"
+refit_boundary_convention = "on Jan/Jul refit dates, L_(t-1) is recomputed under the scaler and centers fitted through t, exactly as sealed by lagged-evidence-mechanism-001; the rule is causal at t but is not strictly F_(t-1)-predictable on those refit dates"
+baseline = "fixed JM, exactly beta=0"
+primary_challenger = "lagged evidence JM, beta=log(4)"
+secondary_control = "arrival-day evidence JM, beta=log(4)"
+beta = 1.3862943611198906
+beta_provenance = "PREREGISTERED survivor of lagged-evidence-mechanism-001 without P&L access"
+raw_lambda_grid = [0.0, 5.0, 15.0, 35.0, 70.0, 150.0, 300.0, 600.0, 1200.0]
+lambda_provenance = "SOURCE_FIXED frozen v7; no expansion"
+fitted_parameters = "sealed v7 scalers and centers already used to generate verified candidate states"
+refit_or_state_regeneration = false
+
+[protocol]
+markets = ["us", "de", "jp"]
+outer_start = { us = "2007-12-04", de = "2008-01-03", jp = "2009-05-07" }
+outer_end = "2023-12-29"
+sample = "exact sealed v7 fixed-JM delay-1 trade dates per market"
+selection = "separate monthly lambda selection for fixed, arrival-log4, and lagged-log4 candidates"
+selection_objective = "annualized strategy excess Sharpe over the previous eight calendar years"
+minimum_valid_returns = 252
+tie_rule = "lower lambda"
+fit_window_observations = 3000
+jm_refit_months = [1, 7]
+primary_delay_trading_days = 1
+signal_to_return_offset = 2
+one_way_cost_bps = 10
+turnover = "0.5*252*mean(abs(position change))"
+metrics = ["sharpe", "maximum_drawdown", "turnover", "cash_fraction", "switch_count"]
+boundary_rule = "descriptive only; cannot stop, hide, or change metrics"
+provider_access = false
+
+[decision]
+primary_contrast = "lagged_log4_minus_fixed"
+primary_estimand = "equal-weight mean of the three market net Sharpe deltas"
+market_sign_rule = "strictly positive Sharpe delta"
+study_supported = "primary_estimand > 0 and at least two of three market Sharpe deltas are strictly positive"
+study_not_supported = "otherwise"
+secondary_metrics = ["maximum_drawdown", "turnover", "cash_fraction", "switch_count"]
+maximum_drawdown_reporting_deadband = 1e-9
+raw_metrics_always_reported = true
+arrival_control_cannot_change_primary_decision = true
+selection_or_grid_change_after_results = false
+non_finite_primary_metrics = "error; never silently omit a market from the three-market mean"
+
+[verification]
+source_inventory_exact = true
+lagged_source_result_and_beta_exact = true
+fixed_candidate_states_equal_parent = true
+fixed_choices_signal_positions_and_trades_equal_parent = true
+fixed_non_turnover_metrics_recompute_to_parent = true
+turnover_recomputed_with_explicit_scale_0_5 = true
+same_dates_information_set_selection_cost_and_delay = true
+concrete_choice_state_signal_position_trade_trace = true
+all_dates_no_later_than_2023 = true
+independent_metric_recomputation = true
+independent_source_replay = true
+artifact_schema_and_allowlist_exact = true
+
+[execution]
+us_smoke_before_metrics = true
+full_markets_parallel = true
+market_workers = 3
+threadpool_limit_per_worker = 1
+expected_runtime_minutes = 5
+gpu_required = false
+
+[storage]
+artifact_subdir = "lagged-evidence-performance-001"
+summary_csv = "summary.csv"
+choices_csv = "choices.csv"
+change_traces_csv = "change-traces.csv"
+decision_json = "decision.json"
+boundaries_csv = "boundaries.csv"
+generated_outputs_tracked = false

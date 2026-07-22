@@ -141,6 +141,22 @@ def verify_run(run: str | Path) -> dict[str, Any]:
         from adaptive_jump.window_verifier import verify_window_run
 
         return verify_window_run(run_dir)
+    if study_kind == "persistence_calibration":
+        from adaptive_jump.calibration_runner import verify_calibration_run
+
+        return verify_calibration_run(run_dir)
+    if study_kind == "persistence_grid_evaluation":
+        from adaptive_jump.grid_runner import verify_grid_run
+
+        return verify_grid_run(run_dir)
+    if study_kind == "simple-jm-suite-001":
+        from adaptive_jump.simple_jm_suite import verify_simple_jm_run
+
+        return verify_simple_jm_run(run_dir)
+    if study_kind == "dd-loss-scale-001":
+        from adaptive_jump.simple_jm_suite import verify_dd_loss_scale_run
+
+        return verify_dd_loss_scale_run(run_dir)
     if study_kind is not None:
         raise ArtifactError(f"unsupported study kind: {study_kind}")
     verify_inventory(run_dir)
@@ -358,6 +374,7 @@ def _verify_metrics(
                     expected_shortfall_quantile=(
                         config.metrics_protocol.expected_shortfall_quantile
                     ),
+                    turnover_scale=config.metrics_protocol.turnover_scale,
                 )
                 row = metrics.loc[
                     (metrics["market"] == market.id)

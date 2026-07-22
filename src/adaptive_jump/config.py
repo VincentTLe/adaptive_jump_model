@@ -9,6 +9,11 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+PAPER_TURNOVER_DEFINITION = "half_mean_one_way_turnover_times_252"
+LEGACY_TURNOVER_DEFINITION = "mean_one_way_turnover_times_252"
+PAPER_COMPARISON_SAMPLE = "per_market_all_delays_intersection_of_complete_metric_rows"
+LEGACY_COMPARISON_SAMPLE = "per_market_delay_intersection_of_complete_metric_rows"
+
 
 class ConfigError(ValueError):
     """Raised when a research configuration violates a frozen contract."""
@@ -77,6 +82,8 @@ class HMMProtocol:
     min_covar: float
     n_iter: int
     tol: float
+    kmeans_n_init: int = 10
+    covars_prior: float = 0.01
 
 
 @dataclass(frozen=True)
@@ -85,6 +92,7 @@ class SelectionProtocol:
     minimum_valid_returns: int
     tie_tolerance: float
     boundary_fraction_limit: float
+    tie_rule: str = "lower_smoothing"
 
 
 @dataclass(frozen=True)
@@ -92,6 +100,17 @@ class MetricsProtocol:
     periods_per_year: int
     volatility_ddof: int
     expected_shortfall_quantile: float
+    turnover_definition: str = PAPER_TURNOVER_DEFINITION
+    comparison_sample: str = PAPER_COMPARISON_SAMPLE
+
+    @property
+    def turnover_scale(self) -> float:
+        """Scale annualized absolute position changes for the named convention."""
+        if self.turnover_definition == PAPER_TURNOVER_DEFINITION:
+            return 0.5
+        if self.turnover_definition == LEGACY_TURNOVER_DEFINITION:
+            return 1.0
+        raise ConfigError("invalid metric turnover definition")
 
 
 @dataclass(frozen=True)
@@ -401,7 +420,15 @@ def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
         _positive_integer(row, "n_iter"),
         _positive_number(row, "tol"),
     )
-    expected = HMMProtocol(tuple(grid), tuple(seeds), 0.001, 1000, 1e-6)
+    expected = HMMProtocol(
+        tuple(grid),
+        tuple(seeds),
+        0.001,
+        1000,
+        1e-6,
+        kmeans_n_init=10,
+        covars_prior=0.01,
+    )
     _require(protocol == expected, "invalid HMM settings")
     return protocol
 
@@ -424,16 +451,24 @@ def _selection_protocol(row: dict[str, Any]) -> SelectionProtocol:
 
 def _metrics_protocol(row: dict[str, Any]) -> MetricsProtocol:
     expected = {
-        "comparison_sample": "per_market_delay_intersection_of_complete_metric_rows",
         "sharpe_numerator": "mean_strategy_minus_cash",
         "sharpe_denominator": "strategy_return_volatility",
         "cagr": "compound_252_over_n",
         "calmar_numerator": "annualized_arithmetic_mean_excess",
-        "turnover": "mean_one_way_turnover_times_252",
         "leverage": "mean_risky_weight",
     }
     _require(
         all(row.get(key) == value for key, value in expected.items()),
+        "invalid metric definition",
+    )
+    turnover_definition = _text(row, "turnover")
+    _require(
+        turnover_definition in {PAPER_TURNOVER_DEFINITION, LEGACY_TURNOVER_DEFINITION},
+        "invalid metric definition",
+    )
+    comparison_sample = _text(row, "comparison_sample")
+    _require(
+        comparison_sample in {PAPER_COMPARISON_SAMPLE, LEGACY_COMPARISON_SAMPLE},
         "invalid metric definition",
     )
     periods = _positive_integer(row, "periods_per_year")
@@ -444,7 +479,13 @@ def _metrics_protocol(row: dict[str, Any]) -> MetricsProtocol:
         "metrics must use 252 periods and sample volatility",
     )
     _require(quantile == 0.05, "expected shortfall quantile must be 0.05")
-    return MetricsProtocol(periods, ddof, quantile)
+    return MetricsProtocol(
+        periods,
+        ddof,
+        quantile,
+        turnover_definition,
+        comparison_sample,
+    )
 
 
 def _integer(row: dict[str, Any], key: str) -> int:

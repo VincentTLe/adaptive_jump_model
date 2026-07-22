@@ -9,9 +9,6 @@ const state = {
   events: new Map(),
   currentJobId: null,
   source: null,
-  replayEvents: [],
-  replayIndex: 0,
-  replayTimer: null,
 };
 function setText(id, value) {
   $(id).textContent = value;
@@ -55,7 +52,7 @@ function activateView(name) {
     view.hidden = !active;
   });
   window.requestAnimationFrame(() => window.MonitorCharts?.resize());
-  if (name !== "replay") pauseReplay();
+  if (name !== "replay") window.MonitorReplay?.pause();
 }
 function button(label, title, action) {
   const control = document.createElement("button");
@@ -75,6 +72,11 @@ async function mutate(path, body) {
 function renderStudyOptions() {
   const select = $("study-select");
   select.replaceChildren();
+  if (!state.studies.length) {
+    const option = document.createElement("option");
+    option.textContent = "No FROZEN studies available";
+    select.append(option);
+  }
   state.studies.forEach((study) => {
     const option = document.createElement("option");
     option.value = study.study_id;
@@ -152,6 +154,7 @@ function renderReplayJobs() {
   state.jobs.slice().reverse().forEach((job) => {
     const option = document.createElement("option");
     option.value = job.job_id;
+    option.dataset.status = job.status;
     option.textContent = `${job.study_id} · ${job.status}`;
     select.append(option);
   });
@@ -298,55 +301,11 @@ async function refreshJobs() {
     if (terminalStatuses.has(target.status)) closeStream();
   } else renderLive(null, []);
 }
-function pauseReplay() {
-  window.clearInterval(state.replayTimer);
-  state.replayTimer = null;
-}
-function renderReplay() {
-  const count = state.replayEvents.length;
-  state.replayIndex = Math.max(0, Math.min(state.replayIndex, Math.max(0, count - 1)));
-  const event = state.replayEvents[state.replayIndex];
-  setText("replay-kind", event ? `${event.kind} · ${event.stage}` : "No event selected");
-  setText("replay-time", event?.time_utc || "--");
-  setText("replay-payload", JSON.stringify(event || {}, null, 2));
-  $("replay-range").max = Math.max(0, count - 1);
-  $("replay-range").value = state.replayIndex;
-  setText("replay-position", count ? `${state.replayIndex + 1} / ${count}` : "0 / 0");
-}
-async function loadReplay(jobId) {
-  pauseReplay();
-  const payload = await request(`/api/jobs/${jobId}/events`);
-  state.replayEvents = payload.events;
-  state.replayIndex = 0;
-  renderReplay();
-}
-function setupReplay() {
-  $("replay-job").addEventListener("change", (event) => loadReplay(event.target.value).catch(showError));
-  $("replay-range").addEventListener("input", (event) => {
-    pauseReplay();
-    state.replayIndex = Number(event.target.value);
-    renderReplay();
-  });
-  document.querySelectorAll("[data-replay]").forEach((control) => control.addEventListener("click", () => {
-    const action = control.dataset.replay;
-    if (action === "pause") pauseReplay();
-    if (action === "reset") { pauseReplay(); state.replayIndex = 0; }
-    if (action === "previous") { pauseReplay(); state.replayIndex -= 1; }
-    if (action === "next") { pauseReplay(); state.replayIndex += 1; }
-    if (action === "play" && !state.replayTimer && state.replayEvents.length) {
-      state.replayTimer = window.setInterval(() => {
-        if (state.replayIndex >= state.replayEvents.length - 1) pauseReplay();
-        else { state.replayIndex += 1; renderReplay(); }
-      }, 900);
-    }
-    renderReplay();
-  }));
-}
 async function init() {
   document.querySelectorAll("[data-view]").forEach((control) => {
     control.addEventListener("click", () => activateView(control.dataset.view));
   });
-  setupReplay();
+  window.MonitorReplay.init(state.events, request, showError);
   $("enqueue-form").addEventListener("submit", (event) => {
     event.preventDefault();
     mutate("/api/jobs", { study_id: $("study-select").value }).catch(showError);
@@ -361,7 +320,9 @@ async function init() {
     renderStudyOptions();
     await refreshJobs();
     window.MonitorEvidence?.init(request, showError);
-    if (state.jobs.length) loadReplay($("replay-job").value).catch(showError);
+    if (state.jobs.length) {
+      window.MonitorReplay.load($("replay-job").value).catch(showError);
+    }
     window.setInterval(() => refreshJobs().catch(showError), 3000);
   } catch (error) {
     $("connection").className = "status-dot offline";

@@ -2,7 +2,14 @@ from pathlib import Path
 
 import pytest
 
-from adaptive_jump.config import ConfigError, load_config
+from adaptive_jump.config import (
+    LEGACY_COMPARISON_SAMPLE,
+    LEGACY_TURNOVER_DEFINITION,
+    PAPER_COMPARISON_SAMPLE,
+    PAPER_TURNOVER_DEFINITION,
+    ConfigError,
+    load_config,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "research.toml"
@@ -35,8 +42,50 @@ def test_load_frozen_proxy_contract() -> None:
     assert config.selection_protocol.validation_years == 8
     assert config.jm_protocol.lambda_grid[-1] == 1200
     assert config.hmm_protocol.seeds == tuple(range(10))
+    assert config.hmm_protocol.kmeans_n_init == 10
+    assert config.hmm_protocol.covars_prior == 0.01
     assert config.hmm_protocol.smoothing_grid[-1] == 2560
     assert config.metrics_protocol.expected_shortfall_quantile == 0.05
+    assert config.metrics_protocol.turnover_definition == LEGACY_TURNOVER_DEFINITION
+    assert config.metrics_protocol.turnover_scale == 1.0
+    assert config.metrics_protocol.comparison_sample == LEGACY_COMPARISON_SAMPLE
+
+
+def test_paper_turnover_definition_round_trips_through_config(tmp_path: Path) -> None:
+    payload = CONFIG.read_text(encoding="utf-8")
+    assert f'turnover = "{LEGACY_TURNOVER_DEFINITION}"' in payload
+    candidate = tmp_path / "research.toml"
+    candidate.write_text(
+        payload.replace(
+            f'turnover = "{LEGACY_TURNOVER_DEFINITION}"',
+            f'turnover = "{PAPER_TURNOVER_DEFINITION}"',
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_config(candidate)
+
+    assert config.metrics_protocol.turnover_definition == PAPER_TURNOVER_DEFINITION
+    assert config.metrics_protocol.turnover_scale == 0.5
+
+
+def test_paper_comparison_sample_round_trips_through_config(tmp_path: Path) -> None:
+    payload = CONFIG.read_text(encoding="utf-8")
+    assert f'comparison_sample = "{LEGACY_COMPARISON_SAMPLE}"' in payload
+    candidate = tmp_path / "research.toml"
+    candidate.write_text(
+        payload.replace(
+            f'comparison_sample = "{LEGACY_COMPARISON_SAMPLE}"',
+            f'comparison_sample = "{PAPER_COMPARISON_SAMPLE}"',
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_config(candidate)
+
+    assert config.metrics_protocol.comparison_sample == PAPER_COMPARISON_SAMPLE
 
 
 @pytest.mark.parametrize(

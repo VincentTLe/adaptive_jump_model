@@ -17,9 +17,12 @@ from typing import Any
 import pandas as pd
 
 from adaptive_jump import artifacts as _artifacts
+from adaptive_jump.calibration_runner import run_calibration_study
 from adaptive_jump.config import ConfigError, ResearchConfig, load_config
 from adaptive_jump.data import AcquisitionError, acquire, research_git_sha
 from adaptive_jump.features import effective_oos_start, prepare_market
+from adaptive_jump.grid_runner import run_grid_evaluation
+from adaptive_jump.grid_spec import load_grid_spec
 from adaptive_jump.models import FixedJMResult, HMMResult, fixed_jm_states, hmm_states
 from adaptive_jump.monitor import checkpoints as checkpoint_store
 from adaptive_jump.monitor import study_runtime
@@ -29,6 +32,13 @@ from adaptive_jump.monitor.child_events import (
 )
 from adaptive_jump.monitor.events import EventObserver, emit_artifact_verified
 from adaptive_jump.reporting import build_report
+from adaptive_jump.simple_jm_figures import render_figures
+from adaptive_jump.simple_jm_suite import (
+    load_dd_loss_scale_spec,
+    load_simple_jm_spec,
+    run_dd_loss_scale_study,
+    run_simple_jm_study,
+)
 from adaptive_jump.walkforward import (
     BaselineStudy,
     SelectionProgress,
@@ -442,7 +452,14 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--study",
         required=True,
-        choices=["replication", "train-window-sensitivity"],
+        choices=[
+            "replication",
+            "train-window-sensitivity",
+            "persistence-calibration",
+            "persistence-grid-evaluation",
+            "simple-jm-suite",
+            "dd-loss-scale",
+        ],
     )
     run.add_argument("--config", required=True, help="path to research.toml")
     run.add_argument("--manifest", help="exact acquisition manifest path")
@@ -450,6 +467,11 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--run", required=True, help="path to one run directory")
     report = commands.add_parser("report", help="report a verified sealed run")
     report.add_argument("--run", required=True, help="path to one run directory")
+    figures = commands.add_parser(
+        "figures", help="render figures from a completed JM run"
+    )
+    figures.add_argument("--run", required=True, help="path to one run directory")
+    figures.add_argument("--output-root", help="base output directory")
     commands.add_parser("monitor").add_argument("--config", required=True)
     return parser
 
@@ -465,17 +487,35 @@ def main(argv: Sequence[str] | None = None) -> int:
         if arguments.command == "run":
             config = load_config(arguments.config)
             observer = child_observer_from_environment()
+            research = config.path.parent / "research"
             if arguments.study == "replication":
                 frozen = load_frozen_data(config, arguments.manifest)
                 artifact = run_replication(config, frozen, observer)
-            else:
-                if arguments.manifest:
-                    raise RunError("--manifest is only valid for replication")
-                spec_path = (
-                    config.path.parent / "research/jm-train-window-sensitivity.toml"
+            elif arguments.manifest:
+                raise RunError("--manifest is only valid for replication")
+            elif arguments.study == "train-window-sensitivity":
+                spec = load_window_spec(
+                    research / "jm-train-window-sensitivity.toml", config
                 )
-                artifact = run_window_sensitivity(
-                    config, load_window_spec(spec_path, config), observer
+                artifact = run_window_sensitivity(config, spec, observer)
+            elif arguments.study == "persistence-grid-evaluation":
+                spec = load_grid_spec(
+                    research / "persistence-grid-evaluation.toml", config
+                )
+                artifact = run_grid_evaluation(config, spec, observer)
+            elif arguments.study == "simple-jm-suite":
+                spec = load_simple_jm_spec(
+                    research / "simple-jm-suite-001.toml", config
+                )
+                artifact = run_simple_jm_study(config, spec, observer)
+            elif arguments.study == "dd-loss-scale":
+                spec = load_dd_loss_scale_spec(
+                    research / "dd-loss-scale-001.toml", config
+                )
+                artifact = run_dd_loss_scale_study(config, spec, observer)
+            else:
+                artifact = run_calibration_study(
+                    config, research / "persistence-calibrated-search.toml"
                 )
             emit_artifact_verified(observer, _artifacts.verify_run(artifact))
             print(artifact)
@@ -485,6 +525,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if arguments.command == "report":
             print(build_report(arguments.run))
+            return 0
+        if arguments.command == "figures":
+            for output in render_figures(arguments.run, arguments.output_root):
+                print(output)
             return 0
         if arguments.command == "monitor":
             from adaptive_jump.monitor.server import run_monitor_server

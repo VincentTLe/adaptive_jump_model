@@ -1,3 +1,4 @@
+import base64
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -9,6 +10,7 @@ from adaptive_jump.monitor.security import (
     AccessAuthenticator,
     AccessConfig,
     AuthenticationError,
+    LocalAuthenticator,
     Principal,
 )
 
@@ -16,6 +18,35 @@ ISSUER = "https://research.cloudflareaccess.com"
 AUDIENCE = "monitor-audience"
 OWNER = "owner@example.com"
 VIEWER = "advisor@example.com"
+LOCAL_PASSWORD = "correct-local-password"
+
+
+def _basic(username: str, password: str) -> str:
+    encoded = base64.b64encode(f"{username}:{password}".encode()).decode()
+    return f"Basic {encoded}"
+
+
+def test_local_authenticator_accepts_only_the_exact_owner_credentials() -> None:
+    authenticator = LocalAuthenticator(LOCAL_PASSWORD)
+
+    assert authenticator.authenticate(_basic("owner", LOCAL_PASSWORD)) == Principal(
+        "local-owner@localhost", "owner"
+    )
+    for credential in (
+        "",
+        "Bearer token",
+        "Basic not-base64",
+        _basic("viewer", LOCAL_PASSWORD),
+        _basic("owner", "wrong-local-password"),
+    ):
+        with pytest.raises(AuthenticationError):
+            authenticator.authenticate(credential)
+
+
+@pytest.mark.parametrize("password", ["", "short", "contains whitespace ", "x" * 257])
+def test_local_authenticator_rejects_unsafe_passwords(password: str) -> None:
+    with pytest.raises(AuthenticationError, match="16 to 256"):
+        LocalAuthenticator(password)
 
 
 @pytest.fixture(scope="module")

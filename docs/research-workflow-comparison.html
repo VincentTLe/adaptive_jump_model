@@ -3,270 +3,514 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
-  <title>Advisor Brief: Adaptive Jump Model Research Status</title>
+  <title>Can a Jump Model beat HMM and Buy &amp; Hold?</title>
+  <link rel="icon" href="data:,">
   <style>
     :root {
-      --bg:#0d1110; --surface:#171d1a; --surface2:#202823; --line:#3a4740;
-      --text:#f0f4f1; --muted:#aeb9b2; --green:#68d69b; --amber:#f2c55c;
-      --red:#ef8989; --blue:#72c9e8; --max:1180px;
+      color-scheme: dark;
+      --bg: #0b1020;
+      --panel: #121a2d;
+      --panel-2: #17233b;
+      --text: #edf2f7;
+      --muted: #aab6ca;
+      --line: #2a3a59;
+      --blue: #71b7ff;
+      --green: #65d69e;
+      --red: #ff8b8b;
+      --amber: #ffd27a;
+      --max: 1040px;
     }
-    * { box-sizing:border-box; }
-    html { scroll-behavior:smooth; }
-    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.62 system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:0; }
-    header { padding:42px 22px 34px; border-bottom:1px solid var(--line); }
-    header>div,main,footer { width:min(var(--max),100%); margin:0 auto; }
-    main { padding:0 22px 68px; }
-    section { padding:38px 0; border-bottom:1px solid var(--line); }
-    h1,h2,h3 { line-height:1.22; letter-spacing:0; }
-    h1 { max-width:920px; margin:8px 0 13px; font-size:clamp(34px,5vw,52px); }
-    h2 { margin:0 0 14px; font-size:27px; }
-    h3 { margin:0 0 8px; font-size:18px; }
-    p { margin:0 0 13px; }
-    a { color:var(--blue); }
-    code { color:#d7f5f7; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; overflow-wrap:anywhere; }
-    .eyebrow,.tag { font-size:12px; font-weight:800; text-transform:uppercase; }
-    .eyebrow { color:var(--green); }
-    .lede { max-width:860px; color:var(--muted); font-size:19px; }
-    .answer { margin-top:20px; padding:18px; border-left:4px solid var(--amber); background:#252116; color:#f6e8b9; }
-    .legend { display:flex; flex-wrap:wrap; gap:14px; margin-top:20px; color:var(--muted); font-size:14px; }
-    .legend span { display:inline-flex; align-items:center; gap:7px; }
-    .dot { width:10px; height:10px; border-radius:50%; background:currentColor; }
-    .verified { color:var(--green); } .proxy { color:var(--amber); }
-    .defect { color:var(--red); } .control { color:var(--blue); }
-    .workflow { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:24px; margin:20px 0; }
-    .node { position:relative; min-width:0; min-height:142px; padding:16px; border:1px solid var(--line); border-top:4px solid var(--blue); border-radius:6px; background:var(--surface); }
-    .node:not(:last-child)::after { content:"\2192"; position:absolute; top:48%; right:-20px; color:var(--muted); font-size:22px; }
-    .node strong { display:block; margin:5px 0 7px; line-height:1.3; }
-    .node p { margin:0; color:var(--muted); font-size:14px; }
-    .node.red { border-top-color:var(--red); } .node.amber { border-top-color:var(--amber); }
-    .node.green { border-top-color:var(--green); } .node.blue { border-top-color:var(--blue); }
-    .stage { margin-top:20px; padding:18px; background:var(--surface2); border:1px solid var(--line); border-radius:6px; }
-    .stage-label { color:var(--blue); font-size:13px; font-weight:800; text-transform:uppercase; }
-    .finding-grid,.scenario-grid,.talk-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:18px; }
-    .finding,.scenario,.talk { min-width:0; padding:17px; border:1px solid var(--line); border-radius:6px; background:var(--surface); }
-    .finding strong,.scenario strong,.talk strong { display:block; margin-bottom:6px; }
-    .finding p,.scenario p,.talk p { margin:0; color:var(--muted); }
-    .finding.bad { border-left:4px solid var(--red); }
-    .finding.good { border-left:4px solid var(--green); }
-    .scenario { border-top:4px solid var(--amber); }
-    .callout { margin-top:18px; padding:17px; background:#151d21; border:1px solid #355765; color:#d9edf5; }
-    .table-wrap { overflow-x:auto; margin-top:18px; border:1px solid var(--line); border-radius:6px; }
-    table { width:100%; min-width:940px; border-collapse:collapse; background:var(--surface); }
-    th,td { padding:11px 12px; text-align:left; vertical-align:top; border-bottom:1px solid var(--line); }
-    th { color:var(--muted); font-size:13px; }
-    tbody tr:last-child td { border-bottom:0; }
-    td:first-child { color:var(--text); font-weight:700; }
-    .unknown { display:inline-block; color:var(--amber); font-weight:700; }
-    .withdrawn { display:inline-block; color:var(--red); font-weight:700; }
-    .outcome { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-top:18px; }
-    .outcome>div { padding:18px; border:1px solid var(--line); border-radius:6px; background:var(--surface); }
-    .outcome b { display:block; margin-bottom:6px; font-size:18px; }
-    .quote { padding:18px; background:#0a0d0b; border-left:4px solid var(--green); font-size:18px; }
-    .sources { columns:2; column-gap:34px; }
-    .sources li { margin:7px 0; break-inside:avoid; }
-    footer { padding:26px 22px 48px; color:var(--muted); font-size:14px; }
-    @media(max-width:900px) {
-      .workflow { grid-template-columns:1fr; gap:26px; }
-      .node { min-height:0; }
-      .node:not(:last-child)::after { content:"\2193"; top:auto; right:50%; bottom:-27px; }
-      .outcome { grid-template-columns:1fr; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 17px/1.65 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    @media(max-width:680px) {
-      header { padding-top:32px; }
-      .finding-grid,.scenario-grid,.talk-grid { grid-template-columns:1fr; }
-      .sources { columns:1; }
+    a { color: var(--blue); }
+    header, main, footer { width: min(var(--max), calc(100% - 32px)); margin-inline: auto; }
+    header { padding: 64px 0 30px; }
+    .eyebrow { color: var(--blue); font-size: .8rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { max-width: 820px; margin: 8px 0 14px; font-size: clamp(2.1rem, 6vw, 4.5rem); line-height: 1.02; }
+    h2 { margin: 0 0 14px; font-size: clamp(1.45rem, 3vw, 2rem); }
+    h3 { margin: 22px 0 4px; font-size: 1.08rem; }
+    p { margin: 8px 0 14px; }
+    .lead { max-width: 760px; color: var(--muted); font-size: 1.15rem; }
+    .verdict {
+      margin-top: 26px;
+      padding: 20px 22px;
+      border: 1px solid #665126;
+      border-left: 6px solid var(--amber);
+      border-radius: 14px;
+      background: #2a2110;
     }
-    @media print { body { background:#fff; color:#111; } .node,.stage,.finding,.scenario,.talk,.outcome>div,table { background:#fff; } }
+    .verdict strong { color: var(--amber); }
+    section {
+      margin: 24px 0;
+      padding: clamp(22px, 4vw, 38px);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+    }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 22px;
+      margin-top: 24px;
+      padding: 0;
+      list-style: none;
+    }
+    .step {
+      position: relative;
+      min-height: 150px;
+      padding: 18px 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel-2);
+    }
+    .step:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      right: -19px;
+      top: 54px;
+      color: var(--blue);
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+    .number {
+      display: inline-grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #07101f;
+      font-size: .85rem;
+      font-weight: 900;
+    }
+    .step strong { display: block; margin: 10px 0 5px; }
+    .step p { margin: 0; color: var(--muted); font-size: .91rem; line-height: 1.45; }
+    .formula {
+      overflow-x: auto;
+      margin: 16px 0;
+      padding: 16px;
+      border-radius: 10px;
+      background: #080d18;
+      color: #d9e7ff;
+      font: .95rem/1.55 ui-monospace, SFMono-Regular, Consolas, monospace;
+      white-space: nowrap;
+    }
+    .plain-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+    }
+    .plain-grid article {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel-2);
+    }
+    .plain-grid p { color: var(--muted); font-size: .94rem; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 850px; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+    th:first-child, td:first-child, th:nth-child(2), td:nth-child(2), th:last-child, td:last-child { text-align: left; }
+    caption { padding: 0 0 10px; color: var(--muted); text-align: left; }
+    th { color: var(--muted); font-size: .78rem; letter-spacing: .05em; text-transform: uppercase; }
+    .pass { color: var(--green); font-weight: 800; }
+    .fail { color: var(--red); font-weight: 800; }
+    .gap-positive { color: var(--green); }
+    .gap-negative { color: var(--red); }
+    .note { color: var(--muted); font-size: .92rem; }
+    .chart-figure { margin: 22px 0 30px; overflow-x: auto; }
+    .chart-figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: white;
+    }
+    .chart-figure figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+    ul { padding-left: 21px; }
+    li { margin: 7px 0; }
+    details {
+      margin-top: 20px;
+      padding: 15px 18px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #0d1526;
+    }
+    summary { cursor: pointer; color: var(--blue); font-weight: 800; }
+    footer { padding: 20px 0 52px; color: var(--muted); font-size: .86rem; }
+    @media (max-width: 800px) {
+      header { padding-top: 38px; }
+      .flow, .plain-grid { grid-template-columns: 1fr; }
+      .step { min-height: auto; }
+      .step:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -25px; }
+      .chart-figure img { min-width: 700px; }
+      table { min-width: 0; }
+      thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+      }
+      tbody, tr, td { display: block; width: 100%; }
+      tr { padding: 9px 0; border-bottom: 1px solid var(--line); }
+      td {
+        display: grid;
+        grid-template-columns: 8.5rem 1fr;
+        gap: 10px;
+        padding: 6px 0;
+        border: 0;
+        text-align: left !important;
+        white-space: normal;
+      }
+      td::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+      }
+    }
+    @media print {
+      :root { color-scheme: light; }
+      body { background: white; color: #111; font-size: 11pt; }
+      header, main, footer { width: 100%; }
+      section, .step, .plain-grid article, details { background: white; color: #111; break-inside: avoid; }
+      .verdict { background: white; color: #111; }
+      .lead, .note, .step p, .plain-grid p, footer { color: #444; }
+    }
   </style>
 </head>
 <body>
-  <header><div>
-    <div class="eyebrow">Adaptive Jump Model Research Audit</div>
-    <h1>What changed, what we tested, and what should happen next</h1>
-    <p class="lede">A meeting brief for discussing the Adaptive Jump Model project after auditing the earlier P0/P1/P2 work, completing a proxy replication, and testing a longer JM training window.</p>
-    <div class="answer"><strong>Bottom line:</strong> the earlier positive-looking outputs were not comparable to the paper. The rebuilt pipeline is reproducible, but its free-source proxies begin too late for an exact replication. Fixed JM did not reproduce the paper's directional ranking on those proxies. A follow-up 4,000-day experiment then reached its preregistered lambda-grid boundary, so it correctly stopped before Sharpe was examined.</div>
-    <div class="legend" aria-label="Diagram legend">
-      <span class="verified"><i class="dot"></i>Verified or aligned</span>
-      <span class="proxy"><i class="dot"></i>Proxy or unresolved</span>
-      <span class="defect"><i class="dot"></i>Verified defect or withdrawn claim</span>
-      <span class="control"><i class="dot"></i>Engineering control</span>
+  <header>
+    <div class="eyebrow">Research brief · 22 July 2026</div>
+    <h1>Can a Jump Model beat HMM and Buy &amp; Hold?</h1>
+    <p class="lead">We rebuilt Shu et al.'s market-or-cash idea on a past-only
+      public proxy sample, then tested five deliberately simple Jump Model
+      changes and one loss-scale diagnostic. The target is simple: higher net
+      Sharpe than both benchmarks on the same dates.</p>
+    <div class="verdict">
+      <strong>Latest result: scaling the DD loss by three does not create a
+        cross-market winner.</strong>
+      Scaled DD still beats fixed JM Sharpe in all three markets, but beats both
+      HMM and buy-and-hold only in the US. The result is
+      <code>not_supported</code>; raw loss scale is not the main explanation
+      for the DD result.
     </div>
-  </div></header>
+  </header>
 
   <main>
-    <section aria-labelledby="meeting-status">
-      <h2 id="meeting-status">Meeting status in three observations</h2>
-      <div class="outcome">
-        <div><b class="defect">Legacy corrected</b>P0 used a different protocol, P1 extended an unsettled baseline, and the P2 mathematical claim was withdrawn.</div>
-        <div><b class="proxy">0 / 3 markets</b>The verified v7 proxy replication did not pass the paper-inspired directional gate. This does not refute the paper.</div>
-        <div><b class="proxy">8 / 9 boundaries</b>The 4,000-day JM follow-up selected the largest lambda too often, so no new Sharpe or bootstrap result was opened.</div>
-      </div>
-      <div class="finding-grid">
-        <div class="finding good"><strong>What has genuinely advanced</strong><p>Data and protocol choices are frozen before results; signals are causal; runs carry hashes and checkpoints; a verifier independently reconstructs boundaries, accounting, metrics, and claims.</p></div>
-        <div class="finding bad"><strong>What has not happened</strong><p>No adaptive-lambda experiment and no 2024-2026 model extension have run. The live monitor is code-complete but has not passed a canonical operational-acceptance run.</p></div>
-      </div>
-      <div class="callout"><strong>Decisions to ask the advisor:</strong> Should exact replication wait for the authors' series/code? Should the next frozen experiment expand the 4,000-day lambda grid? May adaptive and 2026 work proceed as a separately labelled exploratory proxy study if exact data remain unavailable?</div>
+    <section aria-labelledby="question">
+      <h2 id="question">1. What is the paper's idea?</h2>
+      <p>Market behavior appears to persist in favorable and unfavorable
+        periods. HMM represents persistence with transition probabilities.
+        The Jump Model instead clusters observations and charges a penalty when
+        the state changes. Shu et al. ask whether that simpler persistent state
+        signal improves a 0/1 investment rule: hold the market in the favorable
+        state and local cash in the unfavorable state.</p>
+      <p>The paper is therefore not “fit JM and compare clusters.” The economic
+        test is whether the resulting strategy beats both buy-and-hold and an
+        HMM strategy after delay and costs.</p>
     </section>
 
-    <section>
-      <h2>Workflow 1: the archived legacy project</h2>
-      <p>The old project contains two successive research directions. Both are preserved for provenance, but neither is active.</p>
-
-      <div class="stage">
-        <div class="stage-label">Legacy stage A - minute and tick experiments</div>
-        <div class="workflow">
-          <div class="node amber"><span class="tag">Input</span><strong>Kibot tick/minute files</strong><p>IBM, OIH, IVE, and WDC local files; mixed adjusted OHLCV and bid/ask formats.</p></div>
-          <div class="node red"><span class="tag">Question drift</span><strong>Microstructure features</strong><p>Spread, trade count, shocks, and noise scores. These are not the paper's daily return features.</p></div>
-          <div class="node red"><span class="tag">Model</span><strong>Custom HMM and JM stack</strong><p>Hand-set duration-based penalty scale and a separate custom dynamic program.</p></div>
-          <div class="node red"><span class="tag">Evaluation</span><strong>One train/test split</strong><p>No paper-style rolling 3,000-day fit plus eight-year monthly online validation.</p></div>
-          <div class="node amber"><span class="tag">Output</span><strong>Demo backtests and reports</strong><p>Useful engineering diagnostics, but not evidence about the Shu paper.</p></div>
-        </div>
-      </div>
-
-      <div class="stage">
-        <div class="stage-label">Legacy stage B - Claude's pre-audit daily P0/P1/P2 pivot</div>
-        <div class="workflow">
-          <div class="node amber"><span class="tag">Input</span><strong>Yahoo price data, cash return = 0</strong><p>Required an uncommitted cache builder; no manifest, cutoff, or input hashes.</p></div>
-          <div class="node amber"><span class="tag">P0</span><strong>Approximate daily baseline</strong><p>2,520-day fit, 3- or 5-year validation, 126-day blocks, clipping, and OOS from 2005.</p></div>
-          <div class="node red"><span class="tag">Gate skipped</span><strong>Boundary-selected fixed penalty</strong><p>The largest tested penalty was repeatedly selected, yet P1 started before the fixed baseline was settled.</p></div>
-          <div class="node amber"><span class="tag">P1</span><strong>Adaptive penalty experiment</strong><p>A narrow exploratory null. It did nest fixed JM, but it was tested on an unsettled baseline.</p></div>
-          <div class="node red"><span class="tag">P2 withdrawn</span><strong>Asymmetric switch costs</strong><p>For two states, the proposed objective reduced to symmetric switching plus an endpoint term.</p></div>
-        </div>
-      </div>
-
-      <div class="finding-grid">
-        <div class="finding bad"><strong>What was wrong</strong><p>The research question, data, windows, risk-free return, decoder schedule, grid checks, and claim level differed from the paper. P2 also had a mathematical identifiability error.</p></div>
-        <div class="finding good"><strong>What was still useful</strong><p>The time-varying dynamic program was oracle-tested, train-only scaling and t+2 timing appeared in the daily pivot, and the archived Claude handoff explicitly withdrew P2.</p></div>
-      </div>
-      <div class="callout"><strong>Fair attribution:</strong> these statements come from archived code and the Claude-authored handoff. They describe verified properties of the implementation, not the agent's intent or general ability.</div>
+    <section aria-labelledby="flow-title">
+      <h2 id="flow-title">2. The whole experiment</h2>
+      <ol class="flow" aria-label="Five-step research workflow">
+        <li class="step"><span class="number">1</span><strong>Daily data</strong><p>Equity log return for HMM; downside-risk features for JM.</p></li>
+        <li class="step"><span class="number">2</span><strong>Online models</strong><p>Fit HMM from returns and JM from features, using past data only.</p></li>
+        <li class="step"><span class="number">3</span><strong>State</strong><p>Label the current observation favorable or unfavorable.</p></li>
+        <li class="step"><span class="number">4</span><strong>Position</strong><p>Decide after t, trade at the close of t+1, and first earn at t+2.</p></li>
+        <li class="step"><span class="number">5</span><strong>Test</strong><p>Charge 10 bps per change and compare net Sharpe with HMM and buy-and-hold.</p></li>
+      </ol>
+      <p><strong>How lambda is chosen:</strong> at each month-end, every
+        candidate is replayed online over the preceding eight calendar years.
+        Its validation strategy uses the same one-day trading delay and 10-bps
+        cost; the candidate with the highest validation Sharpe is used for the
+        next month. HMM smoothing is selected the same way.</p>
+      <p class="note">This is the core procedure in Shu et al. Section 3.4.3.
+        The exact candidate grids, 252-return eligibility floor,
+        10<sup>&minus;12</sup> tie rule, and 5% boundary diagnostic are
+        repository conventions because the paper does not publish them.</p>
     </section>
 
-    <section>
-      <h2>Workflow 2: the current verified v7 pipeline</h2>
-      <p>The current system answers a narrower question: does fixed JM reproduce the paper's directional ordering on the best documented free proxy bundle?</p>
-      <div class="workflow">
-        <div class="node blue"><span class="tag">1. Audit</span><strong>Inspect free sources</strong><p>Classify price versus total return, coverage, instrument, availability, and license.</p></div>
-        <div class="node blue"><span class="tag">2. Freeze</span><strong>Hash research.toml v7</strong><p>Lock data definitions, windows, grids, tie rules, costs, delays, metrics, and gate.</p></div>
-        <div class="node green"><span class="tag">3. Acquire</span><strong>Six cutoff-safe series</strong><p>Raw responses, canonical CSVs, quality facts, URLs, timestamps, and SHA256 hashes.</p></div>
-        <div class="node green"><span class="tag">4. Prepare</span><strong>Causal returns and features</strong><p>Local cash availability, excess returns, DD-10, Sortino-20/60, and no clipping.</p></div>
-        <div class="node green"><span class="tag">5. Fit</span><strong>Paper-shaped fixed models</strong><p>3,000-row scaling/JM windows; daily 10-restart HMM; terminal online states only.</p></div>
-      </div>
-      <div class="workflow">
-        <div class="node green"><span class="tag">6. Select</span><strong>Monthly eight-year validation</strong><p>Choose penalty or HMM filter by costed, delayed validation Sharpe; smaller smoothing wins ties.</p></div>
-        <div class="node blue"><span class="tag">7. Guard</span><strong>Boundary gate before metrics</strong><p>Expand a grid if the largest candidate is selected in more than 5% of months.</p></div>
-        <div class="node green"><span class="tag">8. Compare</span><strong>Common model sample</strong><p>B&amp;H, HMM, and JM use identical complete dates within each market and delay.</p></div>
-        <div class="node green"><span class="tag">9. Account</span><strong>t+2 return and 10 bps cost</strong><p>Equity or local cash, delays 1/5/10, then frozen performance definitions.</p></div>
-        <div class="node blue"><span class="tag">10. Verify</span><strong>Recompute from trade paths</strong><p>Check identity locks, 131 immutable files, 18 boundaries, 27 metrics, and the claim.</p></div>
-      </div>
-      <div class="outcome">
-        <div><b class="verified">18 / 18</b>Grid-boundary checks passed before metrics were opened.</div>
-        <div><b class="verified">27 / 27</b>Metric rows independently matched; maximum difference was below 1e-12.</div>
-        <div><b class="defect">0 / 3</b>Markets passed the directional replication gate. Adaptive work remains blocked.</div>
-      </div>
-      <div class="callout"><strong>Remaining limitation:</strong> US and German free total-return candidates begin in the late 1980s, Japan uses a long price index, and German/Japanese cash series are instrument proxies. Eligibility therefore moves OOS to 2007-2009.</div>
+    <section aria-labelledby="regime-title">
+      <h2 id="regime-title">3. What regimes did the models actually see?</h2>
+      <p>The diagnostic below deliberately shows only one market. The black
+        line is US market-proxy wealth. Orange hatching is the actual delayed
+        Cash position: a decision after day t is traded at the close of t+1
+        and first affects the return/cost row at t+2.</p>
+      <p class="note">The figure reads accepted daily trade files without
+        refitting a model. A regime is a model description, not observed
+        market ground truth.</p>
+
+      <h3>US regime paths</h3>
+      <p>DD-only made 11 switches, versus 21 for fixed JM and 46 for HMM. It is
+        the only tested simple variant that beat both same-sample controls in
+        one market. The shaded periods show when each strategy was actually in
+        Cash.</p>
+      <figure class="chart-figure">
+        <img src="../artifacts/reports/simple-jm-suite-2d3d2a779b13-0e026376c2cb-20260722T030918585813Z/us-causal-regimes.svg"
+          alt="Three US panels showing market-proxy wealth and delayed Cash positions for fixed JM, DD-only JM, and HMM">
+        <figcaption>US, 2007–2023. All panels use the same dates and one-day
+          trading delay.
+          <a href="../artifacts/reports/simple-jm-suite-2d3d2a779b13-0e026376c2cb-20260722T030918585813Z/us-causal-regimes.svg">Open full-size SVG.</a></figcaption>
+      </figure>
+
+      <h3>Net wealth in all three markets</h3>
+      <p>Each panel compares Buy &amp; Hold, fixed JM, DD-only JM, and HMM after
+        10-bps one-way costs. DD-only finishes above both controls only in the
+        US; Germany and Japan prevent a cross-market claim.</p>
+      <figure class="chart-figure">
+        <img src="../artifacts/reports/simple-jm-suite-2d3d2a779b13-0e026376c2cb-20260722T030918585813Z/shu-style-net-wealth.svg"
+          alt="Net wealth for Buy and Hold, fixed JM, DD-only JM, and HMM in the US, Germany, and Japan">
+        <figcaption>Orange hatching marks the delayed DD-only Cash position.
+          <a href="../artifacts/reports/simple-jm-suite-2d3d2a779b13-0e026376c2cb-20260722T030918585813Z/shu-style-net-wealth.svg">Open full-size SVG.</a></figcaption>
+      </figure>
+
+      <h3>Ordinary DD loss versus three-times DD loss</h3>
+      <p>Each row below holds the market path fixed and changes only the DD
+        observation-loss multiplier. Scaling changed relatively few delayed
+        position days in the US and Germany, but visibly more in Japan. It
+        increased switches by 4 in the US and Japan and reduced them by 10 in
+        Germany, so the trading effect was not uniform.</p>
+      <figure class="chart-figure">
+        <img src="../artifacts/reports/dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z/dd-loss-scale-causal-regimes.svg"
+          alt="Paired ordinary and three-times DD-loss delayed Cash regimes for the US, Germany, and Japan">
+        <figcaption>US, Germany, and Japan through 2023. Black is market-proxy
+          wealth; hatching is the delayed Cash position. Each paired row uses
+          the same dates and y-axis.
+          <a href="../artifacts/reports/dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z/dd-loss-scale-causal-regimes.svg">Open full-size SVG.</a></figcaption>
+      </figure>
     </section>
 
-    <section>
-      <h2>Completed follow-up: test a longer JM training window</h2>
-      <p>This experiment directly tested the proposed explanation that 3,000 observations might be too short. It changed only fixed JM's trailing window from 3,000 to 4,000 observations and retained the sealed v7 data, HMM control, costs, delays, metrics, and gates.</p>
-      <div class="workflow">
-        <div class="node blue"><span class="tag">Hypothesis</span><strong>More history may stabilize JM</strong><p>Compare JM-4,000 with the sealed JM-3,000 control, without changing the paper-shaped benchmark.</p></div>
-        <div class="node green"><span class="tag">Freeze</span><strong>One variable changed</strong><p>The task, grid, primary estimand, tie rules, bootstrap, and stop conditions were fixed before the run.</p></div>
-        <div class="node green"><span class="tag">Run</span><strong>46 minutes, three markets</strong><p>The run produced 51 verified files and nine market-delay boundary rows.</p></div>
-        <div class="node red"><span class="tag">Gate</span><strong>Upper lambda selected</strong><p>The 5% boundary rule failed in 8 of 9 rows, especially Germany at 31.51%-37.67%.</p></div>
-        <div class="node amber"><span class="tag">Result</span><strong>Performance remains sealed</strong><p>Zero metric and bootstrap rows were exposed. A wider grid requires a new frozen experiment.</p></div>
+    <section aria-labelledby="math-title">
+      <h2 id="math-title">4. Five simple changes we tested</h2>
+      <p>All challengers keep the same causal timeline and training window of 3,000 complete observations,
+        training window, January/July refits, one-day trading delay, 10-bps
+        cost, and raw &lambda; grid unless the card says otherwise. Only one
+        idea changes at a time.</p>
+      <div class="formula">Fixed JM: minimize &Sigma;<sub>t</sub> L<sub>t</sub>(s<sub>t</sub>) + &lambda; &Sigma;<sub>t&ge;1</sub> 1[s<sub>t</sub> &ne; s<sub>t-1</sub>]</div>
+      <div class="plain-grid">
+        <article>
+          <h3>1. Static &lambda; = 50</h3>
+          <p>Remove monthly &lambda; selection and use the source-visible
+            illustrative value 50 everywhere.</p>
+        </article>
+        <article>
+          <h3>2. DD-only</h3>
+          <p>Cluster only 10-day exponentially weighted downside deviation:
+            squared negative excess returns, then a square root. Ask whether
+            the two Sortino features add signal or mostly noise.</p>
+        </article>
+        <article>
+          <h3>3. Confirm twice</h3>
+          <p>Accept a new raw state only after seeing it on two consecutive
+            observations. This is a simple anti-whipsaw rule.</p>
+        </article>
+        <article>
+          <h3>4. Return-aware</h3>
+          <p>During fitting, also group only matured t+2 excess returns
+            (&gamma; = 1). Online decoding still uses today&apos;s features only.</p>
+        </article>
+        <article>
+          <h3>5. Robust L1</h3>
+          <p>Replace squared distance and mean centers with absolute distance
+            and median centers, reducing sensitivity to outliers.</p>
+        </article>
       </div>
-      <div class="outcome">
-        <div><b class="verified">1 / 9 passed</b>US delay 1 selected the upper edge in only 2.05% of months.</div>
-        <div><b class="defect">8 / 9 failed</b>Other rows reached 5.47%-37.67%, above the preregistered 5% limit.</div>
-        <div><b class="control">No post-hoc Sharpe</b>The gate prevented a favorable or unfavorable performance story after observing the boundary.</div>
-      </div>
-      <div class="callout"><strong>Scientific interpretation:</strong> longer training has been tested, but its performance effect is not yet identified. The observed result says the current lambda grid is inadequate for JM-4,000; it does not say that a longer window helps or hurts returns.</div>
+      <p class="note">The return-aware idea is no longer untested. It was
+        implemented with &gamma; = 1, checked against the exact &gamma; = 0
+        fixed-JM route, and run in all three markets. It passed 0/3.</p>
     </section>
 
-    <section>
-      <h2>Workflow 3: the paper as documented</h2>
-      <p>This is the strongest reconstruction supported by the paper. Amber text marks information that is not sufficiently disclosed for exact reproduction.</p>
-      <div class="workflow">
-        <div class="node amber"><span class="tag">Data</span><strong>Bloomberg total-return indices</strong><p>S&amp;P 500, DAX, and Nikkei 225 in local currency, 1970-2023. <span class="unknown">Exact tickers and fields unknown.</span></p></div>
-        <div class="node amber"><span class="tag">Cash</span><strong>GFD three-month Treasury Bills</strong><p>US, Germany, and Japan. <span class="unknown">Series IDs and daily conversion unknown.</span></p></div>
-        <div class="node green"><span class="tag">Features</span><strong>Excess-return features</strong><p>Downside deviation with halflife 10 and Sortino ratios with halflives 20 and 60.</p></div>
-        <div class="node green"><span class="tag">Models</span><strong>Rolling HMM and fixed JM</strong><p>Two states and 3,000-day windows; HMM daily, JM parameters every six months.</p></div>
-        <div class="node amber"><span class="tag">Selection</span><strong>Monthly online cross-validation</strong><p>Eight trailing years, strategy Sharpe objective. <span class="unknown">Complete grids and tie rules unknown.</span></p></div>
+    <section aria-labelledby="result-title">
+      <h2 id="result-title">5. What is the result?</h2>
+      <p>Each row below is one prespecified challenger. For market m and the
+        same variant v, a positive gap means that variant beat both controls:</p>
+      <div class="formula">G<sub>m</sub>(v) = Sharpe<sub>v,m</sub> &minus; max[Sharpe<sub>Buy &amp; Hold,m</sub>, Sharpe<sub>HMM,m</sub>]</div>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Simple challenger economic gaps">
+        <table>
+          <caption>Gap versus the stronger same-sample benchmark, through 2023</caption>
+          <thead>
+            <tr>
+              <th>Variant</th>
+              <th>US G</th>
+              <th>DE G</th>
+              <th>JP G</th>
+              <th>Markets passed</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td data-label="Variant">Static &lambda; = 50</td><td data-label="US G" class="gap-negative">&minus;0.067542</td><td data-label="DE G" class="gap-negative">&minus;0.133419</td><td data-label="JP G" class="gap-negative">&minus;0.360656</td><td data-label="Passed" class="fail">0/3</td>
+            </tr>
+            <tr>
+              <td data-label="Variant">DD-only</td><td data-label="US G" class="gap-positive">+0.253822</td><td data-label="DE G" class="gap-negative">&minus;0.063196</td><td data-label="JP G" class="gap-negative">&minus;0.120698</td><td data-label="Passed">1/3</td>
+            </tr>
+            <tr>
+              <td data-label="Variant">Confirm twice</td><td data-label="US G" class="gap-negative">&minus;0.034433</td><td data-label="DE G" class="gap-negative">&minus;0.139713</td><td data-label="JP G" class="gap-negative">&minus;0.247362</td><td data-label="Passed" class="fail">0/3</td>
+            </tr>
+            <tr>
+              <td data-label="Variant">Return-aware</td><td data-label="US G" class="gap-negative">&minus;0.093860</td><td data-label="DE G" class="gap-negative">&minus;0.139896</td><td data-label="JP G" class="gap-negative">&minus;0.215320</td><td data-label="Passed" class="fail">0/3</td>
+            </tr>
+            <tr>
+              <td data-label="Variant">Robust L1</td><td data-label="US G" class="gap-negative">&minus;0.280928</td><td data-label="DE G" class="gap-negative">&minus;0.116256</td><td data-label="JP G" class="gap-negative">&minus;0.183230</td><td data-label="Passed" class="fail">0/3</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <div class="workflow">
-        <div class="node green"><span class="tag">Inference</span><strong>Online terminal regimes</strong><p>Only information available by the decision date should determine the current state.</p></div>
-        <div class="node green"><span class="tag">Allocation</span><strong>0/1 strategy</strong><p>Bull state holds the index; bear state holds the local risk-free asset.</p></div>
-        <div class="node green"><span class="tag">Execution</span><strong>One-day delay and 10 bps</strong><p>End-of-day signal t first earns return t+2; switching incurs one-way cost.</p></div>
-        <div class="node green"><span class="tag">Test</span><strong>OOS 1990-2023</strong><p>Three markets, plus robustness delays of 1, 5, and 10 trading days.</p></div>
-        <div class="node green"><span class="tag">Finding</span><strong>JM leads directionally</strong><p>Higher Sharpe than HMM/B&amp;H and lower drawdown than B&amp;H across all markets.</p></div>
+      <p><strong>DD-only is the useful result:</strong> its Sharpe is higher
+        than fixed JM in all three markets, but it clears both benchmarks only
+        in the US. The table below gives its absolute strategy metrics, not
+        only changes from another model.</p>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="DD-only absolute results">
+        <table>
+          <caption>DD-only net performance, risk, and activity on identical dates</caption>
+          <thead>
+            <tr>
+              <th>Market</th>
+              <th>Sharpe</th>
+              <th>MDD</th>
+              <th>Turnover</th>
+              <th>Cash</th>
+              <th>Switches</th>
+              <th>Stronger control</th>
+              <th>G</th>
+              <th>Pass?</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td data-label="Market">US</td><td data-label="Sharpe">0.907547</td><td data-label="MDD">&minus;0.193635</td><td data-label="Turnover">0.342561</td><td data-label="Cash">13.57%</td><td data-label="Switches">11</td><td data-label="Stronger control">HMM 0.653725</td><td data-label="G" class="gap-positive">+0.253822</td><td data-label="Pass" class="pass">Yes</td>
+            </tr>
+            <tr>
+              <td data-label="Market">DE</td><td data-label="Sharpe">0.226442</td><td data-label="MDD">&minus;0.428325</td><td data-label="Turnover">0.807095</td><td data-label="Cash">11.36%</td><td data-label="Switches">26</td><td data-label="Stronger control">B&amp;H 0.289638</td><td data-label="G" class="gap-negative">&minus;0.063196</td><td data-label="Pass" class="fail">No</td>
+            </tr>
+            <tr>
+              <td data-label="Market">JP</td><td data-label="Sharpe">0.423891</td><td data-label="MDD">&minus;0.432405</td><td data-label="Turnover">0.667596</td><td data-label="Cash">8.73%</td><td data-label="Switches">19</td><td data-label="Stronger control">B&amp;H 0.544589</td><td data-label="G" class="gap-negative">&minus;0.120698</td><td data-label="Pass" class="fail">No</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Net results use identical market dates, a one-day
+        trading delay, and 10-bps one-way costs through 2023. Turnover is
+        0.5 &times; 252 &times; mean absolute position change.</p>
+
+      <h3>Loss-scale diagnostic</h3>
+      <p>The table compares scaled DD with ordinary DD on the same dates.
+        Positive &Delta;MDD means the drawdown became less negative and
+        therefore improved.</p>
+      <div class="formula">Q<sub>3</sub> = 3Q<sub>1</sub>, so J<sub>3</sub>(&lambda;) = 3J<sub>1</sub>(&lambda;/3)</div>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="DD loss-scale diagnostic">
+        <table>
+          <caption>Three-times DD loss minus ordinary DD loss, through 2023</caption>
+          <thead>
+            <tr>
+              <th>Market</th>
+              <th>Scaled Sharpe</th>
+              <th>G</th>
+              <th>&Delta; Sharpe</th>
+              <th>&Delta; MDD</th>
+              <th>&Delta; turnover</th>
+              <th>&Delta; cash</th>
+              <th>&Delta; switches</th>
+              <th>Pass?</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td data-label="Market">US</td><td data-label="Scaled Sharpe">0.884130</td><td data-label="G" class="gap-positive">+0.230405</td><td data-label="Delta Sharpe">&minus;0.023417</td><td data-label="Delta MDD">&minus;0.001676</td><td data-label="Delta turnover">+0.124567</td><td data-label="Delta cash">+0.005685</td><td data-label="Delta switches">+4</td><td data-label="Pass" class="pass">Yes</td></tr>
+            <tr><td data-label="Market">DE</td><td data-label="Scaled Sharpe">0.195916</td><td data-label="G" class="gap-negative">&minus;0.093722</td><td data-label="Delta Sharpe">&minus;0.030526</td><td data-label="Delta MDD">&minus;0.016850</td><td data-label="Delta turnover">&minus;0.310421</td><td data-label="Delta cash">&minus;0.001478</td><td data-label="Delta switches">&minus;10</td><td data-label="Pass" class="fail">No</td></tr>
+            <tr><td data-label="Market">JP</td><td data-label="Scaled Sharpe">0.428050</td><td data-label="G" class="gap-negative">&minus;0.116539</td><td data-label="Delta Sharpe">+0.004159</td><td data-label="Delta MDD">+0.087115</td><td data-label="Delta turnover">+0.140547</td><td data-label="Delta cash">+0.051590</td><td data-label="Delta switches">+4</td><td data-label="Pass" class="fail">No</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
-    <section>
-      <h2>The protocols differ before any model result is observed</h2>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Dimension</th><th>Paper</th><th>Archived legacy</th><th>Current v7</th></tr></thead>
-        <tbody>
-          <tr><td>Research unit</td><td>Daily national equity indices</td><td>Minute stocks, then approximate daily indices</td><td>Daily national equity-index proxies</td></tr>
-          <tr><td>Equity definition</td><td>Bloomberg total return</td><td>Kibot stocks; later Yahoo price returns</td><td>S&amp;P TR candidate, DAX performance candidate, Nikkei price</td></tr>
-          <tr><td>Cash</td><td>Local 3-month Treasury Bill from GFD</td><td>Zero in daily P0/P1/P2</td><td>US bill candidate; German interbank and Japanese call-rate proxies</td></tr>
-          <tr><td>Coverage</td><td>1970-2023</td><td>Local minute periods; later OOS 2005-2024</td><td>Cut off at 2023; effective OOS 2007-2009 onward</td></tr>
-          <tr><td>Fit window</td><td>3,000 daily observations</td><td>One split; later 2,520 days</td><td>3,000 complete observations</td></tr>
-          <tr><td>Validation</td><td>Eight trailing years, monthly selection</td><td>None; later 3/5 years in 126-day blocks</td><td>Eight calendar years, monthly, online candidate paths</td></tr>
-          <tr><td>Outliers</td><td>No outlier processing</td><td>Daily pivot clipped features at 3 standard deviations</td><td>No clipping or imputation</td></tr>
-          <tr><td>Grid safety</td><td><span class="unknown">Not fully disclosed</span></td><td>Upper penalty repeatedly selected but work continued</td><td>Mandatory 5% boundary rule before metrics</td></tr>
-          <tr><td>Model comparison dates</td><td><span class="unknown">Not explicitly disclosed</span></td><td>Block outputs could reset and differ</td><td>Exact per-market-delay intersection</td></tr>
-          <tr><td>Reproducibility</td><td>Sources named; IDs/code artifact unavailable</td><td>Required ignored cache with no builder or hashes</td><td>Config/data/code locks, inventory, checkpoints, and verifier</td></tr>
-          <tr><td>Scientific status</td><td>Positive reported finding</td><td><span class="withdrawn">P0 approximate; P2 withdrawn</span></td><td>Shifted-window proxy non-replication</td></tr>
-        </tbody>
-      </table></div>
-    </section>
-
-    <section>
-      <h2>What could explain the current disagreement?</h2>
-      <div class="scenario-grid">
-        <div class="scenario"><strong>Scenario A: original data makes the result match</strong><p>The main cause was data definition or the 1990 test window. The current code remains useful, and the proxy result should not be generalized.</p></div>
-        <div class="scenario"><strong>Scenario B: original data still does not match</strong><p>The next suspects are undisclosed grids, tie rules, HMM filtering, yield conversion, or another implementation convention.</p></div>
-        <div class="scenario"><strong>Scenario C: author code and data reproduce their tables</strong><p>We differential-test their artifact against ours one stage at a time: returns, features, states, choices, trades, then metrics.</p></div>
-        <div class="scenario"><strong>Scenario D: changing our protocol creates a win</strong><p>That is a new exploratory study, not a repair of this replication. The viewed 1990-2023 target cannot be tuned post hoc.</p></div>
-        <div class="scenario"><strong>Scenario E: licensed data remain unavailable</strong><p>The exact-reproduction question stays inconclusive. A transparent proxy study can continue, but its estimand and claims must remain separate.</p></div>
-        <div class="scenario"><strong>Scenario F: fixed JM eventually passes the gate</strong><p>Only then do we freeze and test adaptive lambda. The extension must nest fixed JM and use untouched post-audit evidence.</p></div>
-      </div>
-    </section>
-
-    <section>
-      <h2>A concise explanation for an academic advisor</h2>
-      <div class="quote">"At our previous meeting I showed preliminary P0/P1/P2 outputs. I later found that those experiments did not implement the paper's protocol closely enough, so I archived them and rebuilt the study around frozen, causal, auditable rules. The free-source proxy replication did not reproduce the paper's ranking. I then tested the longer-training-window hypothesis, but the lambda grid reached its preregistered boundary in eight of nine cases, so the protocol stopped before performance metrics were examined. I now need to decide whether to obtain the original data, expand that grid in a new experiment, or define adaptive and 2026 work as a separate exploratory proxy study."</div>
-      <div class="talk-grid">
-        <div class="talk"><strong>Safe to say</strong><p>The legacy claim was not comparable; v7 is internally verified; the proxy gate failed; longer training was attempted but reached a selection boundary; exact reproduction remains unresolved.</p></div>
-        <div class="talk"><strong>Not safe to say</strong><p>The paper is wrong, longer training failed on performance, adaptive JM fails, the models are equivalent, or changing parameters after seeing results would repair replication.</p></div>
-      </div>
-      <div class="callout"><strong>Monitor status:</strong> present it only as tested engineering infrastructure. It has not yet completed a canonical model subprocess through cancel, restart, resume, verifier, and artifact-parity acceptance; Cloudflare deployment is also pending.</div>
-    </section>
-
-    <section>
-      <h2>Evidence used for this comparison</h2>
-      <ul class="sources">
-        <li><a href="../2402.05272v3.pdf">Shu, Yu, and Mulvey paper PDF</a></li>
-        <li><a href="../research.toml">Frozen current protocol: research.toml v7</a></li>
-        <li><a href="../archive/completed-tasks/fixed-baselines-001.md">Completed v7 task contract</a></li>
-        <li><a href="../archive/completed-tasks/jm-train-window-sensitivity-001.md">Completed 4,000-day task contract</a></li>
-        <li><a href="../TASK.md">Frozen local monitor acceptance task</a></li>
-        <li><a href="../archive/pre-audit-daily/docs/HANDOFF_NEW_CHAT.md">Claude-authored pre-audit handoff</a></li>
-        <li><a href="../archive/pre-audit-daily/scripts/p0_daily_baseline.py">Archived daily P0 script</a></li>
-        <li><a href="../archive/pre-audit-daily/scripts/p1_adaptive_lambda.py">Archived daily P1 script</a></li>
-        <li><a href="../archive/pre-audit-daily/scripts/p2_asymmetric.py">Archived withdrawn P2 script</a></li>
-        <li><a href="../archive/legacy-minute/README.md">Frozen minute-pipeline status</a></li>
-        <li><a href="../artifacts/reports/fixed-baselines-8adb330565d6-3636939b525d-e9614112b234/report.html">Generated verified v7 report (local)</a></li>
-        <li><a href="../artifacts/reports/jm-window-cd9ac0b9d7a6-3636939b525d-6c19911401ad/report.html">Generated 4,000-day report (local)</a></li>
-        <li><code>artifacts/fixed-baselines/fixed-baselines-8adb330565d6-3636939b525d-e9614112b234</code></li>
-        <li><code>artifacts/jm-train-window-sensitivity/jm-window-cd9ac0b9d7a6-3636939b525d-6c19911401ad</code></li>
+    <section aria-labelledby="meaning-title">
+      <h2 id="meaning-title">6. What does this mean?</h2>
+      <ul>
+        <li><strong>The checked implementation path is internally consistent:</strong>
+          losses, penalties, states, signals, positions, trades, costs, and
+          returns were checked end to end.</li>
+        <li><strong>Simplicity helped in one market:</strong> DD-only raised
+          fixed-JM Sharpe by +0.337682 / +0.060001 / +0.094622 in US / DE / JP,
+          but crossed both benchmarks only in the US.</li>
+        <li><strong>The market objective is not met:</strong> no tested JM
+          beats both benchmarks in all three markets. This is development
+          evidence, not a profitability claim.</li>
       </ul>
+      <p><strong>The loss-scale control retained the DD clue:</strong>
+        multiplying DD loss by three moved Sharpe by only
+        &minus;0.023 / &minus;0.031 / +0.004 in US / DE / JP, and scaled DD
+        still beat fixed-JM Sharpe in all three. That makes feature removal the
+        stronger explanation than the original raw loss scale, but does not
+        prove that Sortino features are harmful. The selector moved raw
+        &lambda; upward in 73.7% / 81.3% / 66.1% of paired months and selected
+        the upper endpoint in 0% / 22.9% / 29.0%; the finite grid still binds
+        in DE and JP.</p>
+      <p><strong>One-state-collapse caveat:</strong> some fitted two-state
+        candidates left only one reachable state. Collapsed fit&times;&lambda;
+        rows (US / DE / JP) were: DD-only 95 / 132 / 124; return-aware
+        63 / 85 / 93; and L1 75 / 91 / 98. Outer CV selected those candidates
+        in 0 / 43 / 75, 24 / 53 / 78, and 62 / 83 / 87 months, respectively.
+        The deterministic route and P&amp;L remain valid, but these candidates
+        behaved as one reachable state, weakening the two-regime
+        interpretation. Scaled DD selected collapsed fits in 0 / 44 / 63 of
+        194 / 193 / 177 US / DE / JP months, so the same warning remains
+        important.</p>
+      <p><strong>Return prediction was tested, not postponed:</strong> the
+        return-aware model was nearly identical to fixed JM and never improved
+        Sharpe. This weakens that exact &gamma; = 1 formulation; it does not
+        prove that all predictive regime models fail.</p>
+
+      <details>
+        <summary>Protocol, limitations, and evidence links</summary>
+        <p><strong>Reproducibility status:</strong> the fixed baseline is
+          runnable, and the shared runner now reproduces and verifies the five
+          simple challengers. The fresh run reproduced 24 metric rows, 45
+          traces, and 9 collapse summaries. The scale run separately verified
+          15 metric rows, 9 complete loss-to-trade traces, and 3 collapse
+          summaries.</p>
+        <ul>
+          <li>HMM input: equity log return. JM features: downside deviation DD-10 and Sortino-20/60.</li>
+          <li>Rolling model window: 3,000 observations. JM refits in January
+            and July; HMM refits daily.</li>
+          <li>Monthly selection: preceding eight calendar years.</li>
+          <li>Frozen λ grid: 0, 5, 15, 35, 70, 150, 300, 600, 1200.</li>
+          <li>The five simple ideas and their order were frozen before their
+            performance was opened. This remains exploratory development
+            evidence, not a confirmatory study.</li>
+          <li>The evaluated proxy sample begins in 2007–2009, not the paper's
+            exact 1990–2023 Bloomberg/GFD sample. Exact paper Sharpe is not the target.</li>
+          <li>The same through-2023 markets have been inspected repeatedly;
+            no generalization or holdout claim is made. No reported model or
+            P&amp;L experiment used later rows, but a separate source audit
+            inspected public candidate series through July 2026.</li>
+        </ul>
+        <p>
+          <a href="../README.md">README</a> ·
+          <a href="../paper/manuscript.tex">paper source</a> ·
+          <a href="../artifacts/paper/manuscript.pdf">generated PDF (local)</a> ·
+          <a href="../research/STATUS.md">current evidence</a> ·
+          <a href="../research/SCIENTIFIC_LEDGER.md">mathematical history</a> ·
+          <a href="../2402.05272v3.pdf">Shu et al. paper</a>
+        </p>
+      </details>
     </section>
   </main>
 
-  <footer>Meeting brief updated July 14, 2026. It changes no model, data, metric, gate, or scientific conclusion.</footer>
+  <footer>This brief simplifies presentation only. It changes no model, data,
+    metric, experiment result, or historical artifact.</footer>
 </body>
 </html>
