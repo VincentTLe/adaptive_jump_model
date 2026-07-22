@@ -1,80 +1,67 @@
-# Task: Restore the Economic Research Question
+# Active Task: Record the DD Loss-Scale Result
 
-## Identity
+## Status
 
-- `task_id`: `research-story-reset-001`
-- `status`: `COMPLETE`
-- `task_type`: `READ_ONLY_AUDIT_AND_DOCUMENTATION`
-- `completed`: `2026-07-21`
-- No new model run, provider access, post-2023 access, or experiment-registry
-  entry was part of this task.
+The shared pipeline can now run and verify the five simple challengers and the
+DD loss-scale control. Current source reproduced the accepted simple-suite
+result, and `dd-loss-scale-001` completed end to end.
+
+The scale study's official conclusion is `not_supported`: scaled DD beats both
+buy-and-hold and HMM only in the US, not in all three markets.
 
 ## Question
 
-What did Shu, Yu, and Mulvey actually test, what has this repository tested,
-and does any current Jump Model beat both same-sample buy-and-hold and the
-canonical Gaussian HMM?
+Did DD-only improve because removing the Sortino features helped, or because
+one observation-loss coordinate made the unchanged lambda grid effectively
+stronger?
 
-## Correct target
+The frozen control multiplied only the DD observation loss by three:
 
-For market `m` and a prespecified JM variant `v`:
+`L_scaled = 3 * 0.5 * (z_DD - theta)^2`.
 
-`G_m(v) = Sharpe_v,m - max(Sharpe_BuyHold,m, Sharpe_HMM,m)`.
+The data, raw lambda grid, 3,000-observation window, January/July refits,
+monthly eight-year validation, one-day trading delay, 10-bps cost, and
+through-2023 sample stayed unchanged.
 
-A model passes a market only when `G_m(v) > 0`. The cross-market target
-requires the same prespecified variant to pass every declared market. MDD,
-turnover, cash fraction, and switch count are secondary risk/activity
-guardrails.
+## Result
 
-## Audit result
+| Market | Scaled DD Sharpe | G vs stronger control | MDD | Turnover | Cash | Switches | Pass? |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| US | 0.884130 | +0.230405 | -0.195311 | 0.467128 | 0.141374 | 15 | Yes |
+| DE | 0.195916 | -0.093722 | -0.445175 | 0.496674 | 0.112097 | 16 | No |
+| JP | 0.428050 | -0.116539 | -0.345290 | 0.808143 | 0.138873 | 23 | No |
 
-The paper's purpose is not merely to fit JM or compare clusters. Its persistent
-state signal drives a 0/1 market-or-cash strategy, which is compared with both
-buy-and-hold and an HMM strategy after delay and costs.
+Scaled minus ordinary DD-only:
 
-The checked repository path is internally consistent: the independent
-trade-level audit confirmed common dates, signal at `t` earning `t+2`,
-10-bps one-way costs, corrected paper turnover, and no post-2023 rows. The
-authors' public GitHub repository contains a generic JM library and examples,
-not the paper's HMM, licensed data, monthly validation/accounting pipeline, or
-complete final grids.
+| Market | Delta Sharpe | Delta MDD | Delta turnover | Delta cash | Delta switches |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| US | -0.023417 | -0.001676 | +0.124567 | +0.005685 | +4 |
+| DE | -0.030526 | -0.016850 | -0.310421 | -0.001478 | -10 |
+| JP | +0.004159 | +0.087115 | +0.140547 | +0.051590 | +4 |
 
-## Current evidence
+A positive MDD delta means a less-negative, better drawdown.
 
-| Market | Strongest benchmark | Fixed JM | Best observed JM | Gap | Result |
-| --- | ---: | ---: | ---: | ---: | --- |
-| US | HMM `0.653725` | `0.569865` | Balanced `0.616326` | `-0.037398` | No |
-| DE | B&H `0.289638` | `0.166440` | Lagged `0.337888` | `+0.048251` | Yes |
-| JP | B&H `0.544589` | `0.329270` | Lagged `0.413215` | `-0.131375` | No |
+## Interpretation
 
-This table is an ex-post per-market upper envelope, not one universal model.
-Fixed and arrival-adaptive JM beat both benchmarks in `0/3` markets. Lagged
-and pair-balanced JM each do so only in DE (`1/3`). No current variant meets
-the cross-market target.
+The mechanism behaved as intended mathematically. The loss identities,
+lambda-third path identity, brute-force equivalence, prefix invariance, timing,
+cost, and turnover checks passed. Monthly selection moved raw lambda upward in
+`73.7% / 81.3% / 66.1%` of paired US/DE/JP months.
 
-## Documentation delivered
+The finite grid still binds: scaled DD selected its upper lambda in
+`0% / 22.9% / 29.0%` of US/DE/JP months. Selected one-state fits occurred in
+`0/194`, `44/193`, and `63/177` months. These facts weaken a clean
+two-regime interpretation in Germany and Japan.
 
-- `README.md`: short project explanation, equations, exact benchmark result,
-  turnover definition, and reproduction entry points.
-- `docs/research-workflow-comparison.html`: five-section advisor brief with
-  one five-step workflow and one primary result table.
-- `paper/manuscript.tex`: self-contained working paper following the Shu
-  narrative from downside-risk problem to 0/1 strategy, models, protocol,
-  results, limitations, and next hypothesis.
-- `research/STATUS.md`: benchmark outcome promoted to the headline.
-- `research/SCIENTIFIC_LEDGER.md`: append-only objective reconciliation,
-  mathematical sequence, and timing terminology clarification.
-- `AGENTS.md`: repository north star corrected to the B&H/HMM economic test.
+Scaled DD still has higher Sharpe than fixed JM in all three markets. This
+weakens the idea that DD-only improved mainly because of raw loss scale, but it
+does not prove that the Sortino features are harmful. The result is repeatedly
+inspected exploratory evidence, not a profitability, alpha, robustness,
+holdout, paper-replication, or generalization claim.
 
-## Scientific interpretation
+## Provenance
 
-The contribution so far is mathematical and diagnostic: a verified family of
-past-only time-varying JM decoders, plus a precise map of where they help or
-fail. It is not yet a model that wins across markets, and it is not a
-profitability, alpha, holdout, or generalization claim.
-
-A simple next hypothesis is a predictive JM whose training objective combines
-feature compactness, transition persistence, and a robust loss for matured
-`t+2` returns. That model has not been implemented or run. It requires a
-separate frozen specification, parameter provenance, and untouched or
-prospective evaluation evidence.
+- Current-source simple-suite reproduction:
+  `simple-jm-suite-2d3d2a779b13-0e026376c2cb-20260722T030918585813Z`.
+- Completed scale control:
+  `dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z`.
