@@ -37,6 +37,7 @@ from adaptive_jump.monitor.events import EventObserver, emit_event
 from adaptive_jump.simple_jm_controls import (
     ControlPath,
     build_confirmed_control_path,
+    build_control_path,
     build_static_lambda50_path,
 )
 from adaptive_jump.simple_jm_fitting import (
@@ -981,10 +982,8 @@ def _load_loss_scale_sources(
             )
             for model in CONTROLS
         }
-        controls["dd_only"] = read_trade_path(
-            spec.dd_parent_root / market / "dd_only" / "trades.csv",
-            1,
-            10,
+        controls["dd_only"] = _replay_parent_dd_control(
+            features, spec.dd_parent_root, market
         )
         if features["date"].max() > DEVELOPMENT_CUTOFF or any(
             path["date"].max() > DEVELOPMENT_CUTOFF for path in controls.values()
@@ -992,6 +991,46 @@ def _load_loss_scale_sources(
             raise SimpleJMSuiteError(f"{market}: source crosses the cutoff")
         output[market] = LossScaleMarketSource(market, features, controls)
     return output
+
+
+def _replay_parent_dd_control(
+    features: pd.DataFrame, parent_root: Path, market: str
+) -> pd.DataFrame:
+    """Replay the sealed DD signal on canonical returns after CSV validation."""
+    target = parent_root / market / "dd_only"
+    signal_path = target / "selected-signal.csv"
+    try:
+        frame = pd.read_csv(signal_path, usecols=["date", "selected_signal"])
+        dates = pd.DatetimeIndex(
+            pd.to_datetime(frame["date"], errors="raise"), name="date"
+        )
+        raw = frame["selected_signal"]
+        signal = pd.to_numeric(raw, errors="coerce")
+        if (raw.notna() & signal.isna()).any():
+            raise ValueError("selected signal contains a non-numeric value")
+        state = pd.Series(
+            1.0 - signal.to_numpy(dtype=float),
+            index=dates,
+            name="state",
+        )
+        replayed = build_control_path(
+            features.loc[:, ["date", "equity_simple", "cash_return"]],
+            state,
+        ).trades
+    except (OSError, ValueError, pd.errors.ParserError) as exc:
+        raise SimpleJMSuiteError(
+            f"{market}: invalid parent DD selected signal"
+        ) from exc
+    sealed = read_trade_path(target / "trades.csv", 1, 10)
+    routed = (
+        replayed.set_index("date")
+        .reindex(sealed["date"])
+        .reset_index()
+        .loc[:, TRADE_COLUMNS]
+    )
+    if not _trade_route_equal(sealed, routed):
+        raise SimpleJMSuiteError(f"{market}: parent DD trade route changed")
+    return replayed
 
 
 def _loss_scale_contrasts(summary: pd.DataFrame) -> pd.DataFrame:

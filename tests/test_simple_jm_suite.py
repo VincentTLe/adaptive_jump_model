@@ -473,6 +473,58 @@ def test_load_dd_loss_scale_spec_accepts_frozen_contract(tmp_path: Path) -> None
     )
 
 
+def test_parent_dd_control_replays_signal_on_exact_canonical_returns(
+    tmp_path: Path,
+) -> None:
+    dates = pd.bdate_range("2023-01-02", periods=6, name="date")
+    features = pd.DataFrame(
+        {
+            "date": dates,
+            "equity_simple": np.linspace(0.0012345678901234, 0.006, 6),
+            "cash_return": np.linspace(0.0001234567890123, 0.0006, 6),
+        }
+    )
+    state = pd.Series(
+        [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+        index=dates,
+        name="state",
+    )
+    control = suite.build_control_path(features, state)
+    target = tmp_path / "us" / "dd_only"
+    target.mkdir(parents=True)
+    control.signal.rename("selected_signal").reset_index().to_csv(
+        target / "selected-signal.csv", index=False
+    )
+    complete = control.trades.loc[:, suite.METRIC_REQUIRED].notna().all(axis=1)
+    sealed = control.trades.loc[complete, suite.TRADE_COLUMNS].reset_index(drop=True)
+    sealed["equity_simple"] += 1e-16
+    sealed["cash_return"] += 1e-16
+    sealed["gross_return"] = (
+        sealed["position"] * sealed["equity_simple"]
+        + (1.0 - sealed["position"]) * sealed["cash_return"]
+    )
+    sealed["strategy_return"] = sealed["gross_return"] - sealed["transaction_cost"]
+    sealed.to_csv(target / "trades.csv", index=False, float_format="%.17g")
+
+    replayed = suite._replay_parent_dd_control(features, tmp_path, "us")
+
+    pd.testing.assert_frame_equal(
+        replayed.loc[:, ["date", "equity_simple", "cash_return"]],
+        features,
+        check_exact=True,
+    )
+    routed = (
+        replayed.set_index("date")
+        .reindex(pd.DatetimeIndex(sealed["date"]))
+        .reset_index()
+        .loc[:, suite.TRADE_COLUMNS]
+    )
+    assert suite._trade_route_equal(
+        suite.read_trade_path(target / "trades.csv", 1, 10),
+        routed,
+    )
+
+
 @pytest.mark.parametrize(
     ("variant", "expected_scale"),
     [("dd_only", 1.0), (suite.SCALED_DD_VARIANT, 3.0)],
