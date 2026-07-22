@@ -59,12 +59,27 @@ is `dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z`.
 
 ## Active code map
 
-- `data.py`, `features.py`: load the frozen proxy sample and build features.
-- `models.py`, `tv_jump.py`: HMM and Jump-Model fitting/decoding.
+- `config.py`, `data.py`, `features.py`: frozen protocol config, proxy sample
+  loading, and causal features.
+- `models.py`: HMM and Jump-Model fitting/decoding.
+- `tv_jump.py`: time-varying-penalty DP reserved for the preregistered
+  extension; oracle-tested in `tests/test_tv_jump.py`, not on the active
+  decode path.
 - `walkforward.py`: past-only refits and monthly parameter selection.
 - `backtest.py`: one-day-delayed positions, trades, costs, and metrics.
-- `artifacts.py`, `cli.py`: save, run, and verify experiments.
+- `simple_jm_controls.py`, `simple_jm_fitting.py`, `simple_jm_l1.py`,
+  `simple_jm_return.py`, `simple_jm_suite.py`: the five simple challengers,
+  the DD loss-scale control, and their verifiers.
 - `simple_jm_figures.py`: plot accepted daily paths without refitting.
+- `calibration.py`/`calibration_runner.py`, `grid_spec.py`/`grid_runner.py`,
+  `window_*.py`: the earlier persistence-calibration, grid-evaluation, and
+  train-window studies still runnable from the CLI.
+- `inference.py`: bootstrap Sharpe-delta inference for the grid and window
+  studies.
+- `artifacts.py`, `cli.py`, `reporting.py`: save, run, verify, and report
+  experiments.
+- `monitor/`: optional observer of a separately launched run
+  (`docs/monitor/deployment.md`).
 
 All active Python source is under `src/adaptive_jump/`. Raw data and generated
 outputs belong in ignored `data/` and `artifacts/`; `archive/` is frozen history.
