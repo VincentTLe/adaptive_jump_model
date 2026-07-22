@@ -17,16 +17,27 @@ scaled DD in JP. Their gaps are `+0.253822 / +0.048251 / -0.116539`. This
 ex-post envelope passes in US and DE, but it mixes different models and is not
 a deployable cross-market rule; JP still loses buy-and-hold.
 
-The first true out-of-sample test is now complete. `holdout-2026-001` opened
-the previously untouched 2024-01-02 to 2026-06-30 window once, after a fresh
-v7 replication byte-matched the sealed baseline on all 123 scientific files.
-DD-only JM beat neither buy-and-hold nor HMM in any market: net Sharpe was
-US `1.0521` B&H versus `0.7750` DD-only, DE all four models identical at
-`0.9041` (the German JM never left equity), and JP `1.2701` B&H versus `1.1696`
-DD-only. The window was a broad bull, so rotating to cash was penalized. This
-is `not_supported`, 0/3; the development edge did not generalize. It does not
-refute the JM class, and the sample is now spent development data. The
-lagged-log4 batch remains available under the same frozen contract.
+Fresh data through 2026 has been added. Every evaluation below is walk-forward
+causal: each monthly decision uses only trailing data, so the whole
+2008/2009--2026 span is already out-of-sample per decision. Two distinct axes
+matter. Walk-forward leakage: none, on any window. Selection bias: DD-only was
+chosen from several variants after inspecting the through-2023 sample, so only
+the 2024-01-02 to 2026-06-30 window is free of that choice.
+
+On the **full walk-forward through 2026**, DD-only still beats both controls in
+the US (`0.8903` vs the stronger control `0.6326`, gap `+0.258`) and loses in
+DE and JP -- `1/3`, unchanged from development. Adding 2.5 new years barely
+moved the US number (`0.9075` through 2023 to `0.8903` through 2026).
+
+On the **isolated 2024-2026 window** the frozen binary rule returns
+`not_supported`, `0/3`: US B&H `1.0521` vs DD-only `0.7750`, DE all four
+`0.9041` (the German JM never left equity), JP B&H `1.2701` vs DD-only `1.1696`.
+This window is short (~620 days), the paired bootstrap intervals include zero,
+and it was a broad bull that penalizes any cash rotation. It therefore
+**fails to confirm** the US edge on selection-independent data but **does not
+refute** the full walk-forward result. It is weak evidence, not a clean
+negative. The sample is now spent, and the lagged-log4 batch remains available
+under the same frozen contract.
 
 The five-variant simple suite found that DD-only improved fixed-JM Sharpe in
 all three markets and beat both controls in US. The completed loss-scale
@@ -61,7 +72,7 @@ or generalization claim is authorized.
 | Simple challengers | `simple-jm-suite-001` / `simple-jm-suite-2d3d2a779b13-544237a59943-20260721T145043479851Z` | No cross-market winner; DD-only beats both controls in US and improves fixed-JM Sharpe in all three, but passes only `1/3` and is loss-scale confounded |
 | DD loss-scale control | `dd-loss-scale-001` / `dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z` | Mechanism verified; scaled DD beats both controls only in US (`1/3`), so the result is `not_supported` |
 | Separation-turnover diagnostic | `separation-turnover-001` / `separation-turnover-8674ff4d9470-20260722T083551Z` | Not supported; decision-time DD center separation associates positively (US `+0.035`, DE `+0.320`, JP `+0.155`) with next-month switches, JP flips negative once collapsed one-state months are excluded, so no separation gate is justified |
-| One-shot 2024-2026 holdout | `holdout-2026-001` / `holdout-20260722T111757Z` | Not supported, 0/3; on the first untouched window DD-only beat neither benchmark in any market (US B&H `1.0521` vs DD-only `0.7750`; DE all four `0.9041`; JP B&H `1.2701` vs DD-only `1.1696`). Broad bull penalized cash rotation; development edge did not generalize |
+| One-shot 2024-2026 holdout | `holdout-2026-001` / `holdout-20260722T111757Z` | Frozen rule returns `not_supported` on the isolated 2024-2026 window (`0/3`: US B&H `1.0521` vs DD-only `0.7750`; DE all four `0.9041`; JP B&H `1.2701` vs DD-only `1.1696`). But the full walk-forward through 2026 still has DD-only beating both controls in the US (`1/3`, unchanged). The window is short and bull-dominated with bootstrap intervals spanning zero, so it fails to confirm the edge on selection-independent data without refuting the 18-year result |
 
 Invalidated runs remain preserved for provenance, but they are not accepted
 evidence. In particular, the `2207...` and `d6fe...` fixed-audit runs and the

@@ -44,13 +44,20 @@ because it beats both controls only in the US. No tested JM variant beats both
 benchmarks in all three markets, so this is exploratory evidence—not an alpha,
 robustness, generalization, or profitability claim.
 
-The first true out-of-sample test is now complete. On the previously untouched
-2024-01-02 to 2026-06-30 window, DD-only beat neither buy-and-hold nor the HMM
-in any market (net Sharpe US `1.0521` B&H vs `0.7750` DD-only; DE all four
-models `0.9041`; JP `1.2701` B&H vs `1.1696` DD-only). The window was a broad
-bull, so cash rotation was penalized; the development edge did not generalize.
-The holdout was opened once, after a fresh 2023 replication byte-matched the
-sealed baseline on all 123 scientific files. See `research/holdout-2026-001.toml`.
+Fresh data through 30 June 2026 has been added. Every evaluation is
+walk-forward causal, so the whole 2008/2009--2026 span is out-of-sample per
+decision; the only thing special about 2024-2026 is that DD-only was chosen
+before that window existed, so it is free of selection bias. On the **full
+walk-forward through 2026**, DD-only still beats both controls in the US
+(`0.8903` vs stronger control `0.6326`) and loses in DE and JP -- `1/3`,
+unchanged from development. On the **isolated 2024-2026 window** the frozen
+binary rule returns `not_supported` (`0/3`: US B&H `1.0521` vs DD-only `0.7750`;
+DE all four `0.9041`; JP B&H `1.2701` vs DD-only `1.1696`), but that window is
+short (~620 days), its paired bootstrap intervals include zero, and it was a
+broad bull that penalizes cash rotation. It therefore fails to confirm the US
+edge on selection-independent data without refuting the 18-year result. The
+window was opened once, after a fresh 2023 replication byte-matched the sealed
+baseline on all 123 scientific files. See `research/holdout-2026-001.toml`.
 
 Turnover is `0.5 * 252 * mean(abs(position change))`: the factor one-half
 counts an equity-to-cash-to-equity round trip once. Transaction costs still
