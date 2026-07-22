@@ -150,11 +150,11 @@ def verify_run(run: str | Path) -> dict[str, Any]:
 
         return verify_grid_run(run_dir)
     if study_kind == "simple-jm-suite-001":
-        from adaptive_jump.simple_jm_suite import verify_simple_jm_run
+        from adaptive_jump.simple_jm_verifier import verify_simple_jm_run
 
         return verify_simple_jm_run(run_dir)
     if study_kind == "dd-loss-scale-001":
-        from adaptive_jump.simple_jm_suite import verify_dd_loss_scale_run
+        from adaptive_jump.simple_jm_verifier import verify_dd_loss_scale_run
 
         return verify_dd_loss_scale_run(run_dir)
     if study_kind is not None:

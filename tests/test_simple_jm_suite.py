@@ -11,6 +11,7 @@ import pandas as pd
 import pytest
 
 import adaptive_jump.simple_jm_suite as suite
+import adaptive_jump.simple_jm_verifier as verifier
 from adaptive_jump.artifacts import TRADE_COLUMNS, ArtifactError
 from adaptive_jump.config import load_config
 from adaptive_jump.walkforward import SelectionResult
@@ -29,6 +30,7 @@ def test_implementation_hashes_cover_result_code_and_environment_lock() -> None:
         "src/adaptive_jump/simple_jm_l1.py",
         "src/adaptive_jump/simple_jm_return.py",
         "src/adaptive_jump/simple_jm_suite.py",
+        "src/adaptive_jump/simple_jm_verifier.py",
         "src/adaptive_jump/walkforward.py",
         "pyproject.toml",
         "uv.lock",
@@ -364,11 +366,11 @@ def test_trace_trade_rows_are_linked_to_verified_accounting(tmp_path: Path) -> N
         strategy_return=selected["strategy_return"],
     )
 
-    suite._verify_trace_trade_rows(tmp_path, trace)
+    verifier._verify_trace_trade_rows(tmp_path, trace)
 
     trace.loc[0, "strategy_return"] += 0.01
     with pytest.raises(suite.SimpleJMSuiteError, match="strategy_return"):
-        suite._verify_trace_trade_rows(tmp_path, trace)
+        verifier._verify_trace_trade_rows(tmp_path, trace)
 
 
 def _write_suite_contract(repo: Path, *, registered_hash: str | None = None) -> Path:
@@ -639,7 +641,7 @@ def test_replay_scaled_selector_uses_choices_signal_and_t_plus_2(
     stored = suite.read_trade_path(target / "trades.csv", 1, 10)
     source = suite.LossScaleMarketSource("us", features, {})
 
-    suite._replay_scaled_selector(
+    verifier._replay_scaled_selector(
         tmp_path,
         "us",
         source,
@@ -655,7 +657,7 @@ def test_replay_scaled_selector_uses_choices_signal_and_t_plus_2(
     )
     signal.to_csv(target / "selected-signal.csv", index=False)
     with pytest.raises(suite.SimpleJMSuiteError, match="selector replay changed"):
-        suite._replay_scaled_selector(
+        verifier._replay_scaled_selector(
             tmp_path,
             "us",
             source,
@@ -905,9 +907,9 @@ def test_implementation_source_requires_one_complete_historical_snapshot(
         "second.py": hashlib.sha256(second.read_bytes()).hexdigest(),
     }
 
-    assert suite._implementation_source_commit(tmp_path, old_mapping) == first_commit
+    assert verifier._implementation_source_commit(tmp_path, old_mapping) == first_commit
     with pytest.raises(suite.SimpleJMSuiteError, match="no single Git commit"):
-        suite._implementation_source_commit(tmp_path, mixed_mapping)
+        verifier._implementation_source_commit(tmp_path, mixed_mapping)
 
 
 def test_implementation_source_accepts_matching_non_git_export(tmp_path: Path) -> None:
@@ -915,4 +917,4 @@ def test_implementation_source_accepts_matching_non_git_export(tmp_path: Path) -
     source.write_text("exact source\n", encoding="utf-8")
     mapping = {"runner.py": hashlib.sha256(source.read_bytes()).hexdigest()}
 
-    assert suite._implementation_source_commit(tmp_path, mapping) is None
+    assert verifier._implementation_source_commit(tmp_path, mapping) is None
