@@ -68,8 +68,10 @@ is `dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z`.
 - `walkforward.py`: past-only refits and monthly parameter selection.
 - `backtest.py`: one-day-delayed positions, trades, costs, and metrics.
 - `simple_jm_controls.py`, `simple_jm_fitting.py`, `simple_jm_l1.py`,
-  `simple_jm_return.py`, `simple_jm_suite.py`: the five simple challengers,
-  the DD loss-scale control, and their verifiers.
+  `simple_jm_return.py`, `simple_jm_suite.py`: the five simple challengers
+  and the DD loss-scale control.
+- `simple_jm_verifier.py`: independent replay verification of sealed
+  simple-JM and DD loss-scale runs.
 - `simple_jm_figures.py`: plot accepted daily paths without refitting.
 - `calibration.py`/`calibration_runner.py`, `grid_spec.py`/`grid_runner.py`,
   `window_*.py`: the earlier persistence-calibration, grid-evaluation, and
@@ -78,6 +80,8 @@ is `dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z`.
   studies.
 - `artifacts.py`, `cli.py`, `reporting.py`: save, run, verify, and report
   experiments.
+- `runtime/`: shared study runtime — events, checkpoints, and run
+  lifecycle helpers.
 - `monitor/`: optional observer of a separately launched run
   (`docs/monitor/deployment.md`).
 
