@@ -990,6 +990,69 @@ mid-2020 through 2023.}
 this figure.}
 }
 
+\subsection{A one-shot out-of-sample holdout}
+
+Every result above is on the through-2023 development sample, which has been
+inspected repeatedly. To test whether the strongest development survivor
+generalizes, the owner authorized extending the public proxies to
+30 June 2026 and opening the 2024-01-02 to 2026-06-30 window \emph{once} for a
+pre-declared variant, DD-only JM, against the same buy-and-hold and HMM
+controls. The window is opened after a precondition: a fresh replication of the
+sealed 2023 sample with the current source reproduced the accepted baseline on
+all 123 scientific output files byte-for-byte, so the extension changed no
+numerical behavior. The extended series overlap the sealed sample with maximum
+absolute difference zero on every shared row.
+
+\begin{table}[!htbp]
+\centering
+\caption{Net Sharpe on the untouched 2024-01-02 to 2026-06-30 holdout window.
+Buy-and-hold is the stronger control in every market.}
+\label{tab:holdout}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Market & \BH{} & HMM & Fixed JM & DD-only JM \\
+\midrule
+US & \textbf{1.0521} & 0.5316 & 0.5737 & 0.7750 \\
+DE & \textbf{0.9041} & 0.9041 & 0.9041 & 0.9041 \\
+JP & \textbf{1.2701} & 1.2701 & 1.2701 & 1.1696 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The result is \texttt{not\_supported} in every market (Table~\ref{tab:holdout},
+Figure~\ref{fig:holdout}). DD-only remained the best jump model in the US, above
+both fixed JM and the HMM, exactly as on the development sample, but it trailed
+buy-and-hold by \(0.277\) Sharpe. In Germany all four models were identical:
+the German jump model never left equity in this window, so it reproduced
+buy-and-hold. In Japan DD-only was the only model to rotate to cash, twice, and
+that cost it \(0.100\) Sharpe against an otherwise all-equity field. A paired
+stationary-block bootstrap of DD-only minus buy-and-hold (\(10{,}000\) draws,
+mean block 60) places the US and Japanese shortfalls within noise of zero, but
+neither is positive. The 2024-2026 window was a broad bull across all three
+indices, with buy-and-hold Sharpe between \(0.90\) and \(1.27\); in such a
+regime any strategy that rotates to cash is penalized. This is a genuine
+out-of-sample outcome, not a refutation of the jump-model class: it shows the
+US development edge does not survive into a trending market. The window is now
+spent development data, and the pre-declared lagged-evidence batch remains
+available under the same frozen contract.
+
+\newcommand{\holdoutfig}{../artifacts/holdout-2026-001/holdout-20260722T111757Z/holdout-sharpe.png}
+\IfFileExists{\holdoutfig}{
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{\holdoutfig}
+\caption{Net Sharpe on the one-shot 2024-2026 holdout. No jump-model variant
+clears buy-and-hold in any market. DD-only is the best jump model in the US
+but still trails buy-and-hold; Germany is an all-equity tie; Japan's DD-only
+rotation to cash costs Sharpe.}
+\label{fig:holdout}
+\end{figure}
+}{
+\noindent\emph{The retained holdout artifact is required to render this
+figure.}
+}
+
 \subsection{Interpretation and limitations}
 
 No single tested variant passes all three markets. The local winners are
