@@ -1,6 +1,7 @@
 import hashlib
 import json
 import subprocess
+import tomllib
 from dataclasses import replace
 from pathlib import Path
 
@@ -260,6 +261,10 @@ def _valid_trace(**overrides: object) -> pd.DataFrame:
         "state": 0.0,
         "signal": 1.0,
         "position": 1.0,
+        "one_way_turnover": 1.0,
+        "transaction_cost": 0.001,
+        "gross_return": 0.02,
+        "strategy_return": 0.019,
     }
     row.update(overrides)
     return pd.DataFrame([row])
@@ -280,6 +285,7 @@ def test_validate_traces_accepts_complete_loss_to_t_plus_2_chain() -> None:
         ("state", 1.0, "state"),
         ("signal", 0.0, "signal"),
         ("position", 0.0, "position"),
+        ("transaction_cost", np.nan, "trade accounting"),
         ("trade_row", 8, r"t\+2"),
     ],
 )
@@ -320,6 +326,48 @@ def test_validate_traces_allows_only_unreachable_collapsed_loss_inf() -> None:
     reachable_inf.loc[0, "loss_state_0"] = np.inf
     with pytest.raises(suite.SimpleJMSuiteError, match="reachable.*loss"):
         suite._validate_traces(reachable_inf)
+
+
+def test_trace_trade_rows_are_linked_to_verified_accounting(tmp_path: Path) -> None:
+    dates = pd.bdate_range("2023-01-02", periods=6)
+    signal = np.asarray([0.0, 1.0, 0.0, 1.0, 0.0, 1.0])
+    position = np.asarray([0.0, 0.0, 0.0, 1.0, 0.0, 1.0])
+    turnover = np.asarray([0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
+    equity = np.full(6, 0.02)
+    cash = np.zeros(6)
+    gross = position * equity
+    cost = turnover * 0.001
+    trades = pd.DataFrame(
+        {
+            "date": dates,
+            "equity_simple": equity,
+            "cash_return": cash,
+            "signal": signal,
+            "position": position,
+            "gross_return": gross,
+            "one_way_turnover": turnover,
+            "transaction_cost": cost,
+            "strategy_return": gross - cost,
+        }
+    )
+    target = tmp_path / "us" / "dd_only"
+    target.mkdir(parents=True)
+    trades.to_csv(target / "trades.csv", index=False, float_format="%.17g")
+    selected = trades.iloc[3]
+    trace = _valid_trace(
+        trade_date=selected["date"],
+        position=selected["position"],
+        one_way_turnover=selected["one_way_turnover"],
+        transaction_cost=selected["transaction_cost"],
+        gross_return=selected["gross_return"],
+        strategy_return=selected["strategy_return"],
+    )
+
+    suite._verify_trace_trade_rows(tmp_path, trace)
+
+    trace.loc[0, "strategy_return"] += 0.01
+    with pytest.raises(suite.SimpleJMSuiteError, match="strategy_return"):
+        suite._verify_trace_trade_rows(tmp_path, trace)
 
 
 def _write_suite_contract(repo: Path, *, registered_hash: str | None = None) -> Path:
@@ -384,6 +432,184 @@ def test_load_simple_jm_spec_rejects_registry_hash_mismatch(tmp_path: Path) -> N
         suite.SimpleJMSuiteError, match="no matching pre-result FROZEN registry row"
     ):
         suite.load_simple_jm_spec(spec_path, config)
+
+
+def test_load_dd_loss_scale_spec_accepts_frozen_contract(tmp_path: Path) -> None:
+    research = tmp_path / "research"
+    research.mkdir()
+    spec_path = research / "dd-loss-scale-001.toml"
+    spec_path.write_bytes((ROOT / "research/dd-loss-scale-001.toml").read_bytes())
+    document = tomllib.loads(spec_path.read_text(encoding="utf-8"))
+    for field in ("canonical_run_root", "dd_parent_run_root"):
+        (tmp_path / document["sources"][field]).mkdir(parents=True)
+    digest = hashlib.sha256(spec_path.read_bytes()).hexdigest()
+    (research / "experiment_registry.jsonl").write_text(
+        json.dumps(
+            {
+                "experiment_id": suite.LOSS_SCALE_EXPERIMENT_ID,
+                "status": "FROZEN",
+                "frozen_spec_hash": digest,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    config = replace(
+        load_config(ROOT / "research.toml"), path=tmp_path / "research.toml"
+    )
+
+    loaded = suite.load_dd_loss_scale_spec(spec_path, config)
+
+    assert loaded.sha256 == digest
+    assert loaded.document["model"]["observation_loss_scale"] == 3
+    assert loaded.document["model"]["optimizer_tol"] == 3e-8
+    assert (
+        loaded.canonical_root
+        == (tmp_path / document["sources"]["canonical_run_root"]).resolve()
+    )
+    assert (
+        loaded.dd_parent_root
+        == (tmp_path / document["sources"]["dd_parent_run_root"]).resolve()
+    )
+
+
+@pytest.mark.parametrize(
+    ("variant", "expected_scale"),
+    [("dd_only", 1.0), (suite.SCALED_DD_VARIANT, 3.0)],
+)
+def test_fit_market_task_routes_declared_dd_loss_scale(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    variant: str,
+    expected_scale: float,
+) -> None:
+    market = tmp_path / "us"
+    market.mkdir()
+    pd.DataFrame(
+        {
+            column: (["2023-01-03"] if column == "date" else [0.0])
+            for column in suite.FEATURE_COLUMNS
+        }
+    ).to_csv(market / "features.csv", index=False)
+    observed = []
+
+    def stop_after_route(*_args, observation_loss_scale, **_kwargs):
+        observed.append(observation_loss_scale)
+        raise RuntimeError("scale captured")
+
+    monkeypatch.setattr(suite, "dd_only_states", stop_after_route)
+
+    with pytest.raises(RuntimeError, match="scale captured"):
+        suite._fit_market_task(
+            (str(tmp_path), "us", variant, load_config(ROOT / "research.toml"))
+        )
+
+    assert observed == [expected_scale]
+
+
+def test_loss_scale_contrast_and_single_variant_decision() -> None:
+    rows = []
+    for market in suite.MARKETS:
+        for model, shift in (("dd_only", 0.0), (suite.SCALED_DD_VARIANT, 1.0)):
+            rows.append(
+                {
+                    "market": market,
+                    "model": model,
+                    "sharpe": 0.5 + shift,
+                    "maximum_drawdown": -0.3 + 0.1 * shift,
+                    "turnover": 10.0 - shift,
+                    "cash_fraction": 0.2 + 0.1 * shift,
+                    "switch_count": 8 - 2 * shift,
+                    "gap_vs_stronger_control": 0.2 * shift,
+                    "market_pass": bool(shift),
+                }
+            )
+    summary = pd.DataFrame.from_records(rows)
+
+    contrast = suite._loss_scale_contrasts(summary)
+    decision = suite._decision(summary, (suite.SCALED_DD_VARIANT,))
+
+    assert contrast["delta_sharpe"].tolist() == [1.0, 1.0, 1.0]
+    assert contrast["delta_switch_count"].tolist() == [-2.0, -2.0, -2.0]
+    assert contrast["market_pass"].tolist() == [True, True, True]
+    assert [row["variant"] for row in decision["variants"]] == [suite.SCALED_DD_VARIANT]
+    assert decision["supported_variants"] == [suite.SCALED_DD_VARIANT]
+
+
+def test_replay_scaled_selector_uses_choices_signal_and_t_plus_2(
+    tmp_path: Path,
+) -> None:
+    config = load_config(ROOT / "research.toml")
+    dates = pd.bdate_range("2010-01-04", "2019-03-29", name="date")
+    row = np.arange(len(dates))
+    features = pd.DataFrame(
+        {
+            "date": dates,
+            "equity_simple": 0.0002 + 0.01 * np.sin(row / 13),
+            "cash_return": np.zeros(len(dates)),
+        }
+    )
+    states = pd.DataFrame(
+        {
+            penalty: ((row // (20 + number)) % 2).astype(float)
+            for number, penalty in enumerate(config.jm_protocol.lambda_grid)
+        },
+        index=dates,
+    )
+    selection = suite.select_monthly_candidate(
+        features,
+        states,
+        config.selection_protocol,
+        delay_trading_days=1,
+        one_way_cost_bps=10,
+        periods_per_year=252,
+        volatility_ddof=1,
+    )
+    trades = suite.apply_signal(
+        features,
+        selection.signal.reset_index(drop=True),
+        delay_trading_days=1,
+        one_way_cost_bps=10,
+    )
+    complete = trades.loc[:, suite.METRIC_REQUIRED].notna().all(axis=1)
+    trades = trades.loc[complete, suite.TRADE_COLUMNS].reset_index(drop=True)
+    target = tmp_path / "us" / suite.SCALED_DD_VARIANT
+    target.mkdir(parents=True)
+    states.reset_index().to_csv(target / "candidate-states.csv", index=False)
+    selection.choices.to_csv(target / "choices.csv", index=False)
+    selection.signal.rename("selected_signal").reset_index().to_csv(
+        target / "selected-signal.csv", index=False
+    )
+    pd.DataFrame(columns=suite.REFIT_COLUMNS).to_csv(target / "refits.csv", index=False)
+    suite.write_json(target / "boundary.json", {})
+    trades.to_csv(target / "trades.csv", index=False, float_format="%.17g")
+    stored = suite.read_trade_path(target / "trades.csv", 1, 10)
+    source = suite.LossScaleMarketSource("us", features, {})
+
+    suite._replay_scaled_selector(
+        tmp_path,
+        "us",
+        source,
+        stored["date"],
+        stored,
+        config,
+    )
+
+    signal = pd.read_csv(target / "selected-signal.csv")
+    changed = signal["selected_signal"].notna().idxmax()
+    signal.loc[changed, "selected_signal"] = (
+        1.0 - signal.loc[changed, "selected_signal"]
+    )
+    signal.to_csv(target / "selected-signal.csv", index=False)
+    with pytest.raises(suite.SimpleJMSuiteError, match="selector replay changed"):
+        suite._replay_scaled_selector(
+            tmp_path,
+            "us",
+            source,
+            stored["date"],
+            stored,
+            config,
+        )
 
 
 @pytest.mark.parametrize(
