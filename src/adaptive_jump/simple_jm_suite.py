@@ -33,8 +33,8 @@ from adaptive_jump.artifacts import (
 )
 from adaptive_jump.backtest import apply_signal, performance_metrics
 from adaptive_jump.config import ResearchConfig, load_config
-from adaptive_jump.monitor import study_runtime
-from adaptive_jump.monitor.events import EventObserver, emit_event
+from adaptive_jump.runtime import study_runtime
+from adaptive_jump.runtime.events import EventObserver, emit_event
 from adaptive_jump.simple_jm_controls import (
     ControlPath,
     build_confirmed_control_path,

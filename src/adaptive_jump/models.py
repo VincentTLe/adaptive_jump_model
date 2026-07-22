@@ -20,8 +20,8 @@ from sklearn.preprocessing import StandardScaler
 from threadpoolctl import threadpool_limits
 
 from adaptive_jump.config import HMMProtocol, JMProtocol, ModelProtocol
-from adaptive_jump.monitor import model_runtime as runtime
-from adaptive_jump.monitor.events import EventObserver
+from adaptive_jump.runtime import model_runtime as runtime
+from adaptive_jump.runtime.events import EventObserver
 
 FEATURE_COLUMNS = ("dd_10", "sortino_20", "sortino_60")
 

@@ -17,7 +17,7 @@ from threadpoolctl import threadpool_limits
 
 from adaptive_jump.config import JMProtocol, ModelProtocol, ResearchConfig
 from adaptive_jump.models import FixedJMResult, fixed_jm_states, smoothed_hmm_states
-from adaptive_jump.monitor.checkpoints import load_checkpoint, save_checkpoint
+from adaptive_jump.runtime.checkpoints import load_checkpoint, save_checkpoint
 
 MODELS = ("fixed_jm", "hmm")
 MARKETS = ("us", "de", "jp")

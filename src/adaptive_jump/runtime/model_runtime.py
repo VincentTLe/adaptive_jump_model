@@ -9,7 +9,7 @@ from typing import Any
 
 import pandas as pd
 
-from adaptive_jump.monitor.events import EventObserver, emit_event
+from adaptive_jump.runtime.events import EventObserver, emit_event
 
 _JM_REFIT_COLUMNS = (
     "fit_date",

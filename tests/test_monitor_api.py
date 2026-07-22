@@ -7,11 +7,11 @@ from urllib.parse import urlsplit
 from adaptive_jump.monitor.api import MonitorServices, create_app
 from adaptive_jump.monitor.audit import AuditStore
 from adaptive_jump.monitor.event_store import EventStore
-from adaptive_jump.monitor.events import ResearchEvent
 from adaptive_jump.monitor.evidence import EvidenceError, OutcomeLocked
 from adaptive_jump.monitor.http_security import HttpSecurityConfig, RequestSecurity
 from adaptive_jump.monitor.queue import QueueStore, StudyDefinition
 from adaptive_jump.monitor.security import AuthenticationError, Principal
+from adaptive_jump.runtime.events import ResearchEvent
 
 
 class _Authenticator:

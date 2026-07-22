@@ -11,14 +11,14 @@ import psutil
 import pytest
 
 from adaptive_jump.monitor import worker as worker_module
-from adaptive_jump.monitor.child_events import (
+from adaptive_jump.monitor.event_store import EventStore, EventStoreError
+from adaptive_jump.monitor.queue import QueueStore, StudyDefinition
+from adaptive_jump.monitor.worker import ResearchWorker
+from adaptive_jump.runtime.child_events import (
     EVENT_FD_ENV,
     child_observer_from_environment,
 )
-from adaptive_jump.monitor.event_store import EventStore, EventStoreError
-from adaptive_jump.monitor.events import ResearchEvent
-from adaptive_jump.monitor.queue import QueueStore, StudyDefinition
-from adaptive_jump.monitor.worker import ResearchWorker
+from adaptive_jump.runtime.events import ResearchEvent
 
 STUDIES = {"study-a": StudyDefinition("study-a", "replication")}
 
@@ -67,9 +67,9 @@ def test_worker_forwards_validated_child_events(
 ) -> None:
     queue, config = _setup(tmp_path)
     code = (
-        "from adaptive_jump.monitor.child_events import "
+        "from adaptive_jump.runtime.child_events import "
         "child_observer_from_environment; "
-        "from adaptive_jump.monitor.events import ResearchEvent; "
+        "from adaptive_jump.runtime.events import ResearchEvent; "
         "observer=child_observer_from_environment(); "
         "observer(ResearchEvent('terminal_state','fixed_jm',"
         "visibility='decision',market='us',payload={'state':1}))"

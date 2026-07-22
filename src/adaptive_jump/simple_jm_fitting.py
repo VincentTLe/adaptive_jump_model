@@ -21,8 +21,8 @@ from adaptive_jump.models import (
     fixed_jm_states,
     terminal_online_state,
 )
-from adaptive_jump.monitor import model_runtime as runtime
-from adaptive_jump.monitor.events import EventObserver
+from adaptive_jump.runtime import model_runtime as runtime
+from adaptive_jump.runtime.events import EventObserver
 from adaptive_jump.simple_jm_l1 import L1JumpModel
 from adaptive_jump.simple_jm_return import (
     ReturnAwareJumpModel,

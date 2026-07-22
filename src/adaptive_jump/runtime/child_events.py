@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from datetime import date
 from typing import Any
 
-from adaptive_jump.monitor.events import EventError, EventObserver, ResearchEvent
+from adaptive_jump.runtime.events import EventError, EventObserver, ResearchEvent
 
 EVENT_FD_ENV = "ADAPTIVE_JUMP_EVENT_FD"
 WIRE_SCHEMA_VERSION = 1

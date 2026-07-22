@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from adaptive_jump.monitor import checkpoints
+from adaptive_jump.runtime import checkpoints
 
 IDENTITY = {"config_sha256": "a", "data_manifest_sha256": "b", "git_sha": "c"}
 

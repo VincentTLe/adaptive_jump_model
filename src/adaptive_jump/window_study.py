@@ -16,8 +16,8 @@ from adaptive_jump.backtest import performance_metrics
 from adaptive_jump.config import ResearchConfig
 from adaptive_jump.inference import BootstrapProgress, bootstrap_sharpe_delta
 from adaptive_jump.models import FixedJMResult, fixed_jm_states
-from adaptive_jump.monitor import study_runtime
-from adaptive_jump.monitor.events import EventObserver
+from adaptive_jump.runtime import study_runtime
+from adaptive_jump.runtime.events import EventObserver
 from adaptive_jump.walkforward import (
     SelectionProgress,
     SelectionResult,
