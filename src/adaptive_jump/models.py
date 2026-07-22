@@ -78,6 +78,7 @@ def fixed_jm_states(
     jm_protocol: JMProtocol,
     *,
     feature_columns: tuple[str, ...] = FEATURE_COLUMNS,
+    include_fit_diagnostics: bool = False,
     initial: FixedJMResult | None = None,
     checkpoint_every: int = 50,
     progress: Callable[[FixedJMResult], None] | None = None,
@@ -141,7 +142,14 @@ def fixed_jm_states(
                 feature_columns=feature_columns,
             )
             last_anchor = anchor
-            records.extend(_jm_fit_records(fit, window, current_date))
+            records.extend(
+                _jm_fit_records(
+                    fit,
+                    window,
+                    current_date,
+                    include_fit_diagnostics=include_fit_diagnostics,
+                )
+            )
             runtime.emit_fixed_jm_refit(
                 observer,
                 current_date.date(),
@@ -493,7 +501,11 @@ def _fit_fixed_jm(
 
 
 def _jm_fit_records(
-    fit: _FixedJMFit, window: pd.DataFrame, fit_date: pd.Timestamp
+    fit: _FixedJMFit,
+    window: pd.DataFrame,
+    fit_date: pd.Timestamp,
+    *,
+    include_fit_diagnostics: bool = False,
 ) -> list[dict[str, object]]:
     common: dict[str, object] = {
         "fit_date": fit_date,
@@ -503,10 +515,26 @@ def _jm_fit_records(
         "scaler_mean": fit.scaler.mean_.tolist(),
         "scaler_scale": fit.scaler.scale_.tolist(),
     }
-    return [
-        {**common, "lambda": penalty, "objective": float(model.val_)}
-        for penalty, model in fit.models.items()
-    ]
+    records = []
+    for penalty, model in fit.models.items():
+        record = {
+            **common,
+            "lambda": penalty,
+            "objective": float(model.val_),
+        }
+        if include_fit_diagnostics:
+            active_state_count = int(
+                np.unique(np.asarray(model.labels_, dtype=int)).size
+            )
+            record.update(
+                {
+                    "centers": np.asarray(model.centers_, dtype=float).tolist(),
+                    "active_state_count": active_state_count,
+                    "collapsed_to_one_state": active_state_count == 1,
+                }
+            )
+        records.append(record)
+    return records
 
 
 def _complete_model_frame(
