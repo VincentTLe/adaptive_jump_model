@@ -673,7 +673,10 @@ descriptive label to mixed; \texttt{adaptive-confidence-002} was never executed
 or registered and is not accepted evidence.
 
 Lagging reduced 20-day candidate-path whipsaw events from 17 to 6 across the
-three markets before P\&L was opened. In the later readout, lagged-minus-fixed
+three markets before P\&L was opened (Figure~\ref{fig:whipsaw}). Lagging is
+also more selective: it admits 17 discount-attributable events pooled against
+38 for arrival, and its whipsaw share falls from 45\% to 35\%. In the later
+readout, lagged-minus-fixed
 Sharpe was \(+0.016913/+0.171448/+0.083945\) in US/DE/JP. Selected-strategy
 switches changed \(21\to15\), \(32\to8\), and \(13\to33\). Thus lagging beat
 both controls only in Germany and increased activity sharply in Japan. A
@@ -681,6 +684,24 @@ post-result \(2\times2\) path/choice decomposition attributed equal-market mean
 Sharpe change \(+0.090769\) to a path Shapley component \(-0.034835\) and a
 choice component \(+0.125603\), with interaction \(+0.205076\). This is an
 exact nonlinear accounting identity, not a causal effect.
+
+\newcommand{\whipfig}{../artifacts/reports/lagged-evidence-mechanism/whipsaw-17-to-6.png}
+\IfFileExists{\whipfig}{
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{\whipfig}
+\caption{Discount-attributable events at \(\beta=\log4\), split into persistent
+switches (good) and 20-day whipsaws (bad). The faded left bar is the arrival
+rule; the solid right bar is the lagged rule. Lagged evidence admits fewer
+events and a smaller whipsaw share in aggregate, though Germany remains the
+noisiest market. This is a mechanism diagnostic on the through-2023 sample, not
+a profit result.}
+\label{fig:whipsaw}
+\end{figure}
+}{
+\noindent\emph{The retained lagged-mechanism report is required to render the
+whipsaw figure.}
+}
 
 Pair balancing retained 87.5\% of eligible early confirmations and produced no
 unconfirmed persistent lock-ins, but pooled whipsaws did not fall. Its primary
