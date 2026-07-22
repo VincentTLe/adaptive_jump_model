@@ -9,7 +9,7 @@ import math
 import subprocess
 import tomllib
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, date, datetime
 from multiprocessing import get_context
 from pathlib import Path
@@ -530,6 +530,7 @@ def verify_simple_jm_run(run_dir: Path) -> dict[str, Any]:
         raise SimpleJMSuiteError("stored decision does not match recomputed metrics")
     trace = pd.read_csv(run_dir / "traces.csv")
     _validate_traces(trace)
+    _verify_trace_trade_rows(run_dir, trace)
     degeneracy = _verify_fit_degeneracy(run_dir)
     return {
         "schema_version": 1,
@@ -542,6 +543,249 @@ def verify_simple_jm_run(run_dir: Path) -> dict[str, Any]:
         "maximum_metric_absolute_difference": max_difference,
         "conclusion": metadata["conclusion"],
     }
+
+
+def verify_dd_loss_scale_run(run_dir: Path) -> dict[str, Any]:
+    """Replay source routes, accounting, metrics, traces, and decisions."""
+    run_dir = run_dir.resolve()
+    verify_inventory(run_dir)
+    metadata = read_json(run_dir / "run.json")
+    if (
+        metadata.get("status") != "complete"
+        or metadata.get("study_kind") != LOSS_SCALE_EXPERIMENT_ID
+        or metadata.get("spec_sha256") != sha256_file(run_dir / "study.lock.toml")
+    ):
+        raise SimpleJMSuiteError("run metadata is not a completed loss-scale study")
+    implementation = read_json(run_dir / "implementation-lock.json")
+    files = implementation.get("files")
+    digest = _mapping_digest(files) if isinstance(files, dict) else ""
+    if (
+        not isinstance(files, dict)
+        or implementation.get("bundle_sha256") != digest
+        or metadata.get("implementation_sha256") != digest
+    ):
+        raise SimpleJMSuiteError("loss-scale implementation lock is invalid")
+    repo_root = run_dir.parents[2]
+    source_commit = _implementation_source_commit(repo_root, files)
+
+    config = replace(
+        load_config(run_dir / "config.lock.toml"),
+        path=repo_root / "research.toml",
+    )
+    spec = load_dd_loss_scale_spec(run_dir / "study.lock.toml", config)
+    _validate_loss_scale_protocol(config, spec)
+    sources = _load_loss_scale_sources(spec, config)
+    rows = []
+    replayed_outputs: dict[tuple[str, str], VariantOutput | ControlPath] = {}
+    aligned_paths: dict[str, dict[str, pd.DataFrame]] = {}
+    for market in MARKETS:
+        paths = {
+            model: read_trade_path(run_dir / market / model / "trades.csv", 1, 10)
+            for model in LOSS_SCALE_MODELS
+        }
+        dates = paths[LOSS_SCALE_MODELS[0]]["date"]
+        replayed_outputs[(market, SCALED_DD_VARIANT)] = _replay_scaled_selector(
+            run_dir,
+            market,
+            sources[market],
+            dates,
+            paths[SCALED_DD_VARIANT],
+            config,
+        )
+        for model in (*CONTROLS, "dd_only"):
+            sealed = (
+                sources[market]
+                .controls[model]
+                .set_index("date")
+                .reindex(dates)
+                .reset_index()
+                .loc[:, TRADE_COLUMNS]
+            )
+            if not _trade_route_equal(sealed, paths[model]):
+                raise SimpleJMSuiteError(f"{market}/{model}: source route changed")
+        if any(
+            not path["date"].equals(dates) or path["date"].max() > DEVELOPMENT_CUTOFF
+            for path in paths.values()
+        ):
+            raise SimpleJMSuiteError(f"{market}: invalid common dates")
+        aligned_paths[market] = paths
+        rows.extend(
+            _metric_rows(
+                market,
+                paths,
+                config,
+                challengers=(SCALED_DD_VARIANT,),
+            )
+        )
+    expected = pd.DataFrame.from_records(rows)
+    stored = pd.read_csv(run_dir / "summary.csv")
+    expected_contrast = _loss_scale_contrasts(expected)
+    stored_contrast = pd.read_csv(run_dir / "dd-scale-contrast.csv")
+    try:
+        pd.testing.assert_frame_equal(
+            stored,
+            expected,
+            check_dtype=False,
+            check_exact=False,
+            rtol=0,
+            atol=1e-12,
+        )
+        pd.testing.assert_frame_equal(
+            stored_contrast,
+            expected_contrast,
+            check_dtype=False,
+            check_exact=False,
+            rtol=0,
+            atol=1e-12,
+        )
+    except AssertionError as exc:
+        raise SimpleJMSuiteError("loss-scale stored metrics changed") from exc
+    decision = _decision(expected, (SCALED_DD_VARIANT,))
+    if (
+        read_json(run_dir / "decision.json") != decision
+        or metadata.get("conclusion") != decision["conclusion"]
+    ):
+        raise SimpleJMSuiteError("loss-scale decision changed")
+    verification = read_json(run_dir / "verification.json")
+    if (
+        verification.get("math_contracts") != _verify_loss_scale_math()
+        or verification.get("observation_loss_scale") != DD_OBSERVATION_LOSS_SCALE
+        or not verification["us_smoke"][0]["prefix_invariant"]
+    ):
+        raise SimpleJMSuiteError("loss-scale verification receipt is invalid")
+    traces = pd.read_csv(run_dir / "traces.csv")
+    _validate_traces(traces)
+    _verify_trace_trade_rows(run_dir, traces)
+    expected_traces = _build_traces(
+        sources,
+        replayed_outputs,
+        aligned_paths,
+        config,
+        (SCALED_DD_VARIANT,),
+    )
+    for frame in (traces, expected_traces):
+        for column in ("signal_date", "trade_date", "fit_date"):
+            frame[column] = pd.to_datetime(frame[column], errors="raise")
+    try:
+        pd.testing.assert_frame_equal(
+            traces,
+            expected_traces,
+            check_dtype=False,
+            check_exact=False,
+            rtol=0,
+            atol=1e-12,
+        )
+    except AssertionError as exc:
+        raise SimpleJMSuiteError("loss-scale trace replay changed") from exc
+    if set(traces["variant"]) != {SCALED_DD_VARIANT}:
+        raise SimpleJMSuiteError("loss-scale trace variant is invalid")
+    degeneracy = _verify_fit_degeneracy(run_dir, (SCALED_DD_VARIANT,))
+    differences = [
+        np.abs(
+            pd.to_numeric(stored[column], errors="raise")
+            - pd.to_numeric(expected[column], errors="raise")
+        ).max()
+        for column in (
+            "sharpe",
+            "maximum_drawdown",
+            "turnover",
+            "cash_fraction",
+            "switch_count",
+        )
+    ]
+    return {
+        "schema_version": 1,
+        "run_id": metadata["run_id"],
+        "status": metadata["status"],
+        "implementation_source_commit": source_commit,
+        "metric_rows": len(expected),
+        "trace_rows": len(traces),
+        "degeneracy_rows": len(degeneracy),
+        "maximum_metric_absolute_difference": float(max(differences)),
+        "conclusion": metadata["conclusion"],
+    }
+
+
+def _replay_scaled_selector(
+    run_dir: Path,
+    market: str,
+    source: LossScaleMarketSource,
+    dates: pd.Series,
+    stored_trades: pd.DataFrame,
+    config: ResearchConfig,
+) -> VariantOutput:
+    """Replay candidate states through monthly selection and t+2 accounting."""
+    target = run_dir / market / SCALED_DD_VARIANT
+    states = pd.read_csv(target / "candidate-states.csv")
+    if tuple(states.columns[:1]) != ("date",):
+        raise SimpleJMSuiteError(f"{market}: invalid scaled candidate states")
+    states["date"] = pd.to_datetime(states["date"], errors="raise")
+    states = states.set_index("date")
+    try:
+        states.columns = [float(column) for column in states.columns]
+    except (TypeError, ValueError) as exc:
+        raise SimpleJMSuiteError(f"{market}: invalid scaled candidate grid") from exc
+    if tuple(states.columns) != config.jm_protocol.lambda_grid:
+        raise SimpleJMSuiteError(f"{market}: scaled candidate grid changed")
+    returns = source.features.loc[:, ["date", "equity_simple", "cash_return"]]
+    selection = select_monthly_candidate(
+        returns,
+        states,
+        config.selection_protocol,
+        delay_trading_days=1,
+        one_way_cost_bps=10,
+        periods_per_year=252,
+        volatility_ddof=1,
+    )
+    full_trades = apply_signal(
+        returns,
+        selection.signal.reset_index(drop=True),
+        delay_trading_days=1,
+        one_way_cost_bps=10,
+    )
+    replayed_trades = (full_trades.set_index("date").reindex(dates).reset_index()).loc[
+        :, TRADE_COLUMNS
+    ]
+    if not _trade_route_equal(replayed_trades, stored_trades):
+        raise SimpleJMSuiteError(f"{market}: scaled t+2 trade replay changed")
+
+    stored_choices = pd.read_csv(target / "choices.csv")
+    stored_signal = pd.read_csv(target / "selected-signal.csv")
+    expected_signal = selection.signal.rename("selected_signal").reset_index()
+    for frame, column in (
+        (stored_choices, "decision_date"),
+        (selection.choices, "decision_date"),
+        (stored_signal, "date"),
+        (expected_signal, "date"),
+    ):
+        frame[column] = pd.to_datetime(frame[column], errors="raise")
+    try:
+        pd.testing.assert_frame_equal(
+            stored_choices,
+            selection.choices,
+            check_dtype=False,
+            check_exact=True,
+        )
+        pd.testing.assert_frame_equal(
+            stored_signal,
+            expected_signal,
+            check_dtype=False,
+            check_exact=True,
+        )
+    except AssertionError as exc:
+        raise SimpleJMSuiteError(f"{market}: scaled selector replay changed") from exc
+    selected_state = (1.0 - selection.signal).rename("selected_state")
+    return VariantOutput(
+        market,
+        SCALED_DD_VARIANT,
+        states,
+        pd.read_csv(target / "refits.csv"),
+        selection,
+        selected_state,
+        selection.signal,
+        full_trades,
+        read_json(target / "boundary.json"),
+    )
 
 
 def _validate_protocol(config: ResearchConfig, spec: SuiteSpec) -> None:
@@ -1058,10 +1302,11 @@ def _emit_stage(
 def _emit_variant_events(
     observer: EventObserver | None,
     outputs: dict[tuple[str, str], VariantOutput],
+    variants: tuple[str, ...] = FITTED_VARIANTS,
 ) -> None:
     if observer is None:
         return
-    for variant in FITTED_VARIANTS:
+    for variant in variants:
         for market in MARKETS:
             output = outputs.get((market, variant))
             if output is None:
@@ -1080,7 +1325,7 @@ def _emit_variant_events(
 
 
 def _parallel_fit(
-    spec: SuiteSpec,
+    spec: SuiteSpec | LossScaleSpec,
     config: ResearchConfig,
     variants: tuple[str, ...],
     *,
@@ -1117,8 +1362,15 @@ def _fit_market_task(
         path = Path(canonical_root_text) / market / "features.csv"
         frame = pd.read_csv(path, usecols=list(FEATURE_COLUMNS))
         frame["date"] = pd.to_datetime(frame["date"], errors="raise")
-        if variant == "dd_only":
-            fitted = dd_only_states(frame, config.model_protocol, config.jm_protocol)
+        if variant in ("dd_only", SCALED_DD_VARIANT):
+            fitted = dd_only_states(
+                frame,
+                config.model_protocol,
+                config.jm_protocol,
+                observation_loss_scale=(
+                    DD_OBSERVATION_LOSS_SCALE if variant == SCALED_DD_VARIANT else 1.0
+                ),
+            )
         elif variant in ("return_aware", "robust_l1"):
             fitted = custom_variant_states(
                 frame,
@@ -1189,21 +1441,22 @@ def _stage_summary(
 
 
 def _finalize_paths(
-    sources: dict[str, MarketSource],
+    sources: dict[str, MarketSource] | dict[str, LossScaleMarketSource],
     outputs: dict[tuple[str, str], VariantOutput | ControlPath],
     config: ResearchConfig,
+    variants: tuple[str, ...] = CHALLENGERS,
 ) -> tuple[dict[str, dict[str, pd.DataFrame]], pd.DataFrame]:
     aligned = {}
     rows = []
     for market in MARKETS:
         paths = dict(sources[market].controls)
-        for variant in CHALLENGERS:
+        for variant in variants:
             item = outputs[(market, variant)]
             paths[variant] = (
                 item.full_trades if isinstance(item, VariantOutput) else item.trades
             )
         aligned[market] = _align_paths(paths)
-        rows.extend(_metric_rows(market, aligned[market], config))
+        rows.extend(_metric_rows(market, aligned[market], config, challengers=variants))
     return aligned, pd.DataFrame.from_records(rows)
 
 
@@ -1267,6 +1520,8 @@ def _metric_rows(
     market: str,
     paths: dict[str, pd.DataFrame],
     config: ResearchConfig,
+    *,
+    challengers: tuple[str, ...] = CHALLENGERS,
 ) -> list[dict[str, Any]]:
     calculated = {}
     for model, path in paths.items():
@@ -1300,31 +1555,33 @@ def _metric_rows(
                 **row,
                 "stronger_control_sharpe": stronger,
                 "gap_vs_stronger_control": gap,
-                "market_pass": bool(gap > 0) if model in CHALLENGERS else False,
+                "market_pass": bool(gap > 0) if model in challengers else False,
             }
         )
     return rows
 
 
-def _decision(summary: pd.DataFrame) -> dict[str, Any]:
-    variants = []
-    for variant in CHALLENGERS:
+def _decision(
+    summary: pd.DataFrame, variants: tuple[str, ...] = CHALLENGERS
+) -> dict[str, Any]:
+    decisions = []
+    for variant in variants:
         rows = summary.loc[summary["model"] == variant].sort_values("market")
         if len(rows) != len(MARKETS):
             raise SimpleJMSuiteError(f"incomplete decision rows for {variant}")
         passes = {row.market: bool(row.market_pass) for row in rows.itertuples()}
-        variants.append(
+        decisions.append(
             {
                 "variant": variant,
                 "market_pass": passes,
                 "cross_market_support": all(passes.values()),
             }
         )
-    supported = [row["variant"] for row in variants if row["cross_market_support"]]
+    supported = [row["variant"] for row in decisions if row["cross_market_support"]]
     return {
         "schema_version": 1,
         "rule": "G_m(v) > 0 in US, DE, and JP for the same frozen variant",
-        "variants": variants,
+        "variants": decisions,
         "supported_variants": supported,
         "conclusion": "supported" if supported else "not_supported",
         "claim_restriction": "repeatedly inspected exploratory development evidence",
@@ -1407,9 +1664,10 @@ def _fit_degeneracy_row(
 
 def _build_fit_degeneracy(
     outputs: dict[tuple[str, str], VariantOutput | ControlPath],
+    variants: tuple[str, ...] = FITTED_VARIANTS,
 ) -> pd.DataFrame:
     rows = []
-    for market, variant in itertools.product(MARKETS, FITTED_VARIANTS):
+    for market, variant in itertools.product(MARKETS, variants):
         item = outputs[(market, variant)]
         if not isinstance(item, VariantOutput):
             raise SimpleJMSuiteError(f"{market}/{variant}: fitted output missing")
@@ -1424,9 +1682,11 @@ def _build_fit_degeneracy(
     return pd.DataFrame.from_records(rows)
 
 
-def _verify_fit_degeneracy(run_dir: Path) -> pd.DataFrame:
+def _verify_fit_degeneracy(
+    run_dir: Path, variants: tuple[str, ...] = FITTED_VARIANTS
+) -> pd.DataFrame:
     expected_rows = []
-    for market, variant in itertools.product(MARKETS, FITTED_VARIANTS):
+    for market, variant in itertools.product(MARKETS, variants):
         target = run_dir / market / variant
         expected_rows.append(
             _fit_degeneracy_row(
@@ -1469,12 +1729,13 @@ def _verify_fit_degeneracy(run_dir: Path) -> pd.DataFrame:
 
 def _write_market_artifacts(
     run_dir: Path,
-    sources: dict[str, MarketSource],
+    sources: dict[str, MarketSource] | dict[str, LossScaleMarketSource],
     outputs: dict[tuple[str, str], VariantOutput | ControlPath],
     aligned: dict[str, dict[str, pd.DataFrame]],
+    models: tuple[str, ...] = ALL_MODELS,
 ) -> None:
     for market in MARKETS:
-        for model in ALL_MODELS:
+        for model in models:
             target = run_dir / market / model
             target.mkdir(parents=True)
             aligned[market][model].to_csv(
@@ -1482,7 +1743,9 @@ def _write_market_artifacts(
             )
             if model in CONTROLS:
                 continue
-            item = outputs[(market, model)]
+            item = outputs.get((market, model))
+            if item is None:
+                continue
             if isinstance(item, VariantOutput):
                 item.states.reset_index().to_csv(
                     target / "candidate-states.csv",
@@ -1517,13 +1780,14 @@ def _write_market_artifacts(
 
 
 def _build_traces(
-    sources: dict[str, MarketSource],
+    sources: dict[str, MarketSource] | dict[str, LossScaleMarketSource],
     outputs: dict[tuple[str, str], VariantOutput | ControlPath],
     aligned: dict[str, dict[str, pd.DataFrame]],
     config: ResearchConfig,
+    variants: tuple[str, ...] = CHALLENGERS,
 ) -> pd.DataFrame:
     rows = []
-    for market, variant in itertools.product(MARKETS, CHALLENGERS):
+    for market, variant in itertools.product(MARKETS, variants):
         item = outputs[(market, variant)]
         state = item.selected_state if isinstance(item, VariantOutput) else item.state
         raw_state = (
@@ -1586,7 +1850,7 @@ def _build_traces(
 
 
 def _trace_evidence(
-    source: MarketSource,
+    source: MarketSource | LossScaleMarketSource,
     item: VariantOutput | ControlPath,
     variant: str,
     signal_date: pd.Timestamp,
@@ -1594,6 +1858,7 @@ def _trace_evidence(
     config: ResearchConfig,
 ) -> dict[str, Any]:
     full_features = ("dd_10", "sortino_20", "sortino_60")
+    observation_loss_scale = 1.0
     if variant == "static_lambda50":
         penalty = 50.0
         record = _active_refit(source.lambda50_refits, signal_date, penalty)
@@ -1602,12 +1867,14 @@ def _trace_evidence(
         penalty = _active_choice(source.canonical_choices, signal_date)
         record = _active_refit(source.canonical_refits, signal_date, penalty)
         feature_columns = full_features
-    elif variant == "dd_only":
+    elif variant in ("dd_only", SCALED_DD_VARIANT):
         if not isinstance(item, VariantOutput):
             raise SimpleJMSuiteError("DD-only trace is missing its fitted output")
         penalty = _active_choice(item.selection.choices, signal_date)
         record = _active_refit(item.refits, signal_date, penalty)
         feature_columns = ("dd_10",)
+        if variant == SCALED_DD_VARIANT:
+            observation_loss_scale = DD_OBSERVATION_LOSS_SCALE
     else:
         return _custom_trace_evidence(
             source,
@@ -1626,10 +1893,15 @@ def _trace_evidence(
         penalty=penalty,
         refit_record=record,
         signal_date=signal_date,
+        observation_loss_scale=observation_loss_scale,
         expected_state=expected_raw_state,
     )
     return {
-        "loss_family": "0.5 squared standardized feature distance used online",
+        "loss_family": (
+            "3 * 0.5 squared standardized DD distance used online"
+            if variant == SCALED_DD_VARIANT
+            else "0.5 squared standardized feature distance used online"
+        ),
         "fit_date": receipt.fit_date,
         "fit_objective": receipt.objective,
         "scaler_mean": _encode_trace_array(receipt.scaler_mean),
@@ -1786,6 +2058,10 @@ def _validate_traces(traces: pd.DataFrame) -> None:
         "state",
         "signal",
         "position",
+        "one_way_turnover",
+        "transaction_cost",
+        "gross_return",
+        "strategy_return",
     }
     missing = sorted(required.difference(traces.columns))
     if traces.empty or missing:
@@ -1807,6 +2083,10 @@ def _validate_traces(traces: pd.DataFrame) -> None:
         "state",
         "signal",
         "position",
+        "one_way_turnover",
+        "transaction_cost",
+        "gross_return",
+        "strategy_return",
     )
     numeric = {
         column: pd.to_numeric(traces[column], errors="raise").to_numpy(dtype=float)
@@ -1815,6 +2095,17 @@ def _validate_traces(traces: pd.DataFrame) -> None:
     penalty = numeric["transition_penalty"]
     if not np.isfinite(penalty).all() or (penalty < 0).any():
         raise SimpleJMSuiteError("trace transition penalty is invalid")
+    accounting = np.column_stack(
+        [
+            numeric["position"],
+            numeric["one_way_turnover"],
+            numeric["transaction_cost"],
+            numeric["gross_return"],
+            numeric["strategy_return"],
+        ]
+    )
+    if not np.isfinite(accounting).all():
+        raise SimpleJMSuiteError("trace trade accounting is invalid")
     if not (numeric["trade_row"] == numeric["signal_row"] + 2).all():
         raise SimpleJMSuiteError("trace t+2 row identity failed")
     if (
@@ -1878,6 +2169,41 @@ def _validate_traces(traces: pd.DataFrame) -> None:
         fit_dates = pd.to_datetime(traces["fit_date"], errors="raise")
         if (fit_dates > signal_dates).any():
             raise SimpleJMSuiteError("trace fit date follows its signal date")
+
+
+def _verify_trace_trade_rows(run_dir: Path, traces: pd.DataFrame) -> None:
+    """Link every trace's t+2 accounting fields to its verified trade path."""
+    cache: dict[tuple[str, str], pd.DataFrame] = {}
+    fields = (
+        "position",
+        "one_way_turnover",
+        "transaction_cost",
+        "gross_return",
+        "strategy_return",
+    )
+    for trace in traces.itertuples(index=False):
+        market = str(trace.market)
+        variant = str(trace.variant)
+        if market not in MARKETS or not variant:
+            raise SimpleJMSuiteError("trace market or variant is invalid")
+        key = (market, variant)
+        if key not in cache:
+            cache[key] = read_trade_path(
+                run_dir / market / variant / "trades.csv", 1, 10
+            ).set_index("date")
+        trade_date = pd.Timestamp(trace.trade_date)
+        matches = cache[key].loc[cache[key].index == trade_date]
+        if len(matches) != 1:
+            raise SimpleJMSuiteError("trace t+2 trade row is missing")
+        trade = matches.iloc[0]
+        for field in fields:
+            if not math.isclose(
+                float(getattr(trace, field)),
+                float(trade[field]),
+                rel_tol=0,
+                abs_tol=1e-15,
+            ):
+                raise SimpleJMSuiteError(f"trace trade field changed: {field}")
 
 
 def _verify_math_contracts() -> dict[str, bool]:
