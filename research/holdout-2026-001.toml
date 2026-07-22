@@ -1,6 +1,6 @@
 schema_version = 1
 experiment_id = "holdout-2026-001"
-frozen_at_utc = "2026-07-22T10:55:00Z"
+frozen_at_utc = "2026-07-22T11:05:00Z"
 claim_class = "CONFIRMATORY_HOLDOUT"
 stage = "ONE_SHOT_UNTOUCHED_WINDOW"
 question = "Do the strongest development survivors keep beating both economic benchmarks on the first model-untouched sample, 2024-01-02 through 2026-06-30?"
@@ -15,7 +15,7 @@ config_sha256 = "5ea8042f88a14080eff0ab83f8192c469e6925e6c01b03dca0d17162714157c
 data_manifest_path = "data/raw/shu-proxy-holdout-2026-20260722T093350Z/manifest.json"
 data_manifest_sha256 = "584f5721d2ff4d7118e45bbf7903164d1b87bebbb0b57958f8994b75bdd7c5bd"
 protocol = "byte-identical to the sealed v7 protocol except replication_cutoff = 2026-06-30 behind the audited holdout_extension gate"
-continuity = "every overlapping processed row is byte-identical to sealed v7: max abs log-return and cash差 0.0 across all six series"
+continuity = "every overlapping processed row is byte-identical to sealed v7: max abs log-return and cash difference 0.0 across all six series"
 
 [precondition]
 dry_run = "a fresh full replication of the sealed v7 sample with current source must byte-match the accepted fixed-baselines run on choices, signals, trades, and metrics before any 2024+ output is read"
