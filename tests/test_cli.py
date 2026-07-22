@@ -185,7 +185,7 @@ def test_simple_jm_cli_uses_shared_runner(
     def observer(event):
         events.append(event)
 
-    def fake_load(config, path):
+    def fake_load(path, config):
         calls.append(("load", config, path))
         return loaded_spec
 

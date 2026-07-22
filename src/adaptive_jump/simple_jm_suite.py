@@ -138,10 +138,12 @@ class VariantOutput:
     boundary: dict[str, Any]
 
 
-def load_simple_jm_spec(config: ResearchConfig, path: Path) -> SuiteSpec:
+def load_simple_jm_spec(path: str | Path, config: ResearchConfig) -> SuiteSpec:
     """Load the immutable study contract and prove it was registered frozen."""
     repo_root = config.path.parent.resolve()
-    candidate = path if path.is_absolute() else repo_root / path
+    candidate = Path(path)
+    if not candidate.is_absolute():
+        candidate = repo_root / candidate
     resolved = candidate.resolve()
     payload = resolved.read_bytes()
     digest = hashlib.sha256(payload).hexdigest()
@@ -149,33 +151,63 @@ def load_simple_jm_spec(config: ResearchConfig, path: Path) -> SuiteSpec:
         document = tomllib.loads(payload.decode("utf-8"))
     except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
         raise SimpleJMSuiteError(f"invalid suite TOML: {exc}") from exc
+    sources = document.get("sources")
+    variants = document.get("variants")
+    if not isinstance(sources, dict) or not isinstance(variants, dict):
+        raise SimpleJMSuiteError("suite contract does not match the frozen identity")
+    canonical_name = sources.get("canonical_run_root")
+    lambda50_name = sources.get("lambda50_run_root")
     required = (
         document.get("schema_version") == 1,
         document.get("experiment_id") == EXPERIMENT_ID,
         document.get("status") == "FROZEN_BEFORE_RESULTS",
         document.get("claim_class") == "EXPLORATORY",
-        document.get("sources", {}).get("markets") == list(MARKETS),
-        document.get("sources", {}).get("cutoff") == "2023-12-31",
-        document.get("sources", {}).get("post_2023_access") is False,
-        tuple(document.get("variants", {})) == CHALLENGERS,
+        sources.get("markets") == list(MARKETS),
+        sources.get("cutoff") == "2023-12-31",
+        sources.get("post_2023_access") is False,
+        isinstance(canonical_name, str) and bool(canonical_name),
+        isinstance(lambda50_name, str) and bool(lambda50_name),
+        tuple(variants) == CHALLENGERS,
     )
     if not all(required):
         raise SimpleJMSuiteError("suite contract does not match the frozen identity")
     registry = repo_root / "research" / "experiment_registry.jsonl"
+    try:
+        registry_rows = registry.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError) as exc:
+        raise SimpleJMSuiteError(
+            f"cannot read experiment registry: {registry}"
+        ) from exc
     frozen = False
-    for raw in registry.read_text(encoding="utf-8").splitlines():
-        row = json.loads(raw)
+    for number, raw in enumerate(registry_rows, start=1):
+        if not raw.strip():
+            continue
+        try:
+            row = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise SimpleJMSuiteError(
+                f"invalid experiment registry row {number}"
+            ) from exc
+        if not isinstance(row, dict):
+            raise SimpleJMSuiteError(f"invalid experiment registry row {number}")
+        experiment_id = row.get("experiment_id")
+        status = row.get("status")
         if (
-            row.get("experiment_id") == EXPERIMENT_ID
-            and row.get("status") == "FROZEN"
+            not isinstance(experiment_id, str)
+            or not experiment_id
+            or not isinstance(status, str)
+        ):
+            raise SimpleJMSuiteError(f"invalid experiment registry row {number}")
+        if (
+            experiment_id == EXPERIMENT_ID
+            and status == "FROZEN"
             and row.get("frozen_spec_hash") == digest
         ):
             frozen = True
     if not frozen:
         raise SimpleJMSuiteError("no matching pre-result FROZEN registry row")
-    sources = document["sources"]
-    canonical_root = (repo_root / sources["canonical_run_root"]).resolve()
-    lambda50_root = (repo_root / sources["lambda50_run_root"]).resolve()
+    canonical_root = (repo_root / canonical_name).resolve()
+    lambda50_root = (repo_root / lambda50_name).resolve()
     for root in (canonical_root, lambda50_root):
         if not root.is_dir() or root.is_symlink() or repo_root not in root.parents:
             raise SimpleJMSuiteError(f"unsafe or missing source root: {root}")
@@ -231,7 +263,7 @@ def run_simple_jm_study(
         {"schema_version": 1, "files": code_hashes, "bundle_sha256": code_digest},
     )
 
-    _emit_stage(observer, "stage_started", "static_lambda50", completed=0, total=3)
+    _emit_stage(observer, "stage_started", "fixed_jm", completed=0, total=15)
     outputs: dict[tuple[str, str], VariantOutput | ControlPath] = {}
     for market in MARKETS:
         expected = lambda_inventory[f"{market}/jm-missing-states.csv"]
@@ -244,9 +276,7 @@ def run_simple_jm_study(
         outputs[(market, "static_lambda50")] = control
     stage_a = _stage_summary(sources, outputs, ("static_lambda50",), config)
     stage_a.to_csv(run_dir / "stage-a-static-summary.csv", index=False)
-    _emit_stage(observer, "stage_completed", "static_lambda50", completed=3, total=3)
 
-    _emit_stage(observer, "stage_started", "us_smoke", completed=0, total=3)
     smoke = []
     for variant in ("dd_only", "return_aware", "robust_l1"):
         evidence = run_us_prefix_smoke(
@@ -257,17 +287,12 @@ def run_simple_jm_study(
         )
         smoke.append(asdict(evidence))
     pd.DataFrame.from_records(smoke).to_csv(run_dir / "us-smoke.csv", index=False)
-    _emit_stage(observer, "stage_completed", "us_smoke", completed=3, total=3)
 
-    _emit_stage(observer, "stage_started", "dd_only", completed=0, total=3)
     dd_outputs = _parallel_fit(spec, config, ("dd_only",), workers=3)
     outputs.update(dd_outputs)
     stage_b = _stage_summary(sources, outputs, ("dd_only",), config)
     stage_b.to_csv(run_dir / "stage-b-dd-only-summary.csv", index=False)
-    _emit_variant_events(observer, dd_outputs)
-    _emit_stage(observer, "stage_completed", "dd_only", completed=3, total=3)
 
-    _emit_stage(observer, "stage_started", "confirmed_2d", completed=0, total=3)
     for market in MARKETS:
         source = sources[market]
         control = build_confirmed_control_path(
@@ -275,10 +300,7 @@ def run_simple_jm_study(
             source.canonical_signal,
         )
         outputs[(market, "confirmed_2d")] = control
-    _emit_stage(observer, "stage_completed", "confirmed_2d", completed=3, total=3)
 
-    for variant in ("return_aware", "robust_l1"):
-        _emit_stage(observer, "stage_started", variant, completed=0, total=3)
     custom = _parallel_fit(
         spec,
         config,
@@ -286,9 +308,11 @@ def run_simple_jm_study(
         workers=6,
     )
     outputs.update(custom)
+    _emit_stage(observer, "stage_completed", "fixed_jm", completed=15, total=15)
+    _emit_stage(observer, "stage_started", "selection", completed=0, total=9)
+    _emit_variant_events(observer, dd_outputs)
     _emit_variant_events(observer, custom)
-    for variant in ("return_aware", "robust_l1"):
-        _emit_stage(observer, "stage_completed", variant, completed=3, total=3)
+    _emit_stage(observer, "stage_completed", "selection", completed=9, total=9)
 
     math_receipt = _verify_math_contracts()
     aligned, summary = _finalize_paths(sources, outputs, config)

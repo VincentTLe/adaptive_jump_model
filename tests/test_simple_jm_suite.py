@@ -344,7 +344,7 @@ def test_load_simple_jm_spec_accepts_matching_frozen_registry(tmp_path: Path) ->
         load_config(ROOT / "research.toml"), path=tmp_path / "research.toml"
     )
 
-    loaded = suite.load_simple_jm_spec(config, spec_path)
+    loaded = suite.load_simple_jm_spec(spec_path, config)
 
     assert loaded.sha256 == hashlib.sha256(spec_path.read_bytes()).hexdigest()
     assert loaded.canonical_root == (tmp_path / "canonical").resolve()
@@ -360,13 +360,60 @@ def test_load_simple_jm_spec_rejects_registry_hash_mismatch(tmp_path: Path) -> N
     with pytest.raises(
         suite.SimpleJMSuiteError, match="no matching pre-result FROZEN registry row"
     ):
-        suite.load_simple_jm_spec(config, spec_path)
+        suite.load_simple_jm_spec(spec_path, config)
+
+
+@pytest.mark.parametrize(
+    "registry_text",
+    ["not JSON\n", "[]\n", '{"experiment_id": 1, "status": "FROZEN"}\n'],
+)
+def test_load_simple_jm_spec_wraps_invalid_registry_rows(
+    tmp_path: Path, registry_text: str
+) -> None:
+    spec_path = _write_suite_contract(tmp_path)
+    config = replace(
+        load_config(ROOT / "research.toml"), path=tmp_path / "research.toml"
+    )
+    (tmp_path / "research/experiment_registry.jsonl").write_text(
+        registry_text, encoding="utf-8"
+    )
+
+    with pytest.raises(
+        suite.SimpleJMSuiteError, match="invalid experiment registry row 1"
+    ):
+        suite.load_simple_jm_spec(spec_path, config)
+
+
+def test_load_simple_jm_spec_rejects_non_table_sections(tmp_path: Path) -> None:
+    spec_path = _write_suite_contract(tmp_path)
+    config = replace(
+        load_config(ROOT / "research.toml"), path=tmp_path / "research.toml"
+    )
+    spec_path.write_text(
+        """schema_version = 1
+experiment_id = "simple-jm-suite-001"
+status = "FROZEN_BEFORE_RESULTS"
+claim_class = "EXPLORATORY"
+sources = "invalid"
+variants = {}
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        suite.SimpleJMSuiteError,
+        match="suite contract does not match the frozen identity",
+    ):
+        suite.load_simple_jm_spec(spec_path, config)
 
 
 def test_runner_events_use_existing_contract_without_stdout(capsys) -> None:
     events = []
-    suite._emit_stage(events.append, "stage_started", "dd_only", completed=0, total=3)
-    suite._emit_stage(events.append, "stage_completed", "dd_only", completed=3, total=3)
+    suite._emit_stage(events.append, "stage_started", "fixed_jm", completed=0, total=15)
+    suite._emit_stage(
+        events.append, "stage_completed", "fixed_jm", completed=15, total=15
+    )
+    suite._emit_stage(events.append, "stage_started", "selection", completed=0, total=9)
     dates = pd.bdate_range("2023-01-02", periods=2)
     signal = pd.Series([0.0, 1.0], index=dates, name="selected_signal")
     selection = SelectionResult(
@@ -396,15 +443,28 @@ def test_runner_events_use_existing_contract_without_stdout(capsys) -> None:
     )
 
     suite._emit_variant_events(events.append, {("us", "dd_only"): output})
+    suite._emit_stage(
+        events.append, "stage_completed", "selection", completed=9, total=9
+    )
 
     assert [event.kind for event in events] == [
         "stage_started",
         "stage_completed",
+        "stage_started",
         "selected_signal",
         "boundary_diagnostic",
+        "stage_completed",
     ]
-    assert events[2].market == events[3].market == "us"
-    assert events[2].model == events[3].model == "dd_only"
+    assert [event.stage for event in events] == [
+        "fixed_jm",
+        "fixed_jm",
+        "selection",
+        "selection",
+        "selection",
+        "selection",
+    ]
+    assert events[3].market == events[4].market == "us"
+    assert events[3].model == events[4].model == "dd_only"
     assert capsys.readouterr().out == ""
 
 

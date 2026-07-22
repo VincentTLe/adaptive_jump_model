@@ -499,7 +499,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 artifact = run_grid_evaluation(config, spec, observer)
             elif arguments.study == "simple-jm-suite":
                 spec = load_simple_jm_spec(
-                    config, research / "simple-jm-suite-001.toml"
+                    research / "simple-jm-suite-001.toml", config
                 )
                 artifact = run_simple_jm_study(config, spec, observer)
             else:
