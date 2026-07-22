@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">111 session(s) · newest first · 2026-07-22 08:41 UTC</p>
+  <p class="sub">112 session(s) · newest first · 2026-07-22 12:06 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-07-22T12:06:56Z</span><span class="who">claude-code · claude-opus-4-8</span>
+      </div>
+      <p class="goal">Ran the first true out-of-sample test: holdout-2026-001 extended the public proxies to 2026-06-30 and opened the untouched 2024-2026 window once. Result not_supported, 0/3 - DD-only beat neither buy-and-hold nor HMM in any market on the holdout.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/config.py (holdout_extension gate; cutoff &lt;= 2026-06-30 only when the study flag is set; 2023 default otherwise)</code></li><li><code>research-holdout-2026.toml (holdout config, sha 5ea8042f88a1) + data/raw/shu-proxy-holdout-2026-20260722T093350Z (acquisition to 2026-06-30, byte-identical overlap with sealed v7)</code></li><li><code>src/adaptive_jump/holdout_runner.py + tests/test_holdout_runner.py (DD-only leg, windowed readout, bootstrap, holdout Sharpe figure)</code></li><li><code>research/holdout-2026-001.toml (frozen contract 7618924a8e67) + registry FROZEN then EXPERIMENT_COMPLETE</code></li><li><code>src/adaptive_jump/simple_jm_figures.py (regime figure parameterized to US/DE/JP) + tests</code></li><li><code>src/adaptive_jump/lagged_figures.py + tests (whipsaw 17-&gt;6 stacked composition figure)</code></li><li><code>paper/manuscript.tex (holdout section+table+figure; DE/JP regime figures; whipsaw figure; separation figure) -&gt; artifacts/paper/manuscript.pdf 1.23 MB</code></li><li><code>README.md, research/STATUS.md, TASK.md (holdout result recorded; task archived)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>SAFETY GATE PASSED: fresh v7 replication at HEAD (fixed-baselines-...-5c1f892e2007) byte-matched the sealed accepted baseline e9614112b234 on all 123 scientific files (0 mismatches) before any post-2023 output was read</li><li>holdout replication fixed-baselines-5ea8042f88a1-584f5721d2ff-b9548a4917b7 completed and self-verified (status complete)</li><li>holdout readout: US B&amp;H 1.0521 / HMM 0.5316 / fixed 0.5737 / DD-only 0.7750; DE all four 0.9041 (JM never left equity); JP B&amp;H/HMM/fixed 1.2701 / DD-only 1.1696. G_m(dd_only) = -0.277/-0.000/-0.100 US/DE/JP. Bootstrap 10000xblock60 seed 20260722: US/JP shortfalls within noise of zero but never positive</li><li>full suite 472 passed; ruff clean; PDF built</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>760ba5e (+ prior holdout commits on cleanup/research-protocol, pushed)</code></p></div>
+        <div><span class="lbl">Next step</span><p>Lagged-log4 batch 2 on the same holdout window is available under the frozen contract (needs the sealed lagged pipeline resurrected + same byte-match precondition). Semi-Markov dwell cost remains the standing math candidate (needs a fresh frozen question). The 2024-2026 window is now spent development data.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Ran the v7 dry-run and the 2026 holdout replication in PARALLEL (32 cores) to save wall-clock; the readout was strictly gated on the byte-compare passing, so no 2024+ number was read before the pipeline was proven identical on 2023. The 2024-2026 window was a broad bull (B&amp;H Sharpe 0.90-1.27), which is why cash rotation lost - not a refutation of the JM class.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-22T08:41:38Z</span><span class="who">claude-code · claude-fable-5</span>
