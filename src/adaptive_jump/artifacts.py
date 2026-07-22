@@ -149,12 +149,6 @@ def verify_run(run: str | Path) -> dict[str, Any]:
         from adaptive_jump.grid_runner import verify_grid_run
 
         return verify_grid_run(run_dir)
-    if study_kind == "endpoint_grid_audit":
-        from adaptive_jump.endpoint_grid_artifact_verifier import (
-            verify_endpoint_grid_run,
-        )
-
-        return verify_endpoint_grid_run(run_dir)
     if study_kind is not None:
         raise ArtifactError(f"unsupported study kind: {study_kind}")
     verify_inventory(run_dir)

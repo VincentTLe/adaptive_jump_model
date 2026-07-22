@@ -55,4 +55,5 @@ def test_readme_documents_the_single_locked_monitor_stack() -> None:
     assert "Local use requires no authentication environment variables" in readme
     assert "separately launched `adaptive-jump run`" in readme
     assert "docs/monitor/deployment.md" in readme
-    assert "requirements.txt" in readme and "dependency source" in readme
+    assert "uv.lock" in readme and "locked dependency sources" in readme
+    assert "requirements.txt" not in readme
