@@ -1,0 +1,240 @@
+schema_version = 1
+config_id = "shu-proxy-holdout-2026"
+frozen_at_utc = "2026-07-22T10:30:00Z"
+
+[source_audit]
+run_id = "20260712T012740Z"
+path = "artifacts/data-source-audit/20260712T012740Z/audit.json"
+sha256 = "548c80cbe09f48d1070b5fc23181cb7065bc84fd4d3dbfe457a0318576388ec4"
+
+[study]
+paper = "Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3"
+claim_class = "REPLICATION"
+claim_label = "proxy replication"
+requested_sample_start = "1970-01-01"
+replication_cutoff = "2026-06-30"
+holdout_extension = true
+extension_download_enabled = false
+extension_results_enabled = false
+
+[data_policy]
+local_research_only = true
+redistribute_raw_data = false
+allow_definition_splicing = false
+allow_synthetic_backfill = false
+allow_forward_fill = false
+allow_imputation = false
+allow_outlier_removal = false
+preserve_source_missing_values = true
+preserve_raw_response = true
+hash_algorithm = "sha256"
+
+[oos_start]
+requested = "1990-01-01"
+fit_window_observations = 3000
+online_validation_calendar_years = 8
+rule = "first complete feature date on or after max(requested, 3000th complete feature date + 8 calendar years)"
+compute_from_downloaded_coverage = true
+
+[returns]
+equity_simple = "P_t / P_prev_valid - 1"
+equity_log = "log(P_t / P_prev_valid)"
+cash_daily = "annual_percent / 100 / 252"
+excess = "equity_simple - cash_daily"
+trading_days_per_year = 252
+allow_negative_yields = true
+
+[cash_alignment]
+method = "backward_asof_after_causal_availability"
+reject_beyond_staleness = true
+
+[features]
+downside_halflife = 10
+sortino_halflives = [20, 60]
+ewm_adjust = true
+ewm_ignore_na = false
+burn_in_observations = 0
+zero_downside_deviation = "missing"
+allow_clipping = false
+allow_annualization = false
+
+[backtest]
+signal_risky_value = 1
+signal_cash_value = 0
+primary_delay_trading_days = 1
+signal_to_return_offset = 2
+robustness_delays = [1, 5, 10]
+one_way_cost_bps = 10
+charge_initial_allocation = false
+
+[model]
+n_states = 2
+fit_window_observations = 3000
+standardizer = "sklearn_standard_scaler_ddof0"
+state_risky_label = 0
+state_cash_label = 1
+
+[jm]
+implementation = "jumpmodels.JumpModel"
+lambda_grid = [0, 5, 15, 35, 70, 150, 300, 600, 1200]
+n_init = 10
+random_state = 0
+max_iter = 1000
+tol = 1e-8
+sort_by = "cumret"
+refit_months = [1, 7]
+online_terminal_only = true
+
+[hmm]
+implementation = "hmmlearn.GaussianHMM"
+smoothing_grid = [0, 2, 4, 6, 8, 10, 20, 40, 80, 160, 320, 640, 1280, 2560]
+n_init = 10
+seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+covariance_type = "diag"
+min_covar = 0.001
+n_iter = 1000
+tol = 1e-6
+algorithm = "viterbi"
+require_converged = true
+convergence_rule = "abs_final_delta_lt_tol"
+state_label_rule = "lower_vol_0_higher_vol_1"
+median_threshold = 0.5
+median_min_periods = 1
+
+[selection]
+cadence = "monthly_prior_month_last_complete_date"
+validation_calendar_years = 8
+minimum_valid_returns = 252
+objective = "annualized_strategy_excess_sharpe"
+tie_tolerance = 1e-12
+tie_rule = "lower_smoothing"
+upper_boundary_month_fraction_limit = 0.05
+
+[metrics]
+periods_per_year = 252
+volatility_ddof = 1
+comparison_sample = "per_market_delay_intersection_of_complete_metric_rows"
+sharpe_numerator = "mean_strategy_minus_cash"
+sharpe_denominator = "strategy_return_volatility"
+cagr = "compound_252_over_n"
+calmar_numerator = "annualized_arithmetic_mean_excess"
+expected_shortfall_quantile = 0.05
+turnover = "mean_one_way_turnover_times_252"
+leverage = "mean_risky_weight"
+
+[storage]
+raw_root = "data/raw"
+processed_root = "data/processed"
+artifact_root = "artifacts"
+
+[[markets]]
+id = "us"
+name = "United States"
+currency = "USD"
+classification = "proxy_replication"
+deviations = [
+  "equity history starts after the paper's requested 1970 start",
+  "paper source identifiers and cash-yield conversion are undisclosed",
+]
+
+[markets.equity]
+provider = "yahoo"
+adapter = "yfinance"
+source_id = "^SP500TR"
+canonical_url = "https://finance.yahoo.com/quote/%5ESP500TR/history/"
+frequency = "daily"
+timezone = "America/New_York"
+value_field = "Close"
+return_type = "gross_total_return_index_candidate"
+classification = "definition_parity_candidate_with_shifted_coverage"
+source_start_observed = "1988-01-04"
+auto_adjust = false
+
+[markets.cash]
+provider = "fred"
+source_id = "DTB3"
+canonical_url = "https://fred.stlouisfed.org/series/DTB3"
+retrieval_url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTB3"
+frequency = "daily"
+value_field = "DTB3"
+unit = "percent_per_annum"
+instrument = "3_month_us_treasury_bill_secondary_market_discount_basis"
+classification = "definition_parity_candidate"
+source_start_observed = "1954-01-04"
+availability_lag_calendar_days = 1
+max_staleness_calendar_days = 10
+
+[[markets]]
+id = "de"
+name = "Germany"
+currency = "EUR"
+classification = "proxy_replication"
+deviations = [
+  "equity history starts after 1970 and has historical vendor disagreement",
+  "cash rate is a monthly interbank proxy rather than a Treasury bill",
+]
+
+[markets.equity]
+provider = "yahoo"
+adapter = "yfinance"
+source_id = "^GDAXI"
+canonical_url = "https://finance.yahoo.com/quote/%5EGDAXI/history/"
+frequency = "daily"
+timezone = "Europe/Berlin"
+value_field = "Close"
+return_type = "performance_gross_return_index_candidate"
+classification = "documented_proxy_candidate"
+source_start_observed = "1987-12-30"
+auto_adjust = false
+
+[markets.cash]
+provider = "fred"
+source_id = "IR3TIB01DEM156N"
+canonical_url = "https://fred.stlouisfed.org/series/IR3TIB01DEM156N"
+retrieval_url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=IR3TIB01DEM156N"
+frequency = "monthly"
+value_field = "IR3TIB01DEM156N"
+unit = "percent_per_annum"
+instrument = "3_month_interbank_rate"
+classification = "documented_proxy_candidate"
+source_start_observed = "1960-01-01"
+availability_lag_month_starts = 2
+max_staleness_calendar_days = 120
+
+[[markets]]
+id = "jp"
+name = "Japan"
+currency = "JPY"
+classification = "proxy_replication"
+deviations = [
+  "equity is a price index and excludes dividends",
+  "cash rate is a monthly uncollateralized call-rate proxy rather than a Treasury bill",
+]
+
+[markets.equity]
+provider = "yahoo"
+adapter = "yfinance"
+source_id = "^N225"
+canonical_url = "https://finance.yahoo.com/quote/%5EN225/history/"
+frequency = "daily"
+timezone = "Asia/Tokyo"
+value_field = "Close"
+return_type = "price_index"
+classification = "documented_proxy_candidate"
+source_start_observed = "1970-01-05"
+auto_adjust = false
+
+[markets.cash]
+provider = "boj"
+database = "FM02"
+source_id = "STRACLUC3M"
+canonical_url = "https://www.stat-search.boj.or.jp/"
+retrieval_url = "https://www.stat-search.boj.or.jp/api/v1/getDataCode?format=csv&lang=en&db=FM02&code=STRACLUC3M"
+frequency = "monthly"
+value_field = "VALUES"
+unit = "percent_per_annum"
+instrument = "3_month_uncollateralized_call_rate_monthly_average"
+classification = "documented_proxy_candidate"
+source_start_observed = "1989-01-01"
+availability_lag_month_starts = 2
+max_staleness_calendar_days = 120
