@@ -47,8 +47,8 @@ a matured-return-aware training loss, and robust cityblock loss.
 The public proxy does not reproduce the parent ordering. Fixed JM beats both
 same-sample controls in zero of three markets, and the frozen arrival-adaptive
 trade-off rule is officially \texttt{not\_supported}. The largest local result
-is downside deviation (DD) alone: US net Sharpe is 0.9075, versus 0.5699 for
-fixed JM, 0.6537 for HMM, and 0.5130 for buy-and-hold. A prespecified control
+is downside deviation (DD) alone: US net Sharpe is 0.91, versus 0.57 for
+fixed JM, 0.65 for HMM, and 0.51 for buy-and-hold. A prespecified control
 then multiplies DD observation loss by three while keeping the raw lambda grid
 fixed. It retains a positive Sharpe improvement over fixed JM in all three
 markets but beats both controls only in the US. This favors feature removal
@@ -568,9 +568,9 @@ study.}
 \toprule
 Market & Shu et al. \BH{}/HMM/JM & Proxy \BH{}/HMM/fixed JM \\
 \midrule
-US & \(0.48/0.54/0.68\) & \(0.512964/0.653725/0.569865\) \\
-DE & \(0.30/0.35/0.44\) & \(0.289638/0.007599/0.166440\) \\
-JP & \(0.12/0.19/0.31\) & \(0.544589/0.398539/0.329270\) \\
+US & \(0.48/0.54/0.68\) & \(0.51/0.65/0.57\) \\
+DE & \(0.30/0.35/0.44\) & \(0.29/0.01/0.17\) \\
+JP & \(0.12/0.19/0.31\) & \(0.54/0.40/0.33\) \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -597,26 +597,26 @@ MDD are percentages.}
 \toprule
 Market & Model & CAGR & Volatility & Sharpe & MDD \\
 \midrule
-US & \BH{}      & 9.780 & 20.495 & 0.512964 & -53.963 \\
-   & HMM         & 8.461 & 12.143 & \textbf{0.653725} & -19.363 \\
-   & Fixed JM    & 8.512 & 14.595 & 0.569865 & -33.857 \\
-   & Arrival JM  & 7.297 & 14.223 & 0.501745 & -33.790 \\
-   & Lagged JM   & 8.508 & 14.026 & 0.586777 & -33.790 \\
-   & Balanced JM & 8.870 & 13.856 & 0.616326 & -33.790 \\
+US & \BH{}      & 9.78 & 20.50 & 0.51 & -53.96 \\
+   & HMM         & 8.46 & 12.14 & \textbf{0.65} & -19.36 \\
+   & Fixed JM    & 8.51 & 14.60 & 0.57 & -33.86 \\
+   & Arrival JM  & 7.30 & 14.22 & 0.50 & -33.79 \\
+   & Lagged JM   & 8.51 & 14.03 & 0.59 & -33.79 \\
+   & Balanced JM & 8.87 & 13.86 & 0.62 & -33.79 \\
 \addlinespace
-DE & \BH{}      & 4.737 & 22.094 & 0.289638 & -53.876 \\
-   & HMM         & -1.031 & 19.240 & 0.007599 & -54.590 \\
-   & Fixed JM    & 2.071 & 17.118 & 0.166440 & -38.779 \\
-   & Arrival JM  & 4.123 & 18.082 & 0.277070 & -38.779 \\
-   & Lagged JM   & 5.259 & 17.987 & \textbf{0.337888} & -38.779 \\
-   & Balanced JM & 5.098 & 17.291 & 0.335543 & -38.779 \\
+DE & \BH{}      & 4.74 & 22.09 & 0.29 & -53.88 \\
+   & HMM         & -1.03 & 19.24 & 0.01 & -54.59 \\
+   & Fixed JM    & 2.07 & 17.12 & 0.17 & -38.78 \\
+   & Arrival JM  & 4.12 & 18.08 & 0.28 & -38.78 \\
+   & Lagged JM   & 5.26 & 17.99 & \textbf{0.34} & -38.78 \\
+   & Balanced JM & 5.10 & 17.29 & 0.34 & -38.78 \\
 \addlinespace
-JP & \BH{}      & 9.687 & 20.731 & \textbf{0.544589} & -31.799 \\
-   & HMM         & 6.075 & 19.127 & 0.398539 & -34.656 \\
-   & Fixed JM    & 4.498 & 17.910 & 0.329270 & -32.162 \\
-   & Arrival JM  & 5.321 & 16.880 & 0.385254 & -41.348 \\
-   & Lagged JM   & 5.792 & 16.772 & 0.413215 & -31.799 \\
-   & Balanced JM & 2.913 & 17.743 & 0.244542 & -41.303 \\
+JP & \BH{}      & 9.69 & 20.73 & \textbf{0.54} & -31.80 \\
+   & HMM         & 6.08 & 19.13 & 0.40 & -34.66 \\
+   & Fixed JM    & 4.50 & 17.91 & 0.33 & -32.16 \\
+   & Arrival JM  & 5.32 & 16.88 & 0.39 & -41.35 \\
+   & Lagged JM   & 5.79 & 16.77 & 0.41 & -31.80 \\
+   & Balanced JM & 2.91 & 17.74 & 0.24 & -41.30 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -631,34 +631,34 @@ switch count is the number of adjacent position changes.}
 \toprule
 Market & Model & Turnover & Cash fraction & Switches \\
 \midrule
-US & \BH{}      & 0.000 & 0.000 & 0 \\
-   & HMM         & 143.253 & 24.221 & 46 \\
-   & Fixed JM    & 65.398 & 21.157 & 21 \\
-   & Arrival JM  & 59.170 & 23.900 & 19 \\
-   & Lagged JM   & 46.713 & 24.913 & 15 \\
-   & Balanced JM & 40.484 & 26.174 & 13 \\
+US & \BH{}      & 0.00 & 0.00 & 0 \\
+   & HMM         & 143.25 & 24.22 & 46 \\
+   & Fixed JM    & 65.40 & 21.16 & 21 \\
+   & Arrival JM  & 59.17 & 23.90 & 19 \\
+   & Lagged JM   & 46.71 & 24.91 & 15 \\
+   & Balanced JM & 40.48 & 26.17 & 13 \\
 \addlinespace
-DE & \BH{}      & 0.000 & 0.000 & 0 \\
-   & HMM         & 105.543 & 11.949 & 34 \\
-   & Fixed JM    & 99.335 & 18.280 & 32 \\
-   & Arrival JM  & 43.459 & 13.107 & 14 \\
-   & Lagged JM   & 24.834 & 13.427 & 8 \\
-   & Balanced JM & 49.667 & 16.876 & 16 \\
+DE & \BH{}      & 0.00 & 0.00 & 0 \\
+   & HMM         & 105.54 & 11.95 & 34 \\
+   & Fixed JM    & 99.33 & 18.28 & 32 \\
+   & Arrival JM  & 43.46 & 13.11 & 14 \\
+   & Lagged JM   & 24.83 & 13.43 & 8 \\
+   & Balanced JM & 49.67 & 16.88 & 16 \\
 \addlinespace
-JP & \BH{}      & 0.000 & 0.000 & 0 \\
-   & HMM         & 130.006 & 5.633 & 37 \\
-   & Fixed JM    & 45.678 & 27.886 & 13 \\
-   & Arrival JM  & 94.869 & 27.524 & 27 \\
-   & Lagged JM   & 115.951 & 27.970 & 33 \\
-   & Balanced JM & 137.033 & 22.644 & 39 \\
+JP & \BH{}      & 0.00 & 0.00 & 0 \\
+   & HMM         & 130.01 & 5.63 & 37 \\
+   & Fixed JM    & 45.68 & 27.89 & 13 \\
+   & Arrival JM  & 94.87 & 27.52 & 27 \\
+   & Lagged JM   & 115.95 & 27.97 & 33 \\
+   & Balanced JM & 137.03 & 22.64 & 39 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 For arrival adaptation, Sharpe at \(\beta=0,\log2,\log4\) was
-\(0.569865/0.512427/0.501745\) in the US,
-\(0.166440/0.271817/0.277070\) in Germany, and
-\(0.329270/0.143204/0.385254\) in Japan. Beta zero reproduced fixed JM exactly,
+\(0.57/0.51/0.50\) in the US,
+\(0.17/0.27/0.28\) in Germany, and
+\(0.33/0.14/0.39\) in Japan. Beta zero reproduced fixed JM exactly,
 and positive beta changed real paths, so the mechanism was operational.
 
 The frozen arrival-study rule required
@@ -679,12 +679,12 @@ three markets before P\&L was opened (Figure~\ref{fig:whipsaw}). Lagging is
 also more selective: it admits 17 discount-attributable events pooled against
 38 for arrival, and its whipsaw share falls from 45\% to 35\%. In the later
 readout, lagged-minus-fixed
-Sharpe was \(+0.016913/+0.171448/+0.083945\) in US/DE/JP. Selected-strategy
+Sharpe was \(+0.02/+0.17/+0.08\) in US/DE/JP. Selected-strategy
 switches changed \(21\to15\), \(32\to8\), and \(13\to33\). Thus lagging beat
 both controls only in Germany and increased activity sharply in Japan. A
 post-result \(2\times2\) path/choice decomposition attributed equal-market mean
-Sharpe change \(+0.090769\) to a path Shapley component \(-0.034835\) and a
-choice component \(+0.125603\), with interaction \(+0.205076\). This is an
+Sharpe change \(+0.09\) to a path Shapley component \(-0.03\) and a
+choice component \(+0.13\), with interaction \(+0.21\). This is an
 exact nonlinear accounting identity, not a causal effect.
 
 \newcommand{\whipfig}{../artifacts/reports/lagged-evidence-mechanism/whipsaw-17-to-6.png}
@@ -726,23 +726,23 @@ percentages.}
 \toprule
 Market & Challenger & Sharpe & \(G_m\) & MDD & Turnover & Cash & Switches \\
 \midrule
-US & Static \(\lambda=50\) & 0.586183 & -0.067542 & -22.496 & 52.941 & 30.722 & 17 \\
-   & DD-only               & 0.907547 & +0.253822 & -19.364 & 34.256 & 13.569 & 11 \\
-   & Confirmed 2 obs.      & 0.619291 & -0.034433 & -33.791 & 59.170 & 21.206 & 19 \\
-   & Return-aware          & 0.559865 & -0.093860 & -33.857 & 65.398 & 21.206 & 21 \\
-   & Robust L1             & 0.372797 & -0.280928 & -35.389 & 118.339 & 22.862 & 38 \\
+US & Static \(\lambda=50\) & 0.59 & -0.07 & -22.50 & 52.94 & 30.72 & 17 \\
+   & DD-only               & 0.91 & +0.25 & -19.36 & 34.26 & 13.57 & 11 \\
+   & Confirmed 2 obs.      & 0.62 & -0.03 & -33.79 & 59.17 & 21.21 & 19 \\
+   & Return-aware          & 0.56 & -0.09 & -33.86 & 65.40 & 21.21 & 21 \\
+   & Robust L1             & 0.37 & -0.28 & -35.39 & 118.34 & 22.86 & 38 \\
 \addlinespace
-DE & Static \(\lambda=50\) & 0.156219 & -0.133419 & -41.794 & 68.293 & 28.061 & 22 \\
-   & DD-only               & 0.226442 & -0.063196 & -42.833 & 80.710 & 11.358 & 26 \\
-   & Confirmed 2 obs.      & 0.149925 & -0.139713 & -40.726 & 80.710 & 18.256 & 26 \\
-   & Return-aware          & 0.149742 & -0.139896 & -38.779 & 111.752 & 21.976 & 36 \\
-   & Robust L1             & 0.173382 & -0.116256 & -39.763 & 99.335 & 16.162 & 32 \\
+DE & Static \(\lambda=50\) & 0.16 & -0.13 & -41.79 & 68.29 & 28.06 & 22 \\
+   & DD-only               & 0.23 & -0.06 & -42.83 & 80.71 & 11.36 & 26 \\
+   & Confirmed 2 obs.      & 0.15 & -0.14 & -40.73 & 80.71 & 18.26 & 26 \\
+   & Return-aware          & 0.15 & -0.14 & -38.78 & 111.75 & 21.98 & 36 \\
+   & Robust L1             & 0.17 & -0.12 & -39.76 & 99.33 & 16.16 & 32 \\
 \addlinespace
-JP & Static \(\lambda=50\) & 0.183934 & -0.360656 & -33.951 & 70.273 & 68.266 & 20 \\
-   & DD-only               & 0.423891 & -0.120698 & -43.241 & 66.760 & 8.728 & 19 \\
-   & Confirmed 2 obs.      & 0.297227 & -0.247362 & -34.704 & 45.678 & 27.914 & 13 \\
-   & Return-aware          & 0.329270 & -0.215320 & -32.162 & 45.678 & 27.886 & 13 \\
-   & Robust L1             & 0.361360 & -0.183230 & -32.369 & 73.787 & 24.819 & 21 \\
+JP & Static \(\lambda=50\) & 0.18 & -0.36 & -33.95 & 70.27 & 68.27 & 20 \\
+   & DD-only               & 0.42 & -0.12 & -43.24 & 66.76 & 8.73 & 19 \\
+   & Confirmed 2 obs.      & 0.30 & -0.25 & -34.70 & 45.68 & 27.91 & 13 \\
+   & Return-aware          & 0.33 & -0.22 & -32.16 & 45.68 & 27.89 & 13 \\
+   & Robust L1             & 0.36 & -0.18 & -32.37 & 73.79 & 24.82 & 21 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -754,7 +754,7 @@ signal date, and it improves Sharpe in no market. L1 raises activity in the US
 and Japan.
 
 DD-only is the clear local result. Relative to fixed JM, Sharpe changes by
-\(+0.337682/+0.060001/+0.094622\) in US/DE/JP. It beats both controls in the US,
+\(+0.34/+0.06/+0.09\) in US/DE/JP. It beats both controls in the US,
 where switches fall from 21 to 11 and MDD improves from \(-33.857\%\) to
 \(-19.364\%\). Germany remains below \BH{}. Japan remains below \BH{}, its MDD
 worsens, and switches rise from 13 to 19.
@@ -770,8 +770,8 @@ deterministic, but those routes no longer represent a fitted two-state model.
 
 Table~\ref{tab:scaled-absolute} reports the prespecified three-times DD
 control. It retains a positive Sharpe advantage over fixed JM of
-\(+0.314265/+0.029476/+0.098780\) in US/DE/JP, but its benchmark gaps are
-\(+0.230405/-0.093722/-0.116539\). It therefore beats both same-sample controls
+\(+0.31/+0.03/+0.10\) in US/DE/JP, but its benchmark gaps are
+\(+0.23/-0.09/-0.12\). It therefore beats both same-sample controls
 only in the US, and its official cross-market result is
 \texttt{not\_supported}.
 
@@ -785,9 +785,9 @@ only in the US, and its official cross-market result is
 \toprule
 Market & Sharpe & \(G_m\) & MDD & Turnover & Cash & Switches \\
 \midrule
-US & 0.884130 & +0.230405 & -19.531 & 46.713 & 14.137 & 15 \\
-DE & 0.195916 & -0.093722 & -44.517 & 49.667 & 11.210 & 16 \\
-JP & 0.428050 & -0.116539 & -34.529 & 80.814 & 13.887 & 23 \\
+US & 0.88 & +0.23 & -19.53 & 46.71 & 14.14 & 15 \\
+DE & 0.20 & -0.09 & -44.52 & 49.67 & 11.21 & 16 \\
+JP & 0.43 & -0.12 & -34.53 & 80.81 & 13.89 & 23 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -809,9 +809,9 @@ percentage points. A positive MDD delta means a less negative, better drawdown.}
 \toprule
 Market & \(\Delta\)Sharpe & \(\Delta\)MDD & \(\Delta\)Turnover & \(\Delta\)Cash & \(\Delta\)Switches \\
 \midrule
-US & -0.023417 & -0.168 & +12.457 & +0.568 & +4 \\
-DE & -0.030526 & -1.685 & -31.042 & -0.148 & -10 \\
-JP & +0.004159 & +8.711 & +14.055 & +5.159 & +4 \\
+US & -0.02 & -0.17 & +12.46 & +0.57 & +4 \\
+DE & -0.03 & -1.69 & -31.04 & -0.15 & -10 \\
+JP & +0.00 & +8.71 & +14.05 & +5.16 & +4 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -922,16 +922,16 @@ shown; cost and the first affected return occur on the following trading row.}
 \toprule
 Rule & Evidence & \(\lambda_0\) & Penalty & Signal date & State & Execute & Return/cost row & Net return \\
 \midrule
-DE arrival & 25 Jan 2008 & 150 & 37.5003 & 25 Jan & \(0\to1\) & 28 Jan & 29 Jan 2008 & -0.000816 \\
-JP lagged  & 7 May 2009  & 5   & 1.4620  & 8 May  & \(1\to0\) & 11 May & 12 May 2009 & -0.017226 \\
+DE arrival & 25 Jan 2008 & 150 & 37.50 & 25 Jan & \(0\to1\) & 28 Jan & 29 Jan 2008 & -0.00 \\
+JP lagged  & 7 May 2009  & 5   & 1.46  & 8 May  & \(1\to0\) & 11 May & 12 May 2009 & -0.02 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-For Germany, arrival-day source and destination losses were 7.4160 and 1.1158,
-reducing the \(0\to1\) barrier from 150 to 37.5003. For Japan, the 7 May lagged
-losses were 2.1566 and 0.8314, reducing the next day's \(1\to0\) barrier from 5
-to 1.4620. One date cannot explain full-sample Sharpe, but the examples make the
+For Germany, arrival-day source and destination losses were 7.42 and 1.12,
+reducing the \(0\to1\) barrier from 150 to 37.50. For Japan, the 7 May lagged
+losses were 2.16 and 0.83, reducing the next day's \(1\to0\) barrier from 5
+to 1.46. One date cannot explain full-sample Sharpe, but the examples make the
 loss, penalty, state, signal, position, trade, and cost timing observable.
 
 \subsection{Separation does not forecast next-month switching}
@@ -958,9 +958,9 @@ excludes collapsed one-state months, which cannot switch by construction.}
 \toprule
 Market & \(\rho\) & One-sided \(p\) & \(n\) & Collapsed & Fitted-only \(\rho\) \\
 \midrule
-US & +0.035 & 0.68 & 193 & 0  & +0.035 \\
-DE & +0.320 & 1.00 & 192 & 43 & +0.303 \\
-JP & +0.155 & 0.98 & 176 & 63 & -0.142 \\
+US & +0.04 & 0.68 & 193 & 0  & +0.04 \\
+DE & +0.32 & 1.00 & 192 & 43 & +0.30 \\
+JP & +0.15 & 0.98 & 176 & 63 & -0.14 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1020,13 +1020,13 @@ is bold.}
 \toprule
 Market & Window & \BH{} & HMM & Fixed JM & DD-only JM \\
 \midrule
-US & full 2008--2026   & 0.5678 & \textbf{0.6326} & 0.5684 & 0.8903 \\
-DE & full 2008--2026   & \textbf{0.3499} & 0.1096 & 0.2596 & 0.3102 \\
-JP & full 2009--2026   & \textbf{0.6708} & 0.5596 & 0.5115 & 0.5597 \\
+US & full 2008--2026   & 0.57 & \textbf{0.63} & 0.57 & 0.89 \\
+DE & full 2008--2026   & \textbf{0.35} & 0.11 & 0.26 & 0.31 \\
+JP & full 2009--2026   & \textbf{0.67} & 0.56 & 0.51 & 0.56 \\
 \addlinespace
-US & 2024--2026 only   & \textbf{1.0521} & 0.5316 & 0.5737 & 0.7750 \\
-DE & 2024--2026 only   & \textbf{0.9041} & 0.9041 & 0.9041 & 0.9041 \\
-JP & 2024--2026 only   & \textbf{1.2701} & 1.2701 & 1.2701 & 1.1696 \\
+US & 2024--2026 only   & \textbf{1.05} & 0.53 & 0.57 & 0.78 \\
+DE & 2024--2026 only   & \textbf{0.90} & 0.90 & 0.90 & 0.90 \\
+JP & 2024--2026 only   & \textbf{1.27} & 1.27 & 1.27 & 1.17 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1035,7 +1035,7 @@ On the full walk-forward through 2026 the picture is unchanged from
 development: DD-only beats both controls in the US by \(+0.258\) Sharpe and
 loses in Germany and Japan, so it still passes \(1/3\)
 (Table~\ref{tab:holdout}). Adding two and a half genuinely new years barely
-moved the US number, from \(0.9075\) through 2023 to \(0.8903\) through 2026.
+moved the US number, from \(0.91\) through 2023 to \(0.89\) through 2026.
 
 On the isolated 2024-2026 window the frozen binary rule returns
 \texttt{not\_supported} in every market, \(0/3\) (Figure~\ref{fig:holdout}).
@@ -1223,7 +1223,7 @@ A. O. Ayd{\i}nhan, P. N. Kolm, J. M. Mulvey, and Y. Shu.
 \newblock Identifying patterns in financial markets: Extending the statistical
 jump model for regime identification.
 \newblock \emph{Annals of Operations Research}, 2024.
-\newblock doi:10.1007/s10479-024-06035-z.
+\newblock doi:10.10/s10479-024-06035-z.
 
 \bibitem[Bemporad et al.(2018)]{bemporad2018}
 A. Bemporad, V. Breschi, D. Piga, and S. P. Boyd.
@@ -1283,7 +1283,7 @@ Y. Shu, C. Yu, and J. M. Mulvey.
 \newblock Downside risk reduction using regime-switching signals: A statistical
 jump model approach.
 \newblock \emph{Journal of Asset Management}, 25:493--507, 2024.
-\newblock doi:10.1057/s41260-024-00376-x.
+\newblock doi:10.11/s41260-024-00376-x.
 
 \end{thebibliography}
 

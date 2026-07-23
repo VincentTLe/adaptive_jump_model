@@ -306,9 +306,9 @@ statistic and a separately frozen study.
 - Beta scenarios were exactly `0`, `log(2)`, and `log(4)` on the unchanged v7
   grid. Beta zero matched parent candidate states, choices, signals, trades,
   and metrics exactly.
-- US switches fell `21→18/19`, but Sharpe fell by `0.0574/0.0681`.
-- DE switches fell `32→24/14`, turnover fell by `0.4967/1.1175`, and Sharpe
-  rose by `0.1054/0.1106`; drawdown deltas were only floating-point negatives
+- US switches fell `21→18/19`, but Sharpe fell by `0.06/0.07`.
+- DE switches fell `32→24/14`, turnover fell by `0.50/1.12`, and Sharpe
+  rose by `0.11/0.11`; drawdown deltas were only floating-point negatives
   of order \(10^{-16}\).
 - JP switches rose `13→23/27`; the outcomes were mixed across Sharpe and worse
   on drawdown/turnover/switching.
@@ -355,10 +355,10 @@ statistic and a separately frozen study.
   criterion (US \(1.99\times10^{-9}\), DE \(2.58\times10^{-9}\), JP
   \(1.61\times10^{-8}\)); the official result is `inconclusive`.
 - The mechanism explanation was not borne out descriptively. Median valid
-  refit reliability was DE `0.5463` and JP `0.5578`, while DE whipsaw
+  refit reliability was DE `0.55` and JP `0.56`, while DE whipsaw
   events were slightly more separated than persistent events
-  (`0.5675` vs `0.5626`). JP had only a small difference in the proposed
-  direction (`0.5632` vs `0.5659`).
+  (`0.57` vs `0.56`). JP had only a small difference in the proposed
+  direction (`0.56` vs `0.57`).
 - Status: completed mechanism diagnostic; this reliability gate is not
   justified and was not sent to a P&L test. Artifact:
   `adaptive-separation-813f66912526-26cbca8871be-fefc608b9081`.
@@ -394,12 +394,12 @@ Primary-delay fixed-JM evidence on the matched core sample is:
 
 | Market | Expanded control: Sharpe / MDD / turnover / cash / switches | Table-3-visible delta: Sharpe / MDD improvement / turnover / cash / switches |
 | --- | --- | --- |
-| US | `0.5705 / -0.3386 / 0.6554 / 0.2098 / 21` | `+0.0112 / 0 / 0 / +0.0622 / 0` |
-| DE | `0.1852 / -0.3878 / 0.9956 / 0.1832 / 32` | `-0.1294 / +0.0180 / +0.5600 / +0.1442 / +18` |
-| JP | `0.3297 / -0.3216 / 0.4579 / 0.2770 / 13` | `-0.3157 / -0.0194 / +2.4305 / +0.3606 / +69` |
+| US | `0.57 / -0.34 / 0.66 / 0.21 / 21` | `+0.01 / 0 / 0 / +0.06 / 0` |
+| DE | `0.19 / -0.39 / 1.00 / 0.18 / 32` | `-0.13 / +0.02 / +0.56 / +0.14 / +18` |
+| JP | `0.33 / -0.32 / 0.46 / 0.28 / 13` | `-0.32 / -0.02 / +2.43 / +0.36 / +69` |
 
 - Historical-v1 and source-union JM grids were mixed: they raised DE Sharpe
-  by `0.1121` and `0.0647` while lowering US and JP Sharpe. Restricting to
+  by `0.11` and `0.06` while lowering US and JP Sharpe. Restricting to
   Table-3-visible values therefore does not rescue the fixed baseline and is
   especially harmful in JP.
 - The 5% upper-boundary rule is local, absent from the paper, and does not
@@ -428,7 +428,7 @@ Primary-delay fixed-JM evidence on the matched core sample is:
 
 - Tested one source-derived endpoint per fixed-model family after exact
   current-code reproduction of the sealed base behavior: JM
-  `362.03867196751236` (next candidate `512` invalid) and HMM `1249` (next
+  `362.04` (next candidate `512` invalid) and HMM `1249` (next
   candidate `1250` invalid). No wider grid or winner search was permitted.
 - Two pre-result executions were invalidated before accounting or metrics. The
   first corrected an optional parent metadata field absent from the historical
@@ -440,9 +440,9 @@ Primary-delay fixed-JM evidence on the matched core sample is:
   formula/accounting checks, and independent verification twice. It accessed
   no post-2023 data and authorizes no performance or paper-replication claim.
 - At primary delay 1, JM endpoint-minus-base changes were: US Sharpe
-  `-0.073932`, MDD `0`, turnover `+0.124845`, cash `-0.009661`, switches `+4`;
-  DE Sharpe `+0.079039`, MDD `-0.089177`, turnover `-0.124444`, cash
-  `-0.043457`, switches `-4`; JP all five deltas `0`. The HMM endpoint changed
+  `-0.07`, MDD `0`, turnover `+0.12`, cash `-0.01`, switches `+4`;
+  DE Sharpe `+0.08`, MDD `-0.09`, turnover `-0.12`, cash
+  `-0.04`, switches `-4`; JP all five deltas `0`. The HMM endpoint changed
   none of the five primary metrics in any market.
 - Concrete causal traces linked US choice/signal `2022-01-31` to t+2
   position/trade `2022-02-02`, and DE choice/signal `2019-01-31` to t+2
@@ -473,14 +473,14 @@ The exact candidate sets already tested are now recorded in one place:
   `[0, 2, 4, 6, 8, 20]`.
 - Performance-free behavior domain: JM `0` plus
   `2^(j/2), j=-8,...,22` (32 candidates); `0` through
-  `362.03867196751236` were globally valid and `512` onward failed the
+  `362.04` were globally valid and `512` onward failed the
   occupancy/transition rule. HMM tested every integer `k=0,...,2560`; `0..1249`
   were globally valid and `1250+` failed. HMM candidates are smoothings of one
   raw HMM path, not separate Gaussian-HMM fits.
 - Behavior-selected base grids: JM
-  `[0, 0.3535533905932738, 1, 5.656854249492381, 16, 32, 64,
-  181.01933598375618, 256]`; HMM `[0, 3, 9, 32, 54, 114, 166, 402, 1115]`.
-  The endpoint audit added only JM `362.03867196751236` and HMM `1249`.
+  `[0, 0.35, 1, 5.66, 16, 32, 64,
+  181.02, 256]`; HMM `[0, 3, 9, 32, 54, 114, 166, 402, 1115]`.
+  The endpoint audit added only JM `362.04` and HMM `1249`.
 - Adaptive mechanism scenarios used the unchanged v7 lambda grid and exactly
   `beta=[0, log(2), log(4)]`; the lagged P&L readout carried forward only the
   performance-free-selected `beta=log(4)`.
@@ -514,11 +514,11 @@ The complete final-v3 paper grids remain unidentified.
 
 | Market | Delta Sharpe | Delta MDD | Delta turnover | Delta cash | Switches fixed→lagged |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| US | `+0.016913` | `+0.000664` | `-0.186851` | `+0.037568` | `21→15` |
-| DE | `+0.171448` | `0` within `1e-9` | `-0.745011` | `-0.048534` | `32→8` |
-| JP | `+0.083945` | `+0.003631` | `+0.702733` | `+0.000837` | `13→33` |
+| US | `+0.02` | `+0.00` | `-0.19` | `+0.04` | `21→15` |
+| DE | `+0.17` | `0` within `1e-9` | `-0.75` | `-0.05` | `32→8` |
+| JP | `+0.08` | `+0.00` | `+0.70` | `+0.00` | `13→33` |
 
-- The frozen primary rule was `supported`: mean Delta Sharpe was `+0.090769`
+- The frozen primary rule was `supported`: mean Delta Sharpe was `+0.09`
   and all three market deltas were positive. The readout improved the net-Sharpe/
   switching combination in US and DE, but not uniformly: JP turnover and switches
   increased substantially.
@@ -545,16 +545,16 @@ The complete final-v3 paper grids remain unidentified.
   `M_LL-M_LF-M_FL+M_FF`. Shapley allocations averaged the path and choice
   marginal changes across both possible baselines and exactly summed to
   `M_LL-M_FF`; they are accounting identities, not causal estimands.
-- Equal-market mean Delta Sharpe was `+0.090769`. The direct path effect at
-  fixed choices was `-0.137373`, the direct choice effect at fixed paths was
-  `+0.023065`, and interaction was `+0.205076`. Shapley allocation was
-  `-0.034835` to candidate-state family and `+0.125603` to monthly choices.
+- Equal-market mean Delta Sharpe was `+0.09`. The direct path effect at
+  fixed choices was `-0.14`, the direct choice effect at fixed paths was
+  `+0.02`, and interaction was `+0.21`. Shapley allocation was
+  `-0.03` to candidate-state family and `+0.13` to monthly choices.
 - Market Sharpe Shapley allocations (path / choice) were US
-  `-0.098607 / +0.115520`, DE `+0.011331 / +0.160117`, and JP
-  `-0.017228 / +0.101173`. Thus the positive parent readout is not evidence
+  `-0.10 / +0.12`, DE `+0.01 / +0.16`, and JP
+  `-0.02 / +0.10`. Thus the positive parent readout is not evidence
   that lagged candidate paths alone were uniformly better.
-- Mean turnover Shapley allocation was `+0.181900` to paths and `-0.258276` to
-  choices. JP was adverse on both axes (`+0.281093 / +0.421640`), so its
+- Mean turnover Shapley allocation was `+0.18` to paths and `-0.26` to
+  choices. JP was adverse on both axes (`+0.28 / +0.42`), so its
   higher turnover cannot be assigned solely to either path or selector.
 - The verifier reconstructed source schedules, all four signal/trade paths,
   t+2 positions, 10-bps costs, paper turnover, and both Shapley sides. A
@@ -656,31 +656,31 @@ The complete final-v3 paper grids remain unidentified.
 
 | Market | Model | Sharpe | MDD | Turnover | Cash fraction | Switches |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| US | fixed | `0.569865` | `-0.338568` | `0.653979` | `0.211567` | `21` |
-| US | lagged log4 | `0.586777` | `-0.337905` | `0.467128` | `0.249135` | `15` |
-| US | balanced log4 | `0.616326` | `-0.337905` | `0.404844` | `0.261740` | `13` |
-| DE | fixed | `0.166440` | `-0.387794` | `0.993348` | `0.182804` | `32` |
-| DE | lagged log4 | `0.337888` | `-0.387794` | `0.248337` | `0.134270` | `8` |
-| DE | balanced log4 | `0.335543` | `-0.387794` | `0.496674` | `0.168761` | `16` |
-| JP | fixed | `0.329270` | `-0.321619` | `0.456776` | `0.278862` | `13` |
-| JP | lagged log4 | `0.413215` | `-0.317989` | `1.159509` | `0.279699` | `33` |
-| JP | balanced log4 | `0.244542` | `-0.413031` | `1.370329` | `0.226436` | `39` |
+| US | fixed | `0.57` | `-0.34` | `0.65` | `0.21` | `21` |
+| US | lagged log4 | `0.59` | `-0.34` | `0.47` | `0.25` | `15` |
+| US | balanced log4 | `0.62` | `-0.34` | `0.40` | `0.26` | `13` |
+| DE | fixed | `0.17` | `-0.39` | `0.99` | `0.18` | `32` |
+| DE | lagged log4 | `0.34` | `-0.39` | `0.25` | `0.13` | `8` |
+| DE | balanced log4 | `0.34` | `-0.39` | `0.50` | `0.17` | `16` |
+| JP | fixed | `0.33` | `-0.32` | `0.46` | `0.28` | `13` |
+| JP | lagged log4 | `0.41` | `-0.32` | `1.16` | `0.28` | `33` |
+| JP | balanced log4 | `0.24` | `-0.41` | `1.37` | `0.23` | `39` |
 
 | Market | Balanced minus lagged: Delta Sharpe | Delta MDD | Delta turnover | Delta cash | Delta switches |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| US | `+0.029549` | `0` within `1e-9` | `-0.062284` | `+0.012605` | `-2` |
-| DE | `-0.002345` | `0` within `1e-9` | `+0.248337` | `+0.034491` | `+8` |
-| JP | `-0.168672` | `-0.095042` | `+0.210820` | `-0.053263` | `+6` |
+| US | `+0.03` | `0` within `1e-9` | `-0.06` | `+0.01` | `-2` |
+| DE | `-0.00` | `0` within `1e-9` | `+0.25` | `+0.03` | `+8` |
+| JP | `-0.17` | `-0.10` | `+0.21` | `-0.05` | `+6` |
 
 | Market | Balanced minus fixed: Delta Sharpe | Delta MDD | Delta turnover | Delta cash | Delta switches |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| US | `+0.046462` | `+0.000664` | `-0.249135` | `+0.050173` | `-8` |
-| DE | `+0.169103` | `0` within `1e-9` | `-0.496674` | `-0.014043` | `-16` |
-| JP | `-0.084727` | `-0.091411` | `+0.913553` | `-0.052426` | `+26` |
+| US | `+0.05` | `+0.00` | `-0.25` | `+0.05` | `-8` |
+| DE | `+0.17` | `0` within `1e-9` | `-0.50` | `-0.01` | `-16` |
+| JP | `-0.08` | `-0.09` | `+0.91` | `-0.05` | `+26` |
 
-- Frozen decision: balanced-minus-lagged mean Delta Sharpe was `-0.047156`
+- Frozen decision: balanced-minus-lagged mean Delta Sharpe was `-0.05`
   with `1/3` positive markets, so the primary contrast failed.
-  Balanced-minus-fixed mean Delta Sharpe was `+0.043613` with `2/3` positive
+  Balanced-minus-fixed mean Delta Sharpe was `+0.04` with `2/3` positive
   markets and passed separately. Both were required; result `not_supported`.
 - On the balanced-readout aligned decision months, upper-candidate
   `lambda=1200` selection was fixed `2.07%/3.65%/4.55%`
@@ -731,8 +731,8 @@ The complete final-v3 paper grids remain unidentified.
 - Under the corrected target, fixed JM and arrival-adaptive JM beat both
   benchmarks in `0/3` markets. Lagged-evidence and pair-balanced JM each beat
   both only in DE (`1/3`). The best tested gaps are US balanced
-  `-0.037398` versus HMM, DE lagged `+0.048251`, and JP lagged
-  `-0.131375` versus buy-and-hold. No experiment result or historical
+  `-0.04` versus HMM, DE lagged `+0.05`, and JP lagged
+  `-0.13` versus buy-and-hold. No experiment result or historical
   lifecycle label was changed; only its relationship to the final objective
   was clarified.
 - The mathematical sequence remains: fixed symmetric transition cost;
@@ -820,17 +820,17 @@ The complete final-v3 paper grids remain unidentified.
   Independent replay reconstructed `24` common-sample metric rows and `45`
   concrete traces. Maximum metric difference was `2.37e-14`, below `1e-12`.
 - No variant met the cross-market rule. Gaps in US/DE/JP were static lambda 50
-  `-0.067542/-0.133419/-0.360656`; DD-only
-  `+0.253822/-0.063196/-0.120698`; confirmed 2d
-  `-0.034433/-0.139713/-0.247362`; return-aware
-  `-0.093860/-0.139896/-0.215320`; and robust L1
-  `-0.280928/-0.116256/-0.183230`.
+  `-0.07/-0.13/-0.36`; DD-only
+  `+0.25/-0.06/-0.12`; confirmed 2d
+  `-0.03/-0.14/-0.25`; return-aware
+  `-0.09/-0.14/-0.22`; and robust L1
+  `-0.28/-0.12/-0.18`.
 - DD-only was the useful result. Relative to fixed JM, Sharpe changed
-  `+0.337682/+0.060001/+0.094622` in US/DE/JP. It beat both controls in US
-  with Sharpe `0.907547`, MDD `-0.193635`, turnover `0.342561`, cash fraction
-  `0.135690`, and `11` switches. It remained below buy-and-hold in DE and JP.
-  Its MDD worsened by `0.040531` in DE and `0.110785` in JP; JP turnover rose
-  by `0.210820` and switches rose `13->19`.
+  `+0.34/+0.06/+0.09` in US/DE/JP. It beat both controls in US
+  with Sharpe `0.91`, MDD `-0.19`, turnover `0.34`, cash fraction
+  `0.14`, and `11` switches. It remained below buy-and-hold in DE and JP.
+  Its MDD worsened by `0.04` in DE and `0.11` in JP; JP turnover rose
+  by `0.21` and switches rose `13->19`.
 - Confirmation behaved as intended mechanically: fixed-JM one-day excursions
   were delayed/removed and switches changed `21->19`, `32->26`, and `13->13`.
   It improved Sharpe only in US and passed the economic target in `0/3`.
@@ -955,15 +955,15 @@ The complete final-v3 paper grids remain unidentified.
 
 | Market | Scaled Sharpe | G | MDD | Turnover | Cash | Switches |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| US | `0.884130` | `+0.230405` | `-0.195311` | `0.467128` | `0.141374` | `15` |
-| DE | `0.195916` | `-0.093722` | `-0.445175` | `0.496674` | `0.112097` | `16` |
-| JP | `0.428050` | `-0.116539` | `-0.345290` | `0.808143` | `0.138873` | `23` |
+| US | `0.88` | `+0.23` | `-0.20` | `0.47` | `0.14` | `15` |
+| DE | `0.20` | `-0.09` | `-0.45` | `0.50` | `0.11` | `16` |
+| JP | `0.43` | `-0.12` | `-0.35` | `0.81` | `0.14` | `23` |
 
 - Scaled-minus-ordinary-DD Sharpe was
-  `-0.023417/-0.030526/+0.004159`; MDD delta
-  `-0.001676/-0.016850/+0.087115`; turnover delta
-  `+0.124567/-0.310421/+0.140547`; cash delta
-  `+0.005685/-0.001478/+0.051590`; and switch delta `+4/-10/+4` in
+  `-0.02/-0.03/+0.00`; MDD delta
+  `-0.00/-0.02/+0.09`; turnover delta
+  `+0.12/-0.31/+0.14`; cash delta
+  `+0.01/-0.00/+0.05`; and switch delta `+4/-10/+4` in
   US/DE/JP. A positive MDD delta means a less-negative drawdown.
 - Raw lambda moved upward in `73.7%/81.3%/66.1%` of paired months. The upper
   endpoint was selected in `0%/22.9%/29.0%`, and monthly validation selected

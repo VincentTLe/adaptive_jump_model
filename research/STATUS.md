@@ -13,7 +13,7 @@ and costs. For market m:
 
 No tested JM currently achieves `G_m > 0` in all three markets. The strongest
 observed candidate by market is DD-only in US, lagged-evidence JM in DE, and
-scaled DD in JP. Their gaps are `+0.253822 / +0.048251 / -0.116539`. This
+scaled DD in JP. Their gaps are `+0.25 / +0.05 / -0.12`. This
 ex-post envelope passes in US and DE, but it mixes different models and is not
 a deployable cross-market rule; JP still loses buy-and-hold.
 
@@ -25,13 +25,13 @@ chosen from several variants after inspecting the through-2023 sample, so only
 the 2024-01-02 to 2026-06-30 window is free of that choice.
 
 On the **full walk-forward through 2026**, DD-only still beats both controls in
-the US (`0.8903` vs the stronger control `0.6326`, gap `+0.258`) and loses in
+the US (`0.89` vs the stronger control `0.63`, gap `+0.258`) and loses in
 DE and JP -- `1/3`, unchanged from development. Adding 2.5 new years barely
-moved the US number (`0.9075` through 2023 to `0.8903` through 2026).
+moved the US number (`0.91` through 2023 to `0.89` through 2026).
 
 On the **isolated 2024-2026 window** the frozen binary rule returns
-`not_supported`, `0/3`: US B&H `1.0521` vs DD-only `0.7750`, DE all four
-`0.9041` (the German JM never left equity), JP B&H `1.2701` vs DD-only `1.1696`.
+`not_supported`, `0/3`: US B&H `1.05` vs DD-only `0.78`, DE all four
+`0.90` (the German JM never left equity), JP B&H `1.27` vs DD-only `1.17`.
 This window is short (~620 days), the paired bootstrap intervals include zero,
 and it was a broad bull that penalizes any cash rotation. It therefore
 **fails to confirm** the US edge on selection-independent data but **does not
@@ -72,7 +72,7 @@ or generalization claim is authorized.
 | Simple challengers | `simple-jm-suite-001` / `simple-jm-suite-2d3d2a779b13-544237a59943-20260721T145043479851Z` | No cross-market winner; DD-only beats both controls in US and improves fixed-JM Sharpe in all three, but passes only `1/3` and is loss-scale confounded |
 | DD loss-scale control | `dd-loss-scale-001` / `dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z` | Mechanism verified; scaled DD beats both controls only in US (`1/3`), so the result is `not_supported` |
 | Separation-turnover diagnostic | `separation-turnover-001` / `separation-turnover-8674ff4d9470-20260722T083551Z` | Not supported; decision-time DD center separation associates positively (US `+0.035`, DE `+0.320`, JP `+0.155`) with next-month switches, JP flips negative once collapsed one-state months are excluded, so no separation gate is justified |
-| One-shot 2024-2026 holdout | `holdout-2026-001` / `holdout-20260722T111757Z` | Frozen rule returns `not_supported` on the isolated 2024-2026 window (`0/3`: US B&H `1.0521` vs DD-only `0.7750`; DE all four `0.9041`; JP B&H `1.2701` vs DD-only `1.1696`). But the full walk-forward through 2026 still has DD-only beating both controls in the US (`1/3`, unchanged). The window is short and bull-dominated with bootstrap intervals spanning zero, so it fails to confirm the edge on selection-independent data without refuting the 18-year result |
+| One-shot 2024-2026 holdout | `holdout-2026-001` / `holdout-20260722T111757Z` | Frozen rule returns `not_supported` on the isolated 2024-2026 window (`0/3`: US B&H `1.05` vs DD-only `0.78`; DE all four `0.90`; JP B&H `1.27` vs DD-only `1.17`). But the full walk-forward through 2026 still has DD-only beating both controls in the US (`1/3`, unchanged). The window is short and bull-dominated with bootstrap intervals spanning zero, so it fails to confirm the edge on selection-independent data without refuting the 18-year result |
 
 Invalidated runs remain preserved for provenance, but they are not accepted
 evidence. In particular, the `2207...` and `d6fe...` fixed-audit runs and the
@@ -145,13 +145,13 @@ the signs across markets show that none of these tested alternatives recovers
 the paper's three-market result.
 
 The one-shot endpoint test sharpened that conclusion. It added only JM
-`362.03867196751236` and HMM `1249`, both derived from sealed pre-OOS
+`362.04` and HMM `1249`, both derived from sealed pre-OOS
 calibration. Primary-delay endpoint-minus-base changes were:
 
 | Market | JM Delta Sharpe | JM Delta MDD | JM Delta turnover | JM Delta cash | JM Delta switches | HMM metric change |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| US | `-0.0739` | `0` | `+0.1248` | `-0.0097` | `+4` | none |
-| DE | `+0.0790` | `-0.0892` | `-0.1244` | `-0.0435` | `-4` | none |
+| US | `-0.07` | `0` | `+0.12` | `-0.01` | `+4` | none |
+| DE | `+0.08` | `-0.09` | `-0.12` | `-0.04` | `-4` | none |
 | JP | `0` | `0` | `0` | `0` | `0` | none |
 
 The JM endpoint was selected in `6.70%`, `28.50%`, and `5.08%` of primary
@@ -206,19 +206,19 @@ variant that passes any market, and it passes US only:
 
 | Variant | US G | DE G | JP G | Passes |
 | --- | ---: | ---: | ---: | ---: |
-| Static lambda 50 | `-0.067542` | `-0.133419` | `-0.360656` | `0/3` |
-| DD-only | `+0.253822` | `-0.063196` | `-0.120698` | `1/3` |
-| Confirmed 2d | `-0.034433` | `-0.139713` | `-0.247362` | `0/3` |
-| Return-aware | `-0.093860` | `-0.139896` | `-0.215320` | `0/3` |
-| Robust L1 | `-0.280928` | `-0.116256` | `-0.183230` | `0/3` |
+| Static lambda 50 | `-0.07` | `-0.13` | `-0.36` | `0/3` |
+| DD-only | `+0.25` | `-0.06` | `-0.12` | `1/3` |
+| Confirmed 2d | `-0.03` | `-0.14` | `-0.25` | `0/3` |
+| Return-aware | `-0.09` | `-0.14` | `-0.22` | `0/3` |
+| Robust L1 | `-0.28` | `-0.12` | `-0.18` | `0/3` |
 
-DD-only Sharpe was `0.907547/0.226442/0.423891` in US/DE/JP, improving
-canonical fixed JM by `+0.337682/+0.060001/+0.094622`. US MDD improved from
-`-0.338568` to `-0.193635`, turnover fell `0.653979->0.342561`, cash fell
-`0.211567->0.135690`, and switches fell `21->11`. In DE, MDD worsened
-`-0.387794->-0.428325` despite lower turnover and six fewer switches. In JP,
-MDD worsened `-0.321619->-0.432405`, turnover rose `0.456776->0.667596`,
-cash fell `0.278862->0.087284`, and switches rose `13->19`.
+DD-only Sharpe was `0.91/0.23/0.42` in US/DE/JP, improving
+canonical fixed JM by `+0.34/+0.06/+0.09`. US MDD improved from
+`-0.34` to `-0.19`, turnover fell `0.65->0.34`, cash fell
+`0.21->0.14`, and switches fell `21->11`. In DE, MDD worsened
+`-0.39->-0.43` despite lower turnover and six fewer switches. In JP,
+MDD worsened `-0.32->-0.43`, turnover rose `0.46->0.67`,
+cash fell `0.28->0.09`, and switches rose `13->19`.
 
 The mechanisms did what their formulas said, but not what the economic target
 needed. Confirmation removed fixed-JM one-day excursions and cut switches in
@@ -234,17 +234,17 @@ other protocol field unchanged. It completed with result `not_supported`:
 
 | Market | Scaled Sharpe | G | MDD | Turnover | Cash | Switches |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| US | `0.884130` | `+0.230405` | `-0.195311` | `0.467128` | `0.141374` | `15` |
-| DE | `0.195916` | `-0.093722` | `-0.445175` | `0.496674` | `0.112097` | `16` |
-| JP | `0.428050` | `-0.116539` | `-0.345290` | `0.808143` | `0.138873` | `23` |
+| US | `0.88` | `+0.23` | `-0.20` | `0.47` | `0.14` | `15` |
+| DE | `0.20` | `-0.09` | `-0.45` | `0.50` | `0.11` | `16` |
+| JP | `0.43` | `-0.12` | `-0.35` | `0.81` | `0.14` | `23` |
 
 Scaled minus ordinary DD-only was:
 
 | Market | Delta Sharpe | Delta MDD | Delta turnover | Delta cash | Delta switches |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| US | `-0.023417` | `-0.001676` | `+0.124567` | `+0.005685` | `+4` |
-| DE | `-0.030526` | `-0.016850` | `-0.310421` | `-0.001478` | `-10` |
-| JP | `+0.004159` | `+0.087115` | `+0.140547` | `+0.051590` | `+4` |
+| US | `-0.02` | `-0.00` | `+0.12` | `+0.01` | `+4` |
+| DE | `-0.03` | `-0.02` | `-0.31` | `-0.00` | `-10` |
+| JP | `+0.00` | `+0.09` | `+0.14` | `+0.05` | `+4` |
 
 A positive MDD delta means a less-negative drawdown. Formula, toy-path,
 lambda-third path, brute-force, prefix, timing, cost, turnover, and concrete
@@ -278,8 +278,8 @@ exploratory development evidence, not a performance or generalization claim.
 
 Lagged-Evidence JM at `beta=log(4)` passed formula, beta-zero nesting,
 brute-force objective, prefix-invariance, toy paths, t+2 accounting, plus completion-time and separate CLI
-source replays. Lagged-minus-fixed Sharpe was `+0.0169/+0.1714/
-+0.0839` in US/DE/JP, for a market-equal mean of `+0.0908`. US switches fell
+source replays. Lagged-minus-fixed Sharpe was `+0.02/+0.17/
++0.08` in US/DE/JP, for a market-equal mean of `+0.09`. US switches fell
 `21→15` and DE `32→8`; JP instead rose `13→33`. MDD improved slightly in US
 and JP and was equal within `1e-9` in DE.
 
@@ -292,23 +292,23 @@ so the finite optimum is unidentified and the result is conditional on the
 frozen grid. The same through-2023 markets have been inspected repeatedly.
 
 The frozen post-result 2x2 attribution is complete. Equal-market mean Sharpe
-attribution was total `+0.090769`, path Shapley `-0.034835`, and choice-schedule
-Shapley `+0.125603`. The corresponding direct effects at the fixed counterpart
-were `-0.137373` and `+0.023065`, with interaction `+0.205076`. For turnover,
-path and choice Shapley effects were `+0.181900` and `-0.258276`; in JP both
+attribution was total `+0.09`, path Shapley `-0.03`, and choice-schedule
+Shapley `+0.13`. The corresponding direct effects at the fixed counterpart
+were `-0.14` and `+0.02`, with interaction `+0.21`. For turnover,
+path and choice Shapley effects were `+0.18` and `-0.26`; in JP both
 were positive. These are mechanical allocations of nonlinear metrics, not
 causal effects.
 
 The subsequent pair-balanced P&L readout did not support the challenger.
-Balanced-minus-lagged Sharpe was `+0.029549/-0.002345/-0.168672` in US/DE/JP,
-for an equal-market mean of `-0.047156` and only one positive market. US MDD
-was equal within `1e-9`, turnover fell `0.062284`, cash rose `0.012605`, and
+Balanced-minus-lagged Sharpe was `+0.03/-0.00/-0.17` in US/DE/JP,
+for an equal-market mean of `-0.05` and only one positive market. US MDD
+was equal within `1e-9`, turnover fell `0.06`, cash rose `0.01`, and
 switches fell `15→13`. DE MDD was equal within `1e-9`, but turnover rose
-`0.248337`, cash rose `0.034491`, and switches rose `8→16`. JP MDD worsened
-`0.095042`, turnover rose `0.210820`, cash fell `0.053263`, and switches
+`0.25`, cash rose `0.03`, and switches rose `8→16`. JP MDD worsened
+`0.10`, turnover rose `0.21`, cash fell `0.05`, and switches
 rose `33→39`.
 
-Balanced-minus-fixed passed separately with mean Delta Sharpe `+0.043613`
+Balanced-minus-fixed passed separately with mean Delta Sharpe `+0.04`
 and `2/3` positive markets, but the frozen decision required both contrasts.
 Upper-candidate selection for balanced log4 was `9.84%/45.31%/38.64%`, so the
 finite adaptive optimum remains unidentified. The corrected run passed exact

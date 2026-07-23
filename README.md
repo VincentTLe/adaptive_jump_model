@@ -31,14 +31,14 @@ Net Sharpe on the common proxy sample:
 
 | Market | Buy & Hold | HMM | Fixed JM | DD-only JM | Scaled DD JM | Scaled DD beats both? |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| US | 0.512964 | 0.653725 | 0.569865 | **0.907547** | 0.884130 | Yes |
-| DE | **0.289638** | 0.007599 | 0.166440 | 0.226442 | 0.195916 | No |
-| JP | **0.544589** | 0.398539 | 0.329270 | 0.423891 | 0.428050 | No |
+| US | 0.51 | 0.65 | 0.57 | **0.91** | 0.88 | Yes |
+| DE | **0.29** | 0.01 | 0.17 | 0.23 | 0.20 | No |
+| JP | **0.54** | 0.40 | 0.33 | 0.42 | 0.43 | No |
 
 DD-only improves fixed-JM Sharpe in all three markets and beats both controls
 in the US. DD means exponentially weighted downside deviation, not drawdown.
 Multiplying its observation loss by three leaves its Sharpe above fixed JM in
-all three markets, but changes Sharpe by only `-0.023417 / -0.030526 / +0.004159`
+all three markets, but changes Sharpe by only `-0.02 / -0.03 / +0.00`
 relative to ordinary DD-only. The scale control is officially `not_supported`
 because it beats both controls only in the US. No tested JM variant beats both
 benchmarks in all three markets, so this is exploratory evidence—not an alpha,
@@ -49,10 +49,10 @@ walk-forward causal, so the whole 2008/2009--2026 span is out-of-sample per
 decision; the only thing special about 2024-2026 is that DD-only was chosen
 before that window existed, so it is free of selection bias. On the **full
 walk-forward through 2026**, DD-only still beats both controls in the US
-(`0.8903` vs stronger control `0.6326`) and loses in DE and JP -- `1/3`,
+(`0.89` vs stronger control `0.63`) and loses in DE and JP -- `1/3`,
 unchanged from development. On the **isolated 2024-2026 window** the frozen
-binary rule returns `not_supported` (`0/3`: US B&H `1.0521` vs DD-only `0.7750`;
-DE all four `0.9041`; JP B&H `1.2701` vs DD-only `1.1696`), but that window is
+binary rule returns `not_supported` (`0/3`: US B&H `1.05` vs DD-only `0.78`;
+DE all four `0.90`; JP B&H `1.27` vs DD-only `1.17`), but that window is
 short (~620 days), its paired bootstrap intervals include zero, and it was a
 broad bull that penalizes cash rotation. It therefore fails to confirm the US
 edge on selection-independent data without refuting the 18-year result. The
