@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 
 from adaptive_jump.inference import BootstrapProgress
-from adaptive_jump.monitor.events import ResearchEvent
-from adaptive_jump.monitor.study_runtime import (
+from adaptive_jump.runtime.events import ResearchEvent
+from adaptive_jump.runtime.study_runtime import (
     baseline_selection_recorder,
     bootstrap_recorder,
     emit_boundary_rows,

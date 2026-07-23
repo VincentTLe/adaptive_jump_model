@@ -1,67 +1,53 @@
-# Active Task: Record the DD Loss-Scale Result
+# Active Task: None in progress
 
-## Status
+## Last completed: holdout-2026-001 (window not supported; full walk-forward unchanged)
 
-The shared pipeline can now run and verify the five simple challengers and the
-DD loss-scale control. Current source reproduced the accepted simple-suite
-result, and `dd-loss-scale-001` completed end to end.
+The public proxies were extended to 30 June 2026 and the previously untouched
+2024-01-02 to 2026-06-30 window was opened once for a pre-declared variant,
+DD-only JM.
 
-The scale study's official conclusion is `not_supported`: scaled DD beats both
-buy-and-hold and HMM only in the US, not in all three markets.
+Every evaluation here is walk-forward causal: each monthly decision uses only
+trailing data, so the whole 2008/2009--2026 span is out-of-sample per decision.
+There is no future leakage on any window. The only thing special about
+2024-2026 is that it is free of *selection bias*: DD-only was chosen after
+inspecting the through-2023 sample, and this window was not.
 
-## Question
+### Net Sharpe, both evaluation windows (both walk-forward)
 
-Did DD-only improve because removing the Sortino features helped, or because
-one observation-loss coordinate made the unchanged lambda grid effectively
-stronger?
+| Market | window | B&H | HMM | Fixed JM | DD-only | DD-only beats both? |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| US | full 2008-2026 | 0.5678 | 0.6326 | 0.5684 | **0.8903** | Yes (`+0.258`) |
+| DE | full 2008-2026 | 0.3499 | 0.1096 | 0.2596 | 0.3102 | No |
+| JP | full 2008-2026 | 0.6708 | 0.5596 | 0.5115 | 0.5597 | No |
+| US | 2024-2026 only | **1.0521** | 0.5316 | 0.5737 | 0.7750 | No |
+| DE | 2024-2026 only | 0.9041 | 0.9041 | 0.9041 | 0.9041 | No (exact tie) |
+| JP | 2024-2026 only | **1.2701** | 1.2701 | 1.2701 | 1.1696 | No |
 
-The frozen control multiplied only the DD observation loss by three:
-
-`L_scaled = 3 * 0.5 * (z_DD - theta)^2`.
-
-The data, raw lambda grid, 3,000-observation window, January/July refits,
-monthly eight-year validation, one-day trading delay, 10-bps cost, and
-through-2023 sample stayed unchanged.
-
-## Result
-
-| Market | Scaled DD Sharpe | G vs stronger control | MDD | Turnover | Cash | Switches | Pass? |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| US | 0.884130 | +0.230405 | -0.195311 | 0.467128 | 0.141374 | 15 | Yes |
-| DE | 0.195916 | -0.093722 | -0.445175 | 0.496674 | 0.112097 | 16 | No |
-| JP | 0.428050 | -0.116539 | -0.345290 | 0.808143 | 0.138873 | 23 | No |
-
-Scaled minus ordinary DD-only:
-
-| Market | Delta Sharpe | Delta MDD | Delta turnover | Delta cash | Delta switches |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| US | -0.023417 | -0.001676 | +0.124567 | +0.005685 | +4 |
-| DE | -0.030526 | -0.016850 | -0.310421 | -0.001478 | -10 |
-| JP | +0.004159 | +0.087115 | +0.140547 | +0.051590 | +4 |
-
-A positive MDD delta means a less-negative, better drawdown.
-
-## Interpretation
-
-The mechanism behaved as intended mathematically. The loss identities,
-lambda-third path identity, brute-force equivalence, prefix invariance, timing,
-cost, and turnover checks passed. Monthly selection moved raw lambda upward in
-`73.7% / 81.3% / 66.1%` of paired US/DE/JP months.
-
-The finite grid still binds: scaled DD selected its upper lambda in
-`0% / 22.9% / 29.0%` of US/DE/JP months. Selected one-state fits occurred in
-`0/194`, `44/193`, and `63/177` months. These facts weaken a clean
-two-regime interpretation in Germany and Japan.
-
-Scaled DD still has higher Sharpe than fixed JM in all three markets. This
-weakens the idea that DD-only improved mainly because of raw loss scale, but it
-does not prove that the Sortino features are harmful. The result is repeatedly
-inspected exploratory evidence, not a profitability, alpha, robustness,
-holdout, paper-replication, or generalization claim.
+On the full walk-forward through 2026, DD-only still beats both controls in the
+US (`1/3`, unchanged from development); adding 2.5 years barely moved the US
+number. On the isolated 2024-2026 window the frozen binary rule returns
+`not_supported` (`0/3`), but that window is short (~620 days), its paired
+bootstrap intervals include zero, and it was a broad bull that penalizes any
+cash rotation. So the window **fails to confirm** the US edge on
+selection-independent data and **does not refute** the 18-year result. It is
+weak evidence, not a clean negative.
 
 ## Provenance
 
-- Current-source simple-suite reproduction:
-  `simple-jm-suite-2d3d2a779b13-0e026376c2cb-20260722T030918585813Z`.
-- Completed scale control:
-  `dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z`.
+- Precondition met: a fresh v7 replication at HEAD byte-matched the sealed
+  baseline on all 123 scientific files before any post-2023 output was read.
+- Frozen contract `research/holdout-2026-001.toml` (`7618924a8e67...`),
+  registered before the window was opened.
+- Evidence: `artifacts/holdout-2026-001/holdout-20260722T111757Z`.
+- Extended acquisition: `data/raw/shu-proxy-holdout-2026-20260722T093350Z`
+  (byte-identical overlap with sealed v7).
+
+## Next candidates (each needs a fresh frozen question)
+
+- A longer or regime-stratified holdout: 2.5 bull years cannot separate the
+  variants. A stronger test needs either more post-selection time or a
+  drawdown-conditional readout that does not credit cash rotation only when the
+  market falls.
+- Lagged-log4 batch 2 on the same window (available under the current contract).
+- Semi-Markov dwell cost: the standing mathematical candidate that escapes the
+  zero-diagonal degeneracy. Not yet frozen.

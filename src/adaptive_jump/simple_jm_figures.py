@@ -189,11 +189,13 @@ def render_figures(
         }
     ):
         if run.study_kind == "simple-jm-suite-001":
-            outputs.extend(
-                _save_formats(
-                    _causal_regime_figure(run), destination / "us-causal-regimes"
+            for market in MARKETS:
+                outputs.extend(
+                    _save_formats(
+                        _causal_regime_figure(run, market),
+                        destination / f"{market}-causal-regimes",
+                    )
                 )
-            )
             outputs.extend(
                 _save_formats(
                     _shu_style_figure(run), destination / "shu-style-net-wealth"
@@ -209,8 +211,7 @@ def render_figures(
     return tuple(outputs)
 
 
-def _causal_regime_figure(run: FigureRun) -> plt.Figure:
-    market = "us"
+def _causal_regime_figure(run: FigureRun, market: str = "us") -> plt.Figure:
     figure, axes = plt.subplots(3, 1, figsize=(7.0, 7.4), sharex=True)
     market_path = run.paths[market]["buy_and_hold"]
     wealth = _indexed_wealth(market_path["equity_simple"])
@@ -228,7 +229,13 @@ def _causal_regime_figure(run: FigureRun) -> plt.Figure:
         axis.set_ylabel("Market wealth")
 
     handles = [
-        Line2D([0], [0], color=COLORS["market"], lw=1.5, label="US market proxy"),
+        Line2D(
+            [0],
+            [0],
+            color=COLORS["market"],
+            lw=1.5,
+            label=f"{MARKET_LABELS[market]} market proxy",
+        ),
         Patch(
             facecolor="#FBE3D8",
             edgecolor=COLORS["bear"],

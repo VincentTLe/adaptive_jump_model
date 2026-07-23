@@ -10,7 +10,7 @@ from typing import Any
 
 import pandas as pd
 
-from adaptive_jump.monitor.events import (
+from adaptive_jump.runtime.events import (
     EventObserver,
     ResearchEvent,
     bind_event_context,

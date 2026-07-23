@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -68,6 +69,14 @@ def write_json(path: Path, document: dict[str, Any]) -> None:
         json.dumps(document, indent=2, sort_keys=True, allow_nan=False) + "\n",
         encoding="utf-8",
     )
+
+
+def finish_run_metadata(path: Path, **updates: Any) -> None:
+    """Stamp run metadata with final fields and the finish timestamp."""
+    metadata = read_json(path)
+    metadata.update(updates)
+    metadata["finished_at_utc"] = datetime.now(UTC).isoformat()
+    write_json(path, metadata)
 
 
 def _inventory_files(run_dir: Path) -> dict[str, str]:
@@ -150,11 +159,11 @@ def verify_run(run: str | Path) -> dict[str, Any]:
 
         return verify_grid_run(run_dir)
     if study_kind == "simple-jm-suite-001":
-        from adaptive_jump.simple_jm_suite import verify_simple_jm_run
+        from adaptive_jump.simple_jm_verifier import verify_simple_jm_run
 
         return verify_simple_jm_run(run_dir)
     if study_kind == "dd-loss-scale-001":
-        from adaptive_jump.simple_jm_suite import verify_dd_loss_scale_run
+        from adaptive_jump.simple_jm_verifier import verify_dd_loss_scale_run
 
         return verify_dd_loss_scale_run(run_dir)
     if study_kind is not None:

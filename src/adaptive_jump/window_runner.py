@@ -13,6 +13,7 @@ import pandas as pd
 
 from adaptive_jump.artifacts import (
     ArtifactError,
+    finish_run_metadata,
     read_json,
     sha256_file,
     verify_run,
@@ -25,9 +26,9 @@ from adaptive_jump.data import research_git_sha
 from adaptive_jump.features import effective_oos_start
 from adaptive_jump.inference import BootstrapProgress
 from adaptive_jump.models import FixedJMResult
-from adaptive_jump.monitor import checkpoints as checkpoint_store
-from adaptive_jump.monitor import study_runtime
-from adaptive_jump.monitor.events import EventObserver, bind_event_context
+from adaptive_jump.runtime import checkpoints as checkpoint_store
+from adaptive_jump.runtime import study_runtime
+from adaptive_jump.runtime.events import EventObserver, bind_event_context
 from adaptive_jump.walkforward import SelectionProgress
 from adaptive_jump.window_spec import WindowStudySpec
 from adaptive_jump.window_study import (
@@ -83,7 +84,7 @@ def run_window_sensitivity(
             from adaptive_jump.window_verifier import verify_window_run
 
             verify_window_run(run_dir)
-            _clear_run_checkpoints(checkpoint_root)
+            checkpoint_store.clear_checkpoint_tree(checkpoint_root)
             return run_dir
     else:
         _create_run(
@@ -148,13 +149,13 @@ def run_window_sensitivity(
     boundaries.to_csv(run_dir / "boundaries.csv", index=False)
     if not boundaries["passed"].all():
         write_inventory(run_dir)
-        _finish_run(
+        finish_run_metadata(
             metadata_path,
             status="boundary_failed",
             metrics_opened=False,
             conclusion="JM-4000 upper-lambda boundary requires a new experiment",
         )
-        _clear_run_checkpoints(checkpoint_root)
+        checkpoint_store.clear_checkpoint_tree(checkpoint_root)
         return run_dir
 
     metric_frames = []
@@ -232,13 +233,13 @@ def run_window_sensitivity(
     )
     write_json(run_dir / "claim.json", claim)
     write_inventory(run_dir)
-    _finish_run(
+    finish_run_metadata(
         metadata_path,
         status="complete",
         metrics_opened=True,
         conclusion=claim["conclusion"],
     )
-    _clear_run_checkpoints(checkpoint_root)
+    checkpoint_store.clear_checkpoint_tree(checkpoint_root)
     return run_dir
 
 
@@ -423,18 +424,6 @@ def _save_bootstrap(root, identity, market, block, result) -> None:
     _save_checkpoint(
         root / f"bootstrap-{market}-block-{block}", "bootstrap", identity, result
     )
-
-
-def _clear_run_checkpoints(root: Path) -> None:
-    for metadata in root.rglob("*.json"):
-        checkpoint_store.clear_checkpoint(metadata.with_suffix(""))
-
-
-def _finish_run(metadata_path: Path, **updates: Any) -> None:
-    metadata = read_json(metadata_path)
-    metadata.update(updates)
-    metadata["finished_at_utc"] = datetime.now(UTC).isoformat()
-    write_json(metadata_path, metadata)
 
 
 def _package_versions() -> dict[str, str]:

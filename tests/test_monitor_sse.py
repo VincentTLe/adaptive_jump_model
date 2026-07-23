@@ -4,9 +4,9 @@ from pathlib import Path
 import pytest
 
 from adaptive_jump.monitor.event_store import EventStore
-from adaptive_jump.monitor.events import ResearchEvent
 from adaptive_jump.monitor.queue import QueueStore, StudyDefinition
 from adaptive_jump.monitor.sse import StreamError, resume_sequence, stream_job_events
+from adaptive_jump.runtime.events import ResearchEvent
 
 
 def _fixture(tmp_path: Path):

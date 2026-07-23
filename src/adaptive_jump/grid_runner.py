@@ -23,6 +23,7 @@ from threadpoolctl import threadpool_limits
 from adaptive_jump.artifacts import (
     TRADE_COLUMNS,
     ArtifactError,
+    finish_run_metadata,
     read_json,
     sha256_file,
     verify_inventory,
@@ -37,9 +38,9 @@ from adaptive_jump.features import effective_oos_start
 from adaptive_jump.grid_spec import GridStudySpec, load_grid_spec
 from adaptive_jump.inference import BootstrapProgress, bootstrap_sharpe_delta
 from adaptive_jump.models import FixedJMResult, HMMResult, fixed_jm_states
-from adaptive_jump.monitor import checkpoints as checkpoint_store
-from adaptive_jump.monitor import study_runtime
-from adaptive_jump.monitor.events import EventObserver
+from adaptive_jump.runtime import checkpoints as checkpoint_store
+from adaptive_jump.runtime import study_runtime
+from adaptive_jump.runtime.events import EventObserver
 from adaptive_jump.walkforward import (
     BaselineStudy,
     SelectionProgress,
@@ -117,7 +118,7 @@ def run_grid_evaluation(
         _verify_locks(run_dir, config, spec)
         if metadata.get("status") in {"complete", "boundary_failed"}:
             verify_grid_run(run_dir)
-            _clear_checkpoints(checkpoint_root)
+            checkpoint_store.clear_checkpoint_tree(checkpoint_root)
             return run_dir
     else:
         _create_run(
@@ -220,7 +221,7 @@ def run_grid_evaluation(
     if len(boundaries) != 18:
         raise ArtifactError("grid evaluation did not produce 18 boundary rows")
     if not boundaries["passed"].all():
-        _finish_run(
+        finish_run_metadata(
             metadata_path,
             status="boundary_failed",
             metrics_opened=False,
@@ -228,7 +229,7 @@ def run_grid_evaluation(
         )
         _write_report(run_dir)
         write_inventory(run_dir)
-        _clear_checkpoints(checkpoint_root)
+        checkpoint_store.clear_checkpoint_tree(checkpoint_root)
         return run_dir
 
     metric_frames: list[pd.DataFrame] = []
@@ -262,7 +263,7 @@ def run_grid_evaluation(
     bootstrap.to_csv(run_dir / "bootstrap.csv", index=False)
     claim = _grid_claim(metrics, bootstrap, spec)
     write_json(run_dir / "claim.json", claim)
-    _finish_run(
+    finish_run_metadata(
         metadata_path,
         status="complete",
         metrics_opened=True,
@@ -270,7 +271,7 @@ def run_grid_evaluation(
     )
     _write_report(run_dir)
     write_inventory(run_dir)
-    _clear_checkpoints(checkpoint_root)
+    checkpoint_store.clear_checkpoint_tree(checkpoint_root)
     return run_dir
 
 
@@ -1114,20 +1115,6 @@ def _save_selection(
         "selection",
         identity,
     )
-
-
-def _clear_checkpoints(root: Path) -> None:
-    if not root.exists():
-        return
-    for metadata in root.rglob("*.json"):
-        checkpoint_store.clear_checkpoint(metadata.with_suffix(""))
-
-
-def _finish_run(path: Path, **updates: Any) -> None:
-    metadata = read_json(path)
-    metadata.update(updates)
-    metadata["finished_at_utc"] = datetime.now(UTC).isoformat()
-    write_json(path, metadata)
 
 
 def _package_versions() -> dict[str, str]:

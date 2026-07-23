@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Toán học của Adaptive Jump Model — những gì đã phát triển</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1117; --bg2:#161922; --bg3:#1f2330; --fg:#e7ecef; --fg-dim:#9aa5b1;
+  --accent:#7bdcb5; --cyan:#7bf0ff; --magenta:#ff8aff; --tool:#7bff7b;
+  --result:#ffd966; --red:#ff7b7b; --border:#2a3040; --shadow:0 4px 24px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--fg);font-family:Inter,system-ui,sans-serif;line-height:1.75;font-size:16.5px}
+.progress{position:fixed;top:0;left:0;right:0;height:3px;background:transparent;z-index:60}
+#pbar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--cyan))}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:250px;background:var(--bg2);border-right:1px solid var(--border);padding:1.6rem 1.1rem;overflow-y:auto;z-index:50}
+.sidebar .brand{font-weight:800;font-size:.95rem;color:var(--accent);margin-bottom:.2rem}
+.sidebar .sub{font-size:.75rem;color:var(--fg-dim);margin-bottom:1.4rem}
+#toc a{display:block;color:var(--fg-dim);text-decoration:none;font-size:.85rem;padding:.36rem .6rem;border-radius:7px;margin:.1rem 0}
+#toc a:hover{color:var(--fg);background:var(--bg3)}
+#toc a.active{color:var(--accent);background:var(--bg3);font-weight:600}
+main{margin-left:250px;max-width:880px;padding:0 2.4rem 6rem}
+@media(max-width:960px){.sidebar{display:none}main{margin:0 auto;padding:0 1.2rem 4rem}}
+.hero{padding:4.2rem 0 2.2rem}
+.hero h1{font-size:2rem;font-weight:800;line-height:1.25}
+.hero .tag{color:var(--accent);font-weight:600;margin:.7rem 0 .4rem}
+.hero .meta{color:var(--fg-dim);font-size:.85rem;margin-top:1rem}
+.section{padding:2.6rem 0 1rem;border-top:1px solid var(--border)}
+.reveal{animation:rise .5s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.chapter-tag{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-dim);font-weight:600}
+.diff{display:inline-block;font-size:.66rem;border-radius:99px;padding:.1rem .55rem;margin-left:.5rem;font-weight:800;vertical-align:middle}
+.d1{background:#12351c;color:var(--tool)} .d2{background:#123340;color:var(--cyan)}
+.d3{background:#3a2d10;color:var(--result)} .d4{background:#3d1430;color:var(--magenta)}
+h2{font-size:1.5rem;font-weight:800;margin:.5rem 0 .8rem}
+h2 .n{color:var(--accent);font-family:'JetBrains Mono',monospace;margin-right:.6rem;font-size:1.1rem}
+.lead{color:var(--fg-dim);font-size:1.02rem;margin-bottom:1.2rem}
+h3.steph{font-size:1.05rem;font-weight:700;margin:1.8rem 0 .5rem;display:flex;align-items:center;gap:.55rem}
+.stepnum{display:inline-flex;align-items:center;justify-content:center;width:1.5rem;height:1.5rem;border-radius:50%;background:var(--bg3);color:var(--accent);font-size:.8rem;font-weight:800;flex:none}
+p{margin:.6rem 0}
+code{font-family:'JetBrains Mono',monospace;font-size:.86em;background:var(--bg3);border-radius:5px;padding:.1rem .35rem}
+pre{background:#14161d!important;border:1px solid var(--border);border-radius:10px;padding:1rem 1.1rem;overflow-x:auto;margin:.9rem 0;font-size:.82rem;line-height:1.6}
+pre code{background:none;padding:0}
+.math{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.9rem 1.2rem;margin:.9rem 0;font-family:'JetBrains Mono',monospace;font-size:.95rem;overflow-x:auto;text-align:center}
+.math .note{display:block;font-family:Inter,sans-serif;font-size:.78rem;color:var(--fg-dim);margin-top:.5rem;text-align:left}
+.diagram{display:flex;align-items:stretch;gap:.7rem;flex-wrap:wrap;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.1rem;margin:1rem 0}
+.dcol{display:flex;flex-direction:column;gap:.5rem;flex:1;min-width:150px}
+.dbox{background:var(--bg3);border:1.5px solid var(--border);border-radius:9px;padding:.5rem .8rem;font-size:.82rem;text-align:center;flex:1;display:flex;flex-direction:column;justify-content:center}
+.dbox .s{display:block;color:var(--fg-dim);font-size:.72rem;margin-top:.15rem}
+.dbox.hl{border-color:var(--accent)} .dbox.act{border-color:var(--tool)}
+.dbox.obs{border-color:var(--result)} .dbox.bad{border-color:var(--red)}
+.darrow{align-self:center;color:var(--fg-dim);font-size:1.1rem;flex:none}
+.callout{border-left:3px solid var(--accent);background:var(--bg2);border-radius:0 10px 10px 0;padding:.7rem 1rem;margin:1rem 0;font-size:.95rem}
+.callout .lbl{display:block;font-size:.72rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:.2rem}
+.callout.warn{border-color:var(--result)} .callout.warn .lbl{color:var(--result)}
+.callout.key{border-color:var(--magenta)} .callout.key .lbl{color:var(--magenta)}
+details.more{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:.9rem 0}
+details.more summary{cursor:pointer;padding:.65rem 1rem;font-weight:600;font-size:.9rem;color:var(--cyan)}
+details.more .inner{padding:.3rem 1.1rem 1rem}
+.recap{background:linear-gradient(180deg,var(--bg2),transparent);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin:1.6rem 0 .6rem}
+.recap .lbl{display:block;font-size:.74rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--tool);margin-bottom:.4rem}
+.recap ul{margin:.2rem 0 .6rem 1.2rem}
+.recap .next{color:var(--fg-dim);font-size:.9rem}
+table{width:100%;border-collapse:collapse;margin:.9rem 0;font-size:.86rem}
+th,td{text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--border)}
+th{color:var(--fg-dim);font-size:.74rem;text-transform:uppercase;letter-spacing:.05em}
+td.r{text-align:right;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.pill{display:inline-block;font-size:.68rem;font-weight:800;border-radius:99px;padding:.08rem .5rem}
+.p-ok{background:#12351c;color:var(--tool)} .p-bad{background:#3d1418;color:var(--red)}
+.p-mix{background:#3a2d10;color:var(--result)} .p-null{background:#262b36;color:var(--fg-dim)}
+footer{color:var(--fg-dim);font-size:.8rem;border-top:1px solid var(--border);padding-top:1.2rem;margin-top:3rem}
+.twrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="progress"><div id="pbar"></div></div>
+<aside class="sidebar">
+  <div class="brand">Adaptive Jump Model</div>
+  <div class="sub">Toán học &amp; những gì đã phát triển</div>
+  <nav id="toc">
+    <a href="#ch1">01 · Bài toán và mô hình gốc</a>
+    <a href="#ch2">02 · Giao thức khoa học</a>
+    <a href="#ch3">03 · DP time-varying</a>
+    <a href="#ch4">04 · Họ penalty thích nghi</a>
+    <a href="#ch5">05 · Định lý zero-diagonal</a>
+    <a href="#ch6">06 · DD-only &amp; scale identity</a>
+    <a href="#ch7">07 · Bản đồ thực nghiệm</a>
+    <a href="#appendix">Phụ lục · Thuật ngữ</a>
+  </nav>
+</aside>
+<main>
+
+<div class="hero" id="top">
+  <h1>Toán học của Adaptive Jump Model</h1>
+  <p class="tag">Từ objective gốc của Shu–Yu–Mulvey đến 5 họ penalty tự phát triển, 1 định lý, và một bản đồ thực nghiệm trung thực</p>
+  <p>Đọc từ trên xuống: các chương xếp từ dễ đến khó. Mỗi công thức trong tài liệu này được trích đúng từ <code>paper/manuscript.tex</code> và code đang chạy; mỗi con số đến từ artifact đã seal.</p>
+  <p class="meta">2026-07-22 · nguồn: manuscript + SCIENTIFIC_LEDGER + registry · repo <code>adaptive_jump_model</code></p>
+</div>
+
+<!-- ============================ CH 1 ============================ -->
+<section id="ch1" class="section reveal">
+  <span class="chapter-tag">Chương 1 · Bài toán <span class="diff d1">DỄ</span></span>
+  <h2><span class="n">01</span>Một câu hỏi, hai trạng thái, một cái giá</h2>
+  <p class="lead">Toàn bộ dự án trả lời một câu hỏi: máy có nhận ra "thời tiết xấu" của thị trường sớm và bền đủ để né — sau khi trừ độ trễ và phí — hay không?</p>
+
+  <h3 class="steph"><span class="stepnum">1</span>Chiến lược 0/1</h3>
+  <p>Mỗi ngày mô hình gán thị trường vào 1 trong 2 trạng thái: <b>bull (s=0)</b> → giữ 100% cổ phiếu, <b>bear (s=1)</b> → giữ 100% tiền mặt. Không đòn bẩy, không tỷ trọng lưng chừng. Đối thủ phải thắng: <b>buy-and-hold</b> (không làm gì) và <b>Gaussian HMM</b> (mô hình regime kinh điển).</p>
+
+  <div class="diagram">
+    <div class="dbox">Giá &amp; lợi suất ngày<span class="s">^SP500TR · ^GDAXI · ^N225 + lãi suất tiền mặt</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox">3 feature EWM<span class="s">DD hl=10 · Sortino hl=20 · Sortino hl=60</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox hl"><b>Jump Model</b><span class="s">gán trạng thái s_t ∈ {0,1}</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox act">Tín hiệu 0/1<span class="s">bull → equity, bear → cash</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox obs">P&amp;L ròng<span class="s">trễ t+2, phí 10bps</span></div>
+  </div>
+
+  <h3 class="steph"><span class="stepnum">2</span>Objective của Jump Model</h3>
+  <p>JM là k-means có "phí chuyển trạng thái". Cho chuỗi feature x_t, tìm 2 tâm θ và đường trạng thái s để tối thiểu:</p>
+  <div class="math">
+    J(θ, s) = Σ<sub>t</sub> ½‖x<sub>t</sub> − θ<sub>s<sub>t</sub></sub>‖² &nbsp;+&nbsp; λ · Σ<sub>t≥1</sub> 1[s<sub>t</sub> ≠ s<sub>t−1</sub>]
+    <span class="note">Vế trái: điểm khớp dữ liệu (loss). Vế phải: mỗi lần đổi trạng thái trả phí λ. λ=0 → k-means thuần (nhảy loạn); λ→∞ → một trạng thái vĩnh viễn. λ là nút vặn "độ lì".</span>
+  </div>
+
+  <div class="callout"><span class="lbl">Ý chính</span>λ không học được từ bên trong bài toán fit (nó suy biến) — phải chọn từ BÊN NGOÀI bằng dữ liệu validation. Toàn bộ khoa học của dự án xoay quanh: chọn λ thế nào, và có nên để λ thay đổi theo thời gian không.</div>
+
+  <div class="recap">
+    <span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul>
+      <li>Chiến lược 0/1: bull → cổ phiếu, bear → tiền mặt; phải thắng cả B&amp;H lẫn HMM.</li>
+      <li>JM = k-means + phí chuyển λ; λ điều khiển độ lì của regime.</li>
+      <li>λ phải chọn out-of-sample — không fit được cùng θ, s.</li>
+    </ul>
+    <p class="next"><b>Tiếp theo →</b> quy trình khiến mọi con số "không nhìn thấy tương lai" và không thể gian lận.</p>
+  </div>
+</section>
+
+<!-- ============================ CH 2 ============================ -->
+<section id="ch2" class="section reveal">
+  <span class="chapter-tag">Chương 2 · Giao thức <span class="diff d1">DỄ</span></span>
+  <h2><span class="n">02</span>Giao thức khoa học: không tương lai, không phí ẩn, không sửa sau</h2>
+  <p class="lead">Một backtest chỉ có giá trị bằng đúng độ nghiêm của quy trình quanh nó. Đây là phần dự án làm tốt hơn phần lớn paper học thuật.</p>
+
+  <h3 class="steph"><span class="stepnum">1</span>Walk-forward: quá khứ fit, hiện tại quyết, tương lai chấm điểm</h3>
+  <p>Mỗi tháng, λ được chọn lại bằng Sharpe validation trên đúng <b>8 năm trước đó</b>. Tâm θ và scaler refit mỗi tháng 1 và 7 trên cửa sổ 3.000 quan sát. Không con số nào ở thời điểm t dùng dữ liệu sau t.</p>
+
+  <h3 class="steph"><span class="stepnum">2</span>Dòng thời gian t → t+2</h3>
+  <div class="diagram">
+    <div class="dbox">Ngày t<span class="s">quan sát đóng cửa, mô hình phát tín hiệu</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox act">Ngày t+1<span class="s">giao dịch tại giá đóng cửa</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox obs">Ngày t+2<span class="s">lợi suất đầu tiên bị ảnh hưởng + trừ phí 10bps một chiều</span></div>
+  </div>
+  <p>Độ trễ 1 ngày này là quy ước của paper gốc — nó giết chết mọi chiến lược "nhìn giá hôm nay, mua giá hôm nay".</p>
+
+  <h3 class="steph"><span class="stepnum">3</span>Chuỗi bằng chứng</h3>
+  <div class="diagram">
+    <div class="dbox">Contract .toml<span class="s">câu hỏi + tiêu chí, hash SHA-256, đóng băng TRƯỚC khi nhìn kết quả</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox">Registry append-only<span class="s">92 mục lifecycle, kể cả 28 lần rút/hỏng</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox">Artifact sealed<span class="s">CSV/JSON + inventory hash</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox hl"><b>Verifier replay độc lập</b><span class="s">tính lại từ artifact, sai số ≤ 10⁻¹⁴</span></div>
+  </div>
+
+  <div class="callout key"><span class="lbl">Quy tắc sắt</span>Kết quả nào đã ảnh hưởng một lựa chọn → mẫu đó vĩnh viễn thành development data. Vì vậy through-2023 giờ là dev data, còn 2024–2026 là holdout duy nhất còn lại — chỉ được chạm một lần.</div>
+
+  <div class="recap">
+    <span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul>
+      <li>λ chọn lại hàng tháng bằng Sharpe validation 8 năm; refit θ nửa năm.</li>
+      <li>Tín hiệu ngày t chỉ chạm P&amp;L ở t+2, luôn trừ 10bps.</li>
+      <li>Mọi thí nghiệm: freeze contract → chạy → seal → replay độc lập.</li>
+    </ul>
+    <p class="next"><b>Tiếp theo →</b> mảnh toán nền tảng cho mọi mở rộng: decode với penalty thay đổi theo thời gian.</p>
+  </div>
+</section>
+
+<!-- ============================ CH 3 ============================ -->
+<section id="ch3" class="section reveal">
+  <span class="chapter-tag">Chương 3 · DP time-varying <span class="diff d2">VỪA</span></span>
+  <h2><span class="n">03</span>Bộ giải chính xác cho penalty thay đổi theo thời gian</h2>
+  <p class="lead">Đóng góp hạ tầng toán đầu tiên: thay λ hằng số bằng ma trận chi phí C<sub>t</sub>(i,j) khác nhau từng ngày — mà lời giải vẫn CHÍNH XÁC và tuyến tính theo thời gian.</p>
+
+  <h3 class="steph"><span class="stepnum">1</span>Objective tổng quát và truy hồi</h3>
+  <div class="math">
+    min<sub>s</sub> Σ<sub>t</sub> L<sub>t</sub>(s<sub>t</sub>) + Σ<sub>t≥1</sub> C<sub>t</sub>(s<sub>t−1</sub>, s<sub>t</sub>), &nbsp; C<sub>t</sub>(i,i)=0
+    <br><br>
+    V<sub>t</sub>(j) = L<sub>t</sub>(j) + min<sub>i</sub> { V<sub>t−1</sub>(i) + C<sub>t</sub>(i,j) }
+    <span class="note">L<sub>t</sub>(k) = ½‖x<sub>t</sub> − θ<sub>k</sub>‖² là loss quan sát. Độ phức tạp O(TK²) — với K=2 là tuyến tính. Fixed JM là trường hợp riêng C<sub>t</sub>(i,j) = λ.</span>
+  </div>
+
+  <h3 class="steph"><span class="stepnum">2</span>Code thật (rút gọn từ <code>tv_jump.py</code>)</h3>
+  <pre><code class="language-python">def dp_tv(loss_mx, penalty_seq, return_value_mx=False):
+    """Minimizes sum_t L(t, s_t) + sum_{t>=1} penalty_seq[t][s_{t-1}, s_t]."""
+    n_s, n_c = loss_mx.shape
+    values = np.empty((n_s, n_c))
+    values[0] = loss_mx[0]
+    for t in range(1, n_s):
+        values[t] = loss_mx[t] + (values[t-1][:, None] + penalty_seq[t]).min(axis=0)
+    ...  # backtrack argmin để lấy đường trạng thái tối ưu</code></pre>
+  <p>Bộ giải này được kiểm bằng <b>oracle brute-force</b>: liệt kê mọi đường trạng thái trên bài toán nhỏ và so giá trị tối ưu từng bit (<code>tests/test_tv_jump.py</code>).</p>
+
+  <h3 class="steph"><span class="stepnum">3</span>Hai tính chất then chốt</h3>
+  <p><b>Prefix invariance (nhân quả):</b> chạy DP online — hàng t của bảng V chỉ dùng dữ liệu tới t — nên thêm quan sát tương lai không đổi được trạng thái đã phát. Được kiểm trên 128 hàng dữ liệu thật.</p>
+  <p><b>Cầu nối HMM:</b> một HMM 2 trạng thái với xác suất chuyển p tương đương JM với λ = −log p. Vì vậy "λ thay đổi theo thời gian" chính là phiên bản JM của <b>TVTP</b> (time-varying transition probability, Filardo 1994) — và chưa paper JM nào làm điều này.</p>
+
+  <div class="callout"><span class="lbl">Ý chính</span>Mọi họ penalty ở chương 4 đều chỉ là một cách CHỌN C<sub>t</sub>(i,j) khác nhau — bộ giải và tính nhân quả không đổi. Đó là lý do một hạ tầng toán chắc lại cho phép thử nhiều giả thuyết rẻ.</div>
+
+  <div class="recap">
+    <span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul>
+      <li>DP chính xác cho chi phí chuyển C<sub>t</sub>(i,j) tùy ý, O(T) với 2 trạng thái, có oracle.</li>
+      <li>Online DP là prefix-invariant → nhân quả được chứng minh, không chỉ được hứa.</li>
+      <li>JM ⇔ HMM qua λ = −log p; adaptive λ = TVTP cho JM — khoảng trống văn liệu có thật.</li>
+    </ul>
+    <p class="next"><b>Tiếp theo →</b> 4 họ penalty thích nghi đã thiết kế, và mỗi họ nói gì về thị trường.</p>
+  </div>
+</section>
+
+<!-- ============================ CH 4 ============================ -->
+<section id="ch4" class="section reveal">
+  <span class="chapter-tag">Chương 4 · Penalty thích nghi <span class="diff d2">VỪA</span></span>
+  <h2><span class="n">04</span>Họ penalty theo bằng chứng: giảm giá rào cản khi dữ liệu lên tiếng</h2>
+  <p class="lead">Ý tưởng chung: giữ nguyên λ₀ được chọn hàng tháng, nhưng NGÀY NÀO bằng chứng ủng hộ trạng thái đích mạnh thì hạ rào cản chuyển của đúng ngày đó.</p>
+
+  <h3 class="steph"><span class="stepnum">1</span>Arrival penalty — bằng chứng ngày đến</h3>
+  <div class="math">
+    C<sup>A</sup><sub>t</sub>(i,j) = λ₀ · exp[ −β · tanh( [L<sub>t</sub>(i) − L<sub>t</sub>(j)]₊ / q<sub>train</sub> ) ]
+    <span class="note">Gap loss (i tệ hơn j bao nhiêu) chuẩn hóa bởi q<sub>train</sub> = MAD của loss trên 3.000 hàng huấn luyện (không epsilon, không nhìn tương lai). β ∈ {0, log2, log4} → giảm giá tối đa 0%/50%/75%. β=0 khớp fixed JM từng bit — nested baseline được kiểm tự động.</span>
+  </div>
+  <div class="diagram">
+    <div class="dbox">Rào cản gốc<span class="s">λ₀ = 150 (DE, một ngày thật)</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox act">Bằng chứng ngày t<span class="s">L(nguồn)=7.416 ≫ L(đích)=1.116</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox hl"><b>Rào cản sau giảm giá</b><span class="s">150 → 37.5 (β=log4) → chuyển sớm hơn</span></div>
+  </div>
+
+  <h3 class="steph"><span class="stepnum">2</span>Truy hồi hiệu số và khuếch đại cùng ngày</h3>
+  <p>Với 2 trạng thái, đặt d<sub>t</sub> = V<sub>t</sub>(1) − V<sub>t</sub>(0) và g<sub>t</sub> = L<sub>t</sub>(1) − L<sub>t</sub>(0). Toàn bộ DP gói lại thành một dòng:</p>
+  <div class="math">
+    d<sub>t</sub> = g<sub>t</sub> + clip( d<sub>t−1</sub>, −C<sub>t</sub>(1,0), C<sub>t</sub>(0,1) )
+    <span class="note">Và trên nhánh biên hoạt động của arrival rule: |∂d<sub>t</sub>/∂g<sub>t</sub>| = 1 + (βC<sub>t</sub>/q)·sech²(|g<sub>t</sub>|/q) ≥ 1 — bằng chứng cùng ngày được dùng HAI lần (trong loss và trong penalty), nên arrival rule tự khuếch đại chính nó. Đây là lý do toán học khiến nó whipsaw.</span>
+  </div>
+
+  <h3 class="steph"><span class="stepnum">3</span>Lagged rule — dịch bằng chứng về t−1</h3>
+  <div class="math">
+    C<sup>L</sup><sub>t</sub>(i,j) = λ₀ · exp[ −β · tanh( [L<sub>t−1</sub>(i) − L<sub>t−1</sub>(j)]₊ / q<sub>train</sub> ) ]
+    <span class="note">Cắt đứt việc dùng kép cùng ngày. Kết quả cơ chế: whipsaw gộp 17 → 6 trong khi giữ 87.5% số lần chuyển sớm — thí nghiệm cơ chế DUY NHẤT được SUPPORTED.</span>
+  </div>
+
+  <h3 class="steph"><span class="stepnum">4</span>Pair-balanced — cân bằng tổng cặp</h3>
+  <div class="math">
+    C<sup>B</sup><sub>t</sub>(i,j) = λ₀[ 1 − (1−e<sup>−β</sup>)·tanh( (L<sub>t−1</sub>(i)−L<sub>t−1</sub>(j))/q ) ], &nbsp; C<sup>B</sup>(i,j)+C<sup>B</sup>(j,i) = 2λ₀
+    <span class="note">Hạ rào chiều này thì nâng rào chiều kia — tổng bảo toàn. Giữ được latency nhưng KHÔNG giảm whipsaw → not supported. Bài học: chính phần "giảm giá một chiều" của lagged rule mới là thứ hoạt động.</span>
+  </div>
+
+  <details class="more"><summary>Đi sâu: vì sao dùng tanh và q_train?</summary>
+  <div class="inner">
+    <p><code>tanh</code> chặn giảm giá trong [0,1] bất kể gap lớn cỡ nào — một outlier không thể kéo rào cản về 0. <code>q_train</code> là median absolute deviation của loss trên đúng cửa sổ huấn luyện đã fit tâm, nên thang đo của "gap lớn" tự thích nghi theo từng thị trường và từng refit mà không cần hệ số gõ tay — đúng quy tắc "no hand-set coefficients" của repo.</p>
+  </div>
+  </details>
+
+  <div class="recap">
+    <span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul>
+      <li>Arrival: giảm giá theo bằng chứng cùng ngày — có identity khuếch đại ≥ 1 → whipsaw.</li>
+      <li>Lagged (t−1): cắt dùng kép → whipsaw 17→6, cơ chế được SUPPORTED.</li>
+      <li>Balanced (tổng cặp = 2λ₀): giữ latency nhưng không giảm whipsaw → not supported.</li>
+    </ul>
+    <p class="next"><b>Tiếp theo →</b> định lý quan trọng nhất của dự án — thứ đã bác bỏ cả một hướng thiết kế.</p>
+  </div>
+</section>
+
+<!-- ============================ CH 5 ============================ -->
+<section id="ch5" class="section reveal">
+  <span class="chapter-tag">Chương 5 · Định lý zero-diagonal <span class="diff d3">KHÓ</span></span>
+  <h2><span class="n">05</span>Vì sao "exit đắt, re-enter rẻ" là ảo ảnh</h2>
+  <p class="lead">Trực giác hấp dẫn nhất của dự án — phạt rời bull nặng, cho quay lại rẻ — hóa ra không thể mã hóa bằng chi phí chuyển có hướng thuần túy. Một đẳng thức 1 dòng chứng minh điều đó.</p>
+
+  <h3 class="steph"><span class="stepnum">1</span>Đẳng thức</h3>
+  <div class="math">
+    a·N<sub>01</sub> + b·N<sub>10</sub> = ((a+b)/2)·N<sub>switch</sub> + ((a−b)/2)·(s<sub>T−1</sub> − s<sub>0</sub>)
+    <span class="note">a = C(0,1), b = C(1,0) hằng số; N<sub>01</sub>, N<sub>10</sub> là số lần chuyển mỗi chiều. Chứng minh: trên đường nhị phân, các lần chuyển xen kẽ chiều, nên N<sub>01</sub> − N<sub>10</sub> = s<sub>T−1</sub> − s<sub>0</sub> ∈ {−1, 0, +1}. Thay vào là xong.</span>
+  </div>
+
+  <h3 class="steph"><span class="stepnum">2</span>Hệ quả</h3>
+  <div class="diagram">
+    <div class="dbox bad">Thiết kế mơ ước<span class="s">phạt 0→1 khác phạt 1→0 để điều khiển thời lượng bull/bear riêng biệt</span></div>
+    <div class="darrow">≡</div>
+    <div class="dcol">
+      <div class="dbox">Penalty ĐỐI XỨNG (a+b)/2<span class="s">chỉ điều khiển tổng số lần chuyển</span></div>
+      <div class="dbox obs">+ hằng số biên (a−b)/2·(s cuối − s đầu)<span class="s">chỉ là thiên vị điểm cuối, bị chặn ±(a−b)/2</span></div>
+    </div>
+  </div>
+  <p>Nghĩa là: mọi cặp (a,b) có cùng tổng a+b cho ra <b>cùng một xếp hạng đường trạng thái</b>, sai khác một thiên vị điểm cuối cố định. Thí nghiệm P2 (2026-07-08) tưởng mình đang kiểm định "persistence bất đối xứng" nhưng thực chất chỉ đang xê dịch một penalty đối xứng — audit ngoài ngày 11/07 chỉ ra điều này, và toàn bộ nhánh bị rút đúng quy trình.</p>
+
+  <div class="callout key"><span class="lbl">Định lý dẫn đường</span>Muốn mô hình hóa "bear ngắn, bull dài" thật sự phải trả phí Ở LẠI trạng thái (dwell cost — đường chéo ≠ 0) hoặc mô hình semi-Markov tường minh. DP hiện có đã cộng penalty theo cả self-transition nên KHÔNG cần đổi bộ giải — đây chính là candidate tiếp theo trong hàng đợi.</div>
+
+  <details class="more"><summary>Đi sâu: chứng minh đầy đủ 5 dòng</summary>
+  <div class="inner">
+    <p>Đặt các thời điểm chuyển là τ₁ &lt; τ₂ &lt; … Trên đường 2 trạng thái, chuyển thứ k và k+1 ngược chiều nhau (rời 0 rồi mới rời 1 được). Nếu s₀ = 0: chuỗi chiều là 01, 10, 01, … nên N₀₁ − N₁₀ ∈ {0, 1} và bằng s<sub>T−1</sub> − s₀. Nếu s₀ = 1: đối xứng, N₀₁ − N₁₀ ∈ {−1, 0}. Tổng quát N₀₁ − N₁₀ = s<sub>T−1</sub> − s₀. Viết aN₀₁ + bN₁₀ = ((a+b)/2)(N₀₁+N₁₀) + ((a−b)/2)(N₀₁−N₁₀) rồi thay hai đẳng thức trên. ∎</p>
+    <p>Lưu ý phạm vi: định lý áp dụng cho chi phí <em>hằng số theo thời gian</em> trên <em>2 trạng thái</em>. Chi phí có hướng THAY ĐỔI theo ngày (như lagged rule) không bị suy biến kiểu này — vì (a−b) của từng ngày khác nhau, số hạng biên không còn là hằng số.</p>
+  </div>
+  </details>
+
+  <div class="recap">
+    <span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul>
+      <li>Chi phí có hướng hằng số trên 2 trạng thái ≡ penalty đối xứng + thiên vị điểm cuối.</li>
+      <li>P2 vì thế không kiểm định được điều nó tưởng — và bị rút minh bạch.</li>
+      <li>Duration asymmetry thật cần dwell cost / semi-Markov — bộ giải đã sẵn sàng.</li>
+    </ul>
+    <p class="next"><b>Tiếp theo →</b> phát hiện thực nghiệm mạnh nhất — và phép thử kiểm soát bằng một đẳng thức scale.</p>
+  </div>
+</section>
+
+<!-- ============================ CH 6 ============================ -->
+<section id="ch6" class="section reveal">
+  <span class="chapter-tag">Chương 6 · DD-only &amp; scale <span class="diff d3">KHÓ</span></span>
+  <h2><span class="n">06</span>Bỏ bớt feature lại tốt hơn — và cách kiểm tra xem có bị lừa</h2>
+  <p class="lead">Trong 5 challenger "đơn giản hết mức", kẻ thắng là kẻ ít thông tin nhất: chỉ dùng MỘT feature downside deviation. Nhưng trước khi tin, phải loại một giả thuyết tầm thường.</p>
+
+  <h3 class="steph"><span class="stepnum">1</span>Kết quả DD-only</h3>
+  <div class="twrap"><table>
+    <tr><th>Thị trường</th><th>B&amp;H</th><th>HMM</th><th>Fixed JM</th><th>DD-only JM</th><th>Thắng cả hai?</th></tr>
+    <tr><td>US</td><td class="r">0.513</td><td class="r">0.654</td><td class="r">0.570</td><td class="r"><b>0.908</b></td><td><span class="pill p-ok">CÓ</span></td></tr>
+    <tr><td>DE</td><td class="r"><b>0.290</b></td><td class="r">0.008</td><td class="r">0.166</td><td class="r">0.226</td><td><span class="pill p-bad">KHÔNG</span></td></tr>
+    <tr><td>JP</td><td class="r"><b>0.545</b></td><td class="r">0.399</td><td class="r">0.329</td><td class="r">0.424</td><td><span class="pill p-bad">KHÔNG</span></td></tr>
+  </table></div>
+  <p>DD-only cải thiện fixed JM ở <b>cả 3</b> thị trường, nhưng chỉ vượt cả hai benchmark ở US → theo tiêu chí G<sub>m</sub> &gt; 0 mọi thị trường, vẫn là 1/3.</p>
+
+  <h3 class="steph"><span class="stepnum">2</span>Giả thuyết tầm thường và đẳng thức scale</h3>
+  <p>Nghi vấn: bỏ 2 feature Sortino làm tổng loss NHỎ đi ~3 lần so với cùng grid λ — biết đâu DD-only tốt chỉ vì λ "tương đối lì hơn"? Kiểm soát: nhân loss DD lên 3 và giữ nguyên tất cả. Vũ khí là một đẳng thức chính xác:</p>
+  <div class="math">
+    J<sub>3</sub>(s; λ) = 3 · J<sub>1</sub>(s; λ/3)
+    <span class="note">Nhân loss quan sát 3 lần ⇔ chia λ cho 3 mà giữ nguyên xếp hạng đường trạng thái. Vậy nếu "scale là tất cả", scaled-DD với grid λ gốc phải tái tạo hành vi DD-only với grid λ/3 — điều verifier kiểm từng bit (DP vs brute-force, path identity λ/3).</span>
+  </div>
+  <p>Kết quả: selector bù đúng hướng (chọn λ cao hơn ở 66–81% số tháng), Sharpe đổi không đáng kể (−0.023/−0.031/+0.004), và scaled-DD vẫn trên fixed JM cả 3 thị trường → <b>giả thuyết scale bị làm yếu</b>; cách giải thích còn đứng là chính việc bỏ feature nhiễu giúp ích. Kết cục chính thức vẫn not_supported vì chỉ 1/3 vượt cả hai benchmark.</p>
+
+  <h3 class="steph"><span class="stepnum">3</span>Separation — và cái bẫy collapsed fit</h3>
+  <div class="math">
+    S<sub>d</sub> = |c₁ − c₀| &nbsp;(đơn vị DD chuẩn hóa; S=0 nếu fit sụp còn 1 trạng thái)
+    <span class="note">Câu hỏi cuối (22/07): S lúc quyết định có dự báo tháng sau ÍT switch hơn không? Kết quả: KHÔNG — tương quan dương +0.035/+0.320/+0.155 (US/DE/JP). Và một confound đẹp: các tháng collapsed (S=0) không thể switch, tự tạo tương quan dương giả — loại chúng ra thì JP đảo dấu −0.142. Separation là proxy stress trùng thời điểm, không phải cổng ổn định.</span>
+  </div>
+
+  <div class="callout warn"><span class="lbl">Bài học phương pháp</span>Trước khi tin một tương quan có nhóm "suy biến" (collapsed, missing, censored…), luôn tách nhóm đó ra và tính lại. Một cơ chế máy móc có thể sản xuất tương quan trông rất thuyết phục.</div>
+
+  <div class="recap">
+    <span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul>
+      <li>DD-only: +Sharpe trên fixed JM 3/3, thắng cả hai benchmark chỉ ở US.</li>
+      <li>J₃ = 3·J₁(λ/3) biến "nghi vấn scale" thành thí nghiệm kiểm soát chính xác — và loại nó.</li>
+      <li>Separation không dự báo ổn định; collapsed fit là confound phải tách.</li>
+    </ul>
+    <p class="next"><b>Tiếp theo →</b> ghép tất cả thành một bản đồ: cái gì sống, cái gì chết, vì sao, và đi đâu tiếp.</p>
+  </div>
+</section>
+
+<!-- ============================ CH 7 ============================ -->
+<section id="ch7" class="section reveal">
+  <span class="chapter-tag">Chương 7 · Bản đồ thực nghiệm <span class="diff d4">KHÓ · CAO TRÀO</span></span>
+  <h2><span class="n">07</span>Bản đồ 19 thí nghiệm: tri thức phủ định có cấu trúc</h2>
+  <p class="lead">Không biến thể nào đạt G<sub>m</sub> &gt; 0 ở cả 3 thị trường. Nhưng mỗi cái chết đều có nguyên nhân định lượng — và đó chính là thứ định hướng bước tiếp theo.</p>
+
+  <h3 class="steph"><span class="stepnum">1</span>Bảng tổng kết</h3>
+  <div class="twrap"><table>
+    <tr><th>Nhánh</th><th>Kết cục</th><th>Nguyên nhân định lượng</th></tr>
+    <tr><td>Tái tạo trên proxy tự do</td><td><span class="pill p-bad">0/3</span></td><td>Period effect: dữ liệu miễn phí ép OOS về 2007+ (JP 2009+), giai đoạn B&amp;H quá mạnh</td></tr>
+    <tr><td>Covariate λ_t (P1)</td><td><span class="pill p-null">NULL</span></td><td>Ngân sách validation ~40 block/hệ số — dấu β đổi chiều giữa các block</td></tr>
+    <tr><td>Asymmetric Λ hằng (P2)</td><td><span class="pill p-bad">VÔ HIỆU</span></td><td>Định lý zero-diagonal — không kiểm định được điều nó tưởng</td></tr>
+    <tr><td>Grid persistence (×4 study)</td><td><span class="pill p-null">BOUNDARY</span></td><td>Selection Sharpe ~đơn điệu theo độ lì sau 2007 — không optimum hữu hạn</td></tr>
+    <tr><td>Arrival discount</td><td><span class="pill p-bad">0/3</span></td><td>Identity khuếch đại cùng ngày ≥ 1 → whipsaw</td></tr>
+    <tr><td>Lagged (t−1) log4 — cơ chế</td><td><span class="pill p-ok">SUPPORTED</span></td><td>Whipsaw 17→6, giữ 87.5% latency</td></tr>
+    <tr><td>Lagged log4 — P&amp;L</td><td><span class="pill p-mix">1/3</span></td><td>Thắng cả hai benchmark chỉ ở DE; JP switch 13→33, λ dồn biên trên</td></tr>
+    <tr><td>Pair-balanced</td><td><span class="pill p-bad">NOT SUP.</span></td><td>Giữ latency nhưng không giảm whipsaw — phần một-chiều mới là thuốc</td></tr>
+    <tr><td>DD-only</td><td><span class="pill p-mix">1/3 (3/3 vs fixed)</span></td><td>Phát hiện thực nghiệm mạnh nhất; scale control đã loại giải thích tầm thường</td></tr>
+    <tr><td>Separation gate (×2)</td><td><span class="pill p-bad">NOT SUP.</span></td><td>Tương quan dương + collapsed confound — proxy stress, không phải cổng</td></tr>
+  </table></div>
+
+  <h3 class="steph"><span class="stepnum">2</span>Ba bất biến đã học được</h3>
+  <div class="diagram">
+    <div class="dcol">
+      <div class="dbox obs">Ngân sách thông tin<span class="s">~40 block validation/hệ số — mọi penalty CÓ THAM SỐ HỌC phải trả tiền thuê này</span></div>
+      <div class="dbox obs">Suy biến cấu trúc<span class="s">có hướng-không-đường-chéo ≡ đối xứng + biên; grid đơn điệu không có optimum</span></div>
+      <div class="dbox obs">Confound cơ học<span class="s">dùng kép bằng chứng cùng ngày; collapsed fit giả làm "ổn định"</span></div>
+    </div>
+    <div class="darrow">⇒</div>
+    <div class="dbox hl"><b>Candidate còn lại phải:</b><span class="s">① không thêm hệ số học (hoặc rất ít) · ② thoát suy biến zero-diagonal · ③ có kiểm soát confound cài sẵn — đó là semi-Markov dwell cost</span></div>
+  </div>
+
+  <h3 class="steph"><span class="stepnum">3</span>Bước kế tiếp đã đóng băng</h3>
+  <p><b>(a) Holdout 2024–2026 một-lần-chạm</b> (TASK.md hiện tại): dữ liệu đã xác nhận có tới 30/06/2026; danh sách biến thể đóng băng trước (B&amp;H, HMM, fixed, DD-only, lagged-log4); pipeline phải chứng minh bit-identical trên mẫu 2023 trước khi chạm hàng mới. <b>(b) Semi-Markov dwell cost</b>: câu hỏi mới cần freeze riêng. Cả hai đều đã ghi trong runbook — không bước nào được phép "tiện tay" chạy trước khi contract đóng băng.</p>
+
+  <div class="callout key"><span class="lbl">Đọc đúng giá trị</span>Sau 30 ngày: 1 định lý nhỏ, 1 phát hiện thực nghiệm (DD-only), 1 cơ chế được hỗ trợ (lagged), 1 bản đồ phủ định định lượng, và một bộ máy bằng chứng có thể tái tạo từng bit. Chưa có alpha — và tài liệu này KHÔNG claim alpha. Đó là một luận văn đang thành hình, không phải một chiến lược giao dịch.</div>
+
+  <div class="recap">
+    <span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul>
+      <li>Không biến thể nào 3/3; mỗi thất bại có nguyên nhân định lượng được ghi sổ.</li>
+      <li>Ba bất biến (ngân sách, suy biến, confound) lọc còn đúng một candidate: dwell cost.</li>
+      <li>Holdout 2024–2026 là phát đạn cuối — chỉ bắn một lần, theo runbook đã freeze.</li>
+    </ul>
+    <p class="next"><b>Hết →</b> phụ lục thuật ngữ để tra nhanh.</p>
+  </div>
+</section>
+
+<!-- ============================ APPENDIX ============================ -->
+<section id="appendix" class="section reveal">
+  <span class="chapter-tag">Phụ lục <span class="diff d1">TRA CỨU</span></span>
+  <h2><span class="n">A</span>Thuật ngữ</h2>
+  <div class="twrap"><table>
+    <tr><th>Thuật ngữ</th><th>Nghĩa trong dự án</th></tr>
+    <tr><td><code>λ (lambda)</code></td><td>Phí chuyển trạng thái của JM; chọn hàng tháng từ grid [0, 5, 15, 35, 70, 150, 300, 600, 1200] bằng Sharpe validation 8 năm.</td></tr>
+    <tr><td><code>DD (downside deviation)</code></td><td>Độ lệch chuẩn CÓ TRỌNG SỐ MŨ của phần lợi suất âm, half-life 10 ngày. Không phải drawdown.</td></tr>
+    <tr><td><code>G_m</code></td><td>Sharpe biến thể trừ max(Sharpe B&amp;H, Sharpe HMM) tại thị trường m — tiêu chí kinh tế chính, cần &gt; 0 cả 3 thị trường.</td></tr>
+    <tr><td><code>q_train</code></td><td>MAD của loss trên 3.000 hàng huấn luyện — thang chuẩn hóa gap bằng chứng, không hệ số gõ tay.</td></tr>
+    <tr><td><code>Collapsed fit</code></td><td>Refit chỉ còn 1 trạng thái hoạt động (λ lớn) → không thể switch; phải tách khi phân tích tương quan.</td></tr>
+    <tr><td><code>Whipsaw</code></td><td>Chuyển trạng thái rồi quay lại trong 20 ngày tín hiệu — quy ước chẩn đoán, không phải "sự thật" tiềm ẩn.</td></tr>
+    <tr><td><code>Prefix invariance</code></td><td>Thêm dữ liệu tương lai không đổi trạng thái đã phát — phép thử nhân quả của decode online.</td></tr>
+    <tr><td><code>Frozen contract</code></td><td>File .toml câu hỏi + tiêu chí, hash SHA-256, đăng ký TRƯỚC khi nhìn bất kỳ kết quả nào.</td></tr>
+    <tr><td><code>t+2 accounting</code></td><td>Tín hiệu cuối ngày t → giao dịch đóng cửa t+1 → lợi suất và phí đầu tiên ghi ở t+2.</td></tr>
+    <tr><td><code>Turnover (paper)</code></td><td>0.5 · 252 · mean|Δposition| — hệ số ½ đếm một vòng equity→cash→equity một lần; phí vẫn tính đủ từng chiều.</td></tr>
+  </table></div>
+  <p style="margin-top:1rem">Đọc sâu hơn: <code>paper/manuscript.tex</code> (toán đầy đủ + bảng kết quả), <code>research/SCIENTIFIC_LEDGER.md</code> (lịch sử từng thí nghiệm), <code>docs/learning/</code> (khóa 14 bài từ nền tảng), <code>TASK.md</code> (runbook holdout 2026).</p>
+</section>
+
+<footer>
+  Tài liệu dạy học tự chứa · diagram HTML/CSS thuần, không mermaid · công thức trích nguyên văn từ manuscript đang build được · số liệu từ artifact sealed có verifier replay. Viết 2026-07-22.
+</footer>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<script>
+(function () {
+  var sections = Array.prototype.slice.call(document.querySelectorAll('main .section'));
+  var links = {};
+  document.querySelectorAll('#toc a').forEach(function (a) {
+    links[a.getAttribute('href').slice(1)] = a;
+  });
+  var activeObs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      var a = links[e.target.id];
+      if (!a) return;
+      if (e.isIntersecting) {
+        Object.keys(links).forEach(function (k) { links[k].classList.remove('active'); });
+        a.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-45% 0px -50% 0px' });
+  sections.forEach(function (s) { activeObs.observe(s); });
+  var bar = document.getElementById('pbar');
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  document.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>

@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from adaptive_jump.monitor.events import (
+from adaptive_jump.runtime.events import (
     EventError,
     ResearchEvent,
     RuntimeEvent,

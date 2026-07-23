@@ -108,6 +108,14 @@ def clear_checkpoint(stem: Path) -> None:
         payload.unlink()
 
 
+def clear_checkpoint_tree(root: Path) -> None:
+    """Remove every stage checkpoint recorded under one run root."""
+    if not root.exists():
+        return
+    for metadata in root.rglob("*.json"):
+        clear_checkpoint(metadata.with_suffix(""))
+
+
 def _validate(stem: Path, kind: str, identity: Mapping[str, str]) -> dict[str, str]:
     if stem.suffix or not isinstance(kind, str) or _NAME.fullmatch(kind) is None:
         raise CheckpointStoreError("checkpoint stem or kind is invalid")

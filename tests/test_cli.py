@@ -340,7 +340,7 @@ def test_verify_run_dispatches_simple_jm_suite(
     )
     expected = {"run_id": run.name, "status": "complete"}
     monkeypatch.setattr(
-        f"adaptive_jump.simple_jm_suite.{verifier_name}",
+        f"adaptive_jump.simple_jm_verifier.{verifier_name}",
         lambda selected: expected if selected == run.resolve() else None,
     )
 

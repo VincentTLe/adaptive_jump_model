@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from adaptive_jump.monitor.events import (
+from adaptive_jump.runtime.events import (
     EventError,
     EventObserver,
     ResearchEvent,

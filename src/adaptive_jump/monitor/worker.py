@@ -13,14 +13,14 @@ from pathlib import Path
 
 import psutil
 
-from adaptive_jump.monitor.child_events import (
+from adaptive_jump.monitor.event_store import EventStoreError
+from adaptive_jump.monitor.queue import Job, QueueStore, StudyDefinition
+from adaptive_jump.runtime.child_events import (
     EVENT_FD_ENV,
     ChildEventError,
     ParentEventPipe,
 )
-from adaptive_jump.monitor.event_store import EventStoreError
-from adaptive_jump.monitor.events import EventObserver, emit_event
-from adaptive_jump.monitor.queue import Job, QueueStore, StudyDefinition
+from adaptive_jump.runtime.events import EventObserver, emit_event
 
 
 class WorkerError(RuntimeError):

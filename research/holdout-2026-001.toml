@@ -1,0 +1,48 @@
+schema_version = 1
+experiment_id = "holdout-2026-001"
+frozen_at_utc = "2026-07-22T11:05:00Z"
+claim_class = "CONFIRMATORY_HOLDOUT"
+stage = "ONE_SHOT_UNTOUCHED_WINDOW"
+question = "Do the strongest development survivors keep beating both economic benchmarks on the first model-untouched sample, 2024-01-02 through 2026-06-30?"
+hypothesis = "DD-only JM (and, in batch 2, lagged-evidence JM at beta=log4) achieves positive G_m against the stronger of buy-and-hold and HMM in every market on the untouched window."
+owner_authorization = "2026-07-22 explicit request to extend beyond the 2023 cutoff"
+one_shot = "the window may be opened once; a failed or buggy run burns it and must be reported as development contact"
+performance_claim_allowed = false
+
+[source]
+config_path = "research-holdout-2026.toml"
+config_sha256 = "5ea8042f88a14080eff0ab83f8192c469e6925e6c01b03dca0d17162714157c5"
+data_manifest_path = "data/raw/shu-proxy-holdout-2026-20260722T093350Z/manifest.json"
+data_manifest_sha256 = "584f5721d2ff4d7118e45bbf7903164d1b87bebbb0b57958f8994b75bdd7c5bd"
+protocol = "byte-identical to the sealed v7 protocol except replication_cutoff = 2026-06-30 behind the audited holdout_extension gate"
+continuity = "every overlapping processed row is byte-identical to sealed v7: max abs log-return and cash difference 0.0 across all six series"
+
+[precondition]
+dry_run = "a fresh full replication of the sealed v7 sample with current source must byte-match the accepted fixed-baselines run on choices, signals, trades, and metrics before any 2024+ output is read"
+
+[variants]
+controls = ["buy_and_hold", "hmm", "fixed_jm"]
+batch_1 = ["dd_only"]
+batch_2 = ["lagged_log4"]
+batch_2_note = "requires resurrecting the sealed lagged pipeline from its producing commit and passing the same dry-run standard; declared now so batching adds no selection freedom"
+no_new_tuning = "grids, features, betas, selection, timing, and costs are frozen at their sealed values"
+
+[window]
+holdout_start = "2024-01-02"
+holdout_end = "2026-06-30"
+full_sample_note = "walk-forward runs the full sample from the sealed OOS starts; only the window above is confirmation evidence, and pre-2024 rows must reproduce development behavior on identical data"
+
+[decision]
+primary = "G_m = Sharpe_variant - max(Sharpe_buy_and_hold, Sharpe_hmm) computed on the holdout window only, primary delay, 10 bps"
+supported = "G_m > 0 in all three markets for that variant"
+not_supported = "otherwise"
+uncertainty = "paired stationary block bootstrap of the Sharpe delta against the stronger control: 10000 replications, mean block 60, seed 20260722, 95 percent interval; reported, never gating"
+secondary_metrics = ["maximum_drawdown", "turnover", "cash_fraction", "switch_count"]
+per_variant_independent = "the batch-1 outcome cannot change the batch-2 rule"
+
+[storage]
+artifact_subdir = "holdout-2026-001"
+baselines_run = "artifacts/fixed-baselines/<run over the holdout config>"
+metrics_csv = "holdout-metrics.csv"
+summary_json = "summary.json"
+generated_outputs_tracked = false

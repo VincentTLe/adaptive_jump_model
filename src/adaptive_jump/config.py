@@ -176,7 +176,20 @@ def load_config(path: str | Path) -> ResearchConfig:
     sample_start = _iso_date(study, "requested_sample_start")
     cutoff = _iso_date(study, "replication_cutoff")
     _require(sample_start <= cutoff, "sample start must not follow cutoff")
-    _require(cutoff <= date(2023, 12, 31), "replication cutoff must not exceed 2023")
+    holdout_extension = study.get("holdout_extension", False)
+    _require(
+        isinstance(holdout_extension, bool),
+        "holdout_extension must be a boolean when present",
+    )
+    if holdout_extension:
+        _require(
+            cutoff <= date(2026, 6, 30),
+            "holdout cutoff must not exceed the audited source window",
+        )
+    else:
+        _require(
+            cutoff <= date(2023, 12, 31), "replication cutoff must not exceed 2023"
+        )
 
     storage = _table(document, "storage")
     raw_root = _safe_relative_path(storage, "raw_root")

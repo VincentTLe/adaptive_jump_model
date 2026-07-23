@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from adaptive_jump.monitor.event_store import EventStore, EventStoreError
-from adaptive_jump.monitor.events import ResearchEvent
+from adaptive_jump.runtime.events import ResearchEvent
 
 JOB_ID = "a" * 32
 
