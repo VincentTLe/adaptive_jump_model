@@ -33,3 +33,4 @@ reports/
 
 # Cold storage for retired minute-era data
 data/legacy-cold/
+data/external/
