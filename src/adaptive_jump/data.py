@@ -56,6 +56,8 @@ def fetch_source(
     """Fetch one configured source without applying research transformations."""
     if source.provider == "yahoo":
         return _fetch_yahoo(source, start, cutoff, yahoo_loader or _download_yahoo)
+    if source.provider == "localfile":
+        return _fetch_localfile(source, start, cutoff)
     getter = http_get or _get_http
     if source.provider == "fred":
         return _fetch_fred(source, start, cutoff, getter)
@@ -224,6 +226,44 @@ def _download_yahoo(
     }
     frame = yf.download(**arguments)
     return frame, {"adapter": "yfinance.download", "arguments": arguments}
+
+
+def _fetch_localfile(source: SourceConfig, start: date, cutoff: date) -> SourcePayload:
+    """Load a hash-pinned, pre-built canonical date,value file from the repo."""
+    relative = _setting(source, "file_path")
+    path = Path(relative)
+    if path.is_absolute() or ".." in path.parts:
+        raise AcquisitionError(f"{source.source_id}: unsafe localfile path")
+    resolved = Path.cwd() / path
+    if not resolved.is_file():
+        raise AcquisitionError(f"{source.source_id}: missing localfile {relative}")
+    raw = resolved.read_bytes()
+    digest = hashlib.sha256(raw).hexdigest()
+    expected = _setting(source, "sha256")
+    if digest != expected:
+        raise AcquisitionError(
+            f"{source.source_id}: localfile sha256 mismatch "
+            f"(expected {expected}, found {digest})"
+        )
+    rows = pd.read_csv(io.BytesIO(raw), dtype=str, keep_default_na=False)
+    if list(rows.columns) != ["date", "value"]:
+        raise AcquisitionError(f"{source.source_id}: localfile must be date,value")
+    dates = pd.to_datetime(rows["date"], errors="raise").dt.date
+    keep = (dates >= start) & (dates <= cutoff)
+    canonical = _canonical(
+        rows.loc[keep, "date"], rows.loc[keep, "value"], source, start, cutoff
+    )
+    return SourcePayload(
+        raw,
+        "local_file",
+        canonical,
+        {
+            "adapter": "localfile",
+            "arguments": {"file_path": relative},
+            "sha256": digest,
+            "construction": _setting(source, "construction"),
+        },
+    )
 
 
 def _fetch_fred(

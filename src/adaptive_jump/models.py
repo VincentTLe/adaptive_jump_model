@@ -482,6 +482,20 @@ def smoothed_hmm_states(
     return candidates
 
 
+class _IdentityScaler:
+    """No-op scaler for features standardized causally upstream."""
+
+    def fit(self, features: pd.DataFrame) -> _IdentityScaler:
+        width = np.asarray(features, dtype=float).shape[1]
+        self.mean_ = np.zeros(width)
+        self.scale_ = np.ones(width)
+        self.var_ = np.ones(width)
+        return self
+
+    def transform(self, features: pd.DataFrame) -> np.ndarray:
+        return np.asarray(features, dtype=float)
+
+
 def fit_fixed_jm_window(
     window: pd.DataFrame,
     model_protocol: ModelProtocol,
@@ -496,7 +510,11 @@ def fit_fixed_jm_window(
     observation_loss_scale = _validated_observation_loss_scale(observation_loss_scale)
     features = window.loc[:, feature_columns]
     returns = window.loc[:, "excess_return"]
-    scaler = StandardScaler().fit(features)
+    if model_protocol.standardizer == "expanding_full_history_ddof1":
+        # features were causally standardized upstream; keep them untouched
+        scaler = _IdentityScaler().fit(features)
+    else:
+        scaler = StandardScaler().fit(features)
     scaled_values = scaler.transform(features)
     if observation_loss_scale != 1.0:
         scaled_values = scaled_values * math.sqrt(observation_loss_scale)

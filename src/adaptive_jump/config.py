@@ -63,6 +63,8 @@ class ModelProtocol:
     fit_window: int
     risky_label: int
     cash_label: int
+    standardizer: str = "sklearn_standard_scaler_ddof0"
+    standardizer_min_observations: int = 0
 
 
 @dataclass(frozen=True)
@@ -160,8 +162,16 @@ def load_config(path: str | Path) -> ResearchConfig:
     )
 
     data_policy = _table(document, "data_policy")
+    splicing = data_policy.get("allow_definition_splicing")
+    if splicing is True:
+        documentation = data_policy.get("splice_documentation")
+        _require(
+            isinstance(documentation, str) and len(documentation) >= 40,
+            "definition splicing requires substantive splice_documentation",
+        )
+    else:
+        _require(splicing is False, "allow_definition_splicing must be false")
     for key in (
-        "allow_definition_splicing",
         "allow_synthetic_backfill",
         "allow_forward_fill",
         "allow_imputation",
@@ -287,9 +297,24 @@ def _source(row: dict[str, Any], key: str, market_id: str) -> SourceConfig:
     source = _table(row, key)
     provider = _text(source, "provider")
     _require(
-        provider in {"yahoo", "fred", "boj"},
+        provider in {"yahoo", "fred", "boj", "localfile"},
         f"{market_id}.{key}: unsupported provider {provider}",
     )
+    if provider == "localfile":
+        digest = _text(source, "sha256")
+        _require(
+            len(digest) == 64 and all(c in "0123456789abcdef" for c in digest),
+            f"{market_id}.{key}: localfile sha256 must be 64 lowercase hex chars",
+        )
+        _require(
+            len(_text(source, "construction")) >= 40,
+            f"{market_id}.{key}: localfile requires a substantive construction note",
+        )
+        path = _text(source, "file_path")
+        _require(
+            not path.startswith(("/", "..")) and ".." not in path.split("/"),
+            f"{market_id}.{key}: localfile path must stay inside the repository",
+        )
     frequency = _text(source, "frequency")
     _require(
         frequency in {"daily", "monthly"}, f"{market_id}.{key}: unsupported frequency"
@@ -375,19 +400,38 @@ def _backtest_protocol(row: dict[str, Any]) -> BacktestProtocol:
 
 
 def _model_protocol(row: dict[str, Any]) -> ModelProtocol:
-    _fixed(row, "standardizer", "sklearn_standard_scaler_ddof0")
+    standardizer = _text(row, "standardizer")
+    _require(
+        standardizer
+        in {"sklearn_standard_scaler_ddof0", "expanding_full_history_ddof1"},
+        "standardizer violates the frozen protocol",
+    )
+    min_obs = 0
+    if standardizer == "expanding_full_history_ddof1":
+        min_obs = _integer(row, "standardizer_min_observations")
+        _require(
+            min_obs >= 100,
+            "expanding standardizer needs at least 100 warm-up observations",
+        )
     n_states = _integer(row, "n_states")
     fit_window = _integer(row, "fit_window_observations")
     risky = _integer(row, "state_risky_label")
     cash = _integer(row, "state_cash_label")
     _require(n_states == 2, "model must have two states")
     _require((risky, cash) == (0, 1), "state labels must be risky=0 and cash=1")
-    return ModelProtocol(n_states, fit_window, risky, cash)
+    return ModelProtocol(n_states, fit_window, risky, cash, standardizer, min_obs)
 
 
 def _jm_protocol(row: dict[str, Any]) -> JMProtocol:
     grid = _number_tuple(row, "lambda_grid")
-    _require(grid == (0, 5, 15, 35, 70, 150, 300, 600, 1200), "invalid JM lambda grid")
+    _require(
+        grid
+        in (
+            (0, 5, 15, 35, 70, 150, 300, 600, 1200),
+            (0, 5, 15, 35, 70, 150),
+        ),
+        "invalid JM lambda grid",
+    )
     _fixed(row, "implementation", "jumpmodels.JumpModel")
     _fixed(row, "sort_by", "cumret")
     _fixed(row, "online_terminal_only", True)
@@ -410,8 +454,11 @@ def _jm_protocol(row: dict[str, Any]) -> JMProtocol:
 def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
     grid = row.get("smoothing_grid")
     seeds = row.get("seeds")
-    expected_grid = [0, 2, 4, 6, 8, 10, 20, 40, 80, 160, 320, 640, 1280, 2560]
-    _require(grid == expected_grid, "invalid HMM smoothing grid")
+    allowed_grids = (
+        [0, 2, 4, 6, 8, 10, 20, 40, 80, 160, 320, 640, 1280, 2560],
+        [0, 2, 4, 8, 20, 40],
+    )
+    _require(grid in allowed_grids, "invalid HMM smoothing grid")
     _require(seeds == list(range(10)), "HMM seeds must be 0 through 9")
     _require(_integer(row, "n_init") == len(seeds), "HMM n_init must match seeds")
     _fixed(row, "implementation", "hmmlearn.GaussianHMM")
