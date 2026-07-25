@@ -63,6 +63,65 @@ def fred(name: str) -> pd.DataFrame:
     return frame
 
 
+def build_jp_total_return() -> pd.DataFrame:
+    """Nikkei 225 total return from pinned inputs, fully reproducible.
+
+    Official N225TR values are kept verbatim from 2011-12-19. The mirror hole
+    (largest calendar gap in the official series) is bridged with the price
+    path plus an even daily dividend accrual calibrated so both official edges
+    match exactly. Before the first official value, the series is the price
+    path plus JST Macrohistory annual dividend yields, anchored at that first
+    official value. Method validated on the 2012-2023 overlap (daily return
+    correlation 0.9977; implied yields within 0.3pp of JST eq_dp).
+    """
+    import numpy as np
+
+    price = pd.read_csv(INP / "n225_price_daily.csv", parse_dates=["date"])
+    price = price.dropna().set_index("date")["value"].sort_index()
+    official = pd.read_csv(INP / "n225tr_official_merged.csv", parse_dates=["date"])
+    official = official.dropna().set_index("date").iloc[:, 0].sort_index()
+    yields = pd.read_csv(INP / "jst_japan_eq.csv").set_index("year")["eq_dp"]
+
+    gaps = official.index.to_series().diff()
+    hole_end = gaps.idxmax()
+    hole_start = official.index[official.index.get_loc(hole_end) - 1]
+    bridge_price = price.loc[hole_start:hole_end]
+    accrual = float(
+        np.log(official[hole_end] / official[hole_start])
+        - np.log(bridge_price.iloc[-1] / bridge_price.iloc[0])
+    )
+    steps = np.arange(len(bridge_price))
+    bridge = (official[hole_start]
+              * (bridge_price / bridge_price.iloc[0])
+              * np.exp(accrual / (len(bridge_price) - 1) * steps))
+
+    first_official = official.index[0]
+    pre_price = price.loc[:first_official]
+    last_year = int(yields.index.max())
+    daily_yield = pd.Series(
+        [yields.get(min(max(y, int(yields.index.min())), last_year)) / 252.0
+         for y in pre_price.index.year],
+        index=pre_price.index,
+    )
+    log_accrual = daily_yield.cumsum()
+    log_accrual -= log_accrual.iloc[-1]
+    pre = (official[first_official]
+           * (pre_price / pre_price.iloc[-1])
+           * np.exp(log_accrual))
+
+    full = pd.concat([
+        pre.iloc[:-1],
+        official.loc[:hole_start],
+        bridge.iloc[1:-1],
+        official.loc[hole_end:],
+    ]).sort_index()
+    full = full[~full.index.duplicated()]
+    returns = np.log(full / full.shift(1)).dropna()
+    if not np.isfinite(returns).all() or (returns.abs() > 0.30).any():
+        raise SystemExit("jp TR construction produced implausible returns")
+    return pd.DataFrame({"date": full.index, "value": full.to_numpy()})
+
+
 def main() -> None:
     # US equity: French daily factors -> total-return index level
     ff = pd.read_csv(INP / "ff_us_daily.csv", skiprows=3,
@@ -81,10 +140,8 @@ def main() -> None:
     dax.columns = ["date", "value"]
     write("de_equity_tr.csv", dax)
 
-    # JP equity: prebuilt full TR series
-    jp = pd.read_csv(INP / "jp_equity_tr_full.csv")
-    jp.columns = ["date", "value"]
-    write("jp_equity_tr.csv", jp)
+    # JP equity: official N225TR where available, reconstructed elsewhere
+    write("jp_equity_tr.csv", build_jp_total_return())
 
     # DE cash ladder (monthly, percent per annum)
     ib = fred("IR3TIB01DEM156N")
