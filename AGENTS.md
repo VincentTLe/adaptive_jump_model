@@ -230,6 +230,12 @@ experiment ID and makes the viewed sample development data.
   are generated from full-precision machine-readable evidence.
 - Run `git status` before and after work. Stage only in-scope files. Follow the
   owner's current commit/push permission and never add AI attribution.
+- Commit messages use the established prefix taxonomy:
+  `research:` (experiments, specs, results, registry), `model:` (model/math
+  code), `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`, `build:`,
+  optionally scoped like `fix(monitor):`. Imperative mood, lower-case prefix,
+  one concern per commit. Example: `research: freeze expanding-standardizer
+  replication spec`.
 - Append one handoff after a meaningful repository change or scientific or
   expensive run using:
   `bash .agent/handoff.sh '<one-line-json-entry>'`
