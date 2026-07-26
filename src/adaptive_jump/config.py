@@ -166,7 +166,7 @@ def load_config(path: str | Path) -> ResearchConfig:
     if splicing is True:
         documentation = data_policy.get("splice_documentation")
         _require(
-            isinstance(documentation, str) and len(documentation) >= 40,
+            isinstance(documentation, str) and len(documentation.strip()) >= 40,
             "definition splicing requires substantive splice_documentation",
         )
     else:
@@ -307,7 +307,7 @@ def _source(row: dict[str, Any], key: str, market_id: str) -> SourceConfig:
             f"{market_id}.{key}: localfile sha256 must be 64 lowercase hex chars",
         )
         _require(
-            len(_text(source, "construction")) >= 40,
+            len(_text(source, "construction").strip()) >= 40,
             f"{market_id}.{key}: localfile requires a substantive construction note",
         )
         path = _text(source, "file_path")

@@ -134,10 +134,13 @@ def _verify_manifest(
     expected = {
         (market.id, "equity", market.equity.source_id) for market in config.markets
     } | {(market.id, "cash", market.cash.source_id) for market in config.markets}
+    source_rows = document.get("sources", [])
     actual = {
         (source.get("market"), source.get("kind"), source.get("source_id"))
-        for source in document.get("sources", [])
+        for source in source_rows
     }
+    if len(source_rows) != len(expected):
+        raise RunError("data manifest has a duplicated or missing source entry")
     if (
         document.get("config_id") != config.config_id
         or document.get("config_sha256") != config.sha256

@@ -32,7 +32,11 @@ def apply_signal(
     if not math.isfinite(one_way_cost_bps) or one_way_cost_bps < 0:
         raise BacktestError("one_way_cost_bps must be finite and non-negative")
 
-    signal_values = pd.Series(signal, index=returns.index, dtype=float)
+    # positional conversion: every caller passes a signal aligned by row order,
+    # and label-based reindexing silently misaligns shifted or datetime indexes
+    signal_values = pd.Series(
+        np.asarray(signal, dtype=float), index=returns.index, dtype=float
+    )
     valid_signal = signal_values.dropna()
     if not valid_signal.isin([0.0, 1.0]).all():
         raise BacktestError("signal values must be 0, 1, or missing")

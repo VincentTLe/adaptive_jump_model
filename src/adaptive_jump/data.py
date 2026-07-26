@@ -404,7 +404,18 @@ def _file_record(root: Path, path: Path, payload: bytes) -> dict[str, Any]:
 
 
 def research_git_sha(root: Path) -> str:
-    scope = ["research.toml", "pyproject.toml", "uv.lock", "src", "tests"]
+    scope = [
+        "research.toml",
+        "research-holdout-2026.toml",
+        "research-expanding-v8.toml",
+        "research-expanding-v8-1.toml",
+        "research-expanding-v8-2.toml",
+        "pyproject.toml",
+        "uv.lock",
+        "scripts",
+        "src",
+        "tests",
+    ]
     tracked = subprocess.run(
         ["git", "diff", "--quiet", "HEAD", "--", *scope], cwd=root, check=False
     )

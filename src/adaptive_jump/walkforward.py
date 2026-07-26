@@ -126,6 +126,7 @@ def build_baseline_study(
                 config.selection_protocol,
                 delay_trading_days=delay,
                 one_way_cost_bps=backtest.one_way_cost_bps,
+                charge_initial_allocation=backtest.charge_initial_allocation,
                 periods_per_year=metrics.periods_per_year,
                 volatility_ddof=metrics.volatility_ddof,
                 initial=initial,
@@ -197,6 +198,9 @@ def baseline_paths(
                 selection.signal.reset_index(drop=True),
                 delay_trading_days=delay,
                 one_way_cost_bps=config.backtest_protocol.one_way_cost_bps,
+                charge_initial_allocation=(
+                    config.backtest_protocol.charge_initial_allocation
+                ),
             )
         unaligned[delay] = {
             model_name: path.loc[oos].reset_index(drop=True)
@@ -253,6 +257,7 @@ def select_monthly_candidate(
     *,
     delay_trading_days: int,
     one_way_cost_bps: float,
+    charge_initial_allocation: bool = False,
     periods_per_year: int = 252,
     volatility_ddof: int = 1,
     initial: SelectionProgress | None = None,
@@ -279,6 +284,7 @@ def select_monthly_candidate(
             risky_signal.reset_index(drop=True),
             delay_trading_days=delay_trading_days,
             one_way_cost_bps=one_way_cost_bps,
+            charge_initial_allocation=charge_initial_allocation,
         )
         candidate_returns[candidate] = path["strategy_return"].to_numpy()
 
