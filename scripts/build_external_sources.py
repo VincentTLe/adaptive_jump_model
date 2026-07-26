@@ -40,7 +40,44 @@ ROOT = Path(__file__).resolve().parents[1]
 INP = ROOT / "data" / "external" / "inputs"
 OUT = ROOT / "data" / "external"
 START, CUTOFF = "1965-01-01", "2023-12-29"
-PROC = ROOT / "data" / "processed" / "shu-proxy-replication-v6-20260712T184015Z"
+
+
+# sha256 pins for every input this builder is allowed to read; refusing to build
+# from unpinned bytes keeps the derived-series provenance closed end to end
+INPUT_SHA256 = {
+    "INTGSTDEM193N.csv":
+        "8693c22c905abe575a0dc05310ac028d4db074ed3d63054b4be0801ad897714d",
+    "INTGSTJPM193N.csv":
+        "f068a59109a996b265b64a48062b5201ce3202b4076e6a08c44dc69fea1d341d",
+    "IR3TIB01DEM156N.csv":
+        "2b9d26f8dfc56280b1c19d5d02da016b71edf508712f947e88751360c98b3bd5",
+    "boj_straclu3m.csv":
+        "4cf910c9107ba9556af79e4090e6629dc8e835ec836a4edfc3ac73b79354f6c8",
+    "ecb_3m_aaa.csv":
+        "4b96c8b50d4ccad6bc888e39ac61628ff91557cf9462af8aebb184b2518d6291",
+    "ff_us_daily.csv":
+        "f051e37d30c129359c6801d9d2a715c929b19aa3be0ffe684b93995ede9ffebb",
+    "jp_equity_tr_full.csv":
+        "f03965755b8789c3b878b6982fc0cd84e8a83f9c9d1c8aa8169a0ecbd509689d",
+    "jst_japan_eq.csv":
+        "519c9c856772aeed73546f3b7e6367792da0b20700b50b1a129d96a29fa9359e",
+    "n225_price_daily.csv":
+        "93c5b6fcbc0ebfc2487ed317eaa986ef571366400812575b2e7c26b5c6de52fe",
+    "n225tr_official_merged.csv":
+        "1c2977502af445abeccb7410f135a9efcdabfa6930f4e37ffb09ce5980ab9fc7",
+    "stooq_dax_daily.csv":
+        "a0ea6e8edcae145d00d0d76894372e1c2590dc6926009ebf5f17b9ea22e3893d",
+}
+
+
+def verify_inputs() -> None:
+    for name, expected in INPUT_SHA256.items():
+        path = INP / name
+        if not path.is_file():
+            raise SystemExit(f"missing pinned input: {name}")
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual != expected:
+            raise SystemExit(f"input hash mismatch for {name}: {actual}")
 
 
 def write(name: str, frame: pd.DataFrame) -> None:
@@ -123,6 +160,7 @@ def build_jp_total_return() -> pd.DataFrame:
 
 
 def main() -> None:
+    verify_inputs()
     # US equity: French daily factors -> total-return index level
     ff = pd.read_csv(INP / "ff_us_daily.csv", skiprows=3,
                      names=["date", "mkt_rf", "smb", "hml", "rf"])
@@ -160,7 +198,7 @@ def main() -> None:
 
     # JP cash ladder (monthly, percent per annum)
     jp_tb = fred("INTGSTJPM193N")
-    call = pd.read_csv(PROC / "jp_cash.csv")
+    call = pd.read_csv(INP / "boj_straclu3m.csv")
     call.columns = ["date", "value"]
     jp_cash = pd.concat([
         jp_tb[jp_tb["date"] <= "2017-06-01"],
