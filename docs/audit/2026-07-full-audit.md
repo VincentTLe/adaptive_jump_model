@@ -201,6 +201,42 @@ B5. The register lives in the audit workflow transcripts
   monitor-environment test (fails on a clean tree identically). Sealed runs
   re-verified clean via `verify_run`.
 
+## Addendum (2026-07-26) — agent re-verification round
+
+The four audit pieces originally completed solo (after the spend-limit
+interruption) were re-run by independent agents once quota returned.
+
+**models.py full review (agent, independent):** zero blockers, zero findings
+affecting sealed numbers. Three minors, all per-spec but now documented:
+(1) *median-tie direction* — `mean > 0.5` sends exact ties to risky; ties are
+frequent with the even-k grid (55-180 OOS days per market/delay would flip
+under `>=`); frozen and deterministic, flagged for a sensitivity run.
+(2) *min_periods=1 sensitivity* — no OOS-governing decision ever had
+under-windowed days for its SELECTED candidate; a full-window counterfactual
+flips selections only at us 1989-12 (return-neutral), de 1994 d10
+(return-neutral) and jp 1995-05 d10 (22 differing days, +12.3pp cumulative) —
+the JP delay-10 robustness cell is the one spec-sensitive output. The rule is
+also load-bearing: requiring full windows would delay first selection to
+~1995. (3) *HMM resume validation* weaker than the JM path — fixed in
+f727da7 (+ regression test); not triggered in sealed runs (verified clean).
+Notable cleared items: online inference provably equals the paper's l=3000
+prefix-DP; variance relabeling never ambiguous (min hi/lo ratio 3.3, zero
+plausible label swaps); the symmetric convergence monitor is *stricter* than
+stock hmmlearn (stock would accept stop-on-decrease fits; ours vetoes them,
+and accepted terminals are stable at tol=1e-9).
+
+**k-grid identification recompute (agent, fresh implementation):** correction
+4 above; ranking conclusion re-confirmed on all three markets.
+
+**Residual-cell investigation (in progress):** JP validation-metric variant
+(raw instead of excess Sharpe) ELIMINATED — raw-Sharpe selection scores 0.148
+vs the sealed 0.157, choices identical after 2000. hmmlearn's
+`covars_prior=0.01` on decimal returns measurably inflates fitted variances
+(low state +7-40%, high state up to +97% in early windows) and vanishes under
+percent scaling; terminal states unchanged at 13/13 sampled refit dates —
+full-path DE refit under percent scaling running to quantify the effect on
+selected strategies.
+
 ## Verdict
 
 The audit found NO defect that changes any sealed or reported number. All
