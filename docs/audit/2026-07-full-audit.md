@@ -162,6 +162,16 @@ code) reproduced from sealed artifacts:
    ranking conclusion is unchanged (verified on both runs).
 3. *Run mix.* Reported US/DE numbers come from the v8.1 sealed run, JP from
    v8.2 (deliberate — JP window fix — now explicit).
+4. *US k-range identification Sharpes.* A second, fully independent recompute
+   of the k-grid table (2026-07-26, fresh implementation validated to 1e-16
+   against the sealed candidate-returns accounting) reproduces DE exactly
+   (0.25/0.25/0.14) and US turnovers exactly, but puts the US Sharpes at
+   0.55/0.56/0.55/0.56 for grids A/B/C/wide — about 0.02 below the previously
+   reported 0.57/0.58/0.58. Grid B (single candidate k=6, no selection step)
+   isolates the discrepancy to the earlier report's US scoring, not to
+   selection logic. The ranking conclusion (small-k >> wide on DE/JP, US flat
+   across grids and near Shu's 0.54/141 with grid A at 0.55/135) is unchanged
+   and re-confirmed on all three markets.
 
 ## Part C — Paper close-read (complete)
 
