@@ -521,6 +521,40 @@ def test_hmm_resumes_from_contiguous_checkpoint(
     pd.testing.assert_frame_equal(resumed.fits, complete.fits)
 
 
+def test_hmm_rejects_corrupted_checkpoint_states(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("adaptive_jump.models.GaussianHMM", _FakeHMM)
+    model = ModelProtocol(2, 4, 0, 1)
+    frame = _frame(10).rename(columns={"excess_return": "equity_log"})
+    captured = {}
+
+    def stop_after_first(result: HMMResult) -> None:
+        captured["result"] = result
+        raise RuntimeError("simulated interruption")
+
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        hmm_states(
+            frame,
+            model,
+            _hmm_protocol(),
+            checkpoint_every=2,
+            progress=stop_after_first,
+        )
+    good = captured["result"]
+
+    spurious = HMMResult(good.states.copy(), good.fits.copy())
+    spurious.states.iloc[0] = 1.0  # before the first terminal, never overwritten
+    with pytest.raises(ModelError, match="outside its prefix"):
+        hmm_states(frame, model, _hmm_protocol(), initial=spurious)
+
+    invalid = HMMResult(good.states.copy(), good.fits.copy())
+    fit_dates = pd.to_datetime(invalid.fits["fit_date"])
+    invalid.states.loc[fit_dates.iloc[0]] = 2.0
+    with pytest.raises(ModelError, match="must be 0 or 1"):
+        hmm_states(frame, model, _hmm_protocol(), initial=invalid)
+
+
 def test_parallel_hmm_matches_sequential_results() -> None:
     rng = np.random.default_rng(11)
     returns = np.r_[rng.normal(0, 0.005, 120), rng.normal(0, 0.03, 122)]

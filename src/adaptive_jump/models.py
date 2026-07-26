@@ -341,6 +341,10 @@ def _validate_hmm_initial(
     )
     if not fit_dates.equals(expected) or initial.states.loc[fit_dates].isna().any():
         raise ModelError("HMM checkpoint is not a contiguous causal prefix")
+    if initial.states.drop(fit_dates).notna().any():
+        raise ModelError("HMM checkpoint contains states outside its prefix")
+    if not initial.states.loc[fit_dates].isin((0.0, 1.0)).all():
+        raise ModelError("HMM checkpoint states must be 0 or 1")
 
 
 def best_hmm_terminal_fit(
