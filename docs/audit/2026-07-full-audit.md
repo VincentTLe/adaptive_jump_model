@@ -228,14 +228,45 @@ and accepted terminals are stable at tol=1e-9).
 **k-grid identification recompute (agent, fresh implementation):** correction
 4 above; ranking conclusion re-confirmed on all three markets.
 
-**Residual-cell investigation (in progress):** JP validation-metric variant
-(raw instead of excess Sharpe) ELIMINATED — raw-Sharpe selection scores 0.148
-vs the sealed 0.157, choices identical after 2000. hmmlearn's
-`covars_prior=0.01` on decimal returns measurably inflates fitted variances
-(low state +7-40%, high state up to +97% in early windows) and vanishes under
-percent scaling; terminal states unchanged at 13/13 sampled refit dates —
-full-path DE refit under percent scaling running to quantify the effect on
-selected strategies.
+**Residual-cell investigation (completed 2026-07-26):**
+
+*DE HMM — RESOLVED (two stacked causes).* (1) hmmlearn's `covars_prior=0.01`
+materially distorts fits on decimal returns (low-state variance +7-40%,
+high-state up to +97% in early windows; probe reproduces sealed fits exactly
+13/13 and shows the `covars_prior=0` and percent-scaled variants agree to 5
+decimals, isolating the prior — `min_covar` inert). (2) The non-paper wide
+smoothing grid (k to 2560) wrecks the selection layer; the paper's own grid is
+{0,2,4,8,20} (Table 3). Full-path refit under percent scaling + small grid:
+**DE follow-CV 0.353 / turnover 214% vs Shu 0.35 / 246%**, with Shu's
+fast-decaying delay shape (0.35→0.28→0.18). Cross-checked by the independent
+fixed-k frontier (k=4: 0.327/202%/76.9% lev). US survives the same fix
+(small-grid 0.59 vs Shu 0.54, usual overshoot zone); JP improves slightly
+(0.166, turnover 314% vs Shu 290%). Sealed states differ on 5.5% of DE days;
+state changes 316→350.
+
+*JP JM — mechanism isolated, Shu bracketed, exact recipe unidentified.* New
+Table-3 anchor: our sealed JM paths flip 2.1-2.6x LESS than Shu's published
+shifts/yr at every lambda INCLUDING lambda=0 (penalty-irrelevant), while our
+HMM k-grid flip rates match Shu — localizing the discrepancy to JM feature
+standardization geometry (one-shot expanding windows enter fits off-center
++0.68 sigma and std-compressed 0.73-0.82). The selection layer is exonerated
+(agent replica = sealed choices 100% in all three markets). Intervention arms
+re-running the author library's own per-refit-window recipe (clip +-3sigma +
+StandardScaler frozen at refit): flip rates move to ~1.3x Shu (from 0.4x) —
+crossing Shu, so the true recipe lies inside this family; JP fixed
+lambda=35 hits **0.310 / 68% turnover / 45 shifts vs Shu 0.31 / 72% / 48
+shifts** (leverage still 43% vs 75%); JP selected 0.169→0.219; the arm exits
+correctly during the 1990-94 Nikkei collapse (lambda=5 era Sharpe -0.51→
++0.03). But the same recipe DEGRADES the matched markets (US selected
+0.788→0.460, DE 0.361→0.310) — no single preprocessing variant reproduces
+Table 3 and Table 4 simultaneously; Shu's exact standardization remains the
+one unpublished degree of freedom, with our variants bracketing their JP JM
+row: 0.157/0.169 (expanding) — 0.219 clip / 0.310 fixed-λ35 — 0.260
+cold-start-1970 — 0.263 anchor-1970 — vs Shu 0.31 (all inside the 95% CI).
+Also eliminated: validation-metric raw-vs-excess (raw scores 0.148 vs 0.157,
+choices identical post-2000); literal-1970 cold-start warm-up (+0.03 on the
+matched window 0.260 vs 0.233; the sealed 0.157 vs 0.233 delta is the
+Jan-Aug-1990 crash months).
 
 ## Verdict
 
