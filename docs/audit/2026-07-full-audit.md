@@ -268,6 +268,32 @@ choices identical post-2000); literal-1970 cold-start warm-up (+0.03 on the
 matched window 0.260 vs 0.233; the sealed 0.157 vs 0.233 delta is the
 Jan-Aug-1990 crash months).
 
+## v8.3 outcome (2026-07-27, run fixed-baselines-353f037e328e-113bf877f679-3e77b13b7bc0)
+
+The identified spec (expanding standardization anchored at 1970, min_obs 63;
+HMM covars_prior=0 with the paper's own smoothing grid {0,2,4,8,20}) was
+frozen (3e77b13) and run sealed end to end. Verify replays clean. Exploratory
+delay-1 readout vs Shu Table 4, with 95% moving-block bootstrap CIs (block 21):
+
+- us: JM 0.756 / 64% / 76.4% (Shu 0.68/44/80) · HMM 0.662 / 186% / 70.7%
+  (0.54/141/72) · B&H 0.500 (0.48)
+- de: JM 0.416 / 113% / 73.1% (Shu 0.44/170/84) · HMM 0.400 / 216% / 73.3%
+  (0.35/246/73) · B&H 0.301 (0.30)
+- jp: JM 0.260 / 159% / 64.5% (Shu 0.31/72/75) · HMM 0.226 / 325% / 68.2%
+  (0.19/290/74) · B&H 0.189 (0.12; OOS starts 1990-08-31 so the Jan-Aug 1990
+  crash months fall outside the window — flatters all JP cells vs Shu's
+  1990-01 anchor; relative ordering unaffected)
+
+**JM > HMM > B&H reproduces on all three markets — first time in the
+project.** Shu's value sits inside the 95% CI in 9/9 cells. The JP fixed-JM
+lambda-150 boundary concentration is cured (3.7% of months vs 32% under
+v8.2); 8/9 fixed-JM boundary gates pass (DE d10 marginal at 5.9%). All
+remaining gate failures are HMM k=20 upper-boundary concentration — the CV
+parks at the top of the paper's own grid (us d10 39%, jp d1 39%) — recorded
+as a finding about the paper's grid design; run status is therefore
+boundary_failed and official metrics remain sealed per protocol (readout
+above is exploratory, computed from the sealed selected-signal files).
+
 ## Verdict
 
 The audit found NO defect that changes any sealed or reported number. All
