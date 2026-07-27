@@ -130,8 +130,8 @@ def standardize_expanding(
     future data leaks backward. The first min_observations rows are dropped as
     statistical warm-up.
     """
-    if min_observations < 100:
-        raise FeatureError("expanding standardizer needs >= 100 warm-up rows")
+    if min_observations < 63:
+        raise FeatureError("expanding standardizer needs >= 63 warm-up rows")
     mean = features.expanding(min_periods=min_observations).mean()
     std = features.expanding(min_periods=min_observations).std(ddof=1)
     scaled = (features - mean) / std.where(std > 0)

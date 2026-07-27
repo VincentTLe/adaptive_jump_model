@@ -49,7 +49,7 @@ def test_legacy_config_still_loads_with_defaults() -> None:
         (
             "standardizer_min_observations = 250",
             "standardizer_min_observations = 10",
-            "at least 100 warm-up observations",
+            "at least one quarter of warm-up",
         ),
         (
             "lambda_grid = [0, 5, 15, 35, 70, 150]",

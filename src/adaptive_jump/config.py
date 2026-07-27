@@ -410,8 +410,8 @@ def _model_protocol(row: dict[str, Any]) -> ModelProtocol:
     if standardizer == "expanding_full_history_ddof1":
         min_obs = _integer(row, "standardizer_min_observations")
         _require(
-            min_obs >= 100,
-            "expanding standardizer needs at least 100 warm-up observations",
+            min_obs >= 63,
+            "expanding standardizer needs at least one quarter of warm-up",
         )
     n_states = _integer(row, "n_states")
     fit_window = _integer(row, "fit_window_observations")
@@ -457,6 +457,7 @@ def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
     allowed_grids = (
         [0, 2, 4, 6, 8, 10, 20, 40, 80, 160, 320, 640, 1280, 2560],
         [0, 2, 4, 8, 20, 40],
+        [0, 2, 4, 8, 20],  # the paper's own Table-3 smoothing grid
     )
     _require(grid in allowed_grids, "invalid HMM smoothing grid")
     _require(seeds == list(range(10)), "HMM seeds must be 0 through 9")
@@ -473,12 +474,18 @@ def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
     _require(
         _integer(row, "median_min_periods") == 1, "HMM median min periods must be 1"
     )
+    covars_prior = row.get("covars_prior", 0.01)
+    _require(
+        covars_prior in (0.0, 0.01),
+        "HMM covariance prior must be 0.01 (legacy) or 0.0 (prior-free)",
+    )
     protocol = HMMProtocol(
         tuple(grid),
         tuple(seeds),
         _positive_number(row, "min_covar"),
         _positive_integer(row, "n_iter"),
         _positive_number(row, "tol"),
+        covars_prior=float(covars_prior),
     )
     expected = HMMProtocol(
         tuple(grid),
@@ -487,7 +494,7 @@ def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
         1000,
         1e-6,
         kmeans_n_init=10,
-        covars_prior=0.01,
+        covars_prior=float(covars_prior),
     )
     _require(protocol == expected, "invalid HMM settings")
     return protocol

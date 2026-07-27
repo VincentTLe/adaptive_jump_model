@@ -26,6 +26,50 @@ def test_variant_v8_2_anchor() -> None:
     assert jp.equity.settings["source_start_observed"] == "1965-01-05"
 
 
+VARIANT_V8_3 = ROOT / "research-expanding-v8-3.toml"
+
+
+def test_variant_v8_3_anchor() -> None:
+    config = load_config(VARIANT_V8_3)
+    assert config.config_id == "shu-replication-expanding-v8-3"
+    assert str(config.sample_start) == "1970-01-01"
+    assert config.model_protocol.standardizer == "expanding_full_history_ddof1"
+    assert config.model_protocol.standardizer_min_observations == 63
+    assert config.hmm_protocol.smoothing_grid == (0, 2, 4, 8, 20)
+    assert config.hmm_protocol.covars_prior == 0.0
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        (
+            "covars_prior = 0.0",
+            "covars_prior = 0.005",
+            "covariance prior must be",
+        ),
+        (
+            "smoothing_grid = [0, 2, 4, 8, 20]",
+            "smoothing_grid = [0, 2, 4, 8, 10]",
+            "invalid HMM smoothing grid",
+        ),
+        (
+            "standardizer_min_observations = 63",
+            "standardizer_min_observations = 62",
+            "at least one quarter of warm-up",
+        ),
+    ],
+)
+def test_variant_v8_3_rejects_unfrozen_values(
+    tmp_path: Path, old: str, new: str, message: str
+) -> None:
+    payload = VARIANT_V8_3.read_text(encoding="utf-8")
+    assert old in payload
+    candidate = tmp_path / "research.toml"
+    candidate.write_text(payload.replace(old, new, 1), encoding="utf-8")
+    with pytest.raises(ConfigError, match=message):
+        load_config(candidate)
+
+
 def test_manifest_rejects_duplicated_source_entry() -> None:
     config = load_config(VARIANT)
     sources = [

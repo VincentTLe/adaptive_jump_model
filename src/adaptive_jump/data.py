@@ -410,6 +410,7 @@ def research_git_sha(root: Path) -> str:
         "research-expanding-v8.toml",
         "research-expanding-v8-1.toml",
         "research-expanding-v8-2.toml",
+        "research-expanding-v8-3.toml",
         "pyproject.toml",
         "uv.lock",
         "scripts",
