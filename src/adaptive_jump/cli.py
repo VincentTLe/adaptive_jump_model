@@ -342,6 +342,20 @@ def run_replication(
     )
     boundaries.to_csv(run_dir / "boundaries.csv", index=False)
     if not boundaries["passed"].all():
+        # Official metrics stay sealed, but write the same table once, under the
+        # frozen comparison-sample convention, so the run has a reproducible
+        # number set instead of leaving every reader to recompute it by hand.
+        exploratory_frames = []
+        for market_id, study in studies.items():
+            market_input = inputs[market_id]
+            exploratory_frames.append(
+                open_baseline_metrics(
+                    market_input.frame, study, config, exploratory=True
+                ).assign(market=market_id)
+            )
+        pd.concat(exploratory_frames, ignore_index=True).to_csv(
+            run_dir / "metrics-exploratory.csv", index=False
+        )
         _artifacts.write_inventory(run_dir)
         _finish_run(
             metadata_path,

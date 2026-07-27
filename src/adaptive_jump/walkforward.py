@@ -157,14 +157,28 @@ def build_baseline_study(
 
 
 def open_baseline_metrics(
-    frame: pd.DataFrame, study: BaselineStudy, config: ResearchConfig
+    frame: pd.DataFrame,
+    study: BaselineStudy,
+    config: ResearchConfig,
+    *,
+    exploratory: bool = False,
 ) -> pd.DataFrame:
-    """Open OOS metrics only after every preregistered boundary check passes."""
-    if study.boundaries.empty or not study.boundaries["passed"].all():
+    """Open OOS metrics only after every preregistered boundary check passes.
+
+    Set ``exploratory`` to compute the same table when a boundary check has
+    failed. The caller must then record it as exploratory: a boundary failure
+    still seals the official metrics. This exists so a gated run leaves one
+    reproducible number set with a known sample convention behind, instead of
+    forcing every reader to recompute the figures by hand.
+    """
+    if not exploratory and (
+        study.boundaries.empty or not study.boundaries["passed"].all()
+    ):
         raise WalkForwardError("OOS metrics are sealed until all boundary checks pass")
     metrics_protocol = config.metrics_protocol
     rows: list[dict[str, object]] = []
-    for delay, paths in baseline_paths(frame, study, config).items():
+    paths_by_delay = baseline_paths(frame, study, config, exploratory=exploratory)
+    for delay, paths in paths_by_delay.items():
         for model_name, path in paths.items():
             values = performance_metrics(
                 path,
@@ -180,10 +194,20 @@ def open_baseline_metrics(
 
 
 def baseline_paths(
-    frame: pd.DataFrame, study: BaselineStudy, config: ResearchConfig
+    frame: pd.DataFrame,
+    study: BaselineStudy,
+    config: ResearchConfig,
+    *,
+    exploratory: bool = False,
 ) -> dict[int, dict[str, pd.DataFrame]]:
-    """Return OOS accounting paths only after every boundary passes."""
-    if study.boundaries.empty or not study.boundaries["passed"].all():
+    """Return OOS accounting paths only after every boundary passes.
+
+    ``exploratory`` mirrors :func:`open_baseline_metrics`: it computes the same
+    paths for a gated run so the failure still leaves reproducible evidence.
+    """
+    if not exploratory and (
+        study.boundaries.empty or not study.boundaries["passed"].all()
+    ):
         raise WalkForwardError("OOS paths are sealed until all boundary checks pass")
     returns = frame[["date", "equity_simple", "cash_return"]]
     dates = pd.to_datetime(returns["date"], errors="raise")

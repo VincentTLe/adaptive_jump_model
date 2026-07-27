@@ -406,11 +406,10 @@ def _file_record(root: Path, path: Path, payload: bytes) -> dict[str, Any]:
 def research_git_sha(root: Path) -> str:
     scope = [
         "research.toml",
-        "research-holdout-2026.toml",
-        "research-expanding-v8.toml",
-        "research-expanding-v8-1.toml",
-        "research-expanding-v8-2.toml",
-        "research-expanding-v8-3.toml",
+        # Glob magic so every root research contract is covered, including ones
+        # added later. ':(glob)' keeps '*' from crossing '/', so experiment
+        # configs under research/ stay out of scope.
+        ":(glob)research-*.toml",
         "pyproject.toml",
         "uv.lock",
         "scripts",
