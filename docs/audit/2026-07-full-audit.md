@@ -669,3 +669,43 @@ with itself. Table 4 is internally consistent on that cell (0.54 x 11.3 = 6.10,
 0.21 x 28.9 = 6.07), and a max statistic read off a rasterised curve is biased
 shallow. Recorded as unverified. The refutation pass that would have tested it
 died on the account spend limit, along with three other agents.
+
+### The drawdown is computed on the total-return path (2026-07-28)
+
+Tested because the excess reading would have explained the entire US HMM gap on
+its own. It does not survive: buy-and-hold contains no model, so its drawdown
+tests the definition directly, and the total-return reading matches Shu on all
+three markets while the excess readings do not.
+
+| cell | total return (ours) | excess, geometric | excess, arithmetic | Shu |
+|---|---|---|---|---|
+| us B&H | **-54.57%** | -58.98% | -30.29% | -55.2% |
+| de B&H | **-72.68%** | -75.54% | -57.63% | -72.7% |
+| jp B&H | **-77.33%** | -81.70% | -126.18% | -79.1% |
+| us HMM | -19.72% | -21.82% | -23.44% | -28.9% |
+| de HMM | **-40.20%** | -47.37% | -32.43% | -40.5% |
+| jp HMM | **-51.73%** | -55.67% | -70.76% | -48.6% |
+
+Summed absolute deviation over all nine cells: total return **0.237**, excess
+geometric 0.450, excess arithmetic 1.651. The excess reading improves exactly
+one cell -- us HMM, from 0.092 to 0.055 -- and degrades the other eight. That is
+the signature of fitting to the answer, not of finding the definition.
+
+`backtest.py:165-167` computes the drawdown on `cumprod(1 + strategy_return)`,
+where `strategy_return` earns the cash rate while out of the market. Confirmed
+correct.
+
+**A consequence worth keeping.** On all nine cells the total-return drawdown is
+strictly shallower than the excess drawdown, which is mechanical: the risk-free
+rate adds positive drift while the strategy sits in cash. Figures 5 and 6 plot
+CUMULATIVE EXCESS RETURN, so any drawdown read off those figures is the excess
+statistic, not the one Table 4 reports. If a reconstruction of Figure 6 gives an
+excess drawdown near -22%, then Shu's total-return drawdown must be shallower
+than that, and could not be the printed -28.9%. Our own excess drawdown on the
+same cell is -21.82%.
+
+That argument stands or falls on whether the figure can be read accurately at
+all, which is being tested by calibrating the extraction against Figure 5's
+three JM curves, whose drawdowns Table 4 prints (-26.6%, -39.4%, -45.3%). A
+method that cannot reproduce those has no standing to adjudicate a 6-point
+dispute about Figure 6.
