@@ -553,3 +553,119 @@ buy-and-hold are comparison baselines, as is the paper's own JM. The target is
 therefore agreement with Table 4, not good performance: a cell that beats the
 paper is as wrong as one that trails it, and several of ours currently beat it
 (us HMM +0.098, us MDD -19.7% against -28.9%, us Calmar 0.355 against 0.21).
+
+## v8.5 sealed outcome, and the anchors we had never read (2026-07-28)
+
+Run `fixed-baselines-7b95ec50dece-6bd27647967d-13641890668f`, 105 minutes,
+status `boundary_failed`. One field changed from v8.4: the smoothing grid gains
+k = 6. HMM readout, delay 1, against Table 4:
+
+| metric | us v8.4 | us v8.5 | de v8.4 | de v8.5 | jp v8.4 | jp v8.5 |
+|---|---|---|---|---|---|---|
+| Sharpe | 0.098 | **0.074** | 0.043 | **0.018** | 0.008 | 0.013 |
+| Return | 0.009 | 0.007 | 0.008 | 0.004 | 0.002 | 0.003 |
+| Volatility | 0.003 | 0.002 | 0.000 | 0.000 | 0.000 | 0.000 |
+| MDD | 0.092 | 0.092 | 0.030 | **0.003** | 0.031 | 0.031 |
+| Calmar | 0.145 | 0.134 | 0.027 | **0.008** | 0.004 | 0.005 |
+| ES 5% | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 |
+| Turnover | 0.444 | 0.473 | 0.292 | **0.234** | 0.395 | **0.244** |
+| Leverage | 0.011 | 0.011 | 0.000 | 0.000 | 0.000 | 0.000 |
+
+(cells are absolute deviations). Within 0.05: us 4/8, de 7/8, jp 7/8. Within
+0.03: us 4/8, de 7/8, jp 6/8. Germany improves on seven metrics and degrades on
+none. The US gains on Sharpe and loses on turnover. Japan trades Sharpe for
+turnover.
+
+### The predictions, scored
+
+Logged before the run finished, four claims:
+
+1. **The gates fail on the same cells.** Correct, and exactly: us delay-10
+   38.97% and jp delay-1 39.46%, unchanged to the digit from v8.4. k = 6 is
+   interior and cannot relieve concentration at the top of the grid.
+2. **The us Sharpe falls.** Correct, 0.638 to 0.614.
+3. **Germany lands near 0.354.** **Wrong.** It landed at 0.368. The 0.354 came
+   from an unsealed probe and did not reproduce; direction right, magnitude out
+   by 0.014.
+4. **Japan barely moves.** Correct, 0.182 to 0.177.
+
+The sealed numbers also reproduce an independent preview computed through
+`select_monthly_candidate` on v8.4's raw states to four decimals (0.6139 /
+0.3681 / 0.1771), confirming that the smoothing grid never enters the HMM fit.
+
+### Turnover: CLOSED by the paper's own words
+
+The Table 4 caption does not define turnover, and this project has carried
+`0.5 * sum|d weight|` as an assumption ever since. It is not an assumption. One
+page later the paper states the identity numerically:
+
+> [line 781-783] "turnover of the JM-guided 0/1 strategy applied to the S&P 500 is as low as 44%, meaning that on average, the portfolio manager buys and sells 44% of total allocation (a combined 88% trading) each year"
+
+44% one-way, 88% combined, denominator the whole allocation. That is our
+implementation exactly (`backtest.py:194`). Every alternative convention is
+dead, including the leverage-scaled family, which "of total allocation" rules
+out independently.
+
+### Four published anchors nobody had used
+
+Figures 5 and 6 annotate four cells with a bear share and a **raw count of
+regime shifts**:
+
+> [line 903] "Percentage of Bear Regimes Online Inferred by HMMs for the S&P 500: 27.8%, Number of Regime Shifts: 96"
+> [line 829] "Percentage of Bear Regimes Online Inferred by JMs for the S&P 500: 19.7%, Number of Regime Shifts: 30"
+> [line 851] "Percentage of Bear Regimes Online Inferred by JMs for the DAX: 15.7%, Number of Regime Shifts: 116"
+> [line 873] "Percentage of Bear Regimes Online Inferred by JMs for the Nikkei 225: 25.3%, Number of Regime Shifts: 48"
+
+Converted through our sample lengths, these reproduce Table 4 independently:
+
+| cell | shifts/yr | half that | Table 4 turnover | 1 - bear | Table 4 leverage |
+|---|---|---|---|---|---|
+| S&P HMM | 2.825 | 141.2% | 141% | 72.2% | 72% |
+| S&P JM | 0.883 | 44.1% | 44% | 80.3% | 80% |
+| DAX JM | 3.413 | 170.7% | 170% | 84.3% | 84% |
+| N225 JM | 1.414 | 70.7% | 72% | 74.7% | 75% |
+
+Four confirmations of the turnover identity from the paper alone, and four new
+targets that are counts rather than ratios. Ours against them, HMM, v8.5:
+
+| market | our shifts | Shu | ratio |
+|---|---|---|---|
+| us | 128 | 96 (published) | 1.33 |
+| de | 151 | 167 (from turnover) | 0.90 |
+| jp | 208 | 197 (from turnover) | 1.06 |
+
+The US bear share is 29.1% against 27.8%. **Same exposure budget, a third more
+shifts inside it.** That is the shape of the US deviation: not more time in
+cash, more chopping within the same time.
+
+### What two rounds of parallel investigation eliminated
+
+Round 1 (seven lines, each attacked by an independent refuter) and round 2 (six
+more) eliminated: the data, the reporting window, the training-data start, the
+metric definitions, the selection spec against Section 3.4.3, the unspecified
+HMM fitting choices, the index substitution, a pure persistence account, a
+validation-surface bias, and every alternative turnover convention.
+
+Two findings survived their refuters only in part, and both are recorded as
+open rather than concluded:
+
+- The MDD gap is concentrated rather than spread, but the refuter showed the
+  "index fall is a ceiling" argument false — the sealed delay-10 arm reaches
+  -26.40% over a span in which the index *rose* 16.14%, so whipsaw can exceed
+  the index. It also showed the 2000-02 route reproduces Shu's Sharpe exactly
+  (0.540) while the 2020 route cannot reach the target at all.
+- Inverting Shu's implied flip rates through our own per-market flip curves puts
+  their behaviour at mean k ~ 13 on the US where we sit at 8, k ~ 3.6 on the DAX
+  where we sit at 4, and k ~ 7 on the Nikkei where we sit at 10.8 while still
+  flipping more, because Japan alone carries +0.86 shifts/yr of selection churn.
+  Germany is therefore effectively matched; the US picks too small a k; Japan
+  picks about right and pays for switching. Three markets, three situations —
+  which is why the turnover error changes sign and why no single correction
+  fixes it.
+
+A claim NOT adopted: a pixel reconstruction of Figure 6 put Shu's own US HMM
+drawdown near -22.3% against the printed -28.9%, implying the paper disagrees
+with itself. Table 4 is internally consistent on that cell (0.54 x 11.3 = 6.10,
+0.21 x 28.9 = 6.07), and a max statistic read off a rasterised curve is biased
+shallow. Recorded as unverified. The refutation pass that would have tested it
+died on the account spend limit, along with three other agents.

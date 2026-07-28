@@ -177,6 +177,32 @@ name its convention.
 
 ---
 
+## 7. Turnover definition — CLOSED, the paper states it
+
+Kept as a row so nobody re-opens it. The Table 4 caption (lines 747-753) names
+"portfolio turnover" without defining it, and this project carried
+`0.5 * sum|d weight|` annualised as an assumption for months. It is not an
+assumption. One page later the paper gives the identity in words and numbers:
+
+> [line 781-783] "turnover of the JM-guided 0/1 strategy applied to the S&P 500 is as low as 44%, meaning that on average, the portfolio manager buys and sells 44% of total allocation (a combined 88% trading) each year"
+
+44% one way, 88% combined, denominator the entire allocation. `backtest.py:194`
+computes exactly this. The phrase "of total allocation" independently kills the
+leverage-scaled readings.
+
+Confirmed a second time, from four figure annotations that state a raw shift
+count and a bear share for cells Table 4 also reports — lines 903, 829, 851,
+873. Converting each count through the sample length and halving reproduces the
+printed turnover to 0.002/0.001/0.007/0.013, and one minus the bear share
+reproduces the printed leverage to within a point.
+
+Those annotations are also **targets in their own right**, and counts are
+sharper than ratios. Against v8.5, HMM: us 128 shifts against the published 96;
+de 151 against 167 implied; jp 208 against 197 implied. The US bear share is
+29.1% against 27.8% — the same exposure budget, a third more shifts inside it.
+
+---
+
 ## Do not report confidence intervals in this project
 
 Standing instruction from the owner, and it is the right call. Intervals were
