@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -65,7 +66,30 @@ class MarketInput:
     oos_start: date
 
 
-HMM_WORKERS, MODEL_CHECKPOINT_DAYS = 16, 50
+def _hmm_workers() -> int:
+    """Worker count for the HMM refit loop.
+
+    Fitting one window is independent of every other window, so this is a
+    scheduling knob and never changes a result. It was pinned at 16 while the
+    machine had 32 cores, which left half of them idle. ADAPTIVE_JUMP_N_JOBS
+    (set by scripts/run_fast.sh) overrides it; otherwise leave two cores for the
+    parent process and the rest of the machine.
+    """
+    override = os.environ.get("ADAPTIVE_JUMP_N_JOBS")
+    if override:
+        try:
+            value = int(override)
+        except ValueError:
+            raise ConfigError(
+                f"ADAPTIVE_JUMP_N_JOBS must be an integer, got {override!r}"
+            ) from None
+        if value < 1:
+            raise ConfigError("ADAPTIVE_JUMP_N_JOBS must be at least 1")
+        return value
+    return max(1, (os.cpu_count() or 4) - 2)
+
+
+MODEL_CHECKPOINT_DAYS = 50
 
 
 def load_frozen_data(
@@ -264,7 +288,7 @@ def run_replication(
                 config.model_protocol,
                 config.hmm_protocol,
                 initial=initial_hmm,
-                n_jobs=HMM_WORKERS,
+                n_jobs=_hmm_workers(),
                 checkpoint_every=MODEL_CHECKPOINT_DAYS,
                 progress=save_hmm_progress,
                 observer=study_runtime.model_observer(
