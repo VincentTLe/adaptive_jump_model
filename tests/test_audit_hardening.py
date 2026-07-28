@@ -70,6 +70,59 @@ def test_variant_v8_3_rejects_unfrozen_values(
         load_config(candidate)
 
 
+VARIANT_V8_5 = ROOT / "research-expanding-v8-5.toml"
+
+
+def test_variant_v8_5_differs_from_v8_4_only_in_the_smoothing_grid() -> None:
+    """v8.5 must be a clean read on one edit, so nothing else may move.
+
+    The grid gains k = 6 because line 390 of the paper names it as the
+    method's inherited default. If any other frozen value drifts alongside
+    it, the run stops measuring that edit and the comparison is worthless.
+    """
+    v8_4 = load_config(ROOT / "research-expanding-v8-4.toml")
+    v8_5 = load_config(VARIANT_V8_5)
+
+    assert v8_5.config_id == "shu-replication-expanding-v8-5"
+    assert v8_5.hmm_protocol.smoothing_grid == (0, 2, 4, 6, 8, 20)
+    assert v8_4.hmm_protocol.smoothing_grid == (0, 2, 4, 8, 20)
+
+    # The anchor that puts every market out of sample on the paper's 1990 date.
+    assert v8_5.sample_start == v8_4.sample_start
+    assert v8_5.replication_cutoff == v8_4.replication_cutoff
+    assert v8_5.model_protocol == v8_4.model_protocol
+    assert v8_5.jm_protocol == v8_4.jm_protocol
+    assert v8_5.selection_protocol == v8_4.selection_protocol
+    assert v8_5.metrics_protocol == v8_4.metrics_protocol
+
+    # Same data, so the acquisition manifest is shared and the two runs are
+    # comparable row for row.
+    assert v8_5.markets == v8_4.markets
+
+    rest_5 = dict(vars(v8_5.hmm_protocol))
+    rest_4 = dict(vars(v8_4.hmm_protocol))
+    rest_5.pop("smoothing_grid")
+    rest_4.pop("smoothing_grid")
+    assert rest_5 == rest_4
+
+
+def test_variant_v8_5_rejects_a_grid_the_paper_does_not_justify() -> None:
+    """The allowlist is what stops the grid being tuned toward Table 4."""
+    payload = VARIANT_V8_5.read_text(encoding="utf-8")
+    old = "smoothing_grid = [0, 2, 4, 6, 8, 20]"
+    assert old in payload
+    candidate = ROOT / "tests" / "_tmp_v8_5_grid.toml"
+    try:
+        candidate.write_text(
+            payload.replace(old, "smoothing_grid = [0, 2, 4, 6, 8, 12, 20]", 1),
+            encoding="utf-8",
+        )
+        with pytest.raises(ConfigError, match="invalid HMM smoothing grid"):
+            load_config(candidate)
+    finally:
+        candidate.unlink(missing_ok=True)
+
+
 def test_manifest_rejects_duplicated_source_entry() -> None:
     config = load_config(VARIANT)
     sources = [

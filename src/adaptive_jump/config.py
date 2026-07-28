@@ -454,10 +454,18 @@ def _jm_protocol(row: dict[str, Any]) -> JMProtocol:
 def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
     grid = row.get("smoothing_grid")
     seeds = row.get("seeds")
+    # Allowlist, not validation. The candidate set is a free parameter (the
+    # paper publishes a selection procedure, never a search space), so an open
+    # field here would let the grid be tuned until the numbers agree with
+    # Table 4. Every entry must carry a reason that is not "it scored better".
     allowed_grids = (
         [0, 2, 4, 6, 8, 10, 20, 40, 80, 160, 320, 640, 1280, 2560],
         [0, 2, 4, 8, 20, 40],
-        [0, 2, 4, 8, 20],  # the paper's own Table-3 smoothing grid
+        [0, 2, 4, 8, 20],  # Table 3's illustration, taken as a grid up to v8.4
+        # v8.5: Table 3's values plus k = 6, the setting line 390 names as the
+        # method's inherited default from Bulla et al. (2011). Leaving it out
+        # was our transcription of an illustration, not the paper's design.
+        [0, 2, 4, 6, 8, 20],
     )
     _require(grid in allowed_grids, "invalid HMM smoothing grid")
     _require(seeds == list(range(10)), "HMM seeds must be 0 through 9")
