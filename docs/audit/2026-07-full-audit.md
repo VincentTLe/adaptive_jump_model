@@ -709,3 +709,125 @@ all, which is being tested by calibrating the extraction against Figure 5's
 three JM curves, whose drawdowns Table 4 prints (-26.6%, -39.4%, -45.3%). A
 method that cannot reproduce those has no standing to adjudicate a 6-point
 dispute about Figure 6.
+
+## The US HMM deviation, traced (2026-07-28)
+
+Four rounds of parallel investigation eliminated eighteen hypotheses. The cause
+is the one deviation the project had recorded from the beginning and dismissed
+as harmless.
+
+### Retraction first
+
+An earlier reconstruction of Figure 6 put Shu's own drawdown near -22.3%,
+implying the paper contradicted its own Table 4. **That is withdrawn.** The
+figures are vector (`pdfimages -list` returns zero bitmaps on all 22 pages;
+Figures 5 and 6 are matplotlib Form XObjects), so the geometry is exact. Three
+independent inversions give -28.854%, -28.874% and -28.769%, all with peak
+1998-07-17 and trough 2002-04-15, against a printed -28.9%.
+
+The -22.3% was a convention error, and it was reproduced: reading the plotted
+cumulative-excess curve as a wealth index gives -22.81% on that cell, and errs
+by 20.8pp on average across the nine cells whose answer Table 4 prints (S&P
+buy-and-hold -30.77% against a printed -55.2%). The plotted curve is an
+arithmetic cumulative SUM of daily simple excess returns, so recovering a
+drawdown requires differencing it, adding a risk-free series back and
+compounding.
+
+Two corroborations need no injected risk-free series at all: terminal plotted
+excess 209.65% over 33.988 years = 6.168%/yr against Table 4's Sharpe x Vol =
+6.102 (rounding band [6.019, 6.186]); and inverting the printed Calmar gives
+|MDD| in [27.99%, 30.17%], which excludes -22.3% outright. The bear shading
+recovers 27.80% of days and 96 shifts against the 27.8% and 96 printed at line
+903.
+
+The excess-versus-total question was also settled by measurement rather than
+argument: on our own sealed US path the two conventions differ by 2.10pp, and
+the excess reading is DEEPER, not shallower. It cannot manufacture a 9.18pp gap.
+
+### The cause
+
+The equity series. Recorded as a deviation since the first contract:
+
+> [line 153-155] "The data analyzed in this article comprises the daily total return series of three major equity indices: S&P 500, DAX, and Nikkei 225"
+
+Ours is the CRSP value-weighted total market from Kenneth French's daily
+factors, because no free S&P 500 total-return series reaches back to 1970. It
+was treated as harmless because buy-and-hold matches on every metric.
+
+Buy-and-hold only tests 1990-2023. The difference is in 1987.
+
+| 1987-10-19 | simple | log |
+|---|---|---|
+| S&P 500 (Shu) | -20.47% | -0.2290 |
+| CRSP total market (ours) | **-17.41%** | **-0.1913** |
+
+Twenty percent smaller in log magnitude, on the single most extreme day in the
+whole training window; dropping that one day moves the 1978-1990 window's
+annualised standard deviation from 14.81% to 13.79%.
+
+The consequence is structural, switching on and off with whether that day is
+inside the rolling window. Figure 2 publishes the fitted regime parameters, and
+extracted losslessly from the vectors it splits exactly there:
+
+| windows | n | share | our high-state vol minus Shu's |
+|---|---|---|---|
+| containing 1987-10-19 (fit dates to 1999-08-31) | 3000 | 28.3% | **-7.97pp** |
+| 2009-2010 | 504 | 4.8% | +4.85pp |
+| all others | 7084 | **66.9%** | **+0.12pp**, corr 0.995 |
+
+Year by year through the divergent stretch (Shu / ours, annualised): 1990
+43.88/34.65, 1995 44.00/36.69, 1998 41.79/34.12, then 2000 21.31/21.62 once
+1987 leaves the window. Moment-matching their 1990 parameters implies their high
+state holds about 2.7% of training days against our 8.3%.
+
+A lower, broader high-volatility state is entered more readily. So:
+
+| | ours | Shu |
+|---|---|---|
+| 1990-07-16..1990-10-11 drawdown | -19.72% | -19.08% |
+| 1998-07-17..2002-04-15 drawdown | **-16.15%** | **-28.85%** |
+| cash share, 1998 to the dot-com peak | 48.9% | less |
+| cash share, peak to trough | **88.5%** | long into the 2002 bottom |
+
+The two models agree in 1990 and diverge entirely across 1998-2002, which is
+where the whole 9.18pp lives. Taking Figure 6's position path verbatim and
+applying it to OUR returns reproduces seven of eight Table 4 cells within
+rounding, with the trough at 2002-04-11 — so the data and the metrics are fine
+and only the regime calls differ. The two position paths agree on 94.5% of days.
+
+### What was eliminated on the way, and what it cost to be sure
+
+The local-optimum explanation was tested and killed: on eight windows across the
+divergent stretch, the protocol's ten seeds, forty single-pass k-means++ starts,
+and a sweep over 21 mean pairs spanning +-6 sigma ALL converge to the identical
+log-likelihood, volatilities and state shares. Our fit is the global optimum;
+Shu's 43.88% is not a higher-likelihood solution on our data. That is what
+forced the conclusion back onto the input series.
+
+Also eliminated across the four rounds: the reporting window, the training-data
+start, all three metric definitions, the selection spec, every rival turnover
+convention, every smoother micro-convention, switching churn, validation-surface
+bias, and a pure persistence account.
+
+### Why this hid for so long
+
+Three layers. Buy-and-hold matches, but only tests 1990-2023 while the defect is
+in 1987. Round 1's index probe held the SIGNAL fixed and measured only the
+return channel; the real channel is the refit, where a different index gives
+different fitted parameters and only then a different signal — its own refuter
+noted the refit channel was "only partially measured". And the error is
+structural rather than random, switching with window membership, so it vanishes
+from any full-sample average.
+
+It also explains why Germany and Japan match on 7 of 8: those two use the
+paper's own indices. Only the US is substituted.
+
+### Consequence
+
+This is a SPECIFIED-AND-WE-DEVIATE defect, not a free parameter. Fixing it is
+replication. Free daily S&P 500 price is available from 1977 (Yahoo ^GSPC,
+11,850 sessions, verified: 1987-10-19 = -20.47%), the official ^SP500TR from
+1988 (9,070 sessions), and Shiller's monthly dividends from 1871. For the HMM
+the price series suffices: over the 9,070 overlapping sessions the daily
+log-return volatility of price and total return differ by 0.0011pp with
+correlation 0.99960.
