@@ -27,6 +27,11 @@ artifacts/*
 artifacts/hmm-residual/*
 !artifacts/hmm-residual/*/
 artifacts/hmm-residual/*/*
+!artifacts/data-provenance/
+artifacts/data-provenance/*
+!artifacts/data-provenance/*.csv
+!artifacts/data-provenance/report.txt
+!artifacts/data-provenance/reply-to-andrew-leahy.md
 !artifacts/hmm-residual/README.md
 !artifacts/hmm-residual/*/report.txt
 !artifacts/hmm-residual/*/*.json

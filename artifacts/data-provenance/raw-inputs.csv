@@ -1,0 +1,15 @@
+file,description,url,first,last,rows,sha256
+INTGSTDEM193N.csv,"FRED / IMF IFS, Germany 3-month Treasury bill rate",https://fred.stlouisfed.org/series/INTGSTDEM193N,1975-07-01,2007-08-01,386,8693c22c905abe575a0dc05310ac028d4db074ed3d63054b4be0801ad897714d
+INTGSTJPM193N.csv,"FRED / IMF IFS, Japan 3-month Treasury bill rate",https://fred.stlouisfed.org/series/INTGSTJPM193N,1955-04-01,2017-06-01,747,f068a59109a996b265b64a48062b5201ce3202b4076e6a08c44dc69fea1d341d
+IR3TIB01DEM156N.csv,"FRED / OECD MEI, Germany 3-month interbank rate",https://fred.stlouisfed.org/series/IR3TIB01DEM156N,1960-01-01,2026-06-01,798,2b9d26f8dfc56280b1c19d5d02da016b71edf508712f947e88751360c98b3bd5
+boj_straclu3m.csv,"Bank of Japan, 3-month uncollateralised overnight call rate",https://www.stat-search.boj.or.jp/,1970-01-01,2023-12-01,648,4cf910c9107ba9556af79e4090e6629dc8e835ec836a4edfc3ac73b79354f6c8
+ecb_3m_aaa.csv,"ECB Data Portal, euro-area AAA government 3-month spot yield",https://data.ecb.europa.eu/data/datasets/YC,2004-09-06,2026-07-23,5593,4b96c8b50d4ccad6bc888e39ac61628ff91557cf9462af8aebb184b2518d6291
+ff_us_daily.csv,Kenneth French daily US research factors (CRSP universe),https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html,,,2,f051e37d30c129359c6801d9d2a715c929b19aa3be0ffe684b93995ede9ffebb
+jp_equity_tr_full.csv,"Nikkei 225 Total Return, mirror export used for the 2011+ segment",https://indexes.nikkei.co.jp/en/nkave/index/profile?idx=nk225tr,1970-01-05,2023-12-29,13282,f03965755b8789c3b878b6982fc0cd84e8a83f9c9d1c8aa8169a0ecbd509689d
+jst_japan_eq.csv,"Jorda-Schularick-Taylor Macrohistory Database, Japan equity dividend yield",https://www.macrohistory.net/database/,1964-01-01,2020-01-01,57,519c9c856772aeed73546f3b7e6367792da0b20700b50b1a129d96a29fa9359e
+n225_price_daily.csv,Nikkei 225 price index daily close,https://finance.yahoo.com/quote/%5EN225/history/,1965-01-05,2023-12-29,14508,93c5b6fcbc0ebfc2487ed317eaa986ef571366400812575b2e7c26b5c6de52fe
+n225tr_official_merged.csv,"Nikkei 225 Total Return, official Nikkei Inc. values via Investing.com",https://indexes.nikkei.co.jp/en/nkave/index/profile?idx=nk225tr,2011-12-19,2026-07-24,3092,1c2977502af445abeccb7410f135a9efcdabfa6930f4e37ffb09ce5980ab9fc7
+shiller_sp500_monthly.csv,Robert Shiller monthly S&P 500 price and dividend series,https://raw.githubusercontent.com/datasets/s-and-p-500/main/data/data.csv,1871-01-01,2026-06-01,1866,28d16941c581bda9bdcae4e0f9e3cc4b61204f8484e8c2249abdde2efe2cc3c4
+sp500_price_daily.csv,"Yahoo Finance chart API, ^GSPC",https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d,1966-01-03,2023-12-29,14598,6aa6e894492bed5bd4c84440fb4617be0657a6b9ed39e7c8d01fef308caed147
+sp500_tr_daily.csv,"Yahoo Finance chart API, ^SP500TR (official S&P 500 Total Return)",https://query1.finance.yahoo.com/v8/finance/chart/%5ESP500TR?interval=1d,1988-01-04,2023-12-29,9070,d8e614aaf868f48d5683c8b2e58bda01362648d4cdb7e00ca903ca644936c193
+stooq_dax_daily.csv,"Stooq ^dax daily close, DAX performance index",https://stooq.com/q/d/?s=%5Edax,1959-09-28,2026-07-24,16815,a0ea6e8edcae145d00d0d76894372e1c2590dc6926009ebf5f17b9ea22e3893d
