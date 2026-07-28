@@ -188,6 +188,7 @@ def open_baseline_metrics(
                     metrics_protocol.expected_shortfall_quantile
                 ),
                 turnover_scale=metrics_protocol.turnover_scale,
+                drawdown_basis=metrics_protocol.drawdown_basis,
             )
             rows.append({"model": model_name, "delay": delay, **values})
     return pd.DataFrame.from_records(rows)

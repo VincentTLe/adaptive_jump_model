@@ -7,6 +7,8 @@ import math
 import numpy as np
 import pandas as pd
 
+from adaptive_jump.config import LEGACY_DRAWDOWN_BASIS, PAPER_DRAWDOWN_BASIS
+
 
 class BacktestError(ValueError):
     """Raised when a signal or return frame violates the accounting contract."""
@@ -122,6 +124,7 @@ def performance_metrics(
     volatility_ddof: int = 1,
     expected_shortfall_quantile: float = 0.05,
     turnover_scale: float = 0.5,
+    drawdown_basis: str = LEGACY_DRAWDOWN_BASIS,
 ) -> dict[str, float | int | str]:
     """Calculate metrics, reporting paper turnover unless explicitly overridden."""
     required = [
@@ -131,6 +134,12 @@ def performance_metrics(
         "one_way_turnover",
         "strategy_return",
     ]
+    if drawdown_basis == PAPER_DRAWDOWN_BASIS:
+        # The drawdown is measured on the risky leg alone, so the equity return
+        # is needed and the cash leg is deliberately not.
+        required.append("equity_simple")
+    elif drawdown_basis != LEGACY_DRAWDOWN_BASIS:
+        raise BacktestError(f"unknown drawdown basis: {drawdown_basis}")
     missing = [column for column in required if column not in result]
     if missing:
         raise BacktestError(f"missing metric columns: {missing}")
@@ -161,10 +170,25 @@ def performance_metrics(
 
     observations = len(frame)
     wealth = np.cumprod(1.0 + values)
-    peaks = np.maximum.accumulate(np.r_[1.0, wealth])
-    drawdowns = np.r_[1.0, wealth] / peaks - 1.0
-    maximum_drawdown = float(drawdowns.min())
     cagr = float(wealth[-1] ** (periods_per_year / observations) - 1.0)
+
+    # Return and the drawdown are read off different paths on purpose. Table 4
+    # labels its return row "including the risk-free rate", and its buy-and-hold
+    # drawdowns only come out right with the equity leg at total return; the
+    # caption of Figure 5 then says the strategy curve is flat while fully
+    # invested in the risk-free asset. So the drawdown path pays nothing while
+    # in cash, which for a fully invested portfolio is the same path as above
+    # and for a 0/1 strategy is not.
+    if drawdown_basis == PAPER_DRAWDOWN_BASIS:
+        risky = (frame["position"] * frame["equity_simple"]).to_numpy(dtype=float)
+        if not np.isfinite(risky).all() or (risky <= -1).any():
+            raise BacktestError("equity returns must be finite and above -1")
+        drawdown_wealth = np.cumprod(1.0 + risky)
+    else:
+        drawdown_wealth = wealth
+    peaks = np.maximum.accumulate(np.r_[1.0, drawdown_wealth])
+    drawdowns = np.r_[1.0, drawdown_wealth] / peaks - 1.0
+    maximum_drawdown = float(drawdowns.min())
     volatility = float(
         frame["strategy_return"].std(ddof=volatility_ddof) * math.sqrt(periods_per_year)
     )

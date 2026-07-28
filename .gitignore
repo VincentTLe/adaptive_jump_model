@@ -18,7 +18,25 @@ dist/
 # Market data and generated outputs
 data/raw/*
 data/processed/*
-artifacts/
+artifacts/*
+# ...except the small, citable outputs of the HMM residual investigation. Runs
+# stay out (they are hundreds of megabytes and reproducible from the configs),
+# but the reports, the extracted position paths and the per-cell tables are the
+# evidence the audit ledger cites, and losing them means redoing the work.
+!artifacts/hmm-residual/
+artifacts/hmm-residual/*
+!artifacts/hmm-residual/*/
+artifacts/hmm-residual/*/*
+!artifacts/hmm-residual/README.md
+!artifacts/hmm-residual/*/report.txt
+!artifacts/hmm-residual/*/*.json
+!artifacts/hmm-residual/01-status/hmm-vs-table4.*
+!artifacts/hmm-residual/02-turnover-anatomy/*.csv
+!artifacts/hmm-residual/03-table3-anchor/*
+!artifacts/hmm-residual/04-figure6-path/*.csv
+!artifacts/hmm-residual/05-mdd-anatomy/*.csv
+!artifacts/hmm-residual/06-mdd-convention/*.csv
+!artifacts/hmm-residual/v9-us-hmm/metrics.csv
 reports/
 *.log
 *.pid

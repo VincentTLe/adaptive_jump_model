@@ -138,6 +138,33 @@ clear all three move the HMM Sharpe far from the paper (de +0.043 -> -0.240).
 Grid choice is therefore a live free parameter with a known, large spread; the
 v8.5 change is the one edit to it that has an a priori justification.
 
+**How much of Table 4 this row now owns (2026-07-28).** After the S&P 500
+substitution and the drawdown basis of row 8, turnover is the *only* Table 4
+metric outside tolerance in any of the three markets, and this grid is the only
+free parameter it depends on. The dependence is not in the smoother and not in
+the metric:
+
+- our fixed-k persistence curve reproduces Table 3 to a mean 1.9% on the paper's
+  own index, so the smoother and the online state sequence are right;
+- Shu's own position path, read off Figure 6 and applied to our returns, gives
+  turnover 1.4123 against the published 1.410 and exactly 96 regime shifts, so
+  the turnover definition and the trading accounting are right;
+- of 128 / 152 / 208 signal flips, only 3 / 3 / 2 are manufactured by switching
+  candidate at a month boundary, so the composition layer is not the cause.
+
+Inverting the published turnover through our own fixed-k curve puts Shu's
+effective k near 13.4 (us), 3.6 (de) and 6.4 (jp) — no single value, and one of
+them lands in the gap our grid leaves between 8 and 20. Our v9 US picks are k20
+33%, k8 29%, k6 21%, k0 9%, k4 6%; the 9% of months at k = 0, where no filter is
+applied at all, contribute about 23% of all our trading.
+
+**This row is therefore recorded as UNIDENTIFIED, not as an open gap to be
+closed.** The paper publishes a selection procedure and no candidate set, and
+the turnover row is reachable from within our grid — so a set that reproduces
+141% certainly exists. Finding it by search is the move CLAUDE.md forbids. Any
+future change here needs a justification that could have been written before the
+number was known, as adding k = 6 did.
+
 ---
 
 ## 4. Risk-free instrument for Germany and Japan — BOUNDED
@@ -200,6 +227,59 @@ Those annotations are also **targets in their own right**, and counts are
 sharper than ratios. Against v8.5, HMM: us 128 shifts against the published 96;
 de 151 against 167 implied; jp 208 against 197 implied. The US bear share is
 29.1% against 27.8% — the same exposure budget, a third more shifts inside it.
+
+---
+
+## 8. Drawdown basis — CLOSED, two published facts pin it down
+
+**What the paper says.** Nothing directly. Table 4's caption defines the row as
+"maximum drawdown ("MDD")" and stops there, and the return row above it is
+labelled
+
+> [line 747] "annualized performance metric: compound annual growth rate ("Return", including the risk-free rate),"
+
+which tells us the *return* row credits the cash leg, and says nothing about
+which path the drawdown is read from. For a 0/1 strategy those are different
+paths, and the difference is large: on the US HMM it is 5.9 percentage points.
+
+**What settles it.** Two published facts, neither of which is a fit:
+
+1. Table 4's buy-and-hold drawdowns (-55.2% / -72.7% / -79.1%) are reproduced to
+   0.001 / 0.000 / 0.012 with the equity leg at total return, and missed by
+   0.045 / 0.028 / 0.031 on any excess-return path. So the invested leg is total
+   return.
+2. The caption of Figure 5 says the shading marks days
+
+   > [line 899-900] "when the JM-guided 0/1 strategy is fully invested in the risk-free asset, leading to a flat yellow curve."
+
+   So the plotted strategy path is flat in cash: the cash leg contributes
+   nothing.
+
+Total return when invested plus nothing when in cash is a single basis, and it
+is forced by those two statements rather than chosen to fit anything.
+
+**What we do.** v9.1 onward: `[metrics] maximum_drawdown =
+"risky_leg_wealth_flat_in_cash"`. Configs written before the field existed
+default to `total_wealth`, so their sealed runs keep replaying to the numbers
+they recorded.
+
+**Why buy-and-hold could not settle it alone.** A portfolio that is never in
+cash cannot be told apart by what the cash leg earns; its two columns agree to
+every digit. The only cells that can decide are ones where the paper's own
+positions are known, which is why Figures 5 and 6 were extracted.
+
+**Consequence, measured.** Across ten cells — three buy-and-hold controls, our
+three HMM paths, and four using Shu's own published positions — the mean
+absolute drawdown error falls from 0.0330 to 0.0072 and the mean absolute Calmar
+error from 0.0262 to 0.0055. The US HMM drawdown moves from -23.21% to -29.24%
+against the published -28.9%, and its Calmar from 0.2666 to 0.2117 against 0.21.
+Full table in docs/audit/2026-07-full-audit.md and
+artifacts/hmm-residual/06-mdd-convention/.
+
+**Left unresolved.** Whether the drawdown path carries the 10bp trading cost.
+Including it gives mean errors 0.0116 on MDD and 0.0030 on Calmar — better on
+one row, worse on the other, and below what Table 4's printed precision can
+separate. Recorded as unresolvable rather than decided.
 
 ---
 

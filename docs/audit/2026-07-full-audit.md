@@ -886,3 +886,207 @@ Drawdown and turnover remain outside tolerance: MDD 0.057, Calmar 0.057,
 turnover 0.296. The index accounts for roughly 38% of the drawdown gap and 37%
 of the turnover gap. So the traced cause is real and large, and it is not the
 whole story. Recorded as such rather than declared closed.
+
+## The residual, resolved: two separate defects, not one (2026-07-28)
+
+The v9 readout left the US HMM at 5/8 with drawdown 0.057, Calmar 0.057 and
+turnover 0.296 outside tolerance, and recorded that the index substitution
+accounted for only about 38% of the drawdown gap. Germany and Japan sat at 7/8,
+each failing turnover alone. This section closes both open questions. Every
+number below is rebuilt by a script in `scripts/` and stored under
+`artifacts/hmm-residual/`, with the directory's README naming which script
+produces which file.
+
+### Step 1: the failure common to all three markets is turnover, and its sign is not
+
+Reading one market at a time had hidden the shape of the problem. Across all
+three at once (`artifacts/hmm-residual/01-status/`):
+
+| | ours | Shu | deviation | relative |
+|---|---|---|---|---|
+| S&P 500 (v9) | 170.7% | 141% | 0.296 | +21.1% |
+| DAX (v8.5) | 222.7% | 246% | 0.234 | **-9.5%** |
+| Nikkei (v8.5) | 314.4% | 290% | 0.244 | +8.4% |
+
+We trade MORE than Shu in the US and Japan and LESS in Germany. No account in
+which our smoother is systematically less persistent can produce that, because
+such an account pushes all three the same way. Calmar, meanwhile, is not an
+independent failure at all: the paper defines it as average excess return over
+MDD, and with Sharpe and Volatility already matching, Calmar is our drawdown
+deviation restated. Two questions remained, not four.
+
+### Step 2: Table 3 is the anchor for persistence that contains no selection
+
+Table 4's turnover row mixes how persistent a fixed smoother is with which
+smoother the monthly cross-validation picks. Table 3 publishes the first alone:
+average regime shifts per year, 1982-2023, at k fixed to 0, 2, 4, 8, 20. It
+begins in 1982 because that is 3000 trading days after the 1970 sample start,
+which is where the online states begin.
+
+Shifts per year at fixed k (`artifacts/hmm-residual/03-table3-anchor/`):
+
+| k | Table 3 | us CRSP | **us S&P 500** | de | jp |
+|---|---|---|---|---|---|
+| 0 | 8.5 | 9.62 | **8.48** | 8.10 | 14.01 |
+| 2 | 6.6 | 7.29 | **6.57** | 6.48 | 11.58 |
+| 4 | 4.9 | 5.05 | **4.86** | 4.57 | 7.43 |
+| 8 | 3.2 | 3.24 | **3.10** | 3.43 | 5.00 |
+| 20 | 2.0 | 2.14 | **1.91** | 2.24 | 2.81 |
+| mean abs error | | 7.0% | **1.9%** | 6.5% | 57.7% |
+
+On the paper's own index our fixed-k curve reproduces Table 3 to 1.9%, with the
+first three rows inside 1%. This is a second, wholly independent confirmation of
+the index diagnosis: Table 3 involves no selection, no trading, no metric
+definition and no Table 4 number. It also identifies Table 3's unnamed index as
+the S&P 500, and rules Japan out as its subject — the Nikkei is 40-75% jumpier
+at every k, which is a property of that market, not a defect, since Table 4's
+own Nikkei turnover (290%) is more than twice its S&P 500 turnover (141%).
+
+**Consequence: the smoother and the state sequence are right, so the whole
+turnover deviation lives in the monthly selection.**
+
+### Step 3: Shu's own position paths, recovered from Figures 5 and 6
+
+Figure 5's caption states what its shading means: bear regimes "shifted forward
+by 2 days, when the JM-guided 0/1 strategy is fully invested in the risk-free
+asset, leading to a flat yellow curve". The shading is therefore the traded
+position, not the raw regime call, and Figure 6 defers to that caption.
+
+The figures are matplotlib vector drawings, so the shading is exact rather than
+estimated. Each panel is one path with two y levels, walking left to right along
+the bottom with rectangular teeth to the top; the teeth are the shaded
+intervals. Four paths were recovered, and each carries two annotations that test
+the parse without being able to influence it:
+
+| panel | shaded fraction | annotated | teeth x2 | annotated shifts |
+|---|---|---|---|---|
+| Fig 6 US HMM | 0.2783 | 27.8% | 96 | 96 |
+| Fig 5 US JM | 0.1978 | 19.7% | 30 | 30 |
+| Fig 5 DAX JM | 0.1565 | 15.7% | 116 | 116 |
+| Fig 5 Nikkei JM | 0.2535 | 25.3% | 48 | 48 |
+
+All eight checks pass; the extractor writes nothing otherwise. Stored in
+`artifacts/hmm-residual/04-figure6-path/`.
+
+### Step 4: our turnover metric is right; the candidate set is what differs
+
+Figure 6's path applied to our v9 returns (`artifacts/hmm-residual/05-mdd-anatomy/`):
+
+| | Shu's positions on our returns | Table 4 | deviation |
+|---|---|---|---|
+| Turnover | **1.4123** | 1.410 | **0.002** |
+| regime shifts | **96** | 96 | **0** |
+| Volatility | 0.1129 | 0.113 | 0.000 |
+| Leverage | 0.7217 | 0.720 | 0.002 |
+| ES 5% | -0.0178 | -0.018 | 0.000 |
+| Return | 0.0879 | 0.085 | 0.003 |
+| Sharpe | 0.5719 | 0.540 | 0.032 |
+| MDD | -0.2303 | -0.289 | **0.059** |
+
+Turnover to 0.002 and the shift count exactly. Our turnover definition, our
+returns and our trading-cost accounting are all correct, and the two position
+paths agree on 97.1% of days. What differs is which k the monthly
+cross-validation picks — and the paper specifies a selection procedure while
+never publishing a candidate set. Two causes were tested and killed
+(`artifacts/hmm-residual/02-turnover-anatomy/`):
+
+- **the grid cannot reach it** — false; the fixed-k curve brackets Shu's
+  turnover in all three markets (implied k about 13.4 us, 3.6 de, 6.4 jp);
+- **the selector manufactures flips at month boundaries** — false; of 128, 152
+  and 208 signal flips, only 3, 3 and 2 fall on a day where the candidate
+  changed while the incoming candidate itself did not move, i.e. 1-2%.
+
+What is left is the selection itself, on a free parameter. Our v9 US picks are
+k20 33%, k8 29%, k6 21%, k0 9%, k4 6%; the k=0 months alone, 9% of the sample,
+contribute about 23% of all our trading. **The turnover row is not identified by
+the paper's specification, and this is recorded as unidentified rather than
+closed by choosing a grid.** Searching the candidate set for the version that
+reproduces 141% is exactly the move this project forbids itself.
+
+### Step 5: the drawdown was never a modelling gap
+
+The same substitution that closed turnover to 0.002 left the drawdown at 0.059 —
+almost precisely our own path's 0.057. A deviation that survives replacing our
+regime calls with the paper's is not about regime calls. It is the definition.
+
+Two published facts pin it down, and neither is a fit:
+
+1. **Table 4's buy-and-hold drawdowns** (-55.2% / -72.7% / -79.1%) are
+   reproduced to 0.001 / 0.000 / 0.012 with the equity leg at total return, and
+   missed by 0.045 / 0.028 / 0.031 on any excess-return path. The invested leg
+   is total return.
+2. **Figure 5's caption** says the strategy curve is *flat* while fully invested
+   in the risk-free asset. The cash leg contributes nothing.
+
+Total return when invested, nothing when in cash. For a fully invested portfolio
+that is the same path as before, which is why buy-and-hold — the control we had
+been trusting — cannot distinguish the two: its A and D columns agree to every
+digit. Only a path that actually goes to cash can, and the four figure panels
+are the only cells where the paper's own positions can be run on our returns.
+
+Mean absolute error across those four cells:
+
+| | A total wealth | B excess | C cumulative excess | **D flat in cash** |
+|---|---|---|---|---|
+| MDD | 0.0330 | 0.0405 | 0.1189 | **0.0072** |
+| Calmar | 0.0262 | 0.0125 | 0.0400 | **0.0055** |
+
+Every cell under basis D (`artifacts/hmm-residual/06-mdd-convention/`):
+
+| market | model | path | MDD | Table 4 | dev | Calmar | Table 4 | dev |
+|---|---|---|---|---|---|---|---|---|
+| us | B&H | control | -0.5525 | -0.552 | 0.001 | 0.1587 | 0.16 | 0.001 |
+| de | B&H | control | -0.7268 | -0.727 | 0.000 | 0.0906 | 0.09 | 0.001 |
+| jp | B&H | control | -0.7793 | -0.791 | 0.012 | 0.0392 | 0.04 | 0.001 |
+| us | HMM | ours | -0.2924 | -0.289 | 0.003 | 0.2117 | 0.21 | 0.002 |
+| de | HMM | ours | -0.4385 | -0.405 | 0.034 | 0.1175 | 0.12 | 0.003 |
+| jp | HMM | ours | -0.5101 | -0.486 | 0.024 | 0.0520 | 0.06 | 0.008 |
+| us | HMM | Shu, Fig 6 | -0.2943 | -0.289 | 0.005 | 0.2195 | 0.21 | 0.009 |
+| us | JM | Shu, Fig 5 | -0.2664 | -0.266 | 0.000 | 0.3309 | 0.33 | 0.001 |
+| de | JM | Shu, Fig 5 | -0.4101 | -0.394 | 0.016 | 0.1754 | 0.18 | 0.005 |
+| jp | JM | Shu, Fig 5 | -0.4458 | -0.453 | 0.007 | 0.1272 | 0.12 | 0.007 |
+
+Ten cells, largest drawdown error 0.034 and largest Calmar error 0.009, against
+0.059 and 0.026 on the basis we had been using. One detail stays unresolved:
+whether the drawdown path carries the trading cost. Including it (`E`) gives
+mean errors 0.0116 on MDD and 0.0030 on Calmar — better on one row, worse on the
+other, and the difference is below what Table 4's printed precision can settle.
+Recorded as unresolvable, and `D` is taken because it fits the drawdown row,
+which is the row in question.
+
+This lands as `research-expanding-v9-1.toml`, one field away from v9:
+`[metrics] maximum_drawdown = "risky_leg_wealth_flat_in_cash"`. Selection scores
+candidates on validation Sharpe and never reads a drawdown, so no fitted state
+changes and no run needs repeating. Configs written before the field existed
+default to the old basis, and all three live sealed runs still replay at
+`maximum_metric_absolute_difference` 0.0.
+
+### Where the three markets now stand
+
+HMM, delay 1, on the paper's drawdown basis:
+
+| metric | S&P 500 (v9) | DAX (v8.5) | Nikkei (v8.5) |
+|---|---|---|---|
+| Return | 8.50% / 8.5% | 6.80% / 6.4% | 2.24% / 2.5% |
+| Volatility | 11.31% / 11.3% | 14.00% / 14.0% | 15.98% / 16.0% |
+| Sharpe | 0.5471 / 0.54 | 0.3681 / 0.35 | 0.1771 / 0.19 |
+| MDD | -29.24% / -28.9% | -43.85% / -40.5% | -51.01% / -48.6% |
+| Calmar | 0.2117 / 0.21 | 0.1175 / 0.12 | 0.0555 / 0.06 |
+| ES 5% | -1.79% / -1.8% | -2.20% / -2.2% | -2.51% / -2.5% |
+| Turnover | 170.7% / 141% | 222.7% / 246% | 314.4% / 290% |
+| Leverage | 72.40% / 72% | 72.98% / 73% | 67.96% / 68% |
+| **within 0.05** | **7/8** | **7/8** | **7/8** |
+
+The US goes from 4/8 at v8.4 to 7/8, and every market now fails on turnover and
+nothing else — on a candidate set the paper does not publish.
+
+### What this cost, and the two claims it withdraws
+
+The earlier conclusion that Figure 6's path on our returns "reproduces seven of
+eight Table 4 cells" was measured on the CRSP series, where the 1998-2002
+drawdown is deeper for reasons unrelated to the definition; on the S&P 500 it
+reproduces six of eight, and the cell it loses is the drawdown. That coincidence
+is what let the total-wealth basis look confirmed. **Two claims are withdrawn:**
+that the drawdown basis was settled, and that the index substitution left "about
+38% of the drawdown gap" unexplained — the index explains none of that gap,
+because the gap was never in the index.

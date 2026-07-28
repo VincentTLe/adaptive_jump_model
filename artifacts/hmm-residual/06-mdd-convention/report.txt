@@ -1,0 +1,37 @@
+MDD theo từng quy ước, so với Table 4
+
+thị trường  mô hình       đường                Shu      A_total     B_excess     C_cumexc       D_flat  E_flat_cost
+us          buy_and_hold  đối chứng         -0.552      -0.5525      -0.5974      -0.7234      -0.5525      -0.5525
+de          buy_and_hold  đối chứng         -0.727      -0.7268      -0.7554      -1.2480      -0.7268      -0.7268
+jp          buy_and_hold  đối chứng         -0.791      -0.7793      -0.8224      -1.3213      -0.7793      -0.7793
+us          hmm           đường của ta      -0.289      -0.2321      -0.3219      -0.3708      -0.2924      -0.2994
+de          hmm           đường của ta      -0.405      -0.4020      -0.4737      -0.6129      -0.4385      -0.4474
+jp          hmm           đường của ta      -0.486      -0.5173      -0.5699      -0.7538      -0.5101      -0.5333
+us          hmm           Shu (hình)        -0.289      -0.2303      -0.3465      -0.4001      -0.2943      -0.3097
+us          fixed_jm      Shu (hình)        -0.266      -0.2664      -0.2669      -0.2950      -0.2664      -0.2664
+de          fixed_jm      Shu (hình)        -0.394      -0.3786      -0.4457      -0.5548      -0.4101      -0.4136
+jp          fixed_jm      Shu (hình)        -0.453      -0.3955      -0.5048      -0.6276      -0.4458      -0.4589
+
+Sai số tuyệt đối trung bình:
+  đối chứng B&H (3 TT)               0.0041       0.0351       0.4076       0.0041       0.0041   -> tốt nhất: A_total
+  HMM của ta (3 TT)                  0.0304       0.0618       0.1858       0.0203       0.0334   -> tốt nhất: D_flat
+  vị thế của Shu (4 ô)               0.0330       0.0405       0.1189       0.0072       0.0116   -> tốt nhất: D_flat
+
+Calmar (dòng công bố thứ hai, cùng dựa trên lựa chọn đó) — sai số tuyệt đối trung bình:
+  đối chứng B&H (3 TT)               0.0009       0.0063       0.0310       0.0009       0.0009   -> tốt nhất: A_total
+  vị thế của Shu (4 ô)               0.0262       0.0125       0.0400       0.0055       0.0030   -> tốt nhất: E_flat_cost
+
+Phân xử: chỉ bốn ô dùng VỊ THẾ CỦA CHÍNH SHU mới tách được A khỏi D, vì B&H không bao giờ ở tiền mặt nên chân tiền mặt không tham gia (cột A và D của B&H trùng nhau từng chữ số).
+  -> quy ước bốn ô đó chọn: D_flat  A_total 0.0330  B_excess 0.0405  C_cumexc 0.1189  D_flat 0.0072  E_flat_cost 0.0116
+
+Với D_flat, mọi ô — MDD và Calmar:
+  us buy_and_hold  đối chứng       MDD  -0.5525 vs  -0.552 (lệch 0.001)   Calmar 0.1587 vs  0.16 (lệch 0.001)
+  de buy_and_hold  đối chứng       MDD  -0.7268 vs  -0.727 (lệch 0.000)   Calmar 0.0906 vs  0.09 (lệch 0.001)
+  jp buy_and_hold  đối chứng       MDD  -0.7793 vs  -0.791 (lệch 0.012)   Calmar 0.0392 vs  0.04 (lệch 0.001)
+  us hmm           đường của ta    MDD  -0.2924 vs  -0.289 (lệch 0.003)   Calmar 0.2117 vs  0.21 (lệch 0.002)
+  de hmm           đường của ta    MDD  -0.4385 vs  -0.405 (lệch 0.034)   Calmar 0.1175 vs  0.12 (lệch 0.003)
+  jp hmm           đường của ta    MDD  -0.5101 vs  -0.486 (lệch 0.024)   Calmar 0.0520 vs  0.06 (lệch 0.008)
+  us hmm           Shu (hình)      MDD  -0.2943 vs  -0.289 (lệch 0.005)   Calmar 0.2195 vs  0.21 (lệch 0.009)
+  us fixed_jm      Shu (hình)      MDD  -0.2664 vs  -0.266 (lệch 0.000)   Calmar 0.3309 vs  0.33 (lệch 0.001)
+  de fixed_jm      Shu (hình)      MDD  -0.4101 vs  -0.394 (lệch 0.016)   Calmar 0.1754 vs  0.18 (lệch 0.005)
+  jp fixed_jm      Shu (hình)      MDD  -0.4458 vs  -0.453 (lệch 0.007)   Calmar 0.1272 vs  0.12 (lệch 0.007)

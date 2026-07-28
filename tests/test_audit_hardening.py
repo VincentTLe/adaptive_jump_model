@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from adaptive_jump.backtest import apply_signal
+from adaptive_jump.backtest import BacktestError, apply_signal, performance_metrics
 from adaptive_jump.cli import RunError, _verify_manifest
 from adaptive_jump.config import ConfigError, load_config
 from adaptive_jump.features import make_features, prepare_market
@@ -163,6 +163,131 @@ def test_variant_v9_differs_from_v8_5_only_in_the_us_equity_series() -> None:
     assert new["us"].equity.source_id == "SP500_TR"
     assert old["us"].equity.source_id == "FRENCH_US_TR"
     assert new["us"].equity.settings["file_path"].endswith("us_equity_tr_sp500.csv")
+
+
+VARIANT_V9_1 = ROOT / "research-expanding-v9-1.toml"
+
+
+def test_variant_v9_1_differs_from_v9_only_in_the_drawdown_basis() -> None:
+    """v9.1 must isolate the drawdown definition, or the run measures nothing.
+
+    Every fitted state is identical to v9 by construction -- selection scores
+    candidates on validation Sharpe and never reads a drawdown -- so this
+    variant changes what is reported and nothing that is computed.
+    """
+    v9 = load_config(VARIANT_V9)
+    v9_1 = load_config(VARIANT_V9_1)
+
+    assert v9_1.config_id == "shu-replication-expanding-v9-1"
+    assert v9.metrics_protocol.drawdown_basis == "total_wealth"
+    assert v9_1.metrics_protocol.drawdown_basis == "risky_leg_wealth_flat_in_cash"
+
+    assert v9_1.sample_start == v9.sample_start
+    assert v9_1.replication_cutoff == v9.replication_cutoff
+    assert v9_1.model_protocol == v9.model_protocol
+    assert v9_1.jm_protocol == v9.jm_protocol
+    assert v9_1.hmm_protocol == v9.hmm_protocol
+    assert v9_1.selection_protocol == v9.selection_protocol
+    assert v9_1.backtest_protocol == v9.backtest_protocol
+    assert v9_1.markets == v9.markets
+
+    rest_new = dict(vars(v9_1.metrics_protocol))
+    rest_old = dict(vars(v9.metrics_protocol))
+    rest_new.pop("drawdown_basis")
+    rest_old.pop("drawdown_basis")
+    assert rest_new == rest_old
+
+
+def test_variant_v9_1_rejects_an_unnamed_drawdown_basis(tmp_path: Path) -> None:
+    payload = VARIANT_V9_1.read_text(encoding="utf-8")
+    old = 'maximum_drawdown = "risky_leg_wealth_flat_in_cash"'
+    assert old in payload
+    candidate = tmp_path / "research.toml"
+    candidate.write_text(
+        payload.replace(old, 'maximum_drawdown = "excess_wealth"', 1),
+        encoding="utf-8",
+    )
+    with pytest.raises(ConfigError, match="invalid metric definition"):
+        load_config(candidate)
+
+
+def test_configs_written_before_the_field_existed_keep_the_legacy_basis() -> None:
+    """A sealed run must keep replaying to the numbers it recorded."""
+    for variant in (VARIANT, VARIANT_V8_3, VARIANT_V8_5, VARIANT_V9):
+        config = load_config(variant)
+        assert config.metrics_protocol.drawdown_basis == "total_wealth", variant.name
+
+
+def test_paper_drawdown_basis_is_flat_while_the_strategy_sits_in_cash() -> None:
+    """The defining property, checked on a case where the two bases differ.
+
+    Equity falls hard while invested, the strategy sits in cash for a while, then
+    equity falls again. Under the legacy basis the cash yield lifts the wealth
+    path between the two declines, so the second one starts from higher ground
+    and the combined drawdown comes out shallower. Under the paper's basis the
+    path is flat through the cash stretch and the two declines compound.
+    """
+    returns = pd.DataFrame(
+        {
+            "date": pd.bdate_range("2020-01-01", periods=10),
+            "equity_simple": [0.0, -0.10, -0.10, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                              -0.10],
+            "cash_return": [0.002] * 10,
+        }
+    )
+    signal = pd.Series([1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0])
+    path = apply_signal(returns, signal, delay_trading_days=0, one_way_cost_bps=0)
+    path = path.dropna(subset=["position"])
+
+    legacy = performance_metrics(path, drawdown_basis="total_wealth")
+    paper = performance_metrics(
+        path, drawdown_basis="risky_leg_wealth_flat_in_cash"
+    )
+
+    # Three -10% days while invested and nothing in between: 0.9 ** 3 - 1.
+    assert paper["maximum_drawdown"] == pytest.approx(0.9**3 - 1.0)
+    assert legacy["maximum_drawdown"] > paper["maximum_drawdown"]
+    # Everything that does not touch the drawdown is untouched.
+    for field in ("cagr", "volatility", "sharpe", "turnover", "leverage"):
+        assert legacy[field] == pytest.approx(paper[field])
+    # Calmar rides on the drawdown, so it moves with it and only with it.
+    assert paper["calmar"] == pytest.approx(
+        legacy["calmar"] * legacy["maximum_drawdown"] / paper["maximum_drawdown"]
+    )
+
+
+def test_paper_drawdown_basis_matches_the_legacy_one_when_never_in_cash() -> None:
+    """Buy-and-hold cannot tell the two bases apart, which is why it settles nothing."""
+    returns = pd.DataFrame(
+        {
+            "date": pd.bdate_range("2020-01-01", periods=10),
+            "equity_simple": [0.01, -0.03, 0.02, -0.05, 0.01, 0.0, 0.02, -0.01,
+                              0.03, -0.02],
+            "cash_return": [0.0002] * 10,
+        }
+    )
+    path = apply_signal(returns, pd.Series([1.0] * 10), delay_trading_days=0,
+                        one_way_cost_bps=0).dropna(subset=["position"])
+    legacy = performance_metrics(path, drawdown_basis="total_wealth")
+    paper = performance_metrics(path,
+                                drawdown_basis="risky_leg_wealth_flat_in_cash")
+    assert legacy["maximum_drawdown"] == pytest.approx(paper["maximum_drawdown"])
+
+
+def test_paper_drawdown_basis_requires_the_equity_column() -> None:
+    returns = pd.DataFrame(
+        {
+            "date": pd.bdate_range("2020-01-01", periods=6),
+            "equity_simple": [0.01, -0.02, 0.03, 0.01, -0.01, 0.02],
+            "cash_return": [0.0001] * 6,
+        }
+    )
+    path = apply_signal(returns, pd.Series([1.0] * 6), delay_trading_days=0)
+    path = path.dropna(subset=["position"]).drop(columns=["equity_simple"])
+    with pytest.raises(BacktestError, match="missing metric columns"):
+        performance_metrics(path, drawdown_basis="risky_leg_wealth_flat_in_cash")
+    with pytest.raises(BacktestError, match="unknown drawdown basis"):
+        performance_metrics(path, drawdown_basis="something_else")
 
 
 def test_manifest_rejects_duplicated_source_entry() -> None:

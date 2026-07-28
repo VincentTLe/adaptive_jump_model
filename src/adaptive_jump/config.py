@@ -13,6 +13,15 @@ PAPER_TURNOVER_DEFINITION = "half_mean_one_way_turnover_times_252"
 LEGACY_TURNOVER_DEFINITION = "mean_one_way_turnover_times_252"
 PAPER_COMPARISON_SAMPLE = "per_market_all_delays_intersection_of_complete_metric_rows"
 LEGACY_COMPARISON_SAMPLE = "per_market_delay_intersection_of_complete_metric_rows"
+# Which wealth path the drawdown is measured on. The paper never states it, but
+# two published facts pin it down together: Table 4's buy-and-hold drawdowns are
+# reproduced only with the equity leg at total return, and the caption of Figure
+# 5 says the strategy curve is flat while "fully invested in the risk-free
+# asset". Total return when invested plus nothing when in cash is exactly
+# risky_leg_wealth_flat_in_cash. Evidence and the ten-cell test that settled it:
+# artifacts/hmm-residual/06-mdd-convention/ and docs/audit/2026-07-full-audit.md.
+PAPER_DRAWDOWN_BASIS = "risky_leg_wealth_flat_in_cash"
+LEGACY_DRAWDOWN_BASIS = "total_wealth"
 
 
 class ConfigError(ValueError):
@@ -104,6 +113,9 @@ class MetricsProtocol:
     expected_shortfall_quantile: float
     turnover_definition: str = PAPER_TURNOVER_DEFINITION
     comparison_sample: str = PAPER_COMPARISON_SAMPLE
+    # Defaults to the legacy basis so a config written before this field existed
+    # keeps producing the numbers its sealed run recorded.
+    drawdown_basis: str = LEGACY_DRAWDOWN_BASIS
 
     @property
     def turnover_scale(self) -> float:
@@ -546,6 +558,11 @@ def _metrics_protocol(row: dict[str, Any]) -> MetricsProtocol:
         comparison_sample in {PAPER_COMPARISON_SAMPLE, LEGACY_COMPARISON_SAMPLE},
         "invalid metric definition",
     )
+    drawdown_basis = str(row.get("maximum_drawdown", LEGACY_DRAWDOWN_BASIS))
+    _require(
+        drawdown_basis in {PAPER_DRAWDOWN_BASIS, LEGACY_DRAWDOWN_BASIS},
+        "invalid metric definition",
+    )
     periods = _positive_integer(row, "periods_per_year")
     ddof = _integer(row, "volatility_ddof")
     quantile = _positive_number(row, "expected_shortfall_quantile")
@@ -560,6 +577,7 @@ def _metrics_protocol(row: dict[str, Any]) -> MetricsProtocol:
         quantile,
         turnover_definition,
         comparison_sample,
+        drawdown_basis,
     )
 
 

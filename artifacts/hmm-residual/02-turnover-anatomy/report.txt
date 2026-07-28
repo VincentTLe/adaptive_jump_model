@@ -1,0 +1,52 @@
+Giải phẫu turnover HMM — đường cong k cố định, lựa chọn, và churn do ghép
+
+=== S&P 500 (us v8.5) ===
+     k   turnover  shifts   Sharpe      MDD
+     0     4.9429     336   0.5732  -0.2158
+     2     3.6778     250   0.5041  -0.2606
+     4     2.5303     172   0.5590  -0.2443
+     6     2.0007     136   0.5751  -0.2211
+     8     1.6771     114   0.6495  -0.1972
+    20     1.0886      74   0.5740  -0.2182
+  chọn     1.8830     128   0.6139  -0.1972
+   Shu     1.4100
+  A. lưới có với tới turnover của Shu? CÓ — nội suy ra k* ≈ 13.4
+  B. tỉ lệ chọn: k0:3%  k2:1%  k4:2%  k6:10%  k8:81%  k20:3%
+     turnover trung bình theo tỉ lệ chọn = 1.8098; turnover thực của đường ghép = 1.8830
+  C. lần đổi tín hiệu trong cửa sổ: 128; rơi đúng ngày đổi k: 4; trong đó ứng viên mới TỰ NÓ không đổi (do ghép mà ra): 3 (2.3%)
+
+=== DAX (de v8.5) ===
+     k   turnover  shifts   Sharpe      MDD
+     0     4.1160     281   0.3744  -0.3873
+     2     3.2518     221   0.3617  -0.4608
+     4     2.2558     154   0.4262  -0.4130
+     6     1.8163     124   0.3592  -0.4121
+     8     1.6113     110   0.3443  -0.3752
+    20     1.0253      70   0.2514  -0.3579
+  chọn     2.2265     152   0.3681  -0.4020
+   Shu     2.4600
+  A. lưới có với tới turnover của Shu? CÓ — nội suy ra k* ≈ 3.6
+  B. tỉ lệ chọn: k0:5%  k2:12%  k4:49%  k6:12%  k8:16%  k20:5%
+     turnover trung bình theo tỉ lệ chọn = 2.2475; turnover thực của đường ghép = 2.2265
+  C. lần đổi tín hiệu trong cửa sổ: 152; rơi đúng ngày đổi k: 3; trong đó ứng viên mới TỰ NÓ không đổi (do ghép mà ra): 3 (2.0%)
+
+=== Nikkei 225 (jp v8.5) ===
+     k   turnover  shifts   Sharpe      MDD
+     0     7.0286     465   0.0893  -0.6387
+     2     5.8798     389   0.1874  -0.5294
+     4     3.5974     237   0.1967  -0.5937
+     6     2.9928     198   0.1809  -0.5317
+     8     2.5696     170   0.1904  -0.5253
+    20     1.5115     100   0.2066  -0.4403
+  chọn     3.1440     208   0.1771  -0.5173
+   Shu     2.9000
+  A. lưới có với tới turnover của Shu? CÓ — nội suy ra k* ≈ 6.4
+  B. tỉ lệ chọn: k2:11%  k4:20%  k6:16%  k8:12%  k20:40%
+     turnover trung bình theo tỉ lệ chọn = 2.7936; turnover thực của đường ghép = 3.1440
+  C. lần đổi tín hiệu trong cửa sổ: 208; rơi đúng ngày đổi k: 3; trong đó ứng viên mới TỰ NÓ không đổi (do ghép mà ra): 2 (1.0%)
+
+=== tổng hợp ===
+TT               ta     Shu   |lệch|  tương đối  lưới với tới?  k* ngụ ý  flip do ghép
+us v8.5       1.883    1.41    0.473     +33.5%             có      13.4             3
+de v8.5       2.226    2.46    0.234      -9.5%             có       3.6             3
+jp v8.5       3.144    2.90    0.244      +8.4%             có       6.4             2
