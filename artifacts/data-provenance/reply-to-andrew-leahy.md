@@ -4,22 +4,40 @@
 
 Dear Andrew,
 
-Thank you — and you're right about the paywall. The "Download to CSV" button
-requires a session cookie, but Yahoo's chart endpoint underneath it is open and
-returns JSON without any authentication:
+Thank you — and you're right that the CSV button is gated, but the honest answer
+is a bit less convenient than "use the API underneath it".
+
+Yahoo does expose the endpoint the page calls, and it needs no login:
 
 ```
 https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?period1=-1325583000&period2=1785262403&interval=1d
 ```
 
-Swap the symbol and it works for anything Yahoo carries. It needs a browser
-User-Agent header, and it returns timestamps plus arrays of open/high/low/close,
-which is a few lines to flatten. That is exactly how we pull `^GSPC`, `^SP500TR`
-and `^N225` — the script is `scripts/fetch_sp500_inputs.py` in our repository.
+It returns JSON, needs a browser User-Agent header, and the caret has to be
+percent-encoded as `%5E`. That is what we used to pull `^GSPC`, `^SP500TR` and
+`^N225`. But it is rate-limited hard: I re-tested it while writing this and our
+machine is currently getting `429 Too Many Requests` on every request, on both
+`query1` and `query2`, encoded or not — the same calls that succeeded this
+morning. So it works for an occasional pull with generous backoff, and it is not
+something to build a pipeline on. If you try that URL in a browser you will
+likely see the 429 rather than data, which may be exactly what you ran into.
 
-So the history is obtainable. The constraint that actually bites us is a
-different one, and it is worth stating clearly because it shaped every choice
-below.
+Stooq has the same shape of problem from a different direction: its CSV endpoint
+(`https://stooq.com/q/d/l/?s=%5Edax&i=d`) now answers with a JavaScript
+proof-of-work challenge instead of a file, so it only works from a real browser.
+Our DAX file is marked in the repository as manually downloaded on 2026-07-25
+for exactly that reason.
+
+FRED, where we get the US bill rate, is timing out for us today as well.
+
+My practical conclusion is that for a fixed academic dataset, downloading once
+in a browser and then pinning the file is more honest than scraping — which is
+what we do: every input file is stored with its sha256, the build refuses to run
+if a hash moves, and nothing is re-fetched during a run. I have attached all of
+them so none of this has to be repeated.
+
+That said, the constraint that actually bites us is a different one, and it is
+worth stating clearly because it shaped every choice below.
 
 ## The binding constraint is total return, not history length
 

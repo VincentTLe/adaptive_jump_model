@@ -168,3 +168,33 @@ the model with a two-month-start lag.
    Reconstructed and validated on a 12-year overlap.
 4. **The German pre-1988 daily path.** The Stehle backcast has been checked
    against OECD monthly data; no independent *daily* source exists publicly.
+
+## Refreshing the data: what actually works
+
+Checked 2026-07-28, from this machine, after the morning's fetch had succeeded:
+
+| host | result |
+|---|---|
+| `query1`/`query2.finance.yahoo.com/v8/finance/chart/...` | **429 Too Many Requests** — both hosts, caret encoded or not |
+| `finance.yahoo.com/quote/<sym>/history/` | 404 to a plain client |
+| `stooq.com/q/d/l/?s=...` | 200, but the body is a JavaScript proof-of-work challenge, not a CSV |
+| `fred.stlouisfed.org/graph/fredgraph.csv?id=...` | TLS handshake succeeds, then the read times out |
+| `raw.githubusercontent.com` (Shiller) | 200 |
+| `data-api.ecb.europa.eu` | 200 |
+
+So the Yahoo chart endpoint is open in the sense that it needs no login, but it
+is rate-limited hard enough that it cannot be treated as a dependable feed, and
+Stooq's CSV link now requires a real browser. That is why `stooq_dax_daily.csv`
+is recorded in the contract as manually downloaded on 2026-07-25.
+
+**None of this can break a run.** Fetched inputs are stored under
+`data/external/inputs/` with pinned hashes, and the one series the pipeline
+still fetches live — `DTB3` — is captured into the run's acquisition manifest
+(`data/raw/<config>-<timestamp>/us_cash.csv`) and verified against it rather
+than re-downloaded. The v9 manifest already holds DTB3 for 1969-05-01..2023-12-29,
+14,262 rows.
+
+If a series ever does need refreshing, download it once in a browser, drop it in
+`data/external/inputs/`, and update the `INPUT_SHA256` pin in
+`scripts/build_external_sources.py`. The builder refuses to run on unpinned
+bytes, which is the property that makes browser downloads acceptable here.
