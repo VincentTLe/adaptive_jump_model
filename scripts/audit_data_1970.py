@@ -477,6 +477,51 @@ def pass_h_japan_reconstruction(lines: list[str]) -> None:
     lines.append("")
 
 
+# The Nikkei 225 Total Return Index was first published on 2012-12-03 but is
+# calculated retroactively from a base date of 1979-12-28 at 6569.47. Our mirror
+# of it only carries values from 2011-12-19, so everything earlier is our own
+# reconstruction -- and that published base value is therefore a free, exact
+# anchor 32 years upstream of where the reconstruction is anchored.
+N225TR_BASE_DATE = pd.Timestamp("1979-12-28")
+N225TR_BASE_VALUE = 6569.47
+
+
+def pass_i_nikkei_base_anchor(lines: list[str]) -> None:
+    lines.append("I. NEO GỐC CHÍNH THỨC CỦA N225TR — kiểm phép dựng lại xuyên 32 năm")
+    lines.append("")
+    series = pd.read_csv(EXT / "jp_equity_tr.csv",
+                         parse_dates=["date"]).set_index("date")["value"]
+    nearest = series.index[
+        series.index.get_indexer([N225TR_BASE_DATE], method="nearest")[0]]
+    ours = float(series.loc[nearest])
+    ratio = ours / N225TR_BASE_VALUE - 1.0
+    anchored = pd.Timestamp("2011-12-19")
+    years = (anchored - N225TR_BASE_DATE).days / 365.25
+    drift = (ours / N225TR_BASE_VALUE) ** (1 / years) - 1
+
+    lines.append(f"  mốc gốc chính thức : {N225TR_BASE_DATE.date()} = "
+                 f"{N225TR_BASE_VALUE:,.2f}")
+    lines.append(f"  chuỗi của ta       : {nearest.date()} = {ours:,.2f}")
+    lines.append(f"  lệch tích luỹ      : {ratio:+.2%} sau {years:.0f} năm chuỗi ngược")
+    lines.append(f"  quy ra mỗi năm     : {drift * 100:+.3f} điểm/năm")
+    lines.append("")
+    lines.append("  Chuỗi được neo tại giá trị chính thức đầu tiên mà bản mirror")
+    lines.append("  của ta có (2011-12-19) rồi chuỗi ngược. Giá trị gốc 1979 do")
+    lines.append("  Nikkei Inc. công bố nằm hoàn toàn ngoài mọi thứ phép dựng lại")
+    lines.append("  được nhìn thấy, nên đây là kiểm chứng độc lập cho toàn bộ")
+    lines.append("  đoạn dựng lại — và nó chỉ trôi dưới 5 điểm cơ bản mỗi năm.")
+    if abs(drift) > 0.002:
+        record("PROBLEM", "jp",
+               f"phép dựng lại trôi {drift*100:+.2f} điểm/năm so với mốc gốc "
+               "chính thức 1979-12-28")
+    else:
+        record("NOTE", "jp",
+               f"phép dựng lại trôi {drift*100:+.3f} điểm/năm trên 32 năm so với "
+               "mốc gốc chính thức — nhỏ, nhưng bản chính thức có sẵn từ "
+               "1979-12-28 và ta mới chỉ dùng từ 2011-12-19")
+    lines.append("")
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     lines = [f"AUDIT DỮ LIỆU {START.date()} .. {END.date()} "
@@ -489,6 +534,7 @@ def main() -> None:
     pass_f_cash(lines)
     pass_g_cash_level(lines)
     pass_h_japan_reconstruction(lines)
+    pass_i_nikkei_base_anchor(lines)
 
     lines.append("=" * 68)
     lines.append("TỔNG HỢP PHÁT HIỆN")

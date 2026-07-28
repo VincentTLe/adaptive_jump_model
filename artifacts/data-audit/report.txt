@@ -131,6 +131,19 @@ H. ĐOẠN NIKKEI DỰNG LẠI, ĐỐI CHIẾU MSCI JAPAN (có nhóm đối ch�
   không phải lỗi dựng lại. Đoạn dựng lại không hề tệ hơn đoạn
   chính thức khi cùng đo với một chỉ số thứ ba.
 
+I. NEO GỐC CHÍNH THỨC CỦA N225TR — kiểm phép dựng lại xuyên 32 năm
+
+  mốc gốc chính thức : 1979-12-28 = 6,569.47
+  chuỗi của ta       : 1979-12-28 = 6,470.24
+  lệch tích luỹ      : -1.51% sau 32 năm chuỗi ngược
+  quy ra mỗi năm     : -0.048 điểm/năm
+
+  Chuỗi được neo tại giá trị chính thức đầu tiên mà bản mirror
+  của ta có (2011-12-19) rồi chuỗi ngược. Giá trị gốc 1979 do
+  Nikkei Inc. công bố nằm hoàn toàn ngoài mọi thứ phép dựng lại
+  được nhìn thấy, nên đây là kiểm chứng độc lập cho toàn bộ
+  đoạn dựng lại — và nó chỉ trôi dưới 5 điểm cơ bản mỗi năm.
+
 ====================================================================
 TỔNG HỢP PHÁT HIỆN
 
@@ -138,11 +151,12 @@ TỔNG HỢP PHÁT HIỆN
       [de] nguồn OECD dùng để kiểm chứng backcast DAX trước 1988 không còn trong repo; khẳng định corr 0.979-0.985 không tái lập được
       [jp cash] thấp hơn JST 2.0 điểm/năm suốt 1970-1989 và 0.7 điểm trong 1990-1999; đây là ứng viên hàng đầu giải thích vì sao Nhật là thị trường duy nhất có ô buy-and-hold lệch quá 0.01
 
-  NOTE: 6
+  NOTE: 7
       [jp] 3 khoảng trống lịch >7 ngày
       [us 1970-1979] tự tương quan bậc 1 = 0.249, cao hơn bình thường
       [jp] eq_tr của JST là chỉ số khác (tương quan 0.69), không dùng kiểm chứng được; chỉ eq_dp được tiêu thụ và nó đã có kiểm riêng
       [de cash] 413 phiên liên tiếp cùng một lãi suất
       [jp cash] chỉ đổi 6.0 lần/năm; với Nhật đây là lãi suất bị ghim gần 0 suốt 2000-2023 chứ không phải chuỗi đóng băng
       [jp cash] 740 phiên liên tiếp cùng một lãi suất
+      [jp] phép dựng lại trôi -0.048 điểm/năm trên 32 năm so với mốc gốc chính thức — nhỏ, nhưng bản chính thức có sẵn từ 1979-12-28 và ta mới chỉ dùng từ 2011-12-19
 

@@ -1358,3 +1358,60 @@ daily check of the backcast era itself.
 
 Action: re-acquire OECD `SPASTT01DEM661N` and pin it. FRED was not responding
 during this audit, so it is left open rather than silently dropped.
+
+### Japan, followed through: what to actually do (2026-07-28)
+
+**A correction first.** The section above called the risk-free rate "the leading
+explanation" for Japan's buy-and-hold deviation. That overstated it. Decomposing
+the gap properly: our annualised mean excess return is 0.0305 against the 0.0281
+that Table 4's Sharpe times its volatility implies, a gap of **0.245pp/year**.
+Two candidates are of comparable size — our equity CAGR runs 0.20pp above the
+published 0.8%, and substituting JST's bill rate would remove 0.18pp — and they
+sum to more than the gap. **Neither is separately identified**, and claiming
+either as the explanation was wrong.
+
+**The Japanese total-return reconstruction is far better than feared.** The
+Nikkei 225 Total Return Index was first published on 2012-12-03 but is
+calculated retroactively from a base date of **1979-12-28 at 6569.47**. Our
+mirror only carries it from 2011-12-19, so that base value sits 32 years
+upstream of where our reconstruction is anchored and is invisible to every step
+of it. Chained backwards, our series reaches **6,470.24** on that date:
+
+| | value |
+|---|---|
+| official base, 1979-12-28 | 6,569.47 |
+| ours, reconstructed and chained back 32 years | 6,470.24 |
+| cumulative error | **-1.51%** |
+| per year | **-0.048pp** |
+
+Under five basis points a year, over three decades, against an anchor the
+construction never saw. That also settles the dividend question: the +0.21pp
+mean bias measured between JST's yield and the Nikkei's implied yield on the
+nine overlap years is noise — a true bias of that size would have produced a 6.7%
+cumulative gap, and the observed gap is 1.51%.
+
+**The right fix is data, not a patch.** The official index exists from
+1979-12-28; we use it only from 2011-12-19. Acquiring the published history back
+to 1979 would put the **entire reported 1990-2023 period on the official series**
+and delete the reconstruction from the reported window altogether, leaving it
+only in the 1969-1979 warm-up. That is a strictly better move than correcting a
+dividend yield with a nine-observation estimate, and it needs no judgement call.
+
+**The risk-free rate stays open, with a principled route if we act.** Germany
+already uses the OECD 3-month interbank rate for its earliest segment, precisely
+because no bill series reaches that far back. Japan has the same problem and
+worse — the search confirms the gensaki market only became a free short-term
+benchmark in the late 1970s. The symmetric move is OECD's `IR3TIB01JPM156N`,
+which exists on FRED. That justification is a consistency rule across markets
+and does not reference Table 4, so it would be legitimate. It is not acted on
+here because FRED did not respond during this audit, and because the item should
+be decided before the next freeze rather than mid-audit.
+
+**Ordered recommendation for Japan:**
+
+1. Acquire the official N225TR back to 1979-12-28 from Nikkei Indexes. Removes
+   the reconstruction from the reported period entirely.
+2. Re-acquire OECD `IR3TIB01JPM156N` and decide the risk-free question on the
+   Germany-symmetry rule, stated before the numbers are looked at.
+3. Only if neither is obtainable: keep the current series and carry the measured
+   band — roughly 0.008 of Japanese Sharpe from the rate ambiguity.

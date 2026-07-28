@@ -340,10 +340,14 @@ Correlation 0.9723 — the shape agrees, the level does not. JST's 1974 peak of
 Neither is wrong; they are different instruments, and the paper's source made a
 third choice we cannot see.
 
-**Consequence, measured.** A cash rate that is too low inflates excess returns,
-and Japan is the only market with a buy-and-hold cell outside 0.01 against Table
-4. Substituting JST's rate moves the Japanese buy-and-hold Sharpe from 0.1306 to
-0.1228 against the published 0.12 — deviation 0.0106 down to 0.0028.
+**Consequence, measured — and NOT separately identified.** Our annualised mean
+excess return for Japanese buy-and-hold is 0.0305 against the 0.0281 implied by
+Table 4's Sharpe times its volatility: a gap of 0.245pp/year. Substituting JST's
+rate removes 0.18pp of it and moves the buy-and-hold Sharpe from 0.1306 to
+0.1228 against the published 0.12. But our equity CAGR is also 0.20pp above the
+published 0.8%, and the two candidates sum to more than the gap, so neither can
+be named as the cause. An earlier draft of this row called the rate "the leading
+explanation"; that is withdrawn.
 
 **Not acted on.** That number was obtained by comparing against the target, so
 switching on the strength of it is fitting to the answer. The row is recorded as

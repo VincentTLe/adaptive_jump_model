@@ -7,3 +7,4 @@ NOTE,de cash,413 phiên liên tiếp cùng một lãi suất
 NOTE,jp cash,chỉ đổi 6.0 lần/năm; với Nhật đây là lãi suất bị ghim gần 0 suốt 2000-2023 chứ không phải chuỗi đóng băng
 NOTE,jp cash,740 phiên liên tiếp cùng một lãi suất
 PROBLEM,jp cash,thấp hơn JST 2.0 điểm/năm suốt 1970-1989 và 0.7 điểm trong 1990-1999; đây là ứng viên hàng đầu giải thích vì sao Nhật là thị trường duy nhất có ô buy-and-hold lệch quá 0.01
+NOTE,jp,"phép dựng lại trôi -0.048 điểm/năm trên 32 năm so với mốc gốc chính thức — nhỏ, nhưng bản chính thức có sẵn từ 1979-12-28 và ta mới chỉ dùng từ 2011-12-19"
