@@ -301,3 +301,39 @@ material findings are provenance/hardening issues, now fixed with tests, plus
 three provenance corrections to previously reported numbers (recorded above).
 Data coverage is sufficient for every claim in the paper plan; irreducible
 gaps are documented limitations.
+
+## Correction: the 95% CI was used as evidence when it carries none (2026-07-27)
+
+Two statements above lean on a bootstrap confidence interval as though covering
+Shu's value supported replication: line 265 ("all inside the 95% CI") and line
+288 ("Shu's value sits inside the 95% CI in 9/9 cells"). Both are arithmetically
+true and evidentially empty. Retract the inference, keep the numbers.
+
+The standard error of a Sharpe ratio over T years is about
+`sqrt((1 + SR^2/2)/T)`, so at the paper's 34-year window any 95% interval is
+roughly 0.70 wide; our measured widths were 0.646-0.681, exactly as expected.
+An independent recomputation (block bootstrap, block in {5,21,63}, seeds 1-5,
+2000 resamples) confirmed the coverage claim and then showed why it is vacuous:
+every cell interval also contains the paper's values for the other two models in
+that market, so the buy-and-hold interval cannot reject "buy-and-hold equals the
+jump model". Reaching a 0.05-wide interval would need on the order of 6,900
+years of data.
+
+There is also no valid significance test to be had. The paper gives one value
+per cell with no standard error, on licensed data we do not hold; there is no
+sampling distribution to test against.
+
+The same recomputation established what the intervals do say, which is less
+comfortable than what was claimed: JM minus HMM contains zero in both markets
+tested (us +0.099, CI [-0.073, +0.278], p2 = 0.270; de +0.018, CI [-0.178,
++0.221], p2 = 0.859), zero inside the interval in 15/15 bootstrap
+configurations. JM minus buy-and-hold clears zero only for the US and only
+marginally (p2 = 0.036, unstable across seeds). So "JM > HMM > B&H reproduces on
+all three markets" is a statement about the ordering of point estimates and must
+be written that way, never as a significant result.
+
+Replication should therefore be judged by point-estimate closeness against a
+tolerance fixed in advance (the owner's standing tolerance: 0.05 absolute
+Sharpe, tightening to 0.03), together with the spread produced by the free
+parameters the paper never fixes. Those parameters and their measured spreads
+are now registered in docs/unspecified-choices.md.

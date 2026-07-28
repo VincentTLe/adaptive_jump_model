@@ -55,8 +55,9 @@ with means +0.196 to +0.307 on `dd_10`. The jump model minimises
 about 3.5x the weight of `sortino_60`. The distortion differs by market, which
 is why the deviation from the paper differs by market.
 
-**Spread across alternatives** (Japan JM Sharpe, paper reports 0.31; all inside
-the 95% CI, see `docs/audit/2026-07-full-audit.md`):
+**Spread across alternatives** (Japan JM Sharpe, paper reports 0.31). Judge these
+by how far the point estimate sits from the paper, not by whether a confidence
+interval covers it — see "Why the confidence interval proves nothing" below:
 
 | variant | jp JM Sharpe | side effect |
 |---|---|---|
@@ -151,6 +152,46 @@ i.e. a convention the run itself does not use. Any figure quoted from a run must
 name its convention.
 
 ---
+
+## Why the confidence interval proves nothing here
+
+A bootstrap confidence interval on our own Sharpe was used, repeatedly, as if
+covering the paper's value were evidence of replication. It is not, and the
+reason is arithmetic rather than a defect in the resampling.
+
+The standard error of a Sharpe ratio is about `sqrt((1 + SR^2 / 2) / T)` with
+`T` in years, so a 95% interval spans roughly:
+
+| years | SR = 0.2 | SR = 0.5 | SR = 0.7 |
+|---|---|---|---|
+| 20 | 0.885 | 0.930 | 0.978 |
+| **34** | **0.679** | **0.713** | **0.750** |
+| 100 | 0.396 | 0.416 | 0.437 |
+
+The paper's window is 34 years, so any interval we compute is about 0.70 wide.
+Our measured widths, 0.646 to 0.681, match that. An interval that wide covers
+essentially every value anyone might propose: on the US cell the buy-and-hold
+interval also contains the paper's HMM *and* JM figures, so it cannot even
+reject "buy-and-hold equals the jump model". Reaching a width of 0.05 would take
+roughly 6,900 years of data.
+
+There is also no valid significance test available. The paper reports one number
+per cell with no standard error, computed on licensed data we do not hold, so
+there is no sampling distribution to test against and no null hypothesis to
+reject. "Their value is inside our interval" is not a test result.
+
+What to report instead:
+
+- **Closeness of the point estimate**, against a tolerance stated in advance.
+  The owner's standing tolerance is 0.05 in absolute Sharpe, tightening to 0.03.
+- **The spread across our own free choices**, which is what the rows above
+  measure. That spread is the honest uncertainty statement for a replication:
+  it says how much of the gap we could produce ourselves by setting an
+  unspecified knob differently.
+- **Paired differences within our own run** (JM minus HMM on the same days),
+  where the market noise cancels. Even these stay wide: on v8.3 the US
+  difference was +0.099 with an interval of [-0.073, +0.278], so the ordering
+  is a statement about point estimates and must be written that way.
 
 ## Maintenance
 
