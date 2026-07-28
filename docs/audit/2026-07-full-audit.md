@@ -1090,3 +1090,89 @@ is what let the total-wealth basis look confirmed. **Two claims are withdrawn:**
 that the drawdown basis was settled, and that the index substitution left "about
 38% of the drawdown gap" unexplained — the index explains none of that gap,
 because the gap was never in the index.
+
+### Step 6: the turnover row is not identified, measured rather than asserted
+
+Calling a row "unidentified" is worth nothing without the spread, so eight
+candidate sets were swept in all three markets, none of them adopted
+(`artifacts/hmm-residual/08-grid-identification/`). Six carry a justification
+that could have been written before any number was seen; two exist only to
+answer whether the published value is attainable at all, and are labelled as
+such in the script.
+
+Turnover spread, and where Table 4 sits in it:
+
+| market | spread across the eight sets | Table 4 | inside? |
+|---|---|---|---|
+| S&P 500 | 1.295 .. 2.913 | 1.410 | yes |
+| DAX | 1.816 .. 2.432 | 2.460 | 0.028 above the top; bracketed by the fixed-k curve (k=2 gives 3.25, k=4 gives 2.26) so reachable |
+| Nikkei | 2.751 .. 4.686 | 2.900 | yes |
+
+The spread is several times the deviation being investigated in every market.
+**The turnover row therefore carries no information about the quality of this
+replication in either direction**, and the honest record is that, not a grid
+chosen to close it.
+
+Two further things the sweep shows, both worth stating because they cut against
+any temptation to pick a winner:
+
+**No set reproduces Table 4 in all three markets at once.** Scoring every set on
+all eight metrics rather than on turnover alone, the best any set achieves is
+8/8 on the US (`filtered`, k in {2,4,6,8,20}, total deviation 0.088), 7/8 on the
+DAX and 7/8 on the Nikkei. `filtered` is the set that drops k = 0, and there is
+a real argument for dropping it — the paper says it *applies* a median filter of
+window k, and a window of zero applies none, exactly as Table 3 lists lambda = 0
+beside it while calling that column "equivalent to k-means clustering", a
+reference point rather than a candidate. **That argument is not acted on**,
+for two reasons: it was noticed only after measuring that the 9% of months at
+k = 0 drive about 23% of our trading, and it improves the US while leaving Japan
+unchanged and making Germany slightly worse. A rule that only works in one
+market is not a rule.
+
+**Turnover and Sharpe trade against each other.** On the US, the sets that pull
+turnover toward 1.41 push Sharpe away from 0.54 and back again — `dense_wide`
+reaches turnover 1.295 with Sharpe 0.598, `dense_small` reaches Sharpe 0.541
+with turnover 1.501. There is no setting that is simply "more correct"; there is
+a frontier, and the paper does not say where on it to stand.
+
+### Step 7: Table 5 as an out-of-sample check on the drawdown basis
+
+The basis was settled on Table 4, so Table 4 cannot test it again. Table 5
+publishes Return, Sharpe and Calmar for the HMM at delays 1, 5 and 10 in all
+three markets — nine Calmar values, six of which nothing in this project had
+ever looked at. Each delay reselects k, which is what the paper prescribes at
+line 822-824, and no HMM is refitted because the online state sequence does not
+depend on the trading delay (`artifacts/hmm-residual/07-table5-delays/`).
+
+Mean absolute Calmar error:
+
+| | all nine cells | the six never used before |
+|---|---|---|
+| paper basis (v9.1) | **0.0167** | **0.0235** |
+| previous basis | 0.0294 | 0.0324 |
+
+Better on both, and Return and Sharpe are bit-identical across the two bases, as
+they must be since neither touches a drawdown. This is corroboration rather than
+proof: the US delay-5 and delay-10 rows carry real model error (our Sharpe runs
+0.573 and 0.596 against the published 0.55 and 0.51), so part of what remains
+there is not about the drawdown at all. The proof stays the ten-cell Table 4
+test, four of whose cells use Shu's own positions.
+
+### Where the HMM replication now stands, and what is left
+
+| | v8.4 | v8.5 | v9 | **v9.1** |
+|---|---|---|---|---|
+| S&P 500 | 4/8 | 4/8 | 5/8 | **7/8** |
+| DAX | 7/8 | 7/8 | 7/8 | **7/8** |
+| Nikkei | 7/8 | 7/8 | 7/8 | **7/8** |
+
+Every market fails on turnover and on nothing else, and turnover is the one row
+the paper's specification does not determine. Two defects were found and fixed
+along the way — the substituted equity index and the drawdown basis — and both
+were found by testing our numbers against published quantities that no earlier
+round had used: Figure 2's fitted regime volatilities, Table 3's persistence
+curve, and the position paths drawn in Figures 5 and 6.
+
+Still open, and not touched here because the jump model is out of scope for this
+pass: the JM's own deviations, and whether the sample-start choice of row 6 in
+docs/unspecified-choices.md should be reopened before the next JM freeze.

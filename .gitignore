@@ -36,6 +36,8 @@ artifacts/hmm-residual/*/*
 !artifacts/hmm-residual/04-figure6-path/*.csv
 !artifacts/hmm-residual/05-mdd-anatomy/*.csv
 !artifacts/hmm-residual/06-mdd-convention/*.csv
+!artifacts/hmm-residual/07-table5-delays/*.csv
+!artifacts/hmm-residual/08-grid-identification/*.csv
 !artifacts/hmm-residual/v9-us-hmm/metrics.csv
 reports/
 *.log

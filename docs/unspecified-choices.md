@@ -165,6 +165,38 @@ the turnover row is reachable from within our grid — so a set that reproduces
 future change here needs a justification that could have been written before the
 number was known, as adding k = 6 did.
 
+**The spread, measured.** Eight candidate sets, none adopted, delay 1, all three
+markets (artifacts/hmm-residual/08-grid-identification/):
+
+| market | turnover across the eight sets | Table 4 | inside? |
+|---|---|---|---|
+| S&P 500 | 1.295 .. 2.913 | 1.410 | yes |
+| DAX | 1.816 .. 2.432 | 2.460 | 0.028 above; bracketed by the fixed-k curve, so reachable |
+| Nikkei | 2.751 .. 4.686 | 2.900 | yes |
+
+The spread is several times the deviation under investigation in every market,
+so this row carries no information about replication quality in either
+direction.
+
+**A set that gets the US to 8/8, and why it was not taken.** Dropping k = 0 —
+`{2, 4, 6, 8, 20}` — puts the S&P 500 inside tolerance on all eight metrics
+(turnover 1.442 against 1.410, total deviation 0.088). There is a real a priori
+argument for it: the paper says it *applies* a median filter of window k, and a
+window of zero applies none, exactly as Table 3 lists it beside lambda = 0 while
+calling that column "equivalent to k-means clustering" — a reference point, not
+a candidate. It is nonetheless **not adopted**, on two grounds. The argument was
+noticed only after measuring that the 9% of months selecting k = 0 drive about
+23% of our trading, so its ordering is contaminated. And it does not generalise:
+Japan is unchanged and Germany gets slightly worse. A rule that works in one
+market out of three is a fit, not a rule.
+
+**No set reproduces Table 4 in all three markets at once.** Scored on all eight
+metrics rather than turnover alone, the best any of the eight achieves is 8/8
+(us), 7/8 (de) and 7/8 (jp) — and by three different sets. Turnover also trades
+against Sharpe: on the US, `dense_wide` reaches turnover 1.295 with Sharpe
+0.598, `dense_small` reaches Sharpe 0.541 with turnover 1.501. There is a
+frontier here, and the paper does not say where on it to stand.
+
 ---
 
 ## 4. Risk-free instrument for Germany and Japan — BOUNDED
