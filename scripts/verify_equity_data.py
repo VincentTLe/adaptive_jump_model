@@ -18,7 +18,15 @@ and none of them depends on remembering a number.
      when averaged by month. A wrong ticker, a shifted calendar, a split-adjusted
      price or a truncated file all fail this; a merely noisy one does not.
 
-  3. THE IDENTITY OF THE EXTREME DAYS. The worst and best sessions in a US
+  3. TABLE 1, WHICH COVERS THE TRAINING ERA. Check 1 is blind to 1970-1990,
+     and that is precisely where the last data defect was found -- the CRSP
+     substitution went unnoticed for months because buy-and-hold matched over
+     1990-2023 while the damage sat in the 1987 crash. Table 1 publishes
+     annualised variances, covariances and correlations of daily excess returns
+     "from 1970 to 2023" for all three indices at once, so it constrains exactly
+     the stretch check 1 cannot see, and it constrains all three series jointly.
+
+  4. THE IDENTITY OF THE EXTREME DAYS. The worst and best sessions in a US
      equity series are a matter of public record -- 1987-10-19, the 2008 autumn,
      the 2020 March crash. Checking which DATES come out extreme is far more
      robust than checking magnitudes, because it cannot be satisfied by a series
@@ -174,7 +182,7 @@ def check_shiller(lines: list[str]) -> dict:
 
 
 def check_extremes(lines: list[str]) -> dict:
-    lines.append("KIỂM 3 — những phiên cực đoan có rơi đúng ngày lịch sử không")
+    lines.append("KIỂM 4 — những phiên cực đoan có rơi đúng ngày lịch sử không")
     lines.append("")
     daily = pd.read_csv(INP / "sp500_price_daily.csv", parse_dates=["date"])
     daily["ret"] = daily["close"].pct_change()
@@ -225,9 +233,115 @@ def check_extremes(lines: list[str]) -> dict:
             "extremes_inside_crisis_windows": int(inside)}
 
 
+# Table 1, paper lines 210-219. Diagonal is printed as (vol)^2, the lower
+# triangle is annualised covariance, the upper triangle is correlation, over
+# 1970-2023 -- the only published anchor that reaches into the training window.
+TABLE1_VOL = {"us": 0.172, "de": 0.201, "jp": 0.205}
+TABLE1_COV = {("de", "us"): 0.015, ("jp", "us"): 0.004, ("jp", "de"): 0.011}
+TABLE1_CORR = {("us", "de"): 0.44, ("us", "jp"): 0.12, ("de", "jp"): 0.26}
+T1_LO, T1_HI = pd.Timestamp("1970-01-01"), pd.Timestamp("2023-12-31")
+
+
+def excess_returns(market: str) -> pd.Series:
+    base = V9 if market == "us" else SEALED / market
+    frame = pd.read_csv(base / "features.csv", parse_dates=["date"])
+    excess = (frame["equity_simple"] - frame["cash_return"])
+    return pd.Series(excess.to_numpy(), index=pd.DatetimeIndex(frame["date"])
+                     ).dropna()
+
+
+def check_table1(lines: list[str]) -> pd.DataFrame:
+    lines.append("KIỂM 3 — Table 1, thống kê 1970-2023 (PHỦ CẢ VÙNG HUẤN LUYỆN)")
+    lines.append("")
+    series = {m: excess_returns(m).loc[T1_LO:T1_HI] for m in ("us", "de", "jp")}
+    common = pd.concat(series, axis=1).dropna()
+    lines.append(f"  mỗi thị trường: "
+                 + ", ".join(f"{m} {len(v)} phiên {v.index[0].date()}"
+                             f"..{v.index[-1].date()}"
+                             for m, v in series.items()))
+    lines.append(f"  ngày giao dịch chung: {len(common)}")
+    lines.append("")
+
+    records = []
+    lines.append("  Độ biến động quy năm (đường chéo Table 1):")
+    for market, vol in TABLE1_VOL.items():
+        ours = float(series[market].std(ddof=1) * np.sqrt(252))
+        records.append({"stat": "volatility", "cell": market, "ours": ours,
+                        "shu": vol, "deviation": abs(ours - vol)})
+        lines.append(f"      {NAMES[market]:<12}{ours:>9.4f}   Shu {vol:>6.3f}"
+                     f"   lệch {abs(ours - vol):.4f}"
+                     f"   [{WHO[market]}]")
+
+    lines.append("")
+    lines.append("  Tương quan trên ngày giao dịch chung (tam giác trên):")
+    for (a, b), target in TABLE1_CORR.items():
+        ours = float(common[a].corr(common[b]))
+        records.append({"stat": "correlation", "cell": f"{a}-{b}", "ours": ours,
+                        "shu": target, "deviation": abs(ours - target)})
+        lines.append(f"      {a}-{b:<10}{ours:>9.4f}   Shu {target:>6.2f}"
+                     f"   lệch {abs(ours - target):.4f}")
+
+    lines.append("")
+    lines.append("  Hiệp phương sai quy năm (tam giác dưới):")
+    for (a, b), target in TABLE1_COV.items():
+        ours = float(common[a].cov(common[b]) * 252)
+        records.append({"stat": "covariance", "cell": f"{a}-{b}", "ours": ours,
+                        "shu": target, "deviation": abs(ours - target)})
+        lines.append(f"      {a}-{b:<10}{ours:>9.4f}   Shu {target:>6.3f}"
+                     f"   lệch {abs(ours - target):.4f}")
+
+    lines.append("")
+    lines.append(f"  Sai lệch lớn nhất trên 9 ô công bố: "
+                 f"{pd.DataFrame(records).deviation.max():.4f}")
+
+    # Table 1 spans 1970-2023 and Table 4's buy-and-hold column spans 1990-2023.
+    # Together they pin the training era, but it is worth showing it directly:
+    # if a series were wrong before 1990 while right after, the two halves would
+    # not both be consistent with the published whole.
+    lines.append("")
+    lines.append("  Tách hai nửa — vùng huấn luyện so với vùng báo cáo:")
+    lines.append(f"      {'':12}{'1970-1989':>22}{'1990-2023':>22}")
+    for market in ("us", "de", "jp"):
+        early = series[market].loc[:"1989-12-31"]
+        late = series[market].loc["1990-01-01":]
+        lines.append(f"      {NAMES[market]:<12}"
+                     f"{f'{early.std(ddof=1) * np.sqrt(252):.4f} ({len(early)}p)':>22}"
+                     f"{f'{late.std(ddof=1) * np.sqrt(252):.4f} ({len(late)}p)':>22}")
+    lines.append("")
+    lines.append("  Suy ra độ biến động 1970-1989 mà DỮ LIỆU CỦA SHU phải có:")
+    lines.append("  Table 1 chốt toàn kỳ và Table 4 chốt 1990-2023, nên nửa đầu")
+    lines.append("  không còn tự do. Tách phương sai theo số quan sát:")
+    lines.append("      Var(đầu) = [Var(toàn kỳ)*N - Var(sau)*N_sau] / N_đầu")
+    lines.append("")
+    lines.append(f"      {'':12}{'suy ra từ Shu':>16}{'của ta':>12}{'lệch':>9}")
+    for market in ("us", "de", "jp"):
+        early = series[market].loc[:"1989-12-31"]
+        late = series[market].loc["1990-01-01":]
+        n_all, n_early, n_late = len(series[market]), len(early), len(late)
+        var_all = TABLE1_VOL[market] ** 2
+        var_late = TABLE4[market]["buy_and_hold"]["volatility"] ** 2
+        implied = (var_all * n_all - var_late * n_late) / n_early
+        implied_vol = float(np.sqrt(implied)) if implied > 0 else float("nan")
+        ours_vol = float(early.std(ddof=1) * np.sqrt(252))
+        records.append({"stat": "implied_early_volatility", "cell": market,
+                        "ours": ours_vol, "shu": implied_vol,
+                        "deviation": abs(ours_vol - implied_vol)})
+        lines.append(f"      {NAMES[market]:<12}{implied_vol:>16.4f}"
+                     f"{ours_vol:>12.4f}{abs(ours_vol - implied_vol):>9.4f}")
+    lines.append("  (Table 4 công bố độ biến động tổng lợi suất còn Table 1 dùng")
+    lines.append("   lợi suất vượt trội; ở tầng ngày lãi suất tiền mặt gần như là")
+    lines.append("   hằng số nên hai đại lượng trùng nhau tới bốn chữ số — kiểm")
+    lines.append("   được ngay trên số của ta: 1990-2023 cho cùng một giá trị.)")
+    lines.append("")
+    frame = pd.DataFrame(records)
+    lines.append(f"  Sai lệch lớn nhất kể cả ba ô suy ra: {frame.deviation.max():.4f}")
+    lines.append("")
+    return frame
+
+
 def check_official_overlap(lines: list[str]) -> dict:
     """The reconstructed total return against the official index it imitates."""
-    lines.append("KIỂM 4 — đoạn dựng lại so với chỉ số tổng lợi suất chính thức")
+    lines.append("KIỂM 5 — đoạn dựng lại so với chỉ số tổng lợi suất chính thức")
     lines.append("")
     price = pd.read_csv(INP / "sp500_price_daily.csv", parse_dates=["date"])
     official = pd.read_csv(INP / "sp500_tr_daily.csv", parse_dates=["date"])
@@ -252,11 +366,14 @@ def main() -> None:
     lines = ["XÁC MINH DỮ LIỆU CỔ PHIẾU — ba nguồn bằng chứng độc lập", ""]
     bh = check_buy_and_hold(lines)
     shiller = check_shiller(lines)
+    table1 = check_table1(lines)
     extremes = check_extremes(lines)
     overlap = check_official_overlap(lines)
 
     bh.to_csv(OUT / "buy-and-hold-vs-table4.csv", index=False,
               lineterminator="\n")
+    table1.to_csv(OUT / "table1-1970-2023.csv", index=False,
+                  lineterminator="\n")
     pd.DataFrame([{**shiller, **extremes, **overlap}]).to_csv(
         OUT / "cross-checks.csv", index=False, lineterminator="\n")
 

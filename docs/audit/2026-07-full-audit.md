@@ -1176,3 +1176,70 @@ curve, and the position paths drawn in Figures 5 and 6.
 Still open, and not touched here because the jump model is out of scope for this
 pass: the JM's own deviations, and whether the sample-start choice of row 6 in
 docs/unspecified-choices.md should be reopened before the next JM freeze.
+
+## Verifying the data itself, including the training era (2026-07-28)
+
+Prompted by a fair objection: the checks so far scored 1990-2023, and the last
+data defect found in this project — the CRSP substitution — did its damage in
+1987, inside the training window where a 1990-2023 check is blind. Table 4's
+buy-and-hold column cannot see the era that produces the fitted regimes.
+
+**Table 1 is the anchor for that era, and it had never been used.** It publishes
+annualised variances, covariances and correlations of daily excess returns
+"from 1970 to 2023" for all three indices, correlations and covariances on
+common trading days:
+
+| cell | ours | Table 1 | deviation |
+|---|---|---|---|
+| volatility, S&P 500 | 0.1721 | 0.172 | 0.0001 |
+| volatility, DAX | 0.2013 | 0.201 | 0.0003 |
+| volatility, Nikkei | 0.2054 | 0.205 | 0.0004 |
+| correlation us-de | 0.4428 | 0.44 | 0.0028 |
+| correlation us-jp | 0.1235 | 0.12 | 0.0035 |
+| correlation de-jp | 0.2593 | 0.26 | 0.0007 |
+| covariance de-us | 0.0153 | 0.015 | 0.0003 |
+| covariance jp-us | 0.0044 | 0.004 | 0.0004 |
+| covariance jp-de | 0.0107 | 0.011 | 0.0003 |
+
+Largest deviation 0.0035, on 12,588 common sessions. This constrains all three
+series jointly, at daily frequency, over a span that includes every training
+window the models ever fit.
+
+**The training era can then be isolated arithmetically.** Table 1 fixes
+1970-2023 and Table 4's buy-and-hold column fixes 1990-2023, so the first half
+is not free: decomposing the variance by observation count gives the volatility
+Shu's own data must carry over 1970-1989.
+
+| | implied by Shu's two tables | ours | deviation |
+|---|---|---|---|
+| S&P 500 | 0.1536 | 0.1546 | 0.0010 |
+| DAX | 0.1609 | 0.1621 | 0.0012 |
+| Nikkei 225 | 0.1432 | 0.1453 | 0.0021 |
+
+So the training era is verified directly rather than by assertion. (Table 4
+reports total-return volatility and Table 1 excess-return volatility; at daily
+frequency the cash rate is nearly constant and the two agree to four decimals,
+which is checked on our own 1990-2023 numbers rather than assumed.)
+
+Three further checks, in `artifacts/data-verification/`:
+
+- **Table 4's buy-and-hold column**, eighteen numbers with no model in them:
+  worst deviation 0.0025 (us), 0.0018 (de), 0.0106 (jp). Japan is the only
+  market with a cell above 0.01, which is where its reconstructed pre-2012 total
+  return would show up if anywhere.
+- **An independent S&P 500 series.** Shiller's monthly level is the average of
+  daily closes and comes from an unrelated pipeline; across 696 months the
+  correlation is 0.99999328 and the median relative error 0.0005%. Exactly two
+  months exceed 1% — 1974-07 and 2023-09 — with neighbouring months agreeing to
+  four decimals and the two errors of opposite sign, so they are isolated bad
+  rows rather than drift. Only the 1974 one touches anything we use, and it
+  moves the index level by 0.016% for a single month inside the training window.
+- **The identity of the extreme sessions.** All twenty of the ten largest daily
+  gains and losses since 1966 fall inside October 1987, 2008-09, COVID or the
+  1997-98 Asian crisis, the worst being 1987-10-19 at -20.47%. A series that is
+  correctly scaled but wrongly dated fails this and passes the moment-based
+  checks.
+
+What this does NOT establish: that our series equal Bloomberg's tick for tick.
+It establishes that they reproduce every distributional statistic the paper
+publishes, over both halves of the sample, to within a few thousandths.

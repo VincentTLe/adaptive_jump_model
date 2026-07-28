@@ -46,7 +46,51 @@ KIỂM 2 — chuỗi S&P 500 của ta so với chuỗi độc lập của Shille
       1974-07-01: lợi suất năm 4.4509% thay vì 4.2623% -> lệch mức chỉ số 0.01572% trong một tháng
     Toàn bộ nằm trong cửa sổ huấn luyện, không chạm 1990-2023.
 
-KIỂM 3 — những phiên cực đoan có rơi đúng ngày lịch sử không
+KIỂM 3 — Table 1, thống kê 1970-2023 (PHỦ CẢ VÙNG HUẤN LUYỆN)
+
+  mỗi thị trường: us 13618 phiên 1970-01-02..2023-12-29, de 13605 phiên 1970-01-02..2023-12-29, jp 13282 phiên 1970-01-05..2023-12-29
+  ngày giao dịch chung: 12588
+
+  Độ biến động quy năm (đường chéo Table 1):
+      S&P 500        0.1721   Shu  0.172   lệch 0.0001   [tải bằng script (agent)]
+      DAX            0.2013   Shu  0.201   lệch 0.0003   [tải tay (chủ dự án)]
+      Nikkei 225     0.2054   Shu  0.205   lệch 0.0004   [tải tay (chủ dự án)]
+
+  Tương quan trên ngày giao dịch chung (tam giác trên):
+      us-de           0.4428   Shu   0.44   lệch 0.0028
+      us-jp           0.1235   Shu   0.12   lệch 0.0035
+      de-jp           0.2593   Shu   0.26   lệch 0.0007
+
+  Hiệp phương sai quy năm (tam giác dưới):
+      de-us           0.0153   Shu  0.015   lệch 0.0003
+      jp-us           0.0044   Shu  0.004   lệch 0.0004
+      jp-de           0.0107   Shu  0.011   lệch 0.0003
+
+  Sai lệch lớn nhất trên 9 ô công bố: 0.0035
+
+  Tách hai nửa — vùng huấn luyện so với vùng báo cáo:
+                               1970-1989             1990-2023
+      S&P 500             0.1546 (5053p)        0.1817 (8565p)
+      DAX                 0.1621 (5003p)        0.2209 (8602p)
+      Nikkei 225          0.1453 (4936p)        0.2338 (8346p)
+
+  Suy ra độ biến động 1970-1989 mà DỮ LIỆU CỦA SHU phải có:
+  Table 1 chốt toàn kỳ và Table 4 chốt 1990-2023, nên nửa đầu
+  không còn tự do. Tách phương sai theo số quan sát:
+      Var(đầu) = [Var(toàn kỳ)*N - Var(sau)*N_sau] / N_đầu
+
+                     suy ra từ Shu      của ta     lệch
+      S&P 500               0.1536      0.1546   0.0010
+      DAX                   0.1609      0.1621   0.0012
+      Nikkei 225            0.1432      0.1453   0.0021
+  (Table 4 công bố độ biến động tổng lợi suất còn Table 1 dùng
+   lợi suất vượt trội; ở tầng ngày lãi suất tiền mặt gần như là
+   hằng số nên hai đại lượng trùng nhau tới bốn chữ số — kiểm
+   được ngay trên số của ta: 1990-2023 cho cùng một giá trị.)
+
+  Sai lệch lớn nhất kể cả ba ô suy ra: 0.0035
+
+KIỂM 4 — những phiên cực đoan có rơi đúng ngày lịch sử không
 
   10 phiên giảm mạnh nhất 1966-2023:
       1987-10-19   -20.47%  ✓
@@ -80,7 +124,7 @@ KIỂM 3 — những phiên cực đoan có rơi đúng ngày lịch sử không
   đánh dấu '?' ở trên là do danh sách tay của tôi thiếu, không
   phải do dữ liệu — chúng vẫn nằm trong đúng giai đoạn.
 
-KIỂM 4 — đoạn dựng lại so với chỉ số tổng lợi suất chính thức
+KIỂM 5 — đoạn dựng lại so với chỉ số tổng lợi suất chính thức
 
   9070 phiên chung 1988-01-04..2023-12-29
   tương quan log-return giá vs tổng lợi suất: 0.999601
