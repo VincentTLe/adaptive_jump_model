@@ -315,6 +315,49 @@ separate. Recorded as unresolvable rather than decided.
 
 ---
 
+## 9. The Japanese risk-free rate before 1990 — OPEN, measured, not acted on
+
+**What the paper says.** The instrument is specified; the vendor's construction
+is not:
+
+> [line 155-157] "For the risk-free rates, we use the 3-month Treasury Bill Yield from each corresponding country, sourced from the Global Financial Data (GFD) database."
+
+**The problem.** Japan had essentially no Treasury bill market before 1986, so
+"the 3-month Treasury Bill Yield" for 1970-1986 is whatever the vendor decided
+to splice. Ours is the IMF IFS Japan Treasury bill rate; the one independent
+series in the repository, JST Macrohistory's `bill_rate`, sits systematically
+above it:
+
+| period | ours | JST | gap |
+|---|---|---|---|
+| 1970-1979 | 5.25% | 7.27% | **-2.01pp** |
+| 1980-1989 | 4.29% | 6.27% | **-1.98pp** |
+| 1990-1999 | 2.05% | 2.74% | -0.70pp |
+| 2000-2020 | 0.10% | 0.07% | +0.03pp |
+
+Correlation 0.9723 — the shape agrees, the level does not. JST's 1974 peak of
+12.5% matches the Japanese call rate; ours looks like an administered rate.
+Neither is wrong; they are different instruments, and the paper's source made a
+third choice we cannot see.
+
+**Consequence, measured.** A cash rate that is too low inflates excess returns,
+and Japan is the only market with a buy-and-hold cell outside 0.01 against Table
+4. Substituting JST's rate moves the Japanese buy-and-hold Sharpe from 0.1306 to
+0.1228 against the published 0.12 — deviation 0.0106 down to 0.0028.
+
+**Not acted on.** That number was obtained by comparing against the target, so
+switching on the strength of it is fitting to the answer. The row is recorded as
+open and bounded: the Japanese risk-free level carries about a 2pp ambiguity
+before 1990 and 0.7pp through the 1990s, and Japanese Sharpe figures inherit
+roughly 0.008 of uncertainty from it. Any future change needs a justification
+that could have been written before the comparison was run.
+
+**Germany is not exposed the same way.** Its first ladder segment is an interbank
+rate, which carries a credit spread, but it ends in 1975-06 and so only touches
+the warm-up, never a training window that produces a reported signal.
+
+---
+
 ## Do not report confidence intervals in this project
 
 Standing instruction from the owner, and it is the right call. Intervals were

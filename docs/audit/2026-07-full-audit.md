@@ -1243,3 +1243,118 @@ Three further checks, in `artifacts/data-verification/`:
 What this does NOT establish: that our series equal Bloomberg's tick for tick.
 It establishes that they reproduce every distributional statistic the paper
 publishes, over both halves of the sample, to within a few thousandths.
+
+## Full data audit, 1970 onward (2026-07-28)
+
+Eight passes over the series the models actually train on, each aimed at a
+defect that moment-based checks cannot see: an interpolated backcast, a stale
+segment, a discontinuity at a construction joint, a calendar containing days the
+exchange was shut. `scripts/audit_data_1970.py`, output in
+`artifacts/data-audit/`.
+
+### Clean
+
+- **Calendar.** No duplicate dates, all sorted, zero weekend sessions in any
+  market. Sessions per year: us median 252 (248-254), de 252 (248-257), jp 246
+  (241-251). Three Japanese gaps over seven days, all real holidays (New Year
+  1986 and 1987, the ten-day Reiwa accession in May 2019).
+- **Staleness.** Longest run of an unchanged index level is 2 sessions in every
+  market and era. Exact-zero return days: us 0.00-0.07%, jp 0.00-0.02%, de
+  0.93% in 1970-1987 and lower after — the German figure reflects a
+  two-decimal index in the hundreds, not carried-forward values.
+- **Construction joints.** Every splice this project builds prints an
+  unremarkable return: us 1988-01-04 z = -0.13, jp 2011-12-19 z = -1.03, and
+  both edges of the 2020-2022 mirror bridge inside |z| = 0.3.
+- **The US against CRSP.** Correlation 0.9851 over 1970-1989 and 0.9924 over
+  1990-2023 against Kenneth French's daily market return.
+
+### Three suspicions raised and killed
+
+**The 1970s US autocorrelation.** Daily first-order autocorrelation is +0.249 in
+1970-1979, which is the signature a monthly-to-daily interpolation would leave.
+CRSP settles it: French's own data gives **+0.288** over the same decade, higher
+than ours, and both decline monotonically to negative by the 2000s. This is the
+non-synchronous-trading effect of that era, not an artefact. Second-order
+autocorrelation is near zero everywhere, which interpolation could not produce.
+
+**Japan against JST's total return.** Annual returns correlate only 0.685 with
+the JST Macrohistory equity series, with sign disagreements in whole years
+(2009: ours +21.6%, JST -25.0%). Not our defect: the JST file is internally
+consistent to 7e-9 under its own identity, so the extraction is right and JST's
+Japanese equity aggregate is simply a different index. The column we actually
+consume from that file is `eq_dp`, the dividend yield, and that one is validated
+where it can be — implied yields within 0.3pp on the 2012-2023 overlap.
+
+**The Japanese cash series looking frozen.** It changes 6.0 times a year against
+a monthly ladder's expected twelve. That is the history: Japanese short rates
+were administered before the 1980s and pinned near zero from 1999. The level, not
+the change count, is what can be wrong — see below.
+
+### The Japanese reconstruction, finally tested where it matters
+
+Every published validation of our Japanese total return covers 2012-2023, which
+is precisely the stretch where we use the **official** index and the
+reconstruction cannot be wrong. The era that matters had no independent check.
+
+`historyIndex.xls`, sitting unused in `data/external/inputs/manual-verification/`,
+turns out to be MSCI Japan Standard, gross, local currency, daily from
+2000-12-29 — straddling the boundary. That gives a controlled test: measure our
+series against MSCI in both eras, and let the official era define what two
+different Japanese indices look like when both are correct.
+
+| era | our source | daily corr | vol ours | vol MSCI | vol ratio | CAGR ours | CAGR MSCI |
+|---|---|---|---|---|---|---|---|
+| 2001-2011 | **reconstructed** | **0.9710** | 0.2561 | 0.2360 | 1.085 | -2.95% | -3.88% |
+| 2012-2023 | official N225TR | 0.9678 | 0.2036 | 0.1886 | 1.080 | +14.35% | +12.84% |
+
+The reconstructed era matches MSCI **as well as the official era does**, on
+correlation and on the volatility ratio alike. The Nikkei runs about 8% more
+volatile than MSCI Japan in both, which is the index definition — 225 names,
+price-weighted — and not a reconstruction error. The pre-2012 Japanese total
+return is therefore evidenced, not merely assumed.
+
+### PROBLEM 1: the Japanese risk-free rate sits about 2pp too low before 1990
+
+The one independent short-rate series we hold is JST's `bill_rate`. Against it:
+
+| period | ours (IMF IFS T-bill) | JST | mean gap |
+|---|---|---|---|
+| 1970-1979 | 5.25% | 7.27% | **-2.01pp** |
+| 1980-1989 | 4.29% | 6.27% | **-1.98pp** |
+| 1990-1999 | 2.05% | 2.74% | -0.70pp |
+| 2000-2020 | 0.10% | 0.07% | +0.03pp |
+
+Correlation 0.9723, so the shape is right and the level is not. Japan had
+essentially no Treasury bill market before 1986, so both series are proxies:
+JST's tracks the money market (the 1974 peak at 12.5% matches the call rate),
+ours looks like an administered rate. The paper asks for "the 3-month Treasury
+Bill Yield", an instrument that did not exist there for most of the span, and
+buys it from a vendor that made its own choice.
+
+**This is the leading explanation for Japan being the only market with a
+buy-and-hold cell outside 0.01.** Substituting JST's rate moves the Japanese
+buy-and-hold Sharpe from 0.1306 to 0.1228 against the published 0.12 — deviation
+0.0106 down to 0.0028 — because a cash rate that is too low inflates excess
+returns.
+
+**Not switched.** The gain is measured against the target, so adopting it would
+be exactly the fitting this project forbids itself. Recorded as a bounded open
+item in docs/unspecified-choices.md instead; any change needs a reason that
+could have been written before the number was known.
+
+### PROBLEM 2: the source that validated the German backcast is gone
+
+The ledger states the pre-1988 DAX carries the Stehle backcast and cites
+"monthly correlation 0.979-0.985 against the independent OECD MEI share-price
+index". That OECD file is not in `data/external/inputs/`. The claim is therefore
+**currently unreproducible**, and it is the only external evidence for eighteen
+years of German data that feed every training window up to 2000.
+
+What still stands for Germany without it: the series hits exactly 1000.0 on
+1987-12-30, the official DAX base date and value; Table 1's 1970-2023
+volatility reproduces to 0.0003 and the implied 1970-1989 volatility to 0.0012;
+correlation with `^GDAXI` is 1.0000 after 2000. Those are real but none is a
+daily check of the backcast era itself.
+
+Action: re-acquire OECD `SPASTT01DEM661N` and pin it. FRED was not responding
+during this audit, so it is left open rather than silently dropped.
