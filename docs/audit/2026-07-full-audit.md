@@ -375,3 +375,92 @@ does not reproduce: us 103.0% against 44%, jp 140.6% against 72%, de 105.5%
 against 170%. The us jump-model Sharpe matches to 0.018 while trading 2.3 times
 as much, so that cell agrees on the headline number and disagrees on the
 behaviour underneath it.
+
+## HMM anatomy on v8.4, and predictions for v8.5 (2026-07-27)
+
+Written before the v8.5 run finished, so the predictions below cannot be
+rewritten to fit whatever it produces.
+
+### The HMM matches the paper at the model layer
+
+Reported turnover is `0.5 * sum|dposition|` annualised (`backtest.py:124`), and
+a 0/1 strategy moves by exactly 1 at each shift, so turnover is half the shifts
+per year. That makes Table 4's turnover row directly comparable with Table 3's
+shifts-per-year row, which is the only place the paper publishes how its model
+responds to the smoothing window.
+
+Fixed-k shifts per year on the US series, 1982-2023, against Table 3 (line 644):
+
+| k | ours | Shu | ratio |
+|---|---|---|---|
+| 0 | 9.62 | 8.5 | 1.13x |
+| 2 | 7.29 | 6.6 | 1.10x |
+| 4 | 5.05 | 4.9 | 1.03x |
+| 8 | 3.24 | 3.2 | 1.01x |
+| 20 | 2.14 | 2.0 | 1.07x |
+
+With the selector switched off, our smoothed state sequence flips at Shu's rate
+across the whole grid. The selected paths agree too: turnover 184.2% against
+141% (us), 222.7% against 246% (de), 316.7% against 290% (jp) — 1.31x, 0.91x,
+1.09x, scattered around one rather than biased.
+
+This is the opposite of the jump model, whose fixed-lambda flip rates sit at
+0.43-0.93x of Table 3 and whose selected turnover misses by 2.3x. Whatever
+drives the JM deviation, it is not shared by the HMM, even though both models
+consume the same three features from the same frames.
+
+An arithmetic correction, caught here rather than in a report: turnover is half
+the shifts, so shifts are twice the turnover. Inverting that once turned a 1.31x
+gap into a printed "5.23x" before it was checked against Table 3.
+
+### The deviation that remains is the width of the k grid
+
+Out-of-sample Sharpe with k held fixed for the whole period, no selection:
+
+| market | k=0 | k=2 | k=4 | k=8 | k=20 | selected | Shu |
+|---|---|---|---|---|---|---|---|
+| us | 0.594 | 0.524 | 0.580 | **0.676** | 0.595 | 0.638 | 0.54 |
+| de | 0.406 | 0.388 | **0.462** | 0.384 | 0.268 | 0.393 | 0.35 |
+| jp | 0.095 | 0.192 | 0.202 | 0.197 | **0.213** | 0.182 | 0.19 |
+
+Shu's published HMM Sharpe falls inside our own fixed-k range on all three
+markets. The grid alone spans 0.15 (us), 0.19 (de) and 0.12 (jp) — every one of
+those wider than the deviation being investigated. So the HMM deviation is not
+evidence of a defect; it is the size of an unspecified knob, and the paper never
+publishes the candidate set (see docs/unspecified-choices.md #3).
+
+Two further facts about the selector, both from sealed artifacts:
+
+- The selected path scores **below** the best fixed k in all three markets
+  (0.638 vs 0.676, 0.393 vs 0.462, 0.182 vs 0.213). Re-picking k monthly costs
+  more than it earns against simply holding the ex-post best k.
+- The monthly decision is often close: the winner beats the runner-up by less
+  than 0.02 Sharpe in 16.5% (us), 27.2% (de) and 19.6% (jp) of months.
+
+The modal pick coincides with the ex-post best fixed k in all three markets
+(87.6%, 52.2%, 40.3%, against 20% for a uniform pick). Three markets is far too
+few to call that skill rather than coincidence, and it is recorded as an
+observation, not a claim.
+
+### Predictions for v8.5
+
+v8.5 adds k=6 and changes nothing else (`tests/test_audit_hardening.py`
+asserts the two contracts differ in that field alone; the acquisition manifests
+are byte-identical on all six canonical series).
+
+1. **The boundary gate will still fail on the same cells.** k=6 is an interior
+   value and cannot relieve concentration at the top of the grid. Expect jp
+   delay-1 (39.5% at k=20) and us delay-10 (39.0%) to fail again.
+2. **The us HMM Sharpe will fall.** k=6 sits between k=4 (0.580) and k=8
+   (0.676); cross-validation currently parks on k=8 in 87.6% of months, so any
+   months that move to 6 pull the result toward the middle — and toward Shu's
+   0.54, which is below all of it.
+3. **de will fall to roughly 0.354**, from an earlier unsealed probe that put
+   the deviation at +0.004 against Shu's 0.35.
+4. **jp will barely move.** Its picks concentrate at k=20 (40.3%) and k=4
+   (29.0%); k=6 lands between two cells that score 0.202 and 0.197.
+
+If (2) and (3) hold, they are not a success. The grid was corrected because the
+paper names k=6 at line 390, and the direction of the effect was predicted from
+the fixed-k table above rather than discovered by trying it. A change that
+improved agreement for any other reason would have to be reported as tuning.
