@@ -831,3 +831,58 @@ replication. Free daily S&P 500 price is available from 1977 (Yahoo ^GSPC,
 the price series suffices: over the 9,070 overlapping sessions the daily
 log-return volatility of price and total return differ by 0.0011pp with
 correlation 0.99960.
+
+## v9 exploratory readout: the S&P 500 substitution, measured (2026-07-28)
+
+HMM arm only, US only, refit on the paper's own index. Germany and Japan are
+untouched by v9 by construction and a test asserts their market definitions are
+byte-identical to v8.5. Scored on v8.5's reported window, 1990-01-02..2023-12-29,
+so the two are compared over exactly the same days; the guard reproduced v8.5's
+sealed metric row to 3.55e-14 before any v9 number was computed. This is
+exploratory: a sealed v9 run derives its comparison sample across the jump model
+too.
+
+| metric | v8.5 (CRSP) | v9 (S&P 500) | Shu | dev v8.5 | dev v9 |
+|---|---|---|---|---|---|
+| Sharpe | 0.6139 | **0.5471** | 0.54 | 0.074 | **0.007** |
+| Return | 9.18% | **8.50%** | 8.5% | 0.007 | **0.000** |
+| Volatility | 11.06% | **11.31%** | 11.3% | 0.002 | **0.000** |
+| MDD | -19.72% | **-23.21%** | -28.9% | 0.092 | **0.057** |
+| Calmar | 0.3442 | **0.2666** | 0.21 | 0.134 | **0.057** |
+| ES 5% | -1.77% | -1.79% | -1.8% | 0.000 | 0.000 |
+| Turnover | 188.3% | **170.7%** | 141% | 0.473 | **0.296** |
+| Leverage | 70.87% | **72.40%** | 72% | 0.011 | **0.004** |
+| regime shifts | 128 | **116** | 96 | 32 | 20 |
+
+**Every one of the eight moves toward the paper, and none moves away.** Four are
+now essentially exact: Return to 0.000, Volatility to 0.000, Leverage to 0.004,
+Sharpe to 0.007. Cells within 0.05 go from 4/8 to 5/8.
+
+The three predictions logged in c6a7889 before the run all hold:
+
+1. the drawdown deepens from -19.72% toward -28.9% — it reached -23.21%,
+   closing 3.49 of the 9.18pp gap;
+2. shifts fall from 128 toward the published 96 — they reached 116, closing 12
+   of 32;
+3. Sharpe falls from 0.614 toward 0.54 — it reached 0.5471, a deviation of
+   0.007 against 0.074.
+
+The selector also moves the way the earlier turnover forensics said it must.
+Inverting Shu's implied flip rate through our own per-market curve had put their
+behaviour at an effective k near 12.7 while ours sat at 6.9. With the correct
+index the picks spread and shift toward persistence:
+
+| | k=0 | k=2 | k=4 | k=6 | k=8 | k=20 |
+|---|---|---|---|---|---|---|
+| v8.5 | 3% | 1% | 2% | 10% | **81%** | 3% |
+| v9 | 9% | 1% | 6% | 21% | 29% | **33%** |
+
+That was not tuned; the grid is unchanged from v8.5 and only the input series
+differs.
+
+### What the substitution does NOT explain
+
+Drawdown and turnover remain outside tolerance: MDD 0.057, Calmar 0.057,
+turnover 0.296. The index accounts for roughly 38% of the drawdown gap and 37%
+of the turnover gap. So the traced cause is real and large, and it is not the
+whole story. Recorded as such rather than declared closed.
