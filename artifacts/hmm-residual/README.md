@@ -18,6 +18,8 @@ the scripts named below.
 | `04-figure6-path/` | Shu's own traded positions, read off Figures 5 and 6 | `scripts/extract_paper_positions.py` |
 | `05-mdd-anatomy/` | Shu's positions run on our returns; drawdown episodes; day-level disagreement | `scripts/probe_mdd_anatomy.py` |
 | `06-mdd-convention/` | four drawdown conventions against ten published cells | `scripts/probe_mdd_convention.py` |
+| `07-table5-delays/` | Table 5's nine Calmar cells at delays 1, 5 and 10, as an out-of-sample check on the drawdown basis | `scripts/probe_table5_delays.py` |
+| `08-grid-identification/` | eight candidate sets, none adopted: how far grid choice alone moves turnover | `scripts/probe_grid_identification.py` |
 
 `v9-us-hmm/` is a cache, not a sealed run: it fits the HMM alone and borrows
 v8.5's comparison sample so the two are scored over identical days. A sealed run
@@ -42,3 +44,9 @@ What the directory establishes, in order:
    Figure 5 pin the drawdown to a wealth path that is flat while in cash; across
    ten cells that basis cuts the mean drawdown error from 0.0330 to 0.0072 and
    the mean Calmar error from 0.0262 to 0.0055 (`06-mdd-convention/`).
+5. On that basis all three markets reach 7/8 within 0.05, each failing on
+   turnover alone (`01-status/`), and the turnover row is not identified by the
+   paper: across eight candidate sets it spans 1.295-2.913 (us), 1.816-2.432
+   (de) and 2.751-4.686 (jp), several times the deviation under investigation
+   (`08-grid-identification/`). No set reproduces Table 4 in all three markets
+   at once.
