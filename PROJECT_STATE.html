@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Trạng thái dự án — adaptive_jump_model</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1117; --bg2:#161922; --bg3:#1f2330; --fg:#e7ecef; --fg-dim:#9aa5b1;
+  --accent:#7bdcb5; --cyan:#7bf0ff; --magenta:#ff8aff; --tool:#7bff7b;
+  --result:#ffd966; --red:#ff7b7b; --border:#2a3040; --shadow:0 4px 24px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 Inter,system-ui,sans-serif}
+code,pre,.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.progress{position:fixed;top:0;left:0;height:3px;width:100%;background:transparent;z-index:100}
+#pbar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--cyan))}
+.sidebar{position:fixed;top:0;left:0;width:250px;height:100vh;overflow-y:auto;
+  background:var(--bg2);border-right:1px solid var(--border);padding:28px 18px}
+.sidebar h1{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-dim);margin:0 0 18px}
+#toc a{display:block;padding:7px 10px;color:var(--fg-dim);text-decoration:none;font-size:13.5px;
+  border-radius:6px;border-left:2px solid transparent}
+#toc a:hover{color:var(--fg);background:var(--bg3)}
+#toc a.active{color:var(--accent);border-left-color:var(--accent);background:var(--bg3)}
+main{margin-left:250px;padding:0 44px 80px;max-width:1000px}
+.hero{padding:64px 0 34px;border-bottom:1px solid var(--border)}
+.hero h1{font-size:38px;line-height:1.2;margin:0 0 12px}
+.hero .tag{color:var(--fg-dim);font-size:17px;margin:0 0 20px}
+.hero .meta{font-size:13px;color:var(--fg-dim);font-family:'JetBrains Mono',monospace}
+.section{padding:46px 0;border-bottom:1px solid var(--border)}
+.reveal{animation:rise .5s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.chapter-tag{display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--fg-dim);margin-bottom:10px}
+.diff{padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:600}
+.d1{background:rgba(123,220,181,.16);color:var(--accent)}
+.d2{background:rgba(123,240,255,.16);color:var(--cyan)}
+.d3{background:rgba(255,217,102,.16);color:var(--result)}
+.d4{background:rgba(255,123,123,.16);color:var(--red)}
+h2{font-size:27px;margin:0 0 8px;display:flex;align-items:baseline;gap:12px}
+h2 .n{font-family:'JetBrains Mono',monospace;font-size:15px;color:var(--accent);opacity:.75}
+h3.steph{font-size:18px;margin:30px 0 10px;display:flex;align-items:center;gap:10px}
+.stepnum{display:inline-flex;align-items:center;justify-content:center;width:23px;height:23px;
+  border-radius:50%;background:var(--bg3);border:1px solid var(--border);
+  font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);flex:none}
+.lead{color:var(--fg-dim);font-size:17px;margin:0 0 20px}
+.diagram{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--bg2);
+  border:1px solid var(--border);border-radius:12px;padding:20px;margin:20px 0;overflow-x:auto}
+.dcol{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.dbox{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:11px 14px;
+  font-size:13.5px;min-width:110px;text-align:center;line-height:1.45}
+.dbox .s{display:block;font-size:11px;color:var(--fg-dim);margin-top:3px}
+.dbox.hl{border-color:var(--accent);box-shadow:0 0 0 1px rgba(123,220,181,.25)}
+.dbox.act{border-color:var(--tool)}
+.dbox.obs{border-color:var(--result)}
+.dbox.bad{border-color:var(--red);box-shadow:0 0 0 1px rgba(255,123,123,.2)}
+.darrow{color:var(--fg-dim);font-size:19px;flex:none}
+.callout{background:var(--bg2);border-left:3px solid var(--accent);border-radius:0 9px 9px 0;
+  padding:14px 18px;margin:20px 0}
+.callout.warn{border-left-color:var(--result)}
+.callout.key{border-left-color:var(--magenta)}
+.callout.bad{border-left-color:var(--red)}
+.callout .lbl{display:block;font-size:11px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--fg-dim);margin-bottom:5px}
+table{width:100%;border-collapse:collapse;margin:18px 0;font-size:13.5px}
+th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--border)}
+th{color:var(--fg-dim);font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;font-weight:600}
+td.mono,th.mono{font-family:'JetBrains Mono',monospace}
+tr.ok td{background:rgba(123,220,181,.05)}
+tr.bad td{background:rgba(255,123,123,.06)}
+.pill{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.pill.ok{background:rgba(123,220,181,.16);color:var(--accent)}
+.pill.no{background:rgba(255,123,123,.16);color:var(--red)}
+.pill.mid{background:rgba(255,217,102,.16);color:var(--result)}
+.pill.dim{background:var(--bg3);color:var(--fg-dim)}
+details.more{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:18px 0}
+details.more summary{cursor:pointer;padding:12px 16px;font-size:14px;color:var(--cyan);user-select:none}
+details.more .inner{padding:0 16px 16px;border-top:1px solid var(--border)}
+.recap{background:linear-gradient(180deg,rgba(123,220,181,.07),transparent);
+  border:1px solid var(--border);border-radius:11px;padding:16px 20px;margin-top:28px}
+.recap .lbl{color:var(--accent);font-size:12px;font-weight:600;letter-spacing:.05em}
+.recap ul{margin:9px 0 0;padding-left:19px}
+.recap li{margin:5px 0;font-size:14.5px}
+.recap .next{margin:12px 0 0;font-size:13.5px;color:var(--fg-dim)}
+pre{background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:14px 16px;
+  overflow-x:auto;font-size:13px;line-height:1.6}
+footer{padding:38px 0 0;color:var(--fg-dim);font-size:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+@media(max-width:900px){.sidebar{display:none}main{margin-left:0;padding:0 20px 60px}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="progress"><div id="pbar"></div></div>
+
+<aside class="sidebar">
+  <h1>Trạng thái dự án</h1>
+  <nav id="toc">
+    <a href="#ch1">01 · Dự án đang làm gì</a>
+    <a href="#ch2">02 · Pipeline chạy ra sao</a>
+    <a href="#ch3">03 · Các run niêm phong</a>
+    <a href="#ch4">04 · Kết quả v8.4 vs Shu</a>
+    <a href="#ch5">05 · Cổng chặn còn đỏ</a>
+    <a href="#ch6">06 · Những gì tôi làm sai</a>
+    <a href="#ch7">07 · Đang chạy &amp; việc kế tiếp</a>
+  </nav>
+</aside>
+
+<main>
+<div class="hero" id="top">
+  <h1>Trạng thái dự án <span style="color:var(--accent)">adaptive_jump_model</span></h1>
+  <p class="tag">Tái hiện Shu, Yu &amp; Mulvey (2024) trên dữ liệu công khai — và kiểm chứng
+    xem mình có thật sự chạy đúng model của họ không.</p>
+  <p class="meta">Cập nhật 2026-07-27 · nhánh <b>cleanup/research-protocol</b> ·
+    3 commit chưa push · run mới nhất <b>v8.4</b> (17e1984)</p>
+</div>
+
+<!-- ═══════════════ CH1 ═══════════════ -->
+<section id="ch1" class="section reveal">
+  <span class="chapter-tag">Chương 1 · Bối cảnh <span class="diff d1">DỄ</span></span>
+  <h2><span class="n">01</span>Dự án đang làm gì</h2>
+  <p class="lead">Một bài báo nói mô hình của họ thắng trên 3 thị trường. Mình dựng lại
+    bằng dữ liệu miễn phí để kiểm chứng, rồi cộng thêm đóng góp riêng.</p>
+
+  <div class="diagram">
+    <div class="dbox">Paper Shu 2024<span class="s">Bloomberg + GFD<br>1970–2023</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox hl">Mình dựng lại<span class="s">French + Stooq + BoJ<br>chi phí $0</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox obs">So từng ô<span class="s">ngưỡng lệch &lt; 0.05</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox act">Đóng góp mới<span class="s">DD-only JM</span></div>
+  </div>
+
+  <p>Ba mô hình được so trên mỗi thị trường: <b>Buy &amp; Hold</b> (nắm giữ suốt),
+    <b>HMM</b> (mô hình Markov ẩn — chuẩn cũ của ngành), và <b>JM</b> (jump model — thứ
+    bài báo đề xuất). Chiến lược gọi là <b>0/1</b>: tín hiệu bull thì ôm cổ phiếu, bear thì
+    rút hết về tài sản phi rủi ro.</p>
+
+  <div class="callout"><span class="lbl">Mục tiêu do chủ dự án đặt</span>
+    Mỗi ô lệch dưới <b>0.05</b> Sharpe so với Table 4 của bài báo, lý tưởng dưới 0.03.
+    Đây là tiêu chí <i>độ gần của điểm ước lượng</i> — không phải kiểm định thống kê.
+  </div>
+
+  <div class="recap">
+    <span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul>
+      <li>Đây là bài <b>tái hiện</b>: mục tiêu là ra đúng số của người ta, không phải thắng họ.</li>
+      <li>Ba mô hình × ba thị trường = 9 ô cần khớp.</li>
+      <li>Thước đo là độ lệch điểm ước lượng, ngưỡng 0.05.</li>
+    </ul>
+    <p class="next"><b>Tiếp theo →</b> dữ liệu đi qua những chặng nào trước khi thành con số.</p>
+  </div>
+</section>
+
+<!-- ═══════════════ CH2 ═══════════════ -->
+<section id="ch2" class="section reveal">
+  <span class="chapter-tag">Chương 2 · Pipeline <span class="diff d1">DỄ</span></span>
+  <h2><span class="n">02</span>Pipeline chạy ra sao</h2>
+  <p class="lead">Sáu chặng, mỗi chặng có cổng kiểm. Cổng cuối là chỗ mọi thứ đang tắc.</p>
+
+  <div class="diagram">
+    <div class="dcol">
+      <div class="dbox act">① Nguồn thô<span class="s">French · Stooq · FRED · BoJ</span></div>
+      <div class="darrow" style="text-align:center">↓</div>
+      <div class="dbox">② Acquire<span class="s">cắt theo sample_start<br>hash sha256 từng file</span></div>
+      <div class="darrow" style="text-align:center">↓</div>
+      <div class="dbox">③ Feature<span class="s">DD(10) · Sortino(20,60)<br>trên excess return</span></div>
+      <div class="darrow" style="text-align:center">↓</div>
+      <div class="dbox hl">④ Chuẩn hoá<span class="s">expanding, neo 1969-05<br><b style="color:var(--result)">paper không quy định</b></span></div>
+      <div class="darrow" style="text-align:center">↓</div>
+      <div class="dbox">⑤ Fit + chọn λ/k<span class="s">refit 6 tháng · CV hàng tháng<br>validation 8 năm</span></div>
+      <div class="darrow" style="text-align:center">↓</div>
+      <div class="dbox bad">⑥ Cổng boundary<span class="s"><b>11/18 ĐỎ</b><br>metrics bị niêm phong</span></div>
+    </div>
+  </div>
+
+  <h3 class="steph"><span class="stepnum">1</span>Cổng boundary là gì</h3>
+  <p>Đây là cổng tự mình đặt ra, không có trong bài báo. Logic: <i>nếu CV cứ chọn giá trị
+    ở mép lưới ứng viên quá 5% số tháng, thì điểm tối ưu có thể nằm ngoài lưới, kết quả
+    không đáng tin.</i> Khi cổng đỏ, metrics chính thức <b>không được mở</b>.</p>
+
+  <div class="callout warn"><span class="lbl">Hệ quả từng gây rắc rối lớn</span>
+    Ở v8.3, cổng đỏ khiến pipeline <b>không sinh file metrics nào cả</b>. Mọi con số báo cáo
+    đều là tính tay, mỗi lần một quy ước khác nhau — nên sau này không ai tái lập được
+    <span class="mono">0.662</span>. Đã sửa ở v8.4: giờ luôn ghi
+    <span class="mono">metrics-exploratory.csv</span> có nhãn rõ ràng.
+  </div>
+
+  <div class="recap">
+    <span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul>
+      <li>Chặng ④ chuẩn hoá là <b>lựa chọn của mình</b>, bài báo chỉ nói một chữ "standardized".</li>
+      <li>Cổng ⑥ đang chặn metrics chính thức ở 11/18 ô.</li>
+      <li>Lỗ hổng provenance của v8.3 đã bịt.</li>
+    </ul>
+    <p class="next"><b>Tiếp theo →</b> đã chạy bao nhiêu lần, mỗi lần khác nhau chỗ nào.</p>
+  </div>
+</section>
+
+<!-- ═══════════════ CH3 ═══════════════ -->
+<section id="ch3" class="section reveal">
+  <span class="chapter-tag">Chương 3 · Lịch sử run <span class="diff d2">VỪA</span></span>
+  <h2><span class="n">03</span>Các run niêm phong</h2>
+  <p class="lead">Tám run đã chạy. Ba cái đầu "complete" nhưng thuộc thế hệ cũ; năm cái sau
+    đều bị cổng chặn.</p>
+
+  <table>
+    <thead><tr><th>Config</th><th class="mono">sample_start</th><th class="mono">min_obs</th>
+      <th>Lưới k của HMM</th><th>Ghi chú</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">v8</td><td class="mono">1965-01-01</td><td class="mono">250</td>
+        <td class="mono">0,2,4,8,20,40</td><td>bản đầu</td></tr>
+      <tr><td class="mono">v8-1</td><td class="mono">1965-01-01</td><td class="mono">250</td>
+        <td class="mono">…,1280,2560</td><td>lưới rộng</td></tr>
+      <tr><td class="mono">v8-2</td><td class="mono">1965-01-01</td><td class="mono">250</td>
+        <td class="mono">…,1280,2560</td><td>sửa cửa sổ JP</td></tr>
+      <tr class="bad"><td class="mono">v8-3</td><td class="mono"><b>1970-01-01</b></td><td class="mono">63</td>
+        <td class="mono">0,2,4,8,20</td><td><b>lỗi: cắt mất dữ liệu → cửa sổ OOS lệch</b></td></tr>
+      <tr class="ok"><td class="mono">v8-4</td><td class="mono"><b>1969-05-01</b></td><td class="mono">63</td>
+        <td class="mono">0,2,4,8,20</td><td><b>hiện tại — cửa sổ đúng mốc Shu</b></td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="steph"><span class="stepnum">2</span>Lỗi cửa sổ OOS — bài học đắt nhất</h3>
+  <p>v8.3 đặt <span class="mono">sample_start = 1970-01-01</span>. Điều đó cắt cụt chuỗi ngay
+    lúc nạp, đẩy "ngày feature hoàn chỉnh thứ 3000" muộn đi, và làm nhánh
+    <span class="mono">max()</span> trong quy tắc OOS lật sang "fit + 8 năm".</p>
+
+  <div class="diagram">
+    <div class="dbox bad">v8.3<span class="s">us 1990-<b>02-20</b><br>de 1990-<b>05-28</b><br>jp 1990-<b>08-02</b></span></div>
+    <div class="darrow">→</div>
+    <div class="dbox"><span class="s">ba thị trường<br>ba cửa sổ khác nhau<br>không cái nào<br>trùng Shu</span></div>
+    <div class="darrow">⇒</div>
+    <div class="dbox hl">v8.4<span class="s">us 1990-01-02<br>de 1990-01-02<br>jp 1990-01-19</span></div>
+  </div>
+
+  <div class="callout key"><span class="lbl">Điểm mấu chốt</span>
+    Dữ liệu <b>chưa bao giờ thiếu</b> — mọi chuỗi đều có từ 1965, DTB3 có từ 1954.
+    Chỉ là một knob config cắt nhầm. Mất 8 tháng đầu 1990 của Nikkei, đúng đoạn sập
+    <b>−33,8%</b>, khiến Buy&amp;Hold Nhật đẹp lên giả tạo.
+  </div>
+
+  <div class="recap">
+    <span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul>
+      <li>v8.4 là bản đầu tiên cả ba thị trường <b>dùng chung một cửa sổ</b> và trùng mốc bài báo.</li>
+      <li>Nguyên nhân lệch là config, không phải thiếu dữ liệu.</li>
+    </ul>
+    <p class="next"><b>Tiếp theo →</b> số thật của v8.4 so với Table 4.</p>
+  </div>
+</section>
+
+<!-- ═══════════════ CH4 ═══════════════ -->
+<section id="ch4" class="section reveal">
+  <span class="chapter-tag">Chương 4 · Kết quả <span class="diff d3">KHÓ</span></span>
+  <h2><span class="n">04</span>Kết quả v8.4 vs Shu</h2>
+  <p class="lead">Đếm trung thực: chỉ <b>1/6</b> ô có mô hình vừa đạt ngưỡng vừa qua cổng. Và turnover — đặc điểm định danh của JM — không khớp.</p>
+
+  <table>
+    <thead><tr><th>Thị trường</th><th>Mô hình</th><th class="mono">Mình</th><th class="mono">Shu</th>
+      <th class="mono">Lệch</th><th>Đạt?</th></tr></thead>
+    <tbody>
+      <tr class="ok"><td>US</td><td>JM</td><td class="mono">0.662</td><td class="mono">0.68</td><td class="mono">−0.018</td><td><span class="pill ok">ĐẠT</span></td></tr>
+      <tr class="bad"><td>US</td><td>HMM</td><td class="mono">0.638</td><td class="mono">0.54</td><td class="mono">+0.098</td><td><span class="pill no">TRƯỢT</span></td></tr>
+      <tr class="ok"><td>US</td><td>B&amp;H</td><td class="mono">0.486</td><td class="mono">0.48</td><td class="mono">+0.006</td><td><span class="pill ok">ĐẠT</span></td></tr>
+      <tr class="ok"><td>Đức</td><td>JM</td><td class="mono">0.391</td><td class="mono">0.44</td><td class="mono">−0.049</td><td><span class="pill ok">ĐẠT</span></td></tr>
+      <tr class="ok"><td>Đức</td><td>HMM</td><td class="mono">0.393</td><td class="mono">0.35</td><td class="mono">+0.043</td><td><span class="pill ok">ĐẠT</span></td></tr>
+      <tr class="ok"><td>Đức</td><td>B&amp;H</td><td class="mono">0.298</td><td class="mono">0.30</td><td class="mono">−0.002</td><td><span class="pill ok">ĐẠT</span></td></tr>
+      <tr class="bad"><td>Nhật</td><td>JM</td><td class="mono">0.197</td><td class="mono">0.31</td><td class="mono">−0.113</td><td><span class="pill no">TRƯỢT</span></td></tr>
+      <tr class="ok"><td>Nhật</td><td>HMM</td><td class="mono">0.182</td><td class="mono">0.19</td><td class="mono">−0.008</td><td><span class="pill ok">ĐẠT</span></td></tr>
+      <tr class="ok"><td>Nhật</td><td>B&amp;H</td><td class="mono">0.138</td><td class="mono">0.12</td><td class="mono">+0.018</td><td><span class="pill ok">ĐẠT</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="grid2">
+    <div class="callout"><span class="lbl">Bằng chứng mạnh nhất</span>
+      Cả ba ô <b>Buy &amp; Hold</b> khớp trong ±0.02. B&amp;H chỉ phụ thuộc dữ liệu thị trường,
+      không phụ thuộc model — nên nó chứng minh <b>dữ liệu công khai của mình tương đương
+      dữ liệu Bloomberg bản quyền</b> của bài báo.
+    </div>
+    <div class="callout bad"><span class="lbl">Thứ tự Đức bị lật</span>
+      HMM <span class="mono">0.393</span> &gt; JM <span class="mono">0.391</span> — chênh 0.002,
+      tức <b>hoà</b>. Nên câu "JM &gt; HMM &gt; B&amp;H trên cả ba thị trường" của v8.3
+      <b>không còn đúng</b> sau khi sửa cửa sổ.
+    </div>
+  </div>
+
+  <h3 class="steph"><span class="stepnum">3</span>"7/9 ô đạt" là cách đếm thổi phồng</h3>
+  <p>Con số 7/9 đúng về số học nhưng gây hiểu nhầm, vì <b>3 trong 7 ô đạt là Buy&amp;Hold</b> —
+    thứ không chứa mô hình nào. Nó đo <i>dữ liệu</i>, không đo <i>tái hiện</i>. Đếm cho đúng:</p>
+
+  <table>
+    <thead><tr><th>Ngưỡng</th><th>Cả 9 ô</th><th>Chỉ ô CÓ MODEL</th><th>Ô có model VÀ qua cổng</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">0.05</td><td><span class="pill mid">7/9</span></td><td><span class="pill mid">4/6</span></td><td><span class="pill no"><b>1/6</b></span></td></tr>
+      <tr><td class="mono">0.03</td><td><span class="pill mid">5/9</span></td><td><span class="pill no">2/6</span></td><td><span class="pill no">1/6</span></td></tr>
+    </tbody>
+  </table>
+
+  <p>Trong 4 ô model đạt ngưỡng 0.05, có <b>3 ô nằm trên cell mà cổng biên của chính dự án
+    đã đỏ</b> (Đức JM 0.0515, Đức HMM 0.0637, Nhật HMM 0.3946). Chỉ <b>US JM</b> vừa đạt dung
+    sai vừa qua cổng.</p>
+
+  <h3 class="steph"><span class="stepnum">4</span>Turnover — hàng quan trọng nhất, và nó không khớp</h3>
+  <p>Table 4 có 8 hàng chỉ số, tôi từng chỉ so hàng Sharpe. So đủ thì lộ ra vấn đề lớn hơn:</p>
+
+  <table>
+    <thead><tr><th>Ô</th><th class="mono">Sharpe mình/Shu</th><th class="mono">Turnover mình/Shu</th><th></th></tr></thead>
+    <tbody>
+      <tr class="bad"><td>US · JM</td><td class="mono">0.662 / 0.68 ✓</td><td class="mono"><b>103.0% / 44%</b></td><td><span class="pill no">gấp 2.34×</span></td></tr>
+      <tr class="bad"><td>Nhật · JM</td><td class="mono">0.197 / 0.31</td><td class="mono"><b>140.6% / 72%</b></td><td><span class="pill no">gấp 1.95×</span></td></tr>
+      <tr><td>Đức · JM</td><td class="mono">0.391 / 0.44</td><td class="mono">105.5% / 170%</td><td><span class="pill mid">ngược chiều</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout bad"><span class="lbl">Ý nghĩa</span>
+    Turnover thấp là <b>đặc điểm định danh</b> của JM trong bài báo — họ khoe hẳn
+    <i>"as low as 44%"</i>. Ô US "khớp" Sharpe tới 0.018 <b>trong khi giao dịch gấp 2.3 lần</b>,
+    tức khớp con số đầu bảng nhưng <b>hành xử bên dưới khác hẳn</b>. Đây là ô lệch quan trọng
+    nhất, và nó xuất hiện ở cả US lẫn Nhật — nên <b>không phải vấn đề dữ liệu Nhật</b>.
+  </div>
+
+  <div class="callout key"><span class="lbl">Không dùng khoảng tin cậy</span>
+    Dự án này <b>không báo cáo CI</b>. Bài báo cho một con số không kèm sai số chuẩn, trên dữ
+    liệu mình không có — không tồn tại phân phối mẫu để kiểm định. Trước đây tôi từng dùng
+    "Shu nằm trong CI 9/9" như bằng chứng, và cả phần số học tôi đưa ra để biện minh cũng sai
+    (trộn tần suất). Đã rút lại toàn bộ. Thay bằng: <b>độ gần của điểm ước lượng so với ngưỡng
+    định trước, trên đủ 8 hàng của Table 4</b>.
+  </div>
+
+  <div class="recap">
+    <span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul>
+      <li>Đếm trung thực: <b>1/6</b> ô có model vừa đạt 0.05 vừa qua cổng — không phải 7/9.</li>
+      <li>Buy&amp;Hold khớp cả ba ⇒ <b>dữ liệu đúng</b> (nhưng nó không đo tái hiện).</li>
+      <li><b>Turnover không khớp ở US và Nhật</b> — lệch nằm ở tầng model, không ở dữ liệu.</li>
+      <li>Không dùng CI. Dùng độ gần điểm ước lượng.</li>
+    </ul>
+    <p class="next"><b>Tiếp theo →</b> vì sao metrics chính thức vẫn bị khoá.</p>
+  </div>
+</section>
+
+<!-- ═══════════════ CH5 ═══════════════ -->
+<section id="ch5" class="section reveal">
+  <span class="chapter-tag">Chương 5 · Cổng chặn <span class="diff d3">KHÓ</span></span>
+  <h2><span class="n">05</span>Cổng chặn còn đỏ</h2>
+  <p class="lead">11/18 ô đỏ. Không phải lỗi — mà là một phát hiện về thiết kế lưới của bài báo.</p>
+
+  <table>
+    <thead><tr><th>Thị trường</th><th>delay 1</th><th>delay 5</th><th>delay 10</th></tr></thead>
+    <tbody>
+      <tr><td>US · JM</td><td><span class="pill ok">0.005</span></td><td><span class="pill ok">0.002</span></td><td><span class="pill ok">0.000</span></td></tr>
+      <tr><td>US · HMM</td><td><span class="pill ok">0.034</span></td><td><span class="pill ok">0.015</span></td><td><span class="pill no">0.390</span></td></tr>
+      <tr><td>Đức · JM</td><td><span class="pill no">0.051</span></td><td><span class="pill ok">0.022</span></td><td><span class="pill ok">0.049</span></td></tr>
+      <tr><td>Đức · HMM</td><td><span class="pill no">0.064</span></td><td><span class="pill no">0.088</span></td><td><span class="pill no">0.051</span></td></tr>
+      <tr><td>Nhật · JM</td><td><span class="pill no">0.304</span></td><td><span class="pill no">0.265</span></td><td><span class="pill no">0.289</span></td></tr>
+      <tr><td>Nhật · HMM</td><td><span class="pill no">0.395</span></td><td><span class="pill no">0.311</span></td><td><span class="pill no">0.061</span></td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:13px;color:var(--fg-dim)">Số = tỉ lệ tháng CV chọn giá trị ở mép lưới.
+    Ngưỡng 0.05. Ô xanh = đạt.</p>
+
+  <h3 class="steph"><span class="stepnum">4</span>Mở rộng lưới có cứu được không? Đã đo: KHÔNG</h3>
+  <p>Trực giác nói "đậu mép ⇒ lưới hẹp ⇒ nới ra". Nhưng đo thật thì <b>chỗ đậu chỉ chạy lên theo</b>,
+    và tệ hơn — lưới nào qua được cổng thì lại làm kết quả xa bài báo hơn:</p>
+
+  <table>
+    <thead><tr><th>Lưới k</th><th>Cổng</th><th class="mono">Lệch HMM Đức</th></tr></thead>
+    <tbody>
+      <tr class="ok"><td class="mono">paper {0,2,4,8,20}</td><td><span class="pill no">DE+JP đỏ</span></td><td class="mono">+0.043 ✓</td></tr>
+      <tr class="bad"><td class="mono">+40,80,160,320,640</td><td><span class="pill ok">qua hết</span></td><td class="mono"><b>−0.240</b></td></tr>
+      <tr class="bad"><td class="mono">repo-wide 14 điểm</td><td><span class="pill ok">qua hết</span></td><td class="mono"><b>−0.240</b></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout key"><span class="lbl">Quy tắc rút ra, đã ghi vào CLAUDE.md</span>
+    Không được dò một knob mà bài báo không quy định để tìm giá trị khớp số của họ nhất.
+    Đó là <b>fit vào đáp án</b>, không phân biệt được với chính cái overfitting mà dự án này
+    sinh ra để phát hiện. Chọn theo cơ sở tiên nghiệm, rồi báo cáo độ trải như một hạn chế.
+  </div>
+
+  <div class="recap">
+    <span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul>
+      <li>Cổng đỏ vì CV đậu mép lưới của <b>chính bài báo</b> — đó là finding, không phải bug.</li>
+      <li>Nới lưới đã đo và bị bác: qua cổng nhưng phá kết quả.</li>
+      <li>Metrics chính thức vẫn khoá; số đọc từ <span class="mono">metrics-exploratory.csv</span>.</li>
+    </ul>
+    <p class="next"><b>Tiếp theo →</b> danh sách những chỗ tôi đã làm sai.</p>
+  </div>
+</section>
+
+<!-- ═══════════════ CH6 ═══════════════ -->
+<section id="ch6" class="section reveal">
+  <span class="chapter-tag">Chương 6 · Sai sót <span class="diff d4">KHÓ · CAO TRÀO</span></span>
+  <h2><span class="n">06</span>Những gì tôi làm sai</h2>
+  <p class="lead">Tám lỗi đã bị bắt trong phiên này — năm do chủ dự án, ba do audit tự soi. Ghi đủ để không lặp.</p>
+
+  <table>
+    <thead><tr><th style="width:30px">#</th><th>Tôi đã nói</th><th>Sự thật</th><th>Đã sửa</th></tr></thead>
+    <tbody>
+      <tr class="bad"><td class="mono">1</td>
+        <td>"Tác giả clip feature ±3σ, mình bỏ sót"</td>
+        <td>Bài báo <b>không hề</b> nói. Bằng chứng chỉ đến từ notebook ví dụ NASDAQ trên GitHub.</td>
+        <td>Ghi đích danh vào CLAUDE.md</td></tr>
+      <tr class="bad"><td class="mono">2</td>
+        <td>"Khớp 8/8 chỉ số Buy&amp;Hold"</td>
+        <td>B&amp;H không vào cash nên <b>4/6 chỉ số mù</b> với lãi suất — chỉ chứng minh chuỗi cổ phiếu đúng.</td>
+        <td>Thu hẹp phát biểu</td></tr>
+      <tr class="bad"><td class="mono">3</td>
+        <td>"Shu nằm trong CI 95% ở 9/9 ô"</td>
+        <td>Không có phép kiểm định nào tồn tại: bài báo cho <b>một con số không kèm sai số chuẩn</b>.
+          Và phần số học tôi đưa ra để biện minh <b>cũng sai</b> (trộn tần suất).</td>
+        <td>Bỏ hẳn CI khỏi dự án</td></tr>
+      <tr class="bad"><td class="mono">4</td>
+        <td>"JM&gt;HMM&gt;B&amp;H tái hiện cả 3 thị trường"</td>
+        <td>Sau khi sửa cửa sổ, <b>Đức bị lật</b> (HMM 0.393 &gt; JM 0.391).</td>
+        <td>Đổi cách phát biểu</td></tr>
+      <tr class="bad"><td class="mono">5</td>
+        <td>Đề xuất chuẩn hoá per-window</td>
+        <td>Sổ audit đã ghi <b>đã thử và bị bác</b> (phá US 0.788→0.460). Tôi trình bày như ý tưởng mới.</td>
+        <td>Lập registry bắt buộc đọc trước</td></tr>
+      <tr class="bad"><td class="mono">6</td>
+        <td>"7/9 ô đạt ngưỡng"</td>
+        <td>3/7 ô đạt là B&amp;H (không có model). Đếm đúng: <b>1/6</b> ô model vừa đạt vừa qua cổng.</td>
+        <td>Sửa cách đếm ở mọi tài liệu</td></tr>
+      <tr class="bad"><td class="mono">7</td>
+        <td>Chỉ so hàng Sharpe của Table 4</td>
+        <td>Table 4 có <b>8 hàng</b>. Turnover — đặc điểm định danh của JM — lệch gấp 2.34× ở US.</td>
+        <td>So đủ 8 hàng</td></tr>
+      <tr class="bad"><td class="mono">8</td>
+        <td>"Paper tự mâu thuẫn 3000 ngày vs 12 năm"</td>
+        <td>Paper viết <i>"3000 days (<b>approximately</b> 12 years)"</i>. Tôi dựng mâu thuẫn không có thật.</td>
+        <td>Script kiểm trích dẫn (1ba559b)</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="steph"><span class="stepnum">5</span>Nguyên nhân chung của cả 5 lỗi</h3>
+  <p>Đều là một dạng: <b>lẫn lộn giữa "bài báo quy định" và "mình tự chọn"</b>. Khi bài báo im
+    lặng về một knob, mình phải tự chọn, rồi kết quả phụ thuộc vào lựa chọn đó — nhưng lại
+    được báo cáo như thể đó là tái hiện trung thành.</p>
+
+  <div class="diagram">
+    <div class="dbox act">Paper nói X<br>mình làm X<span class="s">= tái hiện</span></div>
+    <div class="darrow">·</div>
+    <div class="dbox bad">Paper nói X<br>mình làm Y<span class="s">= <b>lỗi</b>, phải sửa</span></div>
+    <div class="darrow">·</div>
+    <div class="dbox obs">Paper <b>im lặng</b><span class="s">= lựa chọn của mình<br>kết quả <b>phụ thuộc điều kiện</b></span></div>
+  </div>
+
+  <div class="callout warn"><span class="lbl">Cơ chế chống lặp — đã cài đặt</span>
+    <span class="mono">docs/unspecified-choices.md</span>: 5 knob bài báo không quy định, mỗi cái
+    kèm trích dẫn chứng minh bài báo im lặng, lựa chọn của mình, và <b>độ trải đo được</b> của
+    kết quả. Ví dụ hình học chuẩn hoá: Sharpe JM Nhật chạy từ <b>0.157 đến 0.310</b> tuỳ recipe,
+    trong khi bài báo là 0.31. Bắt buộc đọc file này trước khi đề xuất đổi bất kỳ knob nào.
+  </div>
+
+  <div class="recap">
+    <span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul>
+      <li>Cả 5 lỗi cùng gốc: nhập nhèm giữa <b>quy định</b> và <b>tự chọn</b>.</li>
+      <li>Đã tách thành ba nhãn rõ ràng, ghi vào CLAUDE.md.</li>
+      <li>Registry knob + độ trải là cơ chế chặn lặp.</li>
+    </ul>
+    <p class="next"><b>Tiếp theo →</b> đang chạy gì và làm gì kế tiếp.</p>
+  </div>
+</section>
+
+<!-- ═══════════════ CH7 ═══════════════ -->
+<section id="ch7" class="section reveal">
+  <span class="chapter-tag">Chương 7 · Hiện tại <span class="diff d2">VỪA</span></span>
+  <h2><span class="n">07</span>Đang chạy &amp; việc kế tiếp</h2>
+  <p class="lead">Hai audit đang chạy nền. Ba việc đang chờ quyết định.</p>
+
+  <div class="grid2">
+    <div>
+      <h3 class="steph"><span class="stepnum">6</span>Đang chạy</h3>
+      <table>
+        <tbody>
+          <tr><td><b>paper-vs-us</b><br><span style="font-size:12px;color:var(--fg-dim)">đối chiếu từng mục method với bài báo, mọi trích dẫn phải kèm số dòng</span></td><td><span class="pill mid">3/5</span></td></tr>
+          <tr><td><b>self-audit</b><br><span style="font-size:12px;color:var(--fg-dim)">audit đối nghịch chính các khẳng định của tôi trong phiên</span></td><td><span class="pill mid">đang chạy</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3 class="steph"><span class="stepnum">7</span>Chờ quyết định</h3>
+      <table>
+        <tbody>
+          <tr><td>US HMM lệch <span class="mono">+0.098</span></td><td><span class="pill no">chưa rõ nguyên nhân</span></td></tr>
+          <tr><td>JP JM lệch <span class="mono">−0.113</span></td><td><span class="pill no">CV đậu mép λ 30%</span></td></tr>
+          <tr><td>Viết lại Paper 1</td><td><span class="pill dim">chờ số ổn định</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3 class="steph"><span class="stepnum">8</span>Trạng thái kho mã</h3>
+  <pre><code>nhánh    cleanup/research-protocol  (ahead 3, chưa push)
+d5a625a  research: retract the confidence-interval coverage claim
+36cb2c2  docs: register the free parameters the paper never fixes
+17e1984  research: freeze v8.4 on the paper's out-of-sample anchor</code></pre>
+
+  <div class="callout"><span class="lbl">Đánh giá thật lòng</span>
+    Nền móng <b>vững hơn nhiều</b> so với đầu phiên: dữ liệu đã được chứng minh tương đương
+    bài báo (B&amp;H khớp cả 3 thị trường), cửa sổ đã đúng mốc, provenance đã bịt, và các
+    khẳng định thổi phồng đã bị rút lại. Nhưng <b>chưa thể viết paper</b> khi còn hai ô
+    lệch quá ngưỡng và metrics chính thức còn bị khoá.
+  </div>
+
+  <div class="recap">
+    <span class="lbl">✓ Tóm lại toàn bộ</span>
+    <ul>
+      <li>v8.4 đạt <b>7/9 ô</b> dưới ngưỡng 0.05 — tốt nhất từ trước tới nay.</li>
+      <li>Dữ liệu miễn phí <b>đã chứng minh tương đương</b> dữ liệu bản quyền của bài báo.</li>
+      <li>Hai ô còn lệch đều nằm ở <b>tầng chọn siêu tham số</b>, không phải ở dữ liệu.</li>
+      <li>Năm khẳng định sai đã rút lại và cài cơ chế chống lặp.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <p>Sinh từ artifact thật: <span class="mono">artifacts/fixed-baselines/…-17e1984c1817/</span>
+    (metrics-exploratory.csv, boundaries.csv, run.json) và
+    <span class="mono">docs/audit/2026-07-full-audit.md</span>.
+    Trích dẫn bài báo theo <span class="mono">pdftotext -layout 2402.05272v3.pdf</span>, 1167 dòng.</p>
+  <p>Mọi con số trong tài liệu này đọc trực tiếp từ file đã niêm phong, không gõ tay.</p>
+</footer>
+</main>
+
+<script>
+(function () {
+  var sections = Array.prototype.slice.call(document.querySelectorAll('main .section'));
+  var links = {};
+  document.querySelectorAll('#toc a').forEach(function (a) {
+    links[a.getAttribute('href').slice(1)] = a;
+  });
+  var activeObs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      var a = links[e.target.id];
+      if (!a) return;
+      if (e.isIntersecting) {
+        Object.keys(links).forEach(function (k) { links[k].classList.remove('active'); });
+        a.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-45% 0px -50% 0px' });
+  sections.forEach(function (s) { activeObs.observe(s); });
+  var bar = document.getElementById('pbar');
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  document.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>

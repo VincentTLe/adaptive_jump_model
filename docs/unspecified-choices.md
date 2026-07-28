@@ -55,17 +55,21 @@ with means +0.196 to +0.307 on `dd_10`. The jump model minimises
 about 3.5x the weight of `sortino_60`. The distortion differs by market, which
 is why the deviation from the paper differs by market.
 
-**Spread across alternatives** (Japan JM Sharpe, paper reports 0.31). Judge these
-by how far the point estimate sits from the paper, not by whether a confidence
-interval covers it — see "Why the confidence interval proves nothing" below:
+**Spread across alternatives** (Japan JM Sharpe, paper reports 0.31). Every row
+names the run it came from, because the same recipe moves as other settings
+change and stale figures were previously carried forward under the label
+"current":
 
-| variant | jp JM Sharpe | side effect |
-|---|---|---|
-| expanding, anchored (current) | 0.157 / 0.169 | us and de closest to paper |
-| per-refit clip 3 sigma + StandardScaler | 0.219 | degrades us 0.788 -> 0.460, de 0.361 -> 0.310 |
-| the same with lambda fixed at 35 | 0.310 | not a selectable spec; leverage still 43% vs 75% |
-| cold start 1970 | 0.260 | |
-| anchor 1970 | 0.263 | |
+| variant | run | jp JM Sharpe | side effect |
+|---|---|---|---|
+| expanding, anchored 1969-05 | **v8.4 (current)** | **0.197** | us JM 0.662 vs 0.68, de JM 0.391 vs 0.44 |
+| expanding, anchored 1970 | v8.3 | 0.260 | out-of-sample window started 1990-08, not 1990-01 |
+| expanding, min_obs 250 | v8.1 / v8.2 | 0.157 / 0.169 | superseded windows |
+| per-refit clip 3 sigma + StandardScaler | v8.2 arm | 0.219 | degrades us 0.788 -> 0.460, de 0.361 -> 0.310 |
+| the same with lambda fixed at 35 | v8.2 arm | 0.310 | not a selectable spec; leverage 43% vs 75% |
+| cold start 1970 | v8.2 arm | 0.260 | |
+
+Only the first row describes the current pipeline. Quote it, or name the run.
 
 Ledger conclusion, already established: no single preprocessing variant
 reproduces Table 3 and Table 4 at the same time. Treat this row as bounded
@@ -153,45 +157,34 @@ name its convention.
 
 ---
 
-## Why the confidence interval proves nothing here
+## Do not report confidence intervals in this project
 
-A bootstrap confidence interval on our own Sharpe was used, repeatedly, as if
-covering the paper's value were evidence of replication. It is not, and the
-reason is arithmetic rather than a defect in the resampling.
+Standing instruction from the owner, and it is the right call. Intervals were
+used here as if covering the paper's value were evidence of replication, which
+it never was: the paper publishes one number per cell with no standard error, on
+licensed data we do not hold, so there is no sampling distribution to test
+against and no hypothesis to reject. On top of that, at this sample length an
+interval on a Sharpe ratio is wide enough that the buy-and-hold cell covered the
+paper's jump-model figure as well as its own — a test that cannot separate the
+three models it is asked about is not a test.
 
-The standard error of a Sharpe ratio is about `sqrt((1 + SR^2 / 2) / T)` with
-`T` in years, so a 95% interval spans roughly:
+The arithmetic that was published here to make that point was itself wrong: it
+applied the Lo (2002) standard error with an annualised Sharpe and a sample size
+counted in years, mixing two frequencies. It is retracted along with the rest.
 
-| years | SR = 0.2 | SR = 0.5 | SR = 0.7 |
-|---|---|---|---|
-| 20 | 0.885 | 0.930 | 0.978 |
-| **34** | **0.679** | **0.713** | **0.750** |
-| 100 | 0.396 | 0.416 | 0.437 |
+Report instead:
 
-The paper's window is 34 years, so any interval we compute is about 0.70 wide.
-Our measured widths, 0.646 to 0.681, match that. An interval that wide covers
-essentially every value anyone might propose: on the US cell the buy-and-hold
-interval also contains the paper's HMM *and* JM figures, so it cannot even
-reject "buy-and-hold equals the jump model". Reaching a width of 0.05 would take
-roughly 6,900 years of data.
-
-There is also no valid significance test available. The paper reports one number
-per cell with no standard error, computed on licensed data we do not hold, so
-there is no sampling distribution to test against and no null hypothesis to
-reject. "Their value is inside our interval" is not a test result.
-
-What to report instead:
-
-- **Closeness of the point estimate**, against a tolerance stated in advance.
-  The owner's standing tolerance is 0.05 in absolute Sharpe, tightening to 0.03.
+- **Closeness of the point estimate** to the paper, against a tolerance fixed in
+  advance. The owner's standing tolerance is 0.05 absolute Sharpe, tightening to
+  0.03. Count model cells separately from buy-and-hold: buy-and-hold contains no
+  model, so it measures the data, not the replication.
+- **All eight rows of Table 4, not the Sharpe row alone.** Turnover is the
+  paper's own headline property of the jump model ("as low as 44%"), and it is
+  where the current run diverges most.
 - **The spread across our own free choices**, which is what the rows above
-  measure. That spread is the honest uncertainty statement for a replication:
-  it says how much of the gap we could produce ourselves by setting an
-  unspecified knob differently.
-- **Paired differences within our own run** (JM minus HMM on the same days),
-  where the market noise cancels. Even these stay wide: on v8.3 the US
-  difference was +0.099 with an interval of [-0.073, +0.278], so the ordering
-  is a statement about point estimates and must be written that way.
+  measure. That spread is the honest uncertainty statement for a replication: it
+  says how much of the gap we could produce ourselves by setting an unspecified
+  knob differently.
 
 ## Maintenance
 

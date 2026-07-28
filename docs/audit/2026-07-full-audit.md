@@ -337,3 +337,41 @@ tolerance fixed in advance (the owner's standing tolerance: 0.05 absolute
 Sharpe, tightening to 0.03), together with the spread produced by the free
 parameters the paper never fixes. Those parameters and their measured spreads
 are now registered in docs/unspecified-choices.md.
+
+## Correction to the correction, and the v8.4 tally (2026-07-27, later)
+
+The retraction above is right that interval coverage was never evidence, but the
+arithmetic it published to prove the point is itself wrong and is withdrawn. The
+Lo (2002) standard error requires the Sharpe ratio and the sample size to be at
+the same frequency; the table mixed an annualised Sharpe with a sample counted
+in years. Corrected, the width is near 0.672 for every cell rather than varying
+0.679 to 0.750 with the Sharpe, and the "6,900 years" figure should read roughly
+6,150. The reported measured widths of 0.646 to 0.681 could not be traced to any
+script or artifact in the repository; an independent recomputation gave 0.642 to
+0.713 on v8.3, so the upper bound was wrong as well.
+
+Per the owner's instruction, this project no longer reports confidence
+intervals. The reasoning is in docs/unspecified-choices.md. Replication is
+judged by point-estimate closeness against a tolerance fixed in advance, across
+all eight rows of Table 4 rather than the Sharpe row alone.
+
+The v8.4 tally, stated the way it should have been stated the first time
+(delay-1, metrics-exploratory.csv, run 93de627bb755-d65262092c1a-17e1984c1817):
+
+| tolerance | all nine cells | model cells only | model cells also passing their delay-1 boundary gate |
+|---|---|---|---|
+| 0.05 | 7/9 | 4/6 | **1/6** |
+| 0.03 | 5/9 | 2/6 | 1/6 |
+
+Three of the seven passing cells are buy-and-hold, which contains no model and
+therefore measures the data rather than the replication. Of the four model cells
+inside 0.05, three sit on cells whose own boundary gate failed (de fixed_jm
+0.0515, de hmm 0.0637, jp hmm 0.3946). Only us fixed_jm both meets the tolerance
+and clears its gate. Reporting "7/9" without that decomposition repeated the
+inflation this audit was convened to stop.
+
+Turnover, which the paper treats as the identifying property of the jump model,
+does not reproduce: us 103.0% against 44%, jp 140.6% against 72%, de 105.5%
+against 170%. The us jump-model Sharpe matches to 0.018 while trading 2.3 times
+as much, so that cell agrees on the headline number and disagrees on the
+behaviour underneath it.
