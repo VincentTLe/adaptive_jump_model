@@ -41,11 +41,22 @@ Three claims must therefore never be blurred together:
 Rules that follow:
 
 - Before asserting "the paper does X", open the paper and quote it with a line
-  reference. If it is not there, write that it is not there. Never promote the
-  authors' example notebooks, their library defaults, or a plausible convention
-  into a claim about the paper. `DataClipperStd` / clipping at three sigma is
-  the recurring offender: it is in their GitHub example for a different data
-  set, and it is nowhere in the paper.
+  reference into `data/external/inputs/shu_paper.txt`, in the form
+  `[line 397] "exact words"`. Then run `uv run python
+  scripts/check_paper_claims.py`, which re-opens the paper at that line and
+  fails if the quote is not there, and greps for every term we have claimed the
+  paper never uses. Treat a failure as a retraction notice, not a formatting
+  nit. If the claim is that the paper is silent, write that it is silent and add
+  the term to `ABSENCE_CLAIMS` so the grep runs forever after.
+- Never promote the authors' example notebooks, their library defaults, or a
+  plausible convention into a claim about the paper. `DataClipperStd` /
+  clipping at three sigma is the recurring offender: it is in their GitHub
+  example for a different data set, and it is nowhere in the paper.
+- Before claiming a source contradicts itself or omits something, run the query
+  that would refute the claim, not only the one that supports it. The asserted
+  contradiction between "3000 days" and "12 years" dissolved on reading the word
+  "approximately" printed between them. A gap you have not tried to close is a
+  hypothesis, not a finding.
 - Keep `docs/unspecified-choices.md` current: one row per open knob, what the
   paper does and does not say, what we chose, and how far the headline numbers
   move across the plausible alternatives. Read that file before proposing a

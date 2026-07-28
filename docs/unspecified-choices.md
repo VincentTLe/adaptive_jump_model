@@ -78,7 +78,7 @@ evidence, not as an unsolved bug to keep re-litigating.
 **What the paper says.** That the penalty is chosen monthly by validation
 Sharpe over an eight-year lookback:
 
-> [line 704-711] "we use a time-series cross-validation approach, updating the optimal jump penalty monthly... We then select the value that yields the highest Sharpe ratio during this validation period"
+> [line 704-711] "we use a time-series cross-validation approach, updating the optimal jump penalty monthly... We then select the value λ̂ that yields the highest Sharpe ratio during this validation period"
 
 Table 3 (line 643) exercises lambda in {0, 5, 15, 35, 70, 150} and the text
 calls 50 to 100 "a typical value" (line 638-639).
