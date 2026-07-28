@@ -1,6 +1,6 @@
 schema_version = 1
-config_id = "shu-replication-expanding-v8-4"
-frozen_at_utc = "2026-07-27T08:00:00Z"
+config_id = "shu-replication-expanding-v8-5"
+frozen_at_utc = "2026-07-27T14:00:00Z"
 
 [source_audit]
 run_id = "20260712T012740Z"
@@ -113,7 +113,25 @@ online_terminal_only = true
 
 [hmm]
 implementation = "hmmlearn.GaussianHMM"
-smoothing_grid = [0, 2, 4, 8, 20]
+# v8.5, the only change from v8.4. The paper never publishes the candidate set;
+# line 390 says only "it is selected from a range of candidate values
+# automatically via a cross-validation framework". Every earlier config took the
+# grid from Table 3's illustration, which tabulates k = 0, 2, 4, 8, 20 (line
+# 643). That table demonstrates how persistence responds to k; it never claims to
+# be the search space. Copying it dropped the one value the paper does name:
+#
+#   [line 390] "Originally, k was set at 6; in our approach, it is selected from
+#              a range of candidate values automatically via a cross-validation
+#              framework."
+#
+# k = 6 is Bulla et al. (2011)'s setting, cited at line 387 as the source of the
+# median filter itself. A candidate range that excludes the literature value the
+# method inherits is our construction error, not the paper's. Adding it back.
+#
+# The grid stays a free parameter either way -- see docs/unspecified-choices.md.
+# The justification for 6 is that the paper names it, and nothing else. It was
+# NOT chosen because it improves agreement with Table 4.
+smoothing_grid = [0, 2, 4, 6, 8, 20]
 n_init = 10
 seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 covariance_type = "diag"

@@ -106,17 +106,37 @@ the HMM smoothing window:
 
 > [line 715-716] "We employ the same method to optimally select the smoothing hyperparameter k for HMMs."
 
-Table 3 exercises k in {0, 2, 4, 8, 20}.
+**What the paper does NOT say.** The candidate set. Section 3.4.3 describes the
+selection procedure and never lists what it selects from. Table 3 exercises k in
+{0, 2, 4, 8, 20} (line 643), but that table is an illustration of how
+persistence responds to k, not a declaration of the search space:
 
-**What we chose.** `smoothing_grid = [0, 2, 4, 8, 20]`.
+> [line 646] "Table 3: Average number of shifts per year in the online inferred regime sequence from 1982 to 2023,"
 
-**Consequence, measured.** Boundary gates fail because the selector parks at
-k = 20 (jp delay-1 39.5%, us delay-10 39.0%). Extending the grid was measured
-across six shapes: extensions that clear the gate on one market break it on
-another, and the long-tail grids that clear all three move the HMM Sharpe far
-from the paper (de +0.043 -> -0.240). Grid choice is therefore a live free
-parameter with a known, large spread. Rejected on a priori grounds: the paper's
-own values are the only non-arbitrary choice available.
+The one value the paper does name is the literature default it inherits from
+Bulla et al. (2011), the same paper cited at line 387 as the source of the
+median filter:
+
+> [line 390] "Originally, k was set at 6; in our approach, it is selected from a range of candidate values automatically via a cross-validation framework."
+
+**What we chose.** v8 through v8.4: `smoothing_grid = [0, 2, 4, 8, 20]`, copied
+from Table 3. **v8.5 onward: `[0, 2, 4, 6, 8, 20]`.** Copying Table 3 dropped
+k = 6, so the candidate range excluded the only value the paper names — our
+construction error, not a property of the paper. The grid as a whole stays a
+free parameter; only the omission of 6 was a defect.
+
+The justification for adding 6 is that the paper names it. It is **not** that it
+improves agreement with Table 4 — see CLAUDE.md on never searching an
+unspecified knob for the setting that best matches the target. The direction of
+the effect was measured after the decision, not before it.
+
+**Consequence, measured.** Under the Table-3 grid the boundary gates fail
+because the selector parks at k = 20 (jp delay-1 39.5%, us delay-10 39.0%).
+Extending the grid was separately measured across six shapes: extensions that
+clear the gate on one market break it on another, and the long-tail grids that
+clear all three move the HMM Sharpe far from the paper (de +0.043 -> -0.240).
+Grid choice is therefore a live free parameter with a known, large spread; the
+v8.5 change is the one edit to it that has an a priori justification.
 
 ---
 

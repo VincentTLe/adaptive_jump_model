@@ -56,6 +56,11 @@ DEFAULT_TARGETS = [
     REPO / "docs" / "unspecified-choices.md",
     REPO / "docs" / "audit" / "2026-07-full-audit.md",
     REPO / "CLAUDE.md",
+    # Frozen contracts justify their settings by quoting the paper, so those
+    # quotes need checking for the same reason the prose does -- a config
+    # comment is where a misquote does the most damage, because it is the
+    # thing a run is sealed against.
+    *sorted(REPO.glob("research*.toml")),
 ]
 
 # Citations look like: [line 397] "quote"  or  [dòng 397] "quote"
@@ -130,9 +135,18 @@ def window(lines: list[str], centre: int, radius: int) -> str:
     return normalise(" ".join(lines[lo:hi]))
 
 
+# A quote long enough to wrap gets a comment marker on every continuation
+# line, which lands in the middle of the quoted string and makes a correct
+# citation look fabricated. Strip leading markers before matching. Markdown
+# headings lose their leading '#' too; that is harmless here, since nothing
+# downstream reads anything but the quoted spans.
+COMMENT_PREFIX = re.compile(r"^[ \t]*(?:#+|//+|\*)[ \t]?", re.MULTILINE)
+
+
 def check_citations(target: Path, lines: list[str], whole: str) -> list[str]:
     failures: list[str] = []
     text = target.read_text(encoding="utf-8", errors="replace")
+    text = COMMENT_PREFIX.sub("", text)
     hits = list(CITATION.finditer(text))
     for match in hits:
         cited = int(match.group(1))
