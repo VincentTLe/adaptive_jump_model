@@ -123,6 +123,48 @@ def test_variant_v8_5_rejects_a_grid_the_paper_does_not_justify() -> None:
         candidate.unlink(missing_ok=True)
 
 
+VARIANT_V9 = ROOT / "research-expanding-v9.toml"
+
+
+def test_variant_v9_differs_from_v8_5_only_in_the_us_equity_series() -> None:
+    """v9 must isolate the index substitution, or the run measures nothing.
+
+    The audit traced the US HMM deviation to using the CRSP value-weighted
+    total market where the paper names the S&P 500 (line 153-155). If any
+    other frozen value drifts alongside the series, the run stops being a
+    clean read on that one change -- and Germany and Japan, which already
+    match Shu on 7 of 8 metrics, must be untouched.
+    """
+    v8_5 = load_config(VARIANT_V8_5)
+    v9 = load_config(VARIANT_V9)
+
+    assert v9.config_id == "shu-replication-expanding-v9"
+    assert v9.sample_start == v8_5.sample_start
+    assert v9.replication_cutoff == v8_5.replication_cutoff
+    assert v9.model_protocol == v8_5.model_protocol
+    assert v9.jm_protocol == v8_5.jm_protocol
+    assert v9.hmm_protocol == v8_5.hmm_protocol
+    assert v9.selection_protocol == v8_5.selection_protocol
+    assert v9.metrics_protocol == v8_5.metrics_protocol
+    assert v9.backtest_protocol == v8_5.backtest_protocol
+
+    old = {m.id: m for m in v8_5.markets}
+    new = {m.id: m for m in v9.markets}
+    assert set(old) == set(new)
+
+    # Germany and Japan already use the paper's own indices; they must be
+    # byte-for-byte the same market definition.
+    for market in ("de", "jp"):
+        assert new[market] == old[market], market
+
+    # The US changes in exactly one place: the equity source.
+    assert new["us"].cash == old["us"].cash
+    assert new["us"].equity != old["us"].equity
+    assert new["us"].equity.source_id == "SP500_TR"
+    assert old["us"].equity.source_id == "FRENCH_US_TR"
+    assert new["us"].equity.settings["file_path"].endswith("us_equity_tr_sp500.csv")
+
+
 def test_manifest_rejects_duplicated_source_entry() -> None:
     config = load_config(VARIANT)
     sources = [

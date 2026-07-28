@@ -32,6 +32,7 @@ jp_cash_ladder.csv Monthly percent per annum: IMF IFS Japan Treasury-bill rate
 from __future__ import annotations
 
 import hashlib
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -67,6 +68,15 @@ INPUT_SHA256 = {
         "1c2977502af445abeccb7410f135a9efcdabfa6930f4e37ffb09ce5980ab9fc7",
     "stooq_dax_daily.csv":
         "a0ea6e8edcae145d00d0d76894372e1c2590dc6926009ebf5f17b9ea22e3893d",
+    # The S&P 500 the paper actually specifies at [line 153-155]. Acquired by
+    # scripts/fetch_sp500_inputs.py; see docs/audit/2026-07-full-audit.md for
+    # why the CRSP substitution had to go.
+    "sp500_price_daily.csv":
+        "6aa6e894492bed5bd4c84440fb4617be0657a6b9ed39e7c8d01fef308caed147",
+    "sp500_tr_daily.csv":
+        "d8e614aaf868f48d5683c8b2e58bda01362648d4cdb7e00ca903ca644936c193",
+    "shiller_sp500_monthly.csv":
+        "28d16941c581bda9bdcae4e0f9e3cc4b61204f8484e8c2249abdde2efe2cc3c4",
 }
 
 
@@ -172,6 +182,15 @@ def main() -> None:
     total = (ff["mkt_rf"] + ff["rf"]) / 100.0
     level = 100.0 * (1.0 + total).cumprod()
     write("us_equity_tr.csv", pd.DataFrame({"date": ff["date"], "value": level}))
+
+    # US equity, the paper's own index. Kept alongside the CRSP series rather
+    # than replacing it, so the v8 contracts still rebuild byte-identically and
+    # the two can be compared. build_sp500_tr refuses to return unless the
+    # reconstruction reproduces the official index over their 36-year overlap.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from build_sp500_tr import build_series as build_sp500  # noqa: PLC0415
+
+    write("us_equity_tr_sp500.csv", build_sp500())
 
     # DE equity: Stooq DAX daily close
     dax = pd.read_csv(INP / "stooq_dax_daily.csv")[["Date", "Close"]]

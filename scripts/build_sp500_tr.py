@@ -132,6 +132,26 @@ def validate(px: pd.DataFrame, official: pd.DataFrame) -> None:
     print("  -> đạt cả ba ngưỡng\n")
 
 
+def build_series() -> pd.DataFrame:
+    """Validated date/value frame, for build_external_sources to write.
+
+    Raises rather than returns if the reconstruction fails its overlap test, so
+    a caller cannot accidentally build a research input from an unvalidated
+    recipe.
+    """
+    px, official = load_price(), load_official()
+    validate(px, official)
+    split = pd.Timestamp(OFFICIAL_START)
+    early = px[px["date"] < split].reset_index(drop=True)
+    built = reconstruct(early)
+    early_level = built / built.iloc[-1] * float(official["close"].iloc[0])
+    return pd.concat([
+        pd.DataFrame({"date": early["date"].iloc[:-1],
+                      "value": early_level.iloc[:-1]}),
+        official.rename(columns={"close": "value"}),
+    ], ignore_index=True)
+
+
 def main() -> None:
     px, official = load_price(), load_official()
     validate(px, official)
