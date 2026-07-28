@@ -103,6 +103,50 @@ September 1990 and throws away nine months of the reported period. We start the
 series in 1965 and request 1969-05-01 to compensate, and we document that as a
 deviation rather than hiding it.
 
+## How we know the equity data is right
+
+Since I fetched the US series with a script and you downloaded the other two by
+hand, none of it deserves trust on the grounds that it parsed. Four checks, none
+of which depends on remembering a number:
+
+**Table 4's buy-and-hold column.** The paper publishes six metrics for a fully
+invested position in each index over 1990-2023. Buy-and-hold contains no model,
+no smoothing and no free parameter, so those eighteen numbers test the data and
+nothing else. Our results, largest deviation per market:
+
+| | worst of six metrics | detail |
+|---|---|---|
+| S&P 500 | 0.0025 | Return 10.21% vs 10.2%, Vol 18.17% vs 18.2%, MDD −55.25% vs −55.2% |
+| DAX | 0.0018 | Return 6.77% vs 6.8%, Vol 22.08% vs 22.1%, MDD −72.68% vs −72.7% |
+| Nikkei 225 | 0.0106 | Sharpe 0.131 vs 0.12 and MDD −78.05% vs −79.1% |
+
+Japan is the weakest of the three and the only market with any cell above 0.01,
+which is consistent with its total return being reconstructed before 2012 rather
+than official. The US and German series are effectively exact.
+
+**An independent series for the same index.** Shiller's monthly S&P 500 level
+comes from a completely different pipeline, and his figure is the monthly average
+of daily closes, so our daily file has to reproduce it when averaged by month.
+Across 696 months the correlation is 0.99999328 and the median relative error is
+0.0005%. Exactly two months disagree by more than 1% — July 1974 and September
+2023 — with every neighbouring month agreeing to four decimals and the two
+errors pointing in opposite directions, which makes them isolated bad rows in one
+file rather than a systematic problem. Only the 1974 one touches anything we use
+(Shiller's price column is the denominator of the dividend yield, before 1988),
+and it moves the index level by 0.016% for a single month inside the training
+window.
+
+**The identity of the extreme sessions.** All twenty of the ten largest daily
+gains and ten largest daily losses since 1966 fall inside October 1987, the
+2008-09 crisis, the 2020 COVID crash, or the 1997-98 Asian crisis. The largest
+single loss is 1987-10-19 at −20.47%. A series that is correctly scaled but
+wrongly dated cannot pass this.
+
+**The reconstruction against the index it imitates.** Price and total return
+differ only by the dividend stream, so at daily frequency they must nearly
+coincide: over their 9,070 shared sessions the log-return correlation is 0.999601
+and annualised volatility differs by 0.0011 percentage points.
+
 ## The T-bill substitutions
 
 This is the part I would most like your opinion on, because it is where we are

@@ -1,0 +1,91 @@
+XÁC MINH DỮ LIỆU CỔ PHIẾU — ba nguồn bằng chứng độc lập
+
+KIỂM 1 — cột buy-and-hold của Table 4 (không chứa mô hình)
+
+  S&P 500  [tải bằng script (agent)]  8565 phiên 1990-01-02..2023-12-29
+      Return          0.1021   Shu   0.102   lệch 0.0001
+      Volatility      0.1817   Shu   0.182   lệch 0.0003
+      Sharpe          0.4825   Shu   0.480   lệch 0.0025
+      MDD            -0.5525   Shu  -0.552   lệch 0.0005
+      Calmar          0.1587   Shu   0.160   lệch 0.0013
+      ES 5%          -0.0272   Shu  -0.027   lệch 0.0002
+
+  DAX  [tải tay (chủ dự án)]  8602 phiên 1990-01-02..2023-12-29
+      Return          0.0677   Shu   0.068   lệch 0.0003
+      Volatility      0.2208   Shu   0.221   lệch 0.0002
+      Sharpe          0.2982   Shu   0.300   lệch 0.0018
+      MDD            -0.7268   Shu  -0.727   lệch 0.0002
+      Calmar          0.0906   Shu   0.090   lệch 0.0006
+      ES 5%          -0.0329   Shu  -0.033   lệch 0.0001
+
+  Nikkei 225  [tải tay (chủ dự án)]  8346 phiên 1990-01-04..2023-12-29
+      Return          0.0100   Shu   0.008   lệch 0.0020
+      Volatility      0.2338   Shu   0.234   lệch 0.0002
+      Sharpe          0.1306   Shu   0.120   lệch 0.0106
+      MDD            -0.7805   Shu  -0.791   lệch 0.0105
+      Calmar          0.0391   Shu   0.040   lệch 0.0009
+      ES 5%          -0.0336   Shu  -0.034   lệch 0.0004
+
+  Sai lệch lớn nhất trên cả 18 ô: 0.0106 (jp Sharpe)
+
+KIỂM 2 — chuỗi S&P 500 của ta so với chuỗi độc lập của Shiller
+
+  696 tháng chồng lấn, 1966-01-01..2023-12-01
+  tương quan mức giá        : 0.99999328
+  sai số tương đối trung vị : 0.00050%
+  sai số tương đối trung bình: 0.01694%
+  số tháng lệch quá 1%      : 2 / 696  (0.29%)
+      1974-07-01  ta      82.82   Shiller      79.31     +4.42%   (22 phiên)
+      2023-09-01  ta    4409.09   Shiller    4515.77     -2.36%   (20 phiên)
+    Các tháng kề bên khớp tới bốn chữ số thập phân, và hai
+    tháng này lệch ngược chiều nhau, nên đây là lỗi lẻ của
+    một trong hai file chứ không phải sai lệch hệ thống.
+    Ảnh hưởng: cột giá của Shiller chỉ được dùng làm mẫu số
+    của lợi suất cổ tức, và chỉ trước 1988. Số tháng lệch nằm
+    trong vùng đó: 1.
+      1974-07-01: lợi suất năm 4.4509% thay vì 4.2623% -> lệch mức chỉ số 0.01572% trong một tháng
+    Toàn bộ nằm trong cửa sổ huấn luyện, không chạm 1990-2023.
+
+KIỂM 3 — những phiên cực đoan có rơi đúng ngày lịch sử không
+
+  10 phiên giảm mạnh nhất 1966-2023:
+      1987-10-19   -20.47%  ✓
+      2020-03-16   -11.98%  ✓
+      2020-03-12    -9.51%  ✓
+      2008-10-15    -9.03%  ✓
+      2008-12-01    -8.93%  ✓
+      2008-09-29    -8.81%  ✓
+      1987-10-26    -8.28%  ✓
+      2008-10-09    -7.62%  ✓
+      2020-03-09    -7.60%  ✓
+      1997-10-27    -6.87%  ✓
+    -> 10/10 trùng danh sách ngày sụp đổ đã biết
+
+  10 phiên tăng mạnh nhất 1966-2023:
+      2008-10-13    11.58%  ✓
+      2008-10-28    10.79%  ✓
+      2020-03-24     9.38%  ✓
+      2020-03-13     9.29%  ✓
+      1987-10-21     9.10%  ✓
+      2009-03-23     7.08%  ✓
+      2020-04-06     7.03%  ✓
+      2008-11-13     6.92%  ✓
+      2008-11-24     6.47%   ?
+      2009-03-10     6.37%   ?
+    -> 8/10 trùng danh sách ngày bật mạnh đã biết
+
+  Kiểm không phụ thuộc danh sách viết tay: 20/20 phiên
+  cực đoan rơi vào một trong năm giai đoạn khủng hoảng đã biết
+  (1987, dot-com, 2008-09, COVID, châu Á 1997-98). Các ngày bị
+  đánh dấu '?' ở trên là do danh sách tay của tôi thiếu, không
+  phải do dữ liệu — chúng vẫn nằm trong đúng giai đoạn.
+
+KIỂM 4 — đoạn dựng lại so với chỉ số tổng lợi suất chính thức
+
+  9070 phiên chung 1988-01-04..2023-12-29
+  tương quan log-return giá vs tổng lợi suất: 0.999601
+  chênh độ biến động quy năm: 0.0011 điểm
+  (giá và tổng lợi suất chỉ khác nhau ở dòng cổ tức, nên hai
+   chuỗi phải gần trùng ở tầng ngày — nếu không thì một trong
+   hai file sai mã hoặc sai lịch)
+

@@ -27,6 +27,10 @@ artifacts/*
 artifacts/hmm-residual/*
 !artifacts/hmm-residual/*/
 artifacts/hmm-residual/*/*
+!artifacts/data-verification/
+artifacts/data-verification/*
+!artifacts/data-verification/*.csv
+!artifacts/data-verification/report.txt
 !artifacts/data-provenance/
 artifacts/data-provenance/*
 !artifacts/data-provenance/*.csv
