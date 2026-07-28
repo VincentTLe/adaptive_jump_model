@@ -211,3 +211,43 @@ Report instead:
 Add a row whenever a decision is made that the paper does not force. Record the
 quote that shows the paper is silent, the choice, and the measured spread. A row
 without a measured spread is an admission that the sensitivity is unknown.
+
+---
+
+## 6. Sample start, and the Japanese Saturday gap — DEVIATION, measured
+
+**What the paper says.** This one is specified, which is why the row is a
+deviation rather than a free parameter:
+
+> [line 157] "All data spans from the start of 1970 to the end of 2023."
+
+**What we do.** `requested_sample_start = "1969-05-01"` (v8.4, v8.5) — eight
+months earlier than the paper's stated start.
+
+**Why.** Not fidelity. Compensation for a data gap. The Tokyo exchange traded
+Saturdays until January 1989 and our `^N225` series contains zero Saturday
+sessions, so our 3000-session training window spans about eighteen months more
+calendar time than Shu's. Starting literally at 1970-01-01 pushes the realised
+out-of-sample start to 1990-03-15 (us), 1990-06-19 (de) and 1990-09-17 (jp),
+discarding the first nine months of 1990 in Japan.
+
+Earlier config comments described this as restoring "the paper's 1990-01-02
+anchor". The paper names no such date; every mention of 1990 in it is a year.
+That description is withdrawn (docs/audit/2026-07-full-audit.md).
+
+**Consequence, measured.** On the overlapping days, the HMM is exactly
+invariant to this choice — 0 differing states out of 10,619 / 10,605 / 10,282 —
+because it fits the last 3000 log returns before each day and that set does not
+depend on where the series began. The jump model is not: 3.71% (us), 1.10% (de)
+and 15.84% (jp) of state cells differ, through the expanding standardiser
+anchor of row 1 above.
+
+Against buy-and-hold, which contains no model and so tests the window itself:
+us 0.486 against 0.497, de 0.298 against 0.305, jp **0.138 against 0.193**,
+with Shu at 0.48 / 0.30 / 0.12. The backdated window reproduces the reported
+period; the literal one does not.
+
+**Open.** The choice is not free for the jump model. On the shared window it
+costs the US JM 0.088 Sharpe and moves its turnover from 0.636 to 1.006 against
+Shu's 0.44 — away from the paper on the row the paper treats as the jump model's
+identifying property. Reopen before the next JM freeze; do not inherit silently.

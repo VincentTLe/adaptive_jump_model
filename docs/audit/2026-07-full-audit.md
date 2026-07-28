@@ -464,3 +464,92 @@ If (2) and (3) hold, they are not a success. The grid was corrected because the
 paper names k=6 at line 390, and the direction of the effect was predicted from
 the fixed-k table above rather than discovered by trying it. A change that
 improved agreement for any other reason would have to be reported as tuning.
+
+## The sample-start choice: what it does, and a claim withdrawn (2026-07-27)
+
+### Withdrawn: "the paper's 1990-01-02 anchor"
+
+The v8.4 and v8.5 contracts justify `requested_sample_start = 1969-05-01` by
+saying it puts every market "back on the paper's anchor", naming 1990-01-02.
+**The paper gives no such date.** It says:
+
+> [line 157] "All data spans from the start of 1970 to the end of 2023."
+> [line 713-715] "Since our data begin in 1970, with training windows spanning 12 years and validation windows 8 years, the out-of-sample testing period begins in 1990."
+
+and Table 4 reports "from 1990 to 2023". Every mention of 1990 in the paper is a
+year, never a date. So 1969-05-01 does not restore a paper anchor; it **breaks a
+specified item** (the 1970 data start) to reach a date we invented.
+
+Both config comments are wrong on this point. They are left unedited because
+both have been run and their text is part of what was frozen; the correction
+lives here and in docs/unspecified-choices.md.
+
+### Why the literal 1970 start does not reach 1990
+
+Sessions per year, 1970-1989, and the 3000th session counted from 1970-01-01:
+
+| market | sessions/yr | Saturdays | 3000th session | + 8 years |
+|---|---|---|---|---|
+| us | 252.7 | 0 | 1981-11-13 | 1989-11-13 |
+| de | 250.2 | 0 | 1981-12-29 | 1989-12-29 |
+| jp | 246.8 | 0 | 1982-03-08 | 1990-03-08 |
+
+The US and Germany clear the eight-year mark before 1990 on raw sessions, so
+their out-of-sample start falls back to the requested 1990-01-01; feature warm-up
+then pushes the realised starts to 1990-03-15 and 1990-06-19. Japan does not
+clear it at all, because the Tokyo exchange traded Saturdays until January 1989
+and our `^N225` series contains **zero** Saturday sessions. Missing roughly 25
+sessions a year for nineteen years makes our 3000-session window span about
+eighteen months more calendar time than Shu's.
+
+So the backdated start is **compensation for a data gap**, not fidelity to the
+paper. It should be described that way wherever it is described at all.
+
+### What the choice actually changes
+
+v8.3 and v8.4 differ in this one field, so the two sealed runs isolate it.
+Comparing raw states on the overlapping days:
+
+| market | HMM state days compared | HMM states differing | JM state cells differing |
+|---|---|---|---|
+| us | 10,619 | **0** | 3.71% |
+| de | 10,605 | **0** | 1.10% |
+| jp | 10,282 | **0** | 15.84% |
+
+The HMM is **exactly invariant**. It fits the last 3000 log returns before day t,
+and that set does not depend on where the series began once 3000 observations
+precede t. For the HMM the sample start is purely a reporting-window choice.
+
+The jump model is not invariant, because its features pass through an expanding
+full-history standardiser anchored at the sample start (unspecified-choices.md
+#1). Moving the anchor moves every feature value forever.
+
+### The decision
+
+Keep 1969-05-01. Buy-and-hold contains no model, so it tests the window against
+the paper's own published benchmark rather than any tuned knob:
+
+| B&H Sharpe | 1970-01-01 | 1969-05-01 | Shu |
+|---|---|---|---|
+| us | 0.497 | 0.486 | 0.48 |
+| de | 0.305 | 0.298 | 0.30 |
+| jp | 0.193 | **0.138** | 0.12 |
+
+The backdated window reproduces the period Shu report; the literal one does not,
+decisively so in Japan, where it discards the first nine months of 1990 and with
+them the opening of the Nikkei collapse.
+
+Recorded as a **deviation from line 157**, not as replication. And it is not free
+for the jump model: on the shared window it costs the US JM 0.088 Sharpe while
+moving its turnover from 0.636 to 1.006 against Shu's 0.44 — the wrong direction
+on the row the paper treats as the jump model's identifying property. That
+trade-off must be reopened when the jump model is next frozen, and this entry
+exists so it is not silently inherited.
+
+### Framing correction from the owner
+
+The purpose of this replication is to extend the **jump model**. The HMM and
+buy-and-hold are comparison baselines, as is the paper's own JM. The target is
+therefore agreement with Table 4, not good performance: a cell that beats the
+paper is as wrong as one that trails it, and several of ours currently beat it
+(us HMM +0.098, us MDD -19.7% against -28.9%, us Calmar 0.355 against 0.21).
