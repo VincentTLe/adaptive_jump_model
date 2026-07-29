@@ -22,6 +22,7 @@ checking #8, and it is the most consequential item on this page.
 | 10 | hygiene: ruff, DOIs, claim-checker scope | **CONFIRMED** |
 | 11 | every HMM cell fails the project's own boundary gate | **NEW — blocker** |
 | 12 | cache scripts skip the contract's sample-start trim | **NEW** |
+| 13 | the grid-ceiling hypothesis of §11 | **NOT SUPPORTED — refuted by its own test** |
 
 ---
 
@@ -376,12 +377,28 @@ decision-month count: the v9.2 German arm decided **468** months against the
 sealed v8.5 run's **416**, because an earlier first-complete date moves the OOS
 start earlier.
 
-Whether it moves the reported metrics is a separate question and is answered
-empirically rather than assumed: the states at any date depend only on the
-trailing 3000 observations, and by 1990 that window no longer reaches 1969, so
-the scored 1990-2023 cells may be untouched even though the decision history is
-not. The refit under v9.3 carries a guard that reproduces the stored v9.2
-German column, which settles it either way.
+Whether it moves the reported metrics is a separate question, and the tempting
+argument for "it cannot" does not survive being checked. That argument runs: a
+state at date t depends only on the trailing 3000 observations, so by the time
+the OOS window opens the fit no longer reaches back to 1969. Put dates on it and
+the margin disappears:
+
+```
+German equity_log observations              14,851 from 1965-01-05
+first date whose trailing 3000 sessions
+  all fall on or after 1969-05-01           1981-04-30
+earliest state the first OOS decision can
+  read (8-year validation + 320-session
+  smoothing lookback, from 1990-01-01)      1980-09-17
+```
+
+**153 sessions overlap.** The trim can therefore reach the earliest OOS
+decisions, and nothing here proves it does not. Closing this needs a refit on
+trimmed German data, which has not been run.
+
+What the v9.3 German refit does establish is narrower: it reproduces the stored
+v9.2 German column to 6.9e-17, so the two contracts agree. Both are untrimmed,
+so that guard says nothing about the trim.
 
 What is *not* untouched is the boundary fraction of §11, whose denominator is
 every decision month. The German figure of 9.6% (45/468) and the sealed 5.3%
@@ -414,3 +431,61 @@ read on `total_wealth`, the other on the flat-in-cash basis v9.2 declared. The
 comparison, not the contracts, was wrong. The guard did its job — it refused to
 write a cache on a false premise — and the episode is the argument for having
 written it.
+
+
+## 13. The grid-ceiling explanation is NOT SUPPORTED, and the gate is weaker than it looks
+
+§11 ended by saying the binding ceiling might identify the turnover deviation
+and that the test "must be run". It has been run, under a rule fixed in
+`scripts/probe_grid_ceiling.py` before any result was read: nested grids
+extending 20 -> 40 -> 80 -> 160 -> 320, stop at the first one whose
+top-candidate month fraction reaches the frozen 5% limit, print every step.
+
+It fails, in three separate ways.
+
+**The gate is not monotone in grid length.** Extending the grid often makes the
+fraction worse, because "top of grid" changes identity — a longer smoothing
+window is genuinely attractive to the cross-validation objective, so the new top
+candidate gets chosen too:
+
+```
+top-of-grid months out of 408
+grid                      us     de     jp
+[..20]                    90     22    161
+[..40]                   100     35     23
+[..80]                   146     70     12
+[..160]                   93      2    128
+[..320]                  116     20      8
+```
+
+**The US never satisfies the gate at all** within the tested range.
+
+**Where the gate is satisfied, the replication gets worse, not better.** Germany
+stops at [..160] and falls from 7/8 cells inside tolerance to 4/8, with Sharpe
+0.367 -> 0.220 against Shu's 0.35. Japan stops at [..80] and falls from 7/8 to
+5/8, Sharpe 0.177 -> 0.130 against 0.19. Turnover does move the way a binding
+ceiling predicts — the US falls 1.79 -> 0.85 and Japan 3.14 -> 2.51 as smoothing
+is allowed to lengthen — but it crosses Shu's value and keeps going rather than
+settling on it.
+
+**And the gate can be passed without changing a single decision.** This is the
+part worth keeping. Adding k=160 to the German grid:
+
+```
+grid                  top months   gate     turnover    shifts   sharpe
+[0,2,4,6,8,20,40,80]    70/408     FAIL     2.109277     144     0.2228
+[..,160]                 2/408     PASS     2.109277     144     0.2202
+```
+
+Turnover is identical to six decimal places and the shift count is unchanged.
+The gate flipped because a candidate almost nobody picks was placed above the
+one they do pick. `upper_boundary_month_fraction_limit` therefore measures *what
+sits at the top of the grid*, not *whether the optimum lies inside it*, and it
+can be satisfied by padding.
+
+**What survives from §11.** That the reported cells were scored under a failing
+gate is a protocol fact and still true. What does not survive is the inference
+built on it: extending the grid neither identifies turnover nor improves the
+replication, and passing the gate is not evidence that anything was fixed. The
+turnover cell remains the only failing cell in all three markets, and it remains
+unidentified — but now for a reason that has been tested rather than asserted.
