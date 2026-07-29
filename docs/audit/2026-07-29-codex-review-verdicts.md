@@ -21,6 +21,7 @@ checking #8, and it is the most consequential item on this page.
 | 9 | replication underidentified | **CONFIRMED, already documented** |
 | 10 | hygiene: ruff, DOIs, claim-checker scope | **CONFIRMED** |
 | 11 | every HMM cell fails the project's own boundary gate | **NEW — blocker** |
+| 12 | cache scripts skip the contract's sample-start trim | **NEW** |
 
 ---
 
@@ -301,9 +302,16 @@ expansion required before OOS metrics"*.
 v8.5  us hmm d1          14/408         3.4%     pass
 v8.5  de hmm d1          22/408         5.4%     FAIL
 v8.5  jp hmm d1         161/408        39.5%     FAIL
-v9    us hmm d1         138/418        33.0%     FAIL
-v9.2  de hmm d1          45/468         9.6%     FAIL
+v9.3  us hmm d1          90/408        22.1%     FAIL
 ```
+
+**A correction to how this was first measured.** The figures first written here
+(33.0% for v9, 9.6% for v9.2, 21.5% for v9.3) counted *every* decision month.
+The gate does not: `walkforward.boundary_diagnostic` restricts to OOS months,
+`decision_dates >= oos_start`, which is why the sealed run's denominator is 408
+and a naive count gives 418 or 468. Every number above is now produced by that
+function, and it reproduces the sealed run's three rows exactly (14/408, 22/408,
+161/408) as a guard before being trusted on anything new.
 
 Two things follow.
 
@@ -327,18 +335,82 @@ Table 4: the stopping criterion is the project's own pre-registered gate, which
 is defined without reference to the paper's numbers. That test has never been
 run, and it must be, before turnover can be called unidentified.
 
-**After the v9.3 repair the gate still fails**, at 21.5% for the US — better
-than v9's 33.0%, still four times the limit — so the ceiling is a property of
-the grid, not of the defective series:
+**After the v9.3 repair the gate still fails**, at 22.1% for the US against a
+5% limit — so the ceiling is a property of the grid, not of the defective
+series:
 
 ```
                         months at top of grid   fraction   gate
-us   v9.3 hmm d1               90/418            21.5%     FAIL
-de   v9.2 hmm d1               45/468             9.6%     FAIL
-jp   v8.5 hmm d1              167/414            40.3%     FAIL
+us   v9.3 hmm d1               90/408            22.1%     FAIL
+de   v8.5 hmm d1               22/408             5.4%     FAIL
+jp   v8.5 hmm d1              161/408            39.5%     FAIL
 ```
 
 Every cell in `artifacts/hmm-residual/01-status/hmm-vs-table4-v9-3.txt` is
 scored under this binding ceiling. A cell inside tolerance under a constraint
 that binds is not a settled cell, and the 7/8 in each market should be read with
 that attached.
+
+
+## 12. The cache scripts skip the contract's sample-start trim — NEW
+
+Same family as #1, found while putting all three markets on one contract.
+
+`data.py` hands `sample_start` and `replication_cutoff` to `fetch_source`, so a
+canonical processed file arrives already trimmed to the study window. Every
+script that loads `data/external/` directly — which all the v9 caches do,
+because the acquisition path fetches the US bill rate from FRED and this machine
+is refused — skips that step and feeds the model whatever the file contains.
+
+The US script was caught by its own guard 3 and trims explicitly. The German one
+does not, and neither did the v9.2 cache that produced the reported DAX column:
+
+```
+contract requested_sample_start = 1969-05-01
+us  v9.3 frame  13,787 rows  1969-05-02..2023-12-29   (trimmed)
+de  v9.2 frame  14,851 rows  1965-01-05..2023-12-29   (NOT trimmed)
+```
+
+Four extra years of German history enter the fit. The visible consequence is the
+decision-month count: the v9.2 German arm decided **468** months against the
+sealed v8.5 run's **416**, because an earlier first-complete date moves the OOS
+start earlier.
+
+Whether it moves the reported metrics is a separate question and is answered
+empirically rather than assumed: the states at any date depend only on the
+trailing 3000 observations, and by 1990 that window no longer reaches 1969, so
+the scored 1990-2023 cells may be untouched even though the decision history is
+not. The refit under v9.3 carries a guard that reproduces the stored v9.2
+German column, which settles it either way.
+
+What is *not* untouched is the boundary fraction of §11, whose denominator is
+every decision month. The German figure of 9.6% (45/468) and the sealed 5.3%
+(22/416) are not measured over the same months, and neither should be quoted
+without saying which.
+
+
+## Two mistakes made while fixing the above, recorded because they were nearly costly
+
+**A silent fallback printed a mislabelled row.** `hmm_status_v9_3.py` read each
+market's path from its cache and fell through to the sealed run when the cache
+was absent. After the repository cleanup removed the v9.2 German states, the
+table went on printing a DAX row labelled "v9.2" that was in fact v8.5 — a
+boundary fraction of 5.3% where v9.2's own number was different. The label and
+the data disagreed and nothing said so. The fallback is now an error: a row that
+cannot be built from the source it claims to describe is not printed at all.
+
+**The boundary gate was measured the wrong way.** The fractions first reported
+in §11 counted every decision month. `walkforward.boundary_diagnostic` counts
+OOS months only, which is why the sealed run's denominator is 408 while a naive
+count gives 418 or 468. All figures now come from that function, and it is
+checked against the sealed run's own three rows (14/408, 22/408, 161/408) before
+being trusted anywhere new. The conclusion is unchanged — the US sits at 22.1%
+against a 5% limit — but the numbers were not the gate's numbers.
+
+**A guard fired for the right reason and was believed too quickly.** Refitting
+Germany under v9.3 tripped its guard with "v9.3 and v9.2 disagree, worst
+maximum_drawdown -0.4020 against -0.4385". Both are the same position path: one
+read on `total_wealth`, the other on the flat-in-cash basis v9.2 declared. The
+comparison, not the contracts, was wrong. The guard did its job — it refused to
+write a cache on a false premise — and the episode is the argument for having
+written it.

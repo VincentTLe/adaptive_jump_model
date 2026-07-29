@@ -40,12 +40,17 @@ import pandas as pd  # noqa: E402
 from _shu_table4 import LABELS, METRICS, PRINTED_HALF_UNIT, TABLE4  # noqa: E402
 
 from adaptive_jump.backtest import apply_signal, performance_metrics  # noqa: E402
+from adaptive_jump.config import load_config  # noqa: E402
+from adaptive_jump.walkforward import boundary_diagnostic  # noqa: E402
 
 SEALED = ROOT / ("artifacts/fixed-baselines/"
                  "fixed-baselines-7b95ec50dece-6bd27647967d-13641890668f")
 RESIDUAL = ROOT / "artifacts" / "hmm-residual"
 OUT = RESIDUAL / "01-status"
 TOL, DELAY, COST = 0.05, 1, 10.0
+# The gate is defined on OOS months. 1990-01-01 is the contract's requested
+# OOS start, and it reproduces the sealed run's 408-month denominators.
+OOS_START = pd.Timestamp("1990-01-01").date()
 BOUNDARY_LIMIT = 0.05
 A, D = "total_wealth", "risky_leg_wealth_flat_in_cash"
 MARKETS = ("us", "de", "jp")
@@ -57,9 +62,21 @@ CACHE = {"us": RESIDUAL / "v9-3-us-hmm", "de": RESIDUAL / "v9-2-de-hmm"}
 def arm(market: str) -> Path | None:
     """The delay-1 directory holding this market's current path, if cached."""
     cached = CACHE.get(market)
-    if cached is not None and (cached / "hmm-delay-1" / "path.csv").is_file():
-        return cached / "hmm-delay-1"
-    return None
+    if cached is None:
+        return None  # this market is meant to come from the sealed run
+    directory = cached / "hmm-delay-1"
+    if not (directory / "path.csv").is_file():
+        # Never fall through to the sealed run here. Doing so once printed a
+        # DAX row labelled v9.2 that was actually v8.5 -- boundary fraction
+        # 5.3% instead of 9.6% -- because the v9.2 German states had been
+        # deleted. A table that quietly changes what it is describing is worse
+        # than no table.
+        raise SystemExit(
+            f"{cached.relative_to(ROOT)} is missing its delay-1 path, so this "
+            "row cannot be built from the source it claims to describe. Refit "
+            "that market before rerunning; do not let it fall back to the "
+            "sealed run.")
+    return directory
 
 
 def hmm_path(market: str) -> pd.DataFrame:
@@ -75,19 +92,27 @@ def hmm_path(market: str) -> pd.DataFrame:
                         one_way_cost_bps=COST)
 
 
-def boundary_fraction(market: str) -> tuple[int, int]:
-    """Months spent on the top candidate of the grid, over months decided."""
+def boundary_fraction(market: str, cfg) -> tuple[int, int]:
+    """The gate as the pipeline itself computes it.
+
+    Counting every decision month is wrong and was wrong here once: the gate is
+    defined on OOS months only (`decision_dates >= oos_start`), which is why the
+    sealed run reports 408 and a naive count reports 418 or 468. Using the
+    project's own boundary_diagnostic removes the choice.
+    """
     directory = arm(market)
-    if directory is not None:
-        choices = pd.read_csv(directory / "choices.csv")
-    else:
-        choices = pd.read_csv(SEALED / market / "hmm-delay-1" / "choices.csv")
-    column = "smoothing" if "smoothing" in choices.columns else choices.columns[-1]
-    return int((choices[column] == choices[column].max()).sum()), len(choices)
+    choices = pd.read_csv(
+        (directory if directory is not None else SEALED / market / "hmm-delay-1")
+        / "choices.csv")
+    diagnostic = boundary_diagnostic(
+        choices, tuple(cfg.hmm_protocol.smoothing_grid), oos_start=OOS_START,
+        fraction_limit=cfg.selection_protocol.boundary_fraction_limit)
+    return diagnostic.selected_months, diagnostic.total_months
 
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
+    cfg = load_config(ROOT / "research-expanding-v9-3.toml")
     sealed = pd.read_csv(SEALED / "metrics-exploratory.csv",
                          parse_dates=["start", "end"])
 
@@ -143,7 +168,7 @@ def main() -> None:
             passed = sum(abs(scored[market][basis][m] - TABLE4[market]["hmm"][m])
                          <= TOL for m in METRICS)
             counts.append(passed)
-        top, total = boundary_fraction(market)
+        top, total = boundary_fraction(market, cfg)
         gate = "TRƯỢT" if top / total > BOUNDARY_LIMIT else "qua  "
         lines.append(
             f"  {NAMES[market]:<11}{SERIES[market]:<6}"
