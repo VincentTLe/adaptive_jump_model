@@ -72,8 +72,9 @@ from adaptive_jump.walkforward import (  # noqa: E402
     select_monthly_candidate,
 )
 
-SEALED = ROOT / ("artifacts/fixed-baselines/"
-                 "fixed-baselines-7b95ec50dece-6bd27647967d-13641890668f")
+SEALED = ROOT / (
+    "artifacts/fixed-baselines/fixed-baselines-7b95ec50dece-6bd27647967d-13641890668f"
+)
 RESIDUAL = ROOT / "artifacts" / "hmm-residual"
 OUT = RESIDUAL / "10-grid-ceiling"
 DELAY, COST, TOL = 1, 10.0, 0.05
@@ -109,76 +110,110 @@ def evaluate(frame: pd.DataFrame, states: pd.Series, grid, cfg, lo, hi) -> dict:
     """One grid, end to end: smooth, select monthly, trade, score."""
     candidates = smoothed_hmm_states(states, list(grid))
     selection = select_monthly_candidate(
-        frame[["date", "equity_simple", "cash_return"]], candidates,
-        cfg.selection_protocol, delay_trading_days=DELAY, one_way_cost_bps=COST,
+        frame[["date", "equity_simple", "cash_return"]],
+        candidates,
+        cfg.selection_protocol,
+        delay_trading_days=DELAY,
+        one_way_cost_bps=COST,
         periods_per_year=cfg.metrics_protocol.periods_per_year,
-        volatility_ddof=cfg.metrics_protocol.volatility_ddof)
+        volatility_ddof=cfg.metrics_protocol.volatility_ddof,
+    )
     signal = selection.signal.rename("selected_signal").reset_index()
     signal.columns = ["date", "selected_signal"]
     merged = frame.merge(signal, on="date", how="left")
-    path = apply_signal(merged[["date", "equity_simple", "cash_return"]],
-                        merged["selected_signal"], delay_trading_days=DELAY,
-                        one_way_cost_bps=COST)
+    path = apply_signal(
+        merged[["date", "equity_simple", "cash_return"]],
+        merged["selected_signal"],
+        delay_trading_days=DELAY,
+        one_way_cost_bps=COST,
+    )
     window = path[(path["date"] >= lo) & (path["date"] <= hi)].dropna(
-        subset=["cash_return", "position", "one_way_turnover", "strategy_return"])
+        subset=["cash_return", "position", "one_way_turnover", "strategy_return"]
+    )
     scored = performance_metrics(
-        window, periods_per_year=cfg.metrics_protocol.periods_per_year,
-        volatility_ddof=cfg.metrics_protocol.volatility_ddof)
+        window,
+        periods_per_year=cfg.metrics_protocol.periods_per_year,
+        volatility_ddof=cfg.metrics_protocol.volatility_ddof,
+    )
 
-    gate = boundary_diagnostic(selection.choices, tuple(grid),
-                               oos_start=OOS_START,
-                               fraction_limit=BOUNDARY_LIMIT)
+    gate = boundary_diagnostic(
+        selection.choices,
+        tuple(grid),
+        oos_start=OOS_START,
+        fraction_limit=BOUNDARY_LIMIT,
+    )
     oos = selection.choices.loc[
-        pd.to_datetime(selection.choices["decision_date"])
-        >= pd.Timestamp(OOS_START)]
-    return {**scored,
-            "shifts": int((window["position"].diff().abs() > 0).sum()),
-            "top_months": gate.selected_months,
-            "total_months": gate.total_months,
-            "boundary_fraction": gate.fraction,
-            "gate_passes": gate.passed,
-            "choices": oos["selected"].to_numpy()}
+        pd.to_datetime(selection.choices["decision_date"]) >= pd.Timestamp(OOS_START)
+    ]
+    return {
+        **scored,
+        "shifts": int((window["position"].diff().abs() > 0).sum()),
+        "top_months": gate.selected_months,
+        "total_months": gate.total_months,
+        "boundary_fraction": gate.fraction,
+        "gate_passes": gate.passed,
+        "choices": oos["selected"].to_numpy(),
+    }
 
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     cfg = load_config(ROOT / "research-expanding-v9-3.toml")
-    sealed = pd.read_csv(SEALED / "metrics-exploratory.csv",
-                         parse_dates=["start", "end"])
+    sealed = pd.read_csv(
+        SEALED / "metrics-exploratory.csv", parse_dates=["start", "end"]
+    )
 
-    lines = [__doc__.split("\n\n")[0], "",
-             f"Lưới nền {list(BASE_GRID)}, nối thêm {list(EXTENSIONS)}; "
-             f"dừng ở bước đầu tiên có tỉ lệ đỉnh <= {BOUNDARY_LIMIT:.0%}.", ""]
+    lines = [
+        __doc__.split("\n\n")[0],
+        "",
+        f"Lưới nền {list(BASE_GRID)}, nối thêm {list(EXTENSIONS)}; "
+        f"dừng ở bước đầu tiên có tỉ lệ đỉnh <= {BOUNDARY_LIMIT:.0%}.",
+        "",
+    ]
     records = []
     for market in ("us", "de", "jp"):
-        row = sealed[(sealed.market == market) & (sealed.model == "hmm")
-                     & (sealed.delay == DELAY)].iloc[0]
+        row = sealed[
+            (sealed.market == market)
+            & (sealed.model == "hmm")
+            & (sealed.delay == DELAY)
+        ].iloc[0]
         frame, states = load(market)
         lines.append(f"=== {NAMES[market]}")
-        lines.append(f"{'lưới':<28}{'đỉnh':>12}{'turnover':>11}{'|lệch|':>9}"
-                     f"{'sharpe':>9}{'shifts':>8}   cổng")
+        lines.append(
+            f"{'lưới':<28}{'đỉnh':>12}{'turnover':>11}{'|lệch|':>9}"
+            f"{'sharpe':>9}{'shifts':>8}   cổng"
+        )
         stopped = None
         previous = None
         for grid in grids():
             got = evaluate(frame, states, grid, cfg, row["start"], row["end"])
             passes = got["gate_passes"]
             target = TABLE4[market]["hmm"]["turnover"]
-            churn = ("" if previous is None else
-                     f"  đổi lựa chọn {(got['choices'] != previous).mean():.0%}")
+            churn = (
+                ""
+                if previous is None
+                else f"  đổi lựa chọn {(got['choices'] != previous).mean():.0%}"
+            )
             previous = got["choices"]
             lines.append(
                 f"{str(list(grid)):<28}"
                 f"{got['top_months']:>5}/{got['total_months']:<6}"
                 f"{got['turnover']:>11.4f}{abs(got['turnover'] - target):>9.3f}"
                 f"{got['sharpe']:>9.4f}{got['shifts']:>8}"
-                f"   {'QUA' if passes else 'trượt'}{churn}")
-            records.append({"market": market, "grid": str(list(grid)),
-                            "top_months": got["top_months"],
-                            "total_months": got["total_months"],
-                            "boundary_fraction": got["boundary_fraction"],
-                            "gate_passes": passes,
-                            **{m: got[m] for m in METRICS},
-                            "shifts": got["shifts"]})
+                f"   {'QUA' if passes else 'trượt'}{churn}"
+            )
+            records.append(
+                {
+                    "market": market,
+                    "grid": str(list(grid)),
+                    "top_months": got["top_months"],
+                    "total_months": got["total_months"],
+                    "boundary_fraction": got["boundary_fraction"],
+                    "gate_passes": passes,
+                    **{m: got[m] for m in METRICS},
+                    "shifts": got["shifts"],
+                }
+            )
             if passes and stopped is None:
                 stopped = (grid, got)
         if stopped is None:
@@ -186,25 +221,36 @@ def main() -> None:
         else:
             grid, got = stopped
             lines.append(f"  -> dừng ở {list(grid)} (lưới đầu tiên qua cổng)")
-            within = sum(abs(got[m] - TABLE4[market]["hmm"][m]) <= TOL
-                         for m in METRICS)
-            lines.append(f"     trong ngưỡng {within}/8; " + "; ".join(
-                f"{LABELS[m]} {got[m]:.4f} vs {TABLE4[market]['hmm'][m]:.3f}"
-                for m in ("turnover", "sharpe", "cagr")))
+            within = sum(abs(got[m] - TABLE4[market]["hmm"][m]) <= TOL for m in METRICS)
+            lines.append(
+                f"     trong ngưỡng {within}/8; "
+                + "; ".join(
+                    f"{LABELS[m]} {got[m]:.4f} vs {TABLE4[market]['hmm'][m]:.3f}"
+                    for m in ("turnover", "sharpe", "cagr")
+                )
+            )
         lines.append("")
 
     frame = pd.DataFrame(records)
     frame.to_csv(OUT / "grid-ceiling.csv", index=False, lineterminator="\n")
-    (OUT / "run.json").write_text(json.dumps({
-        "what": "HMM smoothing-grid ceiling probe, all three markets, v9.3",
-        "rule_fixed_before_results": True,
-        "stopping_criterion": "first nested grid with top-candidate month "
-                              "fraction <= upper_boundary_month_fraction_limit",
-        "boundary_limit": BOUNDARY_LIMIT,
-        "base_grid": list(BASE_GRID), "extensions": list(EXTENSIONS),
-        "table4_consulted_for_grid_choice": False,
-        "written_utc": datetime.now(UTC).isoformat(timespec="seconds"),
-    }, indent=2) + "\n", encoding="utf-8")
+    (OUT / "run.json").write_text(
+        json.dumps(
+            {
+                "what": "HMM smoothing-grid ceiling probe, all three markets, v9.3",
+                "rule_fixed_before_results": True,
+                "stopping_criterion": "first nested grid with top-candidate month "
+                "fraction <= upper_boundary_month_fraction_limit",
+                "boundary_limit": BOUNDARY_LIMIT,
+                "base_grid": list(BASE_GRID),
+                "extensions": list(EXTENSIONS),
+                "table4_consulted_for_grid_choice": False,
+                "written_utc": datetime.now(UTC).isoformat(timespec="seconds"),
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
     report = "\n".join(lines) + "\n"
     (OUT / "report.txt").write_text(report, encoding="utf-8")

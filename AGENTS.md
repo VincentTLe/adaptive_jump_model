@@ -1,8 +1,7 @@
 # AGENTS.md - adaptive_jump_model
 
 This repository studies daily market-regime models based on Shu, Yu, and Mulvey
-(2024), arXiv:2402.05272. `archive/` is frozen provenance: active code never
-imports from it. Account-level instructions also apply.
+(2024), arXiv:2402.05272. Account-level instructions also apply.
 
 **MUST** and **MUST NOT** are non-negotiable. **SHOULD** requires a recorded
 reason to deviate.

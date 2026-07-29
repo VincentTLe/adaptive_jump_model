@@ -20,7 +20,7 @@ checking #8, and it is the most consequential item on this page.
 | 8 | no full sealed v9 replication | **CONFIRMED** |
 | 9 | replication underidentified | **CONFIRMED, already documented** |
 | 10 | hygiene: ruff, DOIs, claim-checker scope | **CONFIRMED** |
-| 11 | every HMM cell fails the project's own boundary gate | **NEW — blocker** |
+| 11 | every HMM cell fails the project's own boundary gate | **NEW — DEMOTED, see §14** |
 | 12 | cache scripts skip the contract's sample-start trim | **NEW** |
 | 13 | the grid-ceiling hypothesis of §11 | **NOT SUPPORTED — refuted by its own test** |
 
@@ -489,3 +489,40 @@ built on it: extending the grid neither identifies turnover nor improves the
 replication, and passing the gate is not evidence that anything was fixed. The
 turnover cell remains the only failing cell in all three markets, and it remains
 unidentified — but now for a reason that has been tested rather than asserted.
+
+
+## 14. The boundary gate is our own invention, and §11 overstated it
+
+Corrected after the owner pointed out that the 5% threshold is not something the
+project inherited. Checked:
+
+```
+research-expanding-v9-3.toml:206  upper_boundary_month_fraction_limit = 0.05
+git log -S upper_boundary_month_fraction_limit
+    71a46d6  research: freeze fixed baseline contract      <- ours
+grep -i "boundary|grid expansion|upper.*candidate" shu_paper.txt
+    (no match)
+```
+
+The key is real and frozen, but **we wrote it and we picked 0.05**. Shu says
+nothing about any such check. So failing it is not a replication failure and
+never was; it is failing a self-imposed heuristic whose threshold was never
+justified, and which §13 then showed can be satisfied by padding the grid with a
+candidate nobody selects.
+
+§11 said the reported cells "were opened against a failing gate" and called that
+a blocker. That framing gave our own untested heuristic the authority of a
+published specification. It is withdrawn. What remains true and worth keeping:
+
+- the sealed v8.5 run does record `status = "boundary_failed"` and
+  `metrics_opened = false`, so its metrics are labelled exploratory. That is a
+  fact about our pipeline's bookkeeping, not about the replication;
+- the selection does sit on the longest available smoothing window often (US
+  22.1%, JP 39.5% of OOS months), which is a real and interesting property of
+  the paper's procedure on this data, worth reporting as a description;
+- §13's result stands on its own: extending the grid degrades the replication,
+  and the gate can be flipped without changing a decision.
+
+The honest status of the eight cells is therefore what the tolerance says — 7/8
+in all three markets — with the smoothing-window concentration reported as a
+description of the fit, not as a gate that blocks anything.

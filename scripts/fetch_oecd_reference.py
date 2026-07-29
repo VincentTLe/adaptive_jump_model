@@ -33,17 +33,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 INP = ROOT / "data" / "external" / "inputs"
-API = ("https://api.db.nomics.world/v22/series/OECD/MEI/{code}"
-       "?observations=1")
+API = "https://api.db.nomics.world/v22/series/OECD/MEI/{code}?observations=1"
 UA = {"User-Agent": "Mozilla/5.0 (research replication; contact via repository)"}
 
 SERIES = {
     "oecd_de_share_price_monthly.csv": (
         "DEU.SPASTT01.IXOB.M",
-        "OECD MEI share price index, Germany, all shares, index 2015=100"),
+        "OECD MEI share price index, Germany, all shares, index 2015=100",
+    ),
     "oecd_jp_central_bank_rate_monthly.csv": (
         "JPN.IRSTCB01.ST.M",
-        "OECD MEI central bank policy rate, Japan, percent per annum"),
+        "OECD MEI central bank policy rate, Japan, percent per annum",
+    ),
 }
 
 
@@ -55,9 +56,11 @@ def fetch(code: str) -> list[tuple[str, float]]:
     if len(docs) != 1:
         raise SystemExit(f"{code}: expected one series, got {len(docs)}")
     doc = docs[0]
-    rows = [(period, value)
-            for period, value in zip(doc["period"], doc["value"])
-            if isinstance(value, (int, float))]
+    rows = [
+        (period, value)
+        for period, value in zip(doc["period"], doc["value"], strict=True)
+        if isinstance(value, (int, float))
+    ]
     if not rows:
         raise SystemExit(f"{code}: no numeric observations")
     return rows

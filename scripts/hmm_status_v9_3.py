@@ -43,8 +43,9 @@ from adaptive_jump.backtest import apply_signal, performance_metrics  # noqa: E4
 from adaptive_jump.config import load_config  # noqa: E402
 from adaptive_jump.walkforward import boundary_diagnostic  # noqa: E402
 
-SEALED = ROOT / ("artifacts/fixed-baselines/"
-                 "fixed-baselines-7b95ec50dece-6bd27647967d-13641890668f")
+SEALED = ROOT / (
+    "artifacts/fixed-baselines/fixed-baselines-7b95ec50dece-6bd27647967d-13641890668f"
+)
 RESIDUAL = ROOT / "artifacts" / "hmm-residual"
 OUT = RESIDUAL / "01-status"
 TOL, DELAY, COST = 0.05, 1, 10.0
@@ -75,7 +76,8 @@ def arm(market: str) -> Path | None:
             f"{cached.relative_to(ROOT)} is missing its delay-1 path, so this "
             "row cannot be built from the source it claims to describe. Refit "
             "that market before rerunning; do not let it fall back to the "
-            "sealed run.")
+            "sealed run."
+        )
     return directory
 
 
@@ -84,12 +86,16 @@ def hmm_path(market: str) -> pd.DataFrame:
     if directory is not None:
         return pd.read_csv(directory / "path.csv", parse_dates=["date"])
     feats = pd.read_csv(SEALED / market / "features.csv", parse_dates=["date"])
-    sig = pd.read_csv(SEALED / market / "hmm-delay-1" / "selected-signal.csv",
-                      parse_dates=["date"])
+    sig = pd.read_csv(
+        SEALED / market / "hmm-delay-1" / "selected-signal.csv", parse_dates=["date"]
+    )
     merged = feats.merge(sig, on="date", how="left")
-    return apply_signal(merged[["date", "equity_simple", "cash_return"]],
-                        merged["selected_signal"], delay_trading_days=DELAY,
-                        one_way_cost_bps=COST)
+    return apply_signal(
+        merged[["date", "equity_simple", "cash_return"]],
+        merged["selected_signal"],
+        delay_trading_days=DELAY,
+        one_way_cost_bps=COST,
+    )
 
 
 def boundary_fraction(market: str, cfg) -> tuple[int, int]:
@@ -103,48 +109,68 @@ def boundary_fraction(market: str, cfg) -> tuple[int, int]:
     directory = arm(market)
     choices = pd.read_csv(
         (directory if directory is not None else SEALED / market / "hmm-delay-1")
-        / "choices.csv")
+        / "choices.csv"
+    )
     diagnostic = boundary_diagnostic(
-        choices, tuple(cfg.hmm_protocol.smoothing_grid), oos_start=OOS_START,
-        fraction_limit=cfg.selection_protocol.boundary_fraction_limit)
+        choices,
+        tuple(cfg.hmm_protocol.smoothing_grid),
+        oos_start=OOS_START,
+        fraction_limit=cfg.selection_protocol.boundary_fraction_limit,
+    )
     return diagnostic.selected_months, diagnostic.total_months
 
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     cfg = load_config(ROOT / "research-expanding-v9-3.toml")
-    sealed = pd.read_csv(SEALED / "metrics-exploratory.csv",
-                         parse_dates=["start", "end"])
+    sealed = pd.read_csv(
+        SEALED / "metrics-exploratory.csv", parse_dates=["start", "end"]
+    )
 
     scored, records = {}, []
     for market in MARKETS:
-        row = sealed[(sealed.market == market) & (sealed.model == "hmm")
-                     & (sealed.delay == DELAY)].iloc[0]
+        row = sealed[
+            (sealed.market == market)
+            & (sealed.model == "hmm")
+            & (sealed.delay == DELAY)
+        ].iloc[0]
         window = hmm_path(market)
-        window = window[(window["date"] >= row["start"])
-                        & (window["date"] <= row["end"])].dropna(
-            subset=["cash_return", "position", "one_way_turnover",
-                    "strategy_return"])
-        scored[market] = {basis: performance_metrics(window, drawdown_basis=basis)
-                          for basis in (A, D)}
+        window = window[
+            (window["date"] >= row["start"]) & (window["date"] <= row["end"])
+        ].dropna(
+            subset=["cash_return", "position", "one_way_turnover", "strategy_return"]
+        )
+        scored[market] = {
+            basis: performance_metrics(window, drawdown_basis=basis) for basis in (A, D)
+        }
         scored[market]["shifts"] = int((window["position"].diff().abs() > 0).sum())
         for basis in (A, D):
             for metric in METRICS:
                 got = scored[market][basis][metric]
                 target = TABLE4[market]["hmm"][metric]
-                records.append({
-                    "market": market, "series": SERIES[market], "basis": basis,
-                    "metric": metric, "ours": got, "shu": target,
-                    "deviation": abs(got - target),
-                    "within_tol": abs(got - target) <= TOL,
-                    "unresolvable": abs(got - target) <= PRINTED_HALF_UNIT[metric],
-                })
-    pd.DataFrame(records).to_csv(OUT / "hmm-vs-table4-v9-3.csv", index=False,
-                                 lineterminator="\n")
+                records.append(
+                    {
+                        "market": market,
+                        "series": SERIES[market],
+                        "basis": basis,
+                        "metric": metric,
+                        "ours": got,
+                        "shu": target,
+                        "deviation": abs(got - target),
+                        "within_tol": abs(got - target) <= TOL,
+                        "unresolvable": abs(got - target) <= PRINTED_HALF_UNIT[metric],
+                    }
+                )
+    pd.DataFrame(records).to_csv(
+        OUT / "hmm-vs-table4-v9-3.csv", index=False, lineterminator="\n"
+    )
 
-    lines = ["HMM vs Table 4 — delay 1, sau khi sửa mối nối S&P và rút quy ước MDD",
-             "", f"(ngưỡng {TOL:.2f}; * = dưới nửa chữ số cuối paper in ra; "
-             "! = ngoài ngưỡng)", ""]
+    lines = [
+        "HMM vs Table 4 — delay 1, sau khi sửa mối nối S&P và rút quy ước MDD",
+        "",
+        f"(ngưỡng {TOL:.2f}; * = dưới nửa chữ số cuối paper in ra; ! = ngoài ngưỡng)",
+        "",
+    ]
     head = f"{'chỉ số':<12}"
     for market in MARKETS:
         head += f"{NAMES[market] + ' A':>22}{NAMES[market] + ' D':>22}"
@@ -156,8 +182,11 @@ def main() -> None:
                 got = scored[market][basis][metric]
                 target = TABLE4[market]["hmm"][metric]
                 dev = abs(got - target)
-                flag = ("*" if dev <= PRINTED_HALF_UNIT[metric]
-                        else (" " if dev <= TOL else "!"))
+                flag = (
+                    "*"
+                    if dev <= PRINTED_HALF_UNIT[metric]
+                    else (" " if dev <= TOL else "!")
+                )
                 line += f"{f'{got:.4f}/{target:.3f} {dev:.3f}{flag}':>22}"
         lines.append(line)
 
@@ -165,8 +194,10 @@ def main() -> None:
     for market in MARKETS:
         counts = []
         for basis in (A, D):
-            passed = sum(abs(scored[market][basis][m] - TABLE4[market]["hmm"][m])
-                         <= TOL for m in METRICS)
+            passed = sum(
+                abs(scored[market][basis][m] - TABLE4[market]["hmm"][m]) <= TOL
+                for m in METRICS
+            )
             counts.append(passed)
         top, total = boundary_fraction(market, cfg)
         gate = "TRƯỢT" if top / total > BOUNDARY_LIMIT else "qua  "
@@ -174,19 +205,31 @@ def main() -> None:
             f"  {NAMES[market]:<11}{SERIES[market]:<6}"
             f"A_total {counts[0]}/8   D_flat {counts[1]}/8   "
             f"| cổng lưới: đỉnh {top}/{total} = {top / total:>5.1%} "
-            f"(ngưỡng {BOUNDARY_LIMIT:.0%}) {gate}")
+            f"(ngưỡng {BOUNDARY_LIMIT:.0%}) {gate}"
+        )
 
     same = all(
         (abs(scored[m][A][k] - TABLE4[m]["hmm"][k]) <= TOL)
         == (abs(scored[m][D][k] - TABLE4[m]["hmm"][k]) <= TOL)
-        for m in MARKETS for k in METRICS)
-    lines += ["", "Rút quy ước MDD có làm đổi phán quyết ô nào không: "
-              + ("KHÔNG — mọi ô cho cùng kết quả dưới cả hai quy ước, nên việc "
-                 "rút bỏ không tốn gì." if same else
-                 "CÓ — xem các ô lệch nhau ở trên.")]
-    lines += ["", "Lưu ý: mọi ô ở trên đều được chấm dưới một lưới đang bị chặn "
-              "ở đỉnh (xem cổng lưới).", "Một ô lọt ngưỡng dưới ràng buộc đang "
-              "bind không phải là một ô đã xong."]
+        for m in MARKETS
+        for k in METRICS
+    )
+    lines += [
+        "",
+        "Rút quy ước MDD có làm đổi phán quyết ô nào không: "
+        + (
+            "KHÔNG — mọi ô cho cùng kết quả dưới cả hai quy ước, nên việc "
+            "rút bỏ không tốn gì."
+            if same
+            else "CÓ — xem các ô lệch nhau ở trên."
+        ),
+    ]
+    lines += [
+        "",
+        "Lưu ý: mọi ô ở trên đều được chấm dưới một lưới đang bị chặn "
+        "ở đỉnh (xem cổng lưới).",
+        "Một ô lọt ngưỡng dưới ràng buộc đang bind không phải là một ô đã xong.",
+    ]
 
     report = "\n".join(lines) + "\n"
     (OUT / "hmm-vs-table4-v9-3.txt").write_text(report, encoding="utf-8")

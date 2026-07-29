@@ -56,8 +56,8 @@ OFFICIAL_START = pd.Timestamp("1987-12-30")
 
 # Gates. The repaired backcast must behave like the official segment does when
 # both are measured against the same external price index.
-MAX_DIVIDEND_GAP_PP = 1.0     # repaired era vs official era, annualised
-MAX_VOL_SHIFT_PP = 0.30       # a dividend drift must not move daily volatility
+MAX_DIVIDEND_GAP_PP = 1.0  # repaired era vs official era, annualised
+MAX_VOL_SHIFT_PP = 0.30  # a dividend drift must not move daily volatility
 # The equity premium gate compares against JST's own German figures rather than
 # against a sign. An earlier draft demanded a positive premium over 1970-1987;
 # JST reports German equities returning 6.29% a year against a 6.26% bill rate
@@ -112,8 +112,9 @@ def _annual(series: pd.Series, lo: str, hi: str) -> float:
 
 
 def validate(price: pd.Series, repaired: pd.Series) -> None:
-    oecd = pd.read_csv(INP / "oecd_de_share_price_monthly.csv",
-                       parse_dates=["date"]).set_index("date")["value"]
+    oecd = pd.read_csv(
+        INP / "oecd_de_share_price_monthly.csv", parse_dates=["date"]
+    ).set_index("date")["value"]
     monthly = repaired.resample("MS").mean()
     joined = pd.concat({"ours": monthly, "oecd": oecd}, axis=1).dropna()
 
@@ -128,40 +129,58 @@ def validate(price: pd.Series, repaired: pd.Series) -> None:
     official_gap = dividend_gap("1988-01-01", "2023-12-31")
 
     cash = pd.read_csv(OUT / "de_cash_ladder.csv", parse_dates=["date"])
-    cash = cash.set_index("date")["value"].reindex(
-        pd.DatetimeIndex(repaired.index), method="ffill") / 100.0
+    cash = (
+        cash.set_index("date")["value"].reindex(
+            pd.DatetimeIndex(repaired.index), method="ffill"
+        )
+        / 100.0
+    )
     premium = _annual(repaired, "1970-01-01", "1987-12-31") - float(
-        cash.loc["1970-01-01":"1987-12-31"].mean())
+        cash.loc["1970-01-01":"1987-12-31"].mean()
+    )
     before_premium = _annual(price, "1970-01-01", "1987-12-31") - float(
-        cash.loc["1970-01-01":"1987-12-31"].mean())
+        cash.loc["1970-01-01":"1987-12-31"].mean()
+    )
     jst = pd.read_csv(INP / "jst_germany_eq.csv").set_index("year").loc[1970:1987]
-    jst_premium = float((1 + jst["eq_tr"]).prod() ** (1 / len(jst))
-                        - (1 + jst["bill_rate"]).prod() ** (1 / len(jst)))
+    jst_premium = float(
+        (1 + jst["eq_tr"]).prod() ** (1 / len(jst))
+        - (1 + jst["bill_rate"]).prod() ** (1 / len(jst))
+    )
 
     before = np.log(price / price.shift(1)).loc["1970-01-01":"1987-12-31"]
     after = np.log(repaired / repaired.shift(1)).loc["1970-01-01":"1987-12-31"]
     vol_shift = abs(after.std() - before.std()) * np.sqrt(252) * 100
 
     print("VALIDATION")
-    print(f"  chênh so với chỉ số giá OECD, đoạn sửa 1970-1987 : "
-          f"{repaired_gap:+.2%}/năm")
-    print(f"  chênh so với chỉ số giá OECD, đoạn chính thức    : "
-          f"{official_gap:+.2%}/năm")
-    print(f"  khác biệt giữa hai đoạn : {abs(repaired_gap - official_gap)*100:.2f}"
-          f" điểm  (ngưỡng {MAX_DIVIDEND_GAP_PP})")
-    print(f"  phần bù rủi ro 1970-1987: {before_premium:+.2%} -> {premium:+.2%}"
-          f"/năm   JST độc lập {jst_premium:+.2%}"
-          f"   (lệch {abs(premium - jst_premium)*100:.2f} điểm, ngưỡng "
-          f"{MAX_PREMIUM_GAP_PP})")
-    print(f"  dịch chuyển độ biến động: {vol_shift:.4f} điểm"
-          f"   (ngưỡng {MAX_VOL_SHIFT_PP})")
+    print(
+        f"  chênh so với chỉ số giá OECD, đoạn sửa 1970-1987 : {repaired_gap:+.2%}/năm"
+    )
+    print(
+        f"  chênh so với chỉ số giá OECD, đoạn chính thức    : {official_gap:+.2%}/năm"
+    )
+    print(
+        f"  khác biệt giữa hai đoạn : {abs(repaired_gap - official_gap) * 100:.2f}"
+        f" điểm  (ngưỡng {MAX_DIVIDEND_GAP_PP})"
+    )
+    print(
+        f"  phần bù rủi ro 1970-1987: {before_premium:+.2%} -> {premium:+.2%}"
+        f"/năm   JST độc lập {jst_premium:+.2%}"
+        f"   (lệch {abs(premium - jst_premium) * 100:.2f} điểm, ngưỡng "
+        f"{MAX_PREMIUM_GAP_PP})"
+    )
+    print(
+        f"  dịch chuyển độ biến động: {vol_shift:.4f} điểm"
+        f"   (ngưỡng {MAX_VOL_SHIFT_PP})"
+    )
 
     fails = []
     if abs(repaired_gap - official_gap) * 100 > MAX_DIVIDEND_GAP_PP:
         fails.append("repaired era still does not carry the official era's yield")
     if abs(premium - jst_premium) * 100 > MAX_PREMIUM_GAP_PP:
-        fails.append(f"equity premium {premium:.2%} is {abs(premium-jst_premium)*100:.2f}pp "
-                     f"from JST's {jst_premium:.2%}")
+        fails.append(
+            f"equity premium {premium:.2%} is "
+            f"{abs(premium - jst_premium) * 100:.2f}pp from JST's {jst_premium:.2%}"
+        )
     if vol_shift > MAX_VOL_SHIFT_PP:
         fails.append(f"volatility moved {vol_shift:.3f}pp")
     if fails:
@@ -175,8 +194,10 @@ def main() -> None:
     path = OUT / "de_equity_tr_dividend_adjusted.csv"
     frame.to_csv(path, index=False, lineterminator="\n")
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    print(f"{path.name}  rows={len(frame)}  "
-          f"{frame['date'].iloc[0]}..{frame['date'].iloc[-1]}")
+    print(
+        f"{path.name}  rows={len(frame)}  "
+        f"{frame['date'].iloc[0]}..{frame['date'].iloc[-1]}"
+    )
     print(f"  sha256={digest}")
 
 

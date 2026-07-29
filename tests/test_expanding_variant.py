@@ -1,4 +1,4 @@
-"""Tests for the expanding-v8 variant: config unlocks, localfile provider,
+"""Tests for the expanding-v8-5 variant: config unlocks, localfile provider,
 expanding standardizer, and the identity-scaler model branch."""
 
 import hashlib
@@ -16,18 +16,19 @@ from adaptive_jump.models import fit_fixed_jm_window
 
 ROOT = Path(__file__).resolve().parents[1]
 LEGACY = ROOT / "research.toml"
-VARIANT = ROOT / "research-expanding-v8.toml"
+VARIANT = ROOT / "research-expanding-v8-5.toml"
 
 
 # ---------- config unlocks ----------
 
+
 def test_variant_config_loads_with_expanding_protocol() -> None:
     config = load_config(VARIANT)
-    assert config.config_id == "shu-replication-expanding-v8"
+    assert config.config_id == "shu-replication-expanding-v8-5"
     assert config.model_protocol.standardizer == "expanding_full_history_ddof1"
-    assert config.model_protocol.standardizer_min_observations == 250
+    assert config.model_protocol.standardizer_min_observations == 63
     assert config.jm_protocol.lambda_grid == (0, 5, 15, 35, 70, 150)
-    assert config.hmm_protocol.smoothing_grid == (0, 2, 4, 8, 20, 40)
+    assert config.hmm_protocol.smoothing_grid == (0, 2, 4, 6, 8, 20)
     assert config.metrics_protocol.turnover_scale == 0.5
 
 
@@ -47,7 +48,7 @@ def test_legacy_config_still_loads_with_defaults() -> None:
             "standardizer violates the frozen protocol",
         ),
         (
-            "standardizer_min_observations = 250",
+            "standardizer_min_observations = 63",
             "standardizer_min_observations = 10",
             "at least one quarter of warm-up",
         ),
@@ -57,7 +58,7 @@ def test_legacy_config_still_loads_with_defaults() -> None:
             "invalid JM lambda grid",
         ),
         (
-            "smoothing_grid = [0, 2, 4, 8, 20, 40]",
+            "smoothing_grid = [0, 2, 4, 6, 8, 20]",
             "smoothing_grid = [0, 2, 4, 8, 20, 40, 80]",
             "invalid HMM smoothing grid",
         ),
@@ -86,6 +87,7 @@ def test_splicing_requires_documentation(tmp_path: Path) -> None:
 
 # ---------- localfile provider ----------
 
+
 def _localfile_source():
     config = load_config(VARIANT)
     return next(market for market in config.markets if market.id == "de").equity
@@ -102,7 +104,9 @@ def test_localfile_fetch_verifies_hash_and_bounds(
     monkeypatch.chdir(tmp_path)
     monkeypatch.setitem(source.settings, "sha256", hashlib.sha256(body).hexdigest())
 
-    payload = fetch_source(source, date(1965, 1, 1), date(2023, 12, 31))
+    payload = fetch_source(
+        source, date(1965, 1, 1), date(2023, 12, 31), repo_root=tmp_path
+    )
 
     assert payload.payload_type == "local_file"
     # the 1964 row is outside the frozen interval and must be filtered, not fatal
@@ -121,7 +125,7 @@ def test_localfile_fetch_rejects_hash_mismatch(
     monkeypatch.chdir(tmp_path)
     monkeypatch.setitem(source.settings, "sha256", "0" * 64)
     with pytest.raises(AcquisitionError, match="sha256 mismatch"):
-        fetch_source(source, date(1965, 1, 1), date(2023, 12, 31))
+        fetch_source(source, date(1965, 1, 1), date(2023, 12, 31), repo_root=tmp_path)
 
 
 def test_localfile_fetch_rejects_wrong_columns(
@@ -135,10 +139,11 @@ def test_localfile_fetch_rejects_wrong_columns(
     monkeypatch.chdir(tmp_path)
     monkeypatch.setitem(source.settings, "sha256", hashlib.sha256(body).hexdigest())
     with pytest.raises(AcquisitionError, match="date,value"):
-        fetch_source(source, date(1965, 1, 1), date(2023, 12, 31))
+        fetch_source(source, date(1965, 1, 1), date(2023, 12, 31), repo_root=tmp_path)
 
 
 # ---------- expanding standardizer ----------
+
 
 def test_expanding_standardizer_is_causal_and_matches_pandas() -> None:
     rng = np.random.default_rng(11)
@@ -167,6 +172,7 @@ def test_expanding_standardizer_rejects_thin_warmup() -> None:
 
 # ---------- identity-scaler model branch ----------
 
+
 def test_expanding_protocol_leaves_features_unscaled() -> None:
     variant = load_config(VARIANT)
     legacy = load_config(LEGACY)
@@ -188,7 +194,5 @@ def test_expanding_protocol_leaves_features_unscaled() -> None:
     assert np.allclose(fit.transform(features), features.to_numpy())
     assert np.allclose(fit.scaler.mean_, 0.0) and np.allclose(fit.scaler.scale_, 1.0)
 
-    legacy_fit = fit_fixed_jm_window(
-        window, legacy.model_protocol, legacy.jm_protocol
-    )
+    legacy_fit = fit_fixed_jm_window(window, legacy.model_protocol, legacy.jm_protocol)
     assert not np.allclose(legacy_fit.transform(features), features.to_numpy())

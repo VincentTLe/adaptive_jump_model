@@ -19,43 +19,6 @@ dist/
 data/raw/*
 data/processed/*
 artifacts/*
-# ...except the small, citable outputs of the HMM residual investigation. Runs
-# stay out (they are hundreds of megabytes and reproducible from the configs),
-# but the reports, the extracted position paths and the per-cell tables are the
-# evidence the audit ledger cites, and losing them means redoing the work.
-!artifacts/hmm-residual/
-artifacts/hmm-residual/*
-!artifacts/hmm-residual/*/
-artifacts/hmm-residual/*/*
-!artifacts/data-audit/
-artifacts/data-audit/*
-!artifacts/data-audit/*.csv
-!artifacts/data-audit/report.txt
-!artifacts/data-verification/
-artifacts/data-verification/*
-!artifacts/data-verification/*.csv
-!artifacts/data-verification/report.txt
-!artifacts/data-provenance/
-artifacts/data-provenance/*
-!artifacts/data-provenance/*.csv
-!artifacts/data-provenance/report.txt
-!artifacts/data-provenance/reply-to-leahy-FINAL.md
-!artifacts/data-provenance/progress-report-to-andrew-leahy.md
-!artifacts/hmm-residual/README.md
-!artifacts/hmm-residual/*/report.txt
-!artifacts/hmm-residual/*/*.json
-!artifacts/hmm-residual/01-status/hmm-vs-table4.*
-!artifacts/hmm-residual/02-turnover-anatomy/*.csv
-!artifacts/hmm-residual/03-table3-anchor/*
-!artifacts/hmm-residual/04-figure6-path/*.csv
-!artifacts/hmm-residual/05-mdd-anatomy/*.csv
-!artifacts/hmm-residual/06-mdd-convention/*.csv
-!artifacts/hmm-residual/07-table5-delays/*.csv
-!artifacts/hmm-residual/08-grid-identification/*.csv
-!artifacts/hmm-residual/09-selection-noise/summary.csv
-!artifacts/hmm-residual/v9-us-hmm/metrics.csv
-!artifacts/hmm-residual/v9-2-de-hmm/metrics.csv
-!artifacts/hmm-residual/jp-cash-sensitivity/metrics.csv
 reports/
 *.log
 *.pid

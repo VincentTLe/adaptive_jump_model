@@ -45,8 +45,8 @@ OFFICIAL_START = "1988-01-04"
 # this one should beat comfortably because the dividend series is monthly rather
 # than annual.
 MIN_CORR = 0.9990
-MAX_VOL_DIFF_PP = 0.10      # annualised, percentage points
-MAX_CAGR_DIFF_PP = 0.20     # annualised, percentage points
+MAX_VOL_DIFF_PP = 0.10  # annualised, percentage points
+MAX_CAGR_DIFF_PP = 0.20  # annualised, percentage points
 
 
 def load_price() -> pd.DataFrame:
@@ -113,13 +113,18 @@ def validate(px: pd.DataFrame, official: pd.DataFrame) -> None:
     cagr_t = (truth.iloc[-1] ** (1 / yrs) - 1) * 100
 
     print(f"VALIDATION on the {len(j)} sessions where the official index exists")
-    print(f"  {j['date'].iloc[0].date()} .. {j['date'].iloc[-1].date()}"
-          f"  ({yrs:.1f} năm)")
+    print(
+        f"  {j['date'].iloc[0].date()} .. {j['date'].iloc[-1].date()}  ({yrs:.1f} năm)"
+    )
     print(f"  tương quan log-return ngày : {corr:.6f}   (ngưỡng {MIN_CORR})")
-    print(f"  độ biến động quy năm       : dựng {vol_b:.4f}%  chính thức {vol_t:.4f}%"
-          f"   lệch {abs(vol_b - vol_t):.4f} điểm  (ngưỡng {MAX_VOL_DIFF_PP})")
-    print(f"  CAGR                       : dựng {cagr_b:.4f}%  chính thức {cagr_t:.4f}%"
-          f"   lệch {abs(cagr_b - cagr_t):.4f} điểm  (ngưỡng {MAX_CAGR_DIFF_PP})")
+    print(
+        f"  độ biến động quy năm       : dựng {vol_b:.4f}%  chính thức {vol_t:.4f}%"
+        f"   lệch {abs(vol_b - vol_t):.4f} điểm  (ngưỡng {MAX_VOL_DIFF_PP})"
+    )
+    print(
+        f"  CAGR                       : dựng {cagr_b:.4f}%  chính thức {cagr_t:.4f}%"
+        f"   lệch {abs(cagr_b - cagr_t):.4f} điểm  (ngưỡng {MAX_CAGR_DIFF_PP})"
+    )
 
     fails = []
     if corr < MIN_CORR:
@@ -155,10 +160,13 @@ def stitch(px: pd.DataFrame, official: pd.DataFrame) -> pd.DataFrame:
     # built.iloc[-1] is the splice date itself, so this leaves the official
     # level unchanged there and every reconstructed return intact behind it.
     early_level = built / built.iloc[-1] * float(official["close"].iloc[0])
-    return pd.concat([
-        pd.DataFrame({"date": early["date"], "value": early_level}),
-        official[official["date"] > split].rename(columns={"close": "value"}),
-    ], ignore_index=True)
+    return pd.concat(
+        [
+            pd.DataFrame({"date": early["date"], "value": early_level}),
+            official[official["date"] > split].rename(columns={"close": "value"}),
+        ],
+        ignore_index=True,
+    )
 
 
 def build_series() -> pd.DataFrame:
@@ -184,14 +192,18 @@ def main() -> None:
         raise SystemExit("duplicate dates in the stitched series")
 
     ret = frame["value"].astype(float).pct_change().dropna()
-    print(f"stitch point {OFFICIAL_START}: largest |log return| within a week of"
-          f" the joint = {np.abs(np.log1p(ret)).max():.4f} (whole series)")
+    print(
+        f"stitch point {OFFICIAL_START}: largest |log return| within a week of"
+        f" the joint = {np.abs(np.log1p(ret)).max():.4f} (whole series)"
+    )
 
     path = OUT / "us_equity_tr_sp500.csv"
     frame.to_csv(path, index=False, lineterminator="\n")
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    print(f"\n{path.name}  rows={len(frame)}  "
-          f"{frame['date'].iloc[0]}..{frame['date'].iloc[-1]}\n  sha256={digest}")
+    print(
+        f"\n{path.name}  rows={len(frame)}  "
+        f"{frame['date'].iloc[0]}..{frame['date'].iloc[-1]}\n  sha256={digest}"
+    )
 
 
 if __name__ == "__main__":

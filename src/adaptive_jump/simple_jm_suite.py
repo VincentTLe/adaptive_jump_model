@@ -32,8 +32,6 @@ from adaptive_jump.artifacts import (
 )
 from adaptive_jump.backtest import apply_signal, performance_metrics
 from adaptive_jump.config import ResearchConfig
-from adaptive_jump.runtime import study_runtime
-from adaptive_jump.runtime.events import EventObserver, emit_event
 from adaptive_jump.simple_jm_controls import (
     ControlPath,
     build_confirmed_control_path,
@@ -295,11 +293,7 @@ def _require_frozen_registration(
         raise SimpleJMSuiteError("no matching pre-result FROZEN registry row")
 
 
-def run_simple_jm_study(
-    config: ResearchConfig,
-    spec: SuiteSpec,
-    observer: EventObserver | None = None,
-) -> Path:
+def run_simple_jm_study(config: ResearchConfig, spec: SuiteSpec) -> Path:
     """Run A, then DD-only, then the remaining frozen variants end to end."""
     repo_root = config.path.parent.resolve()
     verify_inventory(spec.canonical_root)
@@ -352,9 +346,8 @@ def run_simple_jm_study(
         implementation_sha256=code_digest,
     )
 
-    _emit_stage(observer, "stage_started", "fixed_jm", completed=0, total=15)
     outputs: dict[tuple[str, str], VariantOutput | ControlPath] = {}
-    for completed, market in enumerate(MARKETS, start=1):
+    for market in MARKETS:
         expected = lambda_inventory[f"{market}/jm-missing-states.csv"]
         control = build_static_lambda50_path(
             sources[market].features.loc[:, ["date", "equity_simple", "cash_return"]],
@@ -363,9 +356,6 @@ def run_simple_jm_study(
             expected_sha256=expected,
         )
         outputs[(market, "static_lambda50")] = control
-        _emit_variant_completed(
-            observer, market, "static_lambda50", completed=completed, total=15
-        )
     stage_a = _stage_summary(sources, outputs, ("static_lambda50",), config)
     stage_a.to_csv(run_dir / "stage-a-static-summary.csv", index=False)
 
@@ -385,40 +375,26 @@ def run_simple_jm_study(
         config,
         ("dd_only",),
         workers=3,
-        observer=observer,
-        progress_offset=3,
-        progress_total=15,
     )
     outputs.update(dd_outputs)
     stage_b = _stage_summary(sources, outputs, ("dd_only",), config)
     stage_b.to_csv(run_dir / "stage-b-dd-only-summary.csv", index=False)
 
-    for completed, market in enumerate(MARKETS, start=7):
+    for market in MARKETS:
         source = sources[market]
         control = build_confirmed_control_path(
             source.features.loc[:, ["date", "equity_simple", "cash_return"]],
             source.canonical_signal,
         )
         outputs[(market, "confirmed_2d")] = control
-        _emit_variant_completed(
-            observer, market, "confirmed_2d", completed=completed, total=15
-        )
 
     custom = _parallel_fit(
         spec,
         config,
         ("return_aware", "robust_l1"),
         workers=6,
-        observer=observer,
-        progress_offset=9,
-        progress_total=15,
     )
     outputs.update(custom)
-    _emit_stage(observer, "stage_completed", "fixed_jm", completed=15, total=15)
-    _emit_stage(observer, "stage_started", "selection", completed=0, total=9)
-    _emit_variant_events(observer, dd_outputs)
-    _emit_variant_events(observer, custom)
-    _emit_stage(observer, "stage_completed", "selection", completed=9, total=9)
 
     math_receipt = _verify_math_contracts()
     aligned, summary = _finalize_paths(sources, outputs, config)
@@ -453,11 +429,7 @@ def run_simple_jm_study(
     return run_dir
 
 
-def run_dd_loss_scale_study(
-    config: ResearchConfig,
-    spec: LossScaleSpec,
-    observer: EventObserver | None = None,
-) -> Path:
+def run_dd_loss_scale_study(config: ResearchConfig, spec: LossScaleSpec) -> Path:
     """Run US smoke, then the frozen three-market scale-three DD control."""
     repo_root = config.path.parent.resolve()
     validate_loss_scale_protocol(config, spec)
@@ -485,7 +457,6 @@ def run_dd_loss_scale_study(
         implementation_sha256=code_digest,
     )
 
-    _emit_stage(observer, "stage_started", "fixed_jm", completed=0, total=3)
     smoke = asdict(
         run_us_prefix_smoke(
             sources["us"].features,
@@ -502,14 +473,7 @@ def run_dd_loss_scale_study(
         config,
         (SCALED_DD_VARIANT,),
         workers=3,
-        observer=observer,
-        progress_total=3,
     )
-    _emit_stage(observer, "stage_completed", "fixed_jm", completed=3, total=3)
-    _emit_stage(observer, "stage_started", "selection", completed=0, total=3)
-    _emit_variant_events(observer, outputs, (SCALED_DD_VARIANT,))
-    _emit_stage(observer, "stage_completed", "selection", completed=3, total=3)
-
     aligned, summary = _finalize_paths(
         sources,
         outputs,
@@ -1025,76 +989,12 @@ def mapping_digest(mapping: dict[str, str]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def _emit_stage(
-    observer: EventObserver | None,
-    kind: str,
-    stage: str,
-    *,
-    completed: int,
-    total: int,
-) -> None:
-    emit_event(
-        observer,
-        kind=kind,
-        stage=stage,
-        completed=completed,
-        total=total,
-    )
-
-
-def _emit_variant_completed(
-    observer: EventObserver | None,
-    market: str,
-    variant: str,
-    *,
-    completed: int,
-    total: int,
-) -> None:
-    emit_event(
-        observer,
-        kind="variant_completed",
-        stage="fixed_jm",
-        market=market,
-        model=variant,
-        completed=completed,
-        total=total,
-    )
-
-
-def _emit_variant_events(
-    observer: EventObserver | None,
-    outputs: dict[tuple[str, str], VariantOutput],
-    variants: tuple[str, ...] = FITTED_VARIANTS,
-) -> None:
-    if observer is None:
-        return
-    for variant in variants:
-        for market in MARKETS:
-            output = outputs.get((market, variant))
-            if output is None:
-                continue
-            study_runtime.emit_selected_signal(
-                observer,
-                output.selection,
-                variant,
-                delay=1,
-                market=market,
-            )
-            boundary = pd.DataFrame.from_records(
-                [{"model": variant, "delay": 1, **output.boundary}]
-            )
-            study_runtime.emit_boundary_rows(observer, boundary, market)
-
-
 def _parallel_fit(
     spec: SuiteSpec | LossScaleSpec,
     config: ResearchConfig,
     variants: tuple[str, ...],
     *,
     workers: int,
-    observer: EventObserver | None = None,
-    progress_offset: int = 0,
-    progress_total: int | None = None,
 ) -> dict[tuple[str, str], VariantOutput]:
     tasks = [
         (
@@ -1105,9 +1005,6 @@ def _parallel_fit(
         )
         for variant, market in itertools.product(variants, MARKETS)
     ]
-    total = len(tasks) if progress_total is None else progress_total
-    if progress_offset < 0 or progress_offset + len(tasks) > total:
-        raise SimpleJMSuiteError("parallel fit progress range is invalid")
     output = {}
     with ProcessPoolExecutor(
         max_workers=workers, mp_context=get_context("forkserver")
@@ -1117,13 +1014,6 @@ def _parallel_fit(
             _, market, variant, _ = futures[future]
             result = future.result()
             output[(market, variant)] = result
-            _emit_variant_completed(
-                observer,
-                market,
-                variant,
-                completed=progress_offset + len(output),
-                total=total,
-            )
     if len(output) != len(tasks):
         raise SimpleJMSuiteError("parallel fit did not return every market/variant")
     return output

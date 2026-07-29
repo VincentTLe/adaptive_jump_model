@@ -1,15 +1,9 @@
 # Data provenance
 
-Regenerate the machine-readable form with:
-
-```
-uv run python scripts/data_provenance_report.py     # -> artifacts/data-provenance/
-```
-
 Every canonical series below is rebuilt deterministically by
 `scripts/build_external_sources.py` from sha256-pinned raw inputs in
 `data/external/inputs/`, and every output hash is pinned again in the frozen
-research contract (`research-expanding-v9-1.toml`). The builder refuses to run
+research contract (`research-expanding-v9-3.toml`). The builder refuses to run
 if any input hash has moved.
 
 ## What the paper uses, and why we cannot

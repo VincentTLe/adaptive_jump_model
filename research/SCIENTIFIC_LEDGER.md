@@ -222,8 +222,8 @@ statistic and a separately frozen study.
 - One-shot real minute paths were 98–99.8% identical and transaction costs
   overwhelmed the strategies. Loss and penalty scales were not calibrated to
   the later daily protocol.
-- Status: useful prototype, no market evidence. Sources are under
-  `archive/legacy-minute/`; relevant commits include `3f7426e`, `1efbfb1`,
+- Status: useful prototype, no market evidence. Sources remain in Git history;
+  relevant commits include `3f7426e`, `1efbfb1`,
   `6712c2d`, and `fe73275`.
 
 ### 2026-07-08 — approximate daily baseline and P1 (archived)
@@ -237,7 +237,7 @@ statistic and a separately frozen study.
   `-0.08/-0.14/+0.02` for US/DE/JP; a 0.10 complexity rent selected the fixed
   case in most blocks.
 - Status: historical null on a superseded protocol, not current evidence.
-  Sources are under `archive/pre-audit-daily/`; commits include `c90abad`,
+  Sources remain in Git history; commits include `c90abad`,
   `87e28a0`, `98facb5`, and `d7bdba8`.
 
 ### 2026-07-08/10 — P2 asymmetric exit/re-entry (withdrawn)

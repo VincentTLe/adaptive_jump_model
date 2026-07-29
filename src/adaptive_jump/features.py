@@ -161,9 +161,7 @@ def prepare_market(
     )
     model = config.model_protocol
     if model.standardizer == "expanding_full_history_ddof1":
-        features = standardize_expanding(
-            features, model.standardizer_min_observations
-        )
+        features = standardize_expanding(features, model.standardizer_min_observations)
     return pd.concat([frame, features], axis=1)
 
 

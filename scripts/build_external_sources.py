@@ -46,46 +46,29 @@ START, CUTOFF = "1965-01-01", "2023-12-29"
 # sha256 pins for every input this builder is allowed to read; refusing to build
 # from unpinned bytes keeps the derived-series provenance closed end to end
 INPUT_SHA256 = {
-    "INTGSTDEM193N.csv":
-        "8693c22c905abe575a0dc05310ac028d4db074ed3d63054b4be0801ad897714d",
-    "INTGSTJPM193N.csv":
-        "f068a59109a996b265b64a48062b5201ce3202b4076e6a08c44dc69fea1d341d",
-    "IR3TIB01DEM156N.csv":
-        "2b9d26f8dfc56280b1c19d5d02da016b71edf508712f947e88751360c98b3bd5",
-    "boj_straclu3m.csv":
-        "4cf910c9107ba9556af79e4090e6629dc8e835ec836a4edfc3ac73b79354f6c8",
-    "ecb_3m_aaa.csv":
-        "4b96c8b50d4ccad6bc888e39ac61628ff91557cf9462af8aebb184b2518d6291",
-    "ff_us_daily.csv":
-        "f051e37d30c129359c6801d9d2a715c929b19aa3be0ffe684b93995ede9ffebb",
-    "jp_equity_tr_full.csv":
-        "f03965755b8789c3b878b6982fc0cd84e8a83f9c9d1c8aa8169a0ecbd509689d",
-    "jst_japan_eq.csv":
-        "519c9c856772aeed73546f3b7e6367792da0b20700b50b1a129d96a29fa9359e",
-    "n225_price_daily.csv":
-        "93c5b6fcbc0ebfc2487ed317eaa986ef571366400812575b2e7c26b5c6de52fe",
-    "n225tr_official_merged.csv":
-        "1c2977502af445abeccb7410f135a9efcdabfa6930f4e37ffb09ce5980ab9fc7",
-    "stooq_dax_daily.csv":
-        "a0ea6e8edcae145d00d0d76894372e1c2590dc6926009ebf5f17b9ea22e3893d",
+    "INTGSTDEM193N.csv": "8693c22c905abe575a0dc05310ac028d4db074ed3d63054b4be0801ad897714d",
+    "INTGSTJPM193N.csv": "f068a59109a996b265b64a48062b5201ce3202b4076e6a08c44dc69fea1d341d",
+    "IR3TIB01DEM156N.csv": "2b9d26f8dfc56280b1c19d5d02da016b71edf508712f947e88751360c98b3bd5",
+    "boj_straclu3m.csv": "4cf910c9107ba9556af79e4090e6629dc8e835ec836a4edfc3ac73b79354f6c8",
+    "ecb_3m_aaa.csv": "4b96c8b50d4ccad6bc888e39ac61628ff91557cf9462af8aebb184b2518d6291",
+    "ff_us_daily.csv": "f051e37d30c129359c6801d9d2a715c929b19aa3be0ffe684b93995ede9ffebb",
+    "jp_equity_tr_full.csv": "f03965755b8789c3b878b6982fc0cd84e8a83f9c9d1c8aa8169a0ecbd509689d",
+    "jst_japan_eq.csv": "519c9c856772aeed73546f3b7e6367792da0b20700b50b1a129d96a29fa9359e",
+    "n225_price_daily.csv": "93c5b6fcbc0ebfc2487ed317eaa986ef571366400812575b2e7c26b5c6de52fe",
+    "n225tr_official_merged.csv": "1c2977502af445abeccb7410f135a9efcdabfa6930f4e37ffb09ce5980ab9fc7",
+    "stooq_dax_daily.csv": "a0ea6e8edcae145d00d0d76894372e1c2590dc6926009ebf5f17b9ea22e3893d",
     # The S&P 500 the paper actually specifies at [line 153-155]. Acquired by
     # scripts/fetch_sp500_inputs.py; see docs/audit/2026-07-full-audit.md for
     # why the CRSP substitution had to go.
-    "sp500_price_daily.csv":
-        "6aa6e894492bed5bd4c84440fb4617be0657a6b9ed39e7c8d01fef308caed147",
-    "sp500_tr_daily.csv":
-        "d8e614aaf868f48d5683c8b2e58bda01362648d4cdb7e00ca903ca644936c193",
+    "sp500_price_daily.csv": "6aa6e894492bed5bd4c84440fb4617be0657a6b9ed39e7c8d01fef308caed147",
+    "sp500_tr_daily.csv": "d8e614aaf868f48d5683c8b2e58bda01362648d4cdb7e00ca903ca644936c193",
     # The German dividend yields that repair the pre-1988 DAX, and the two
     # OECD reference series the audit validates against. See
     # scripts/build_de_total_return.py and scripts/fetch_oecd_reference.py.
-    "jst_germany_eq.csv":
-        "25e61f413ecdea07af90f3680aaa16ae7051c92b70f0767131c360ad8c74d087",
-    "oecd_de_share_price_monthly.csv":
-        "5ea98b658ffd6f5848493632f2fe6a364c4dec24d5326a15e0a6d11d57a1076a",
-    "oecd_jp_central_bank_rate_monthly.csv":
-        "0f6e86fe29f82deeccdbe94e5fa3508b734a2f6b4dcff1037f2037c43dee3dd1",
-    "shiller_sp500_monthly.csv":
-        "28d16941c581bda9bdcae4e0f9e3cc4b61204f8484e8c2249abdde2efe2cc3c4",
+    "jst_germany_eq.csv": "25e61f413ecdea07af90f3680aaa16ae7051c92b70f0767131c360ad8c74d087",
+    "oecd_de_share_price_monthly.csv": "5ea98b658ffd6f5848493632f2fe6a364c4dec24d5326a15e0a6d11d57a1076a",
+    "oecd_jp_central_bank_rate_monthly.csv": "0f6e86fe29f82deeccdbe94e5fa3508b734a2f6b4dcff1037f2037c43dee3dd1",
+    "shiller_sp500_monthly.csv": "28d16941c581bda9bdcae4e0f9e3cc4b61204f8484e8c2249abdde2efe2cc3c4",
 }
 
 
@@ -147,30 +130,38 @@ def build_jp_total_return() -> pd.DataFrame:
         - np.log(bridge_price.iloc[-1] / bridge_price.iloc[0])
     )
     steps = np.arange(len(bridge_price))
-    bridge = (official[hole_start]
-              * (bridge_price / bridge_price.iloc[0])
-              * np.exp(accrual / (len(bridge_price) - 1) * steps))
+    bridge = (
+        official[hole_start]
+        * (bridge_price / bridge_price.iloc[0])
+        * np.exp(accrual / (len(bridge_price) - 1) * steps)
+    )
 
     first_official = official.index[0]
     pre_price = price.loc[:first_official]
     last_year = int(yields.index.max())
     daily_yield = pd.Series(
-        [yields.get(min(max(y, int(yields.index.min())), last_year)) / 252.0
-         for y in pre_price.index.year],
+        [
+            yields.get(min(max(y, int(yields.index.min())), last_year)) / 252.0
+            for y in pre_price.index.year
+        ],
         index=pre_price.index,
     )
     log_accrual = daily_yield.cumsum()
     log_accrual -= log_accrual.iloc[-1]
-    pre = (official[first_official]
-           * (pre_price / pre_price.iloc[-1])
-           * np.exp(log_accrual))
+    pre = (
+        official[first_official]
+        * (pre_price / pre_price.iloc[-1])
+        * np.exp(log_accrual)
+    )
 
-    full = pd.concat([
-        pre.iloc[:-1],
-        official.loc[:hole_start],
-        bridge.iloc[1:-1],
-        official.loc[hole_end:],
-    ]).sort_index()
+    full = pd.concat(
+        [
+            pre.iloc[:-1],
+            official.loc[:hole_start],
+            bridge.iloc[1:-1],
+            official.loc[hole_end:],
+        ]
+    ).sort_index()
     full = full[~full.index.duplicated()]
     returns = np.log(full / full.shift(1)).dropna()
     if not np.isfinite(returns).all() or (returns.abs() > 0.30).any():
@@ -181,8 +172,11 @@ def build_jp_total_return() -> pd.DataFrame:
 def main() -> None:
     verify_inputs()
     # US equity: French daily factors -> total-return index level
-    ff = pd.read_csv(INP / "ff_us_daily.csv", skiprows=3,
-                     names=["date", "mkt_rf", "smb", "hml", "rf"])
+    ff = pd.read_csv(
+        INP / "ff_us_daily.csv",
+        skiprows=3,
+        names=["date", "mkt_rf", "smb", "hml", "rf"],
+    )
     ff = ff[ff["date"].astype(str).str.fullmatch(r"\d{8}")].copy()
     ff["date"] = pd.to_datetime(ff["date"].astype(str), format="%Y%m%d")
     for col in ("mkt_rf", "rf"):
@@ -193,18 +187,19 @@ def main() -> None:
     write("us_equity_tr.csv", pd.DataFrame({"date": ff["date"], "value": level}))
 
     # US equity, the paper's own index. Kept alongside the CRSP series rather
-    # than replacing it, so the v8 contracts still rebuild byte-identically and
-    # the two can be compared. build_sp500_tr refuses to return unless the
-    # reconstruction reproduces the official index over their 36-year overlap.
+    # than replacing it, so the baseline and v8-5 control still rebuild
+    # byte-identically and the two can be compared. build_sp500_tr refuses to
+    # return unless the reconstruction reproduces the official index over their
+    # 36-year overlap.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from build_sp500_tr import build_series as build_sp500  # noqa: PLC0415
 
     write("us_equity_tr_sp500.csv", build_sp500())
 
     # DE equity, dividends restored before 1988. Kept alongside the original so
-    # the v8 and v9.1 contracts still rebuild byte-identically; only v9.2 reads
-    # it. build_de_total_return refuses to return unless the repaired era
-    # carries the same dividend yield as the official one and the resulting
+    # the baseline and v8-5 control still rebuild byte-identically; v9-3 reads
+    # the repaired series. build_de_total_return refuses to return unless the
+    # repaired era carries the same dividend yield as the official one and the resulting
     # equity premium lands near JST's independent figure.
     from build_de_total_return import build_series as build_de  # noqa: PLC0415
 
@@ -224,23 +219,26 @@ def main() -> None:
     ecb = pd.read_csv(INP / "ecb_3m_aaa.csv")[["TIME_PERIOD", "OBS_VALUE"]]
     ecb.columns = ["date", "value"]
     ecb["date"] = pd.to_datetime(ecb["date"])
-    ecb = (ecb.dropna().set_index("date").resample("MS").first()
-           .reset_index())
-    de = pd.concat([
-        ib[ib["date"] <= "1975-06-01"],
-        tb[(tb["date"] >= "1975-07-01") & (tb["date"] <= "2007-08-01")],
-        ecb[ecb["date"] >= "2007-09-01"],
-    ])
+    ecb = ecb.dropna().set_index("date").resample("MS").first().reset_index()
+    de = pd.concat(
+        [
+            ib[ib["date"] <= "1975-06-01"],
+            tb[(tb["date"] >= "1975-07-01") & (tb["date"] <= "2007-08-01")],
+            ecb[ecb["date"] >= "2007-09-01"],
+        ]
+    )
     write("de_cash_ladder.csv", de)
 
     # JP cash ladder (monthly, percent per annum)
     jp_tb = fred("INTGSTJPM193N")
     call = pd.read_csv(INP / "boj_straclu3m.csv")
     call.columns = ["date", "value"]
-    jp_cash = pd.concat([
-        jp_tb[jp_tb["date"] <= "2017-06-01"],
-        call[call["date"] >= "2017-07-01"],
-    ])
+    jp_cash = pd.concat(
+        [
+            jp_tb[jp_tb["date"] <= "2017-06-01"],
+            call[call["date"] >= "2017-07-01"],
+        ]
+    )
     write("jp_cash_ladder.csv", jp_cash)
 
 

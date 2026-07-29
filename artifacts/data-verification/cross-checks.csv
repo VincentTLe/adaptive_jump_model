@@ -1,2 +1,0 @@
-months,correlation,median_abs_pct_error,mean_abs_pct_error,months_over_1pct,outlier_months,worst_date,worst_return,famous_worst_hits,famous_best_hits,extremes_inside_crisis_windows,sessions,price_vs_tr_corr
-696,0.9999932819816104,4.963114442828715e-06,0.00016935406381437607,2,1974-07-01|2023-09-01,1987-10-19,-0.2046693079969436,10,8,20,9070,0.9996010082183443

@@ -1,7 +1,0 @@
-market,leg,source_id,provider,canonical_url,file,first,last,rows,declared_start,sha256_matches_config
-us,equity,SP500_TR,localfile,https://finance.yahoo.com/quote/%5ESP500TR/history/,data/external/us_equity_tr_sp500.csv,1966-01-03,2023-12-29,14597.0,1966-01-03,True
-us,cash,DTB3,fred,https://fred.stlouisfed.org/series/DTB3,(fetched live: https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTB3),1954-01-04,,,1954-01-04,
-de,equity,STOOQ_DAX,localfile,https://stooq.com/q/d/?s=%5Edax,data/external/de_equity_tr.csv,1965-01-04,2023-12-29,14852.0,1965-01-04,True
-de,cash,DE_TBILL_LADDER,localfile,https://fred.stlouisfed.org/series/INTGSTDEM193N,data/external/de_cash_ladder.csv,1965-01-01,2023-12-01,708.0,1965-01-01,True
-jp,equity,N225_TR_FULL,localfile,https://indexes.nikkei.co.jp/en/nkave/index/profile?idx=nk225tr,data/external/jp_equity_tr.csv,1965-01-05,2023-12-29,14507.0,1965-01-05,True
-jp,cash,JP_TBILL_LADDER,localfile,https://fred.stlouisfed.org/series/INTGSTJPM193N,data/external/jp_cash_ladder.csv,1965-01-01,2023-12-01,700.0,1965-01-01,True

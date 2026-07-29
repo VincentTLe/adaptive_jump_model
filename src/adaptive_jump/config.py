@@ -18,8 +18,8 @@ LEGACY_COMPARISON_SAMPLE = "per_market_delay_intersection_of_complete_metric_row
 # reproduced only with the equity leg at total return, and the caption of Figure
 # 5 says the strategy curve is flat while "fully invested in the risk-free
 # asset". Total return when invested plus nothing when in cash is exactly
-# risky_leg_wealth_flat_in_cash. Evidence and the ten-cell test that settled it:
-# artifacts/hmm-residual/06-mdd-convention/ and docs/audit/2026-07-full-audit.md.
+# risky_leg_wealth_flat_in_cash. The regression cases are pinned in
+# tests/test_audit_hardening.py.
 PAPER_DRAWDOWN_BASIS = "risky_leg_wealth_flat_in_cash"
 LEGACY_DRAWDOWN_BASIS = "total_wealth"
 
@@ -472,11 +472,6 @@ def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
     # Table 4. Every entry must carry a reason that is not "it scored better".
     allowed_grids = (
         [0, 2, 4, 6, 8, 10, 20, 40, 80, 160, 320, 640, 1280, 2560],
-        [0, 2, 4, 8, 20, 40],
-        [0, 2, 4, 8, 20],  # Table 3's illustration, taken as a grid up to v8.4
-        # v8.5: Table 3's values plus k = 6, the setting line 390 names as the
-        # method's inherited default from Bulla et al. (2011). Leaving it out
-        # was our transcription of an illustration, not the paper's design.
         [0, 2, 4, 6, 8, 20],
     )
     _require(grid in allowed_grids, "invalid HMM smoothing grid")

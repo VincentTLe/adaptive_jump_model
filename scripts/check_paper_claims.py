@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify every claim about the source paper against the paper itself.
+"""Verify annotated paper quotations and configured paper-body absence terms.
 
 Why this exists
 ---------------
@@ -10,16 +10,19 @@ that lives only in the authors' example notebook, and an arithmetic
 the word "approximately" sitting between them. Both survived because nobody
 re-opened the paper at the cited line.
 
-This script turns that discipline into a test. It scans documents for citations
-in the form
+This script turns that discipline into a narrow, reproducible test. It scans
+documents for annotated citations in the form
 
     [line 397] "given an observation sequence of D standardized features"
 
 opens the extracted paper text at that line, and fails if the quote is not
-there. It also runs a REFUTATION pass: for each configured claim of absence
-("the paper never mentions X"), it greps the whole paper for the term and fails
-if anything turns up. Absence claims are the ones that bite hardest, because
-they license invention.
+there. It also runs a REFUTATION pass for five configured claims of absence
+("the paper never mentions X"), scanning only the paper body and failing if
+anything turns up.
+
+It does not verify unannotated prose or semantically verify every claim in a
+target. Targets with no annotated citations are reported as UNANNOTATED so a
+successful run cannot be mistaken for full prose coverage.
 
 The design follows Chain-of-Verification (Dhuliawala et al., ACL Findings 2024,
 arXiv:2309.11495): checks are executed against the source in isolation from the
@@ -109,9 +112,7 @@ def load_paper(path: Path) -> tuple[list[str], str]:
         pdf = REPO / "2402.05272v3.pdf"
         if pdf.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
-            subprocess.run(
-                ["pdftotext", "-layout", str(pdf), str(path)], check=True
-            )
+            subprocess.run(["pdftotext", "-layout", str(pdf), str(path)], check=True)
             print(f"regenerated {path.name} from {pdf.name}")
     if not path.exists():
         sys.exit(
@@ -149,7 +150,9 @@ def window(lines: list[str], centre: int, radius: int) -> str:
 COMMENT_PREFIX = re.compile(r"^[ \t]*(?:#+|//+|\*)[ \t]?", re.MULTILINE)
 
 
-def check_citations(target: Path, lines: list[str], whole: str) -> list[str]:
+def check_citations(
+    target: Path, lines: list[str], whole: str
+) -> tuple[list[str], int]:
     failures: list[str] = []
     text = target.read_text(encoding="utf-8", errors="replace")
     text = COMMENT_PREFIX.sub("", text)
@@ -176,7 +179,7 @@ def check_citations(target: Path, lines: list[str], whole: str) -> list[str]:
             failures.append(
                 f"{target.name}: elided quote at line {cited} — "
                 + (
-                    f"fragment not in paper: \"{missing[0][:50]}...\""
+                    f'fragment not in paper: "{missing[0][:50]}..."'
                     if missing
                     else "first fragment is not at the cited line"
                 )
@@ -196,12 +199,12 @@ def check_citations(target: Path, lines: list[str], whole: str) -> list[str]:
             )
             failures.append(
                 f"{target.name}: quote cited at line {cited} actually appears "
-                f"near line {found}: \"{match.group(2)[:60]}...\""
+                f'near line {found}: "{match.group(2)[:60]}..."'
             )
         else:
             failures.append(
                 f"{target.name}: NOT IN PAPER, cited at line {cited}: "
-                f"\"{match.group(2)[:60]}...\""
+                f'"{match.group(2)[:60]}..."'
             )
     return failures, len(hits)
 
@@ -231,7 +234,12 @@ def check_absences(lines: list[str]) -> list[str]:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser(
+        description=(
+            "Verify annotated line quotations and five configured paper-body "
+            "absence terms. Unannotated prose is not checked."
+        )
+    )
     ap.add_argument("targets", nargs="*", type=Path, default=None)
     ap.add_argument("--paper", type=Path, default=DEFAULT_PAPER)
     args = ap.parse_args()
@@ -242,6 +250,7 @@ def main() -> int:
 
     failures: list[str] = []
     total = 0
+    unannotated = 0
     for target in targets:
         if not target.exists():
             print(f"  skip (missing): {target}")
@@ -249,20 +258,31 @@ def main() -> int:
         bad, n = check_citations(target, lines, whole)
         total += n
         failures.extend(bad)
-        print(f"  {target.relative_to(REPO) if REPO in target.parents else target}"
-              f": {n} citation(s), {len(bad)} bad")
+        name = target.relative_to(REPO) if REPO in target.parents else target
+        if n == 0:
+            unannotated += 1
+            print(f"  {name}: UNANNOTATED — 0 line quotation(s); prose not checked")
+        else:
+            print(f"  {name}: {n} annotated line quotation(s), {len(bad)} bad")
 
     absence = check_absences(lines)
     failures.extend(absence)
-    print(f"  absence claims: {len(ABSENCE_CLAIMS)} checked, {len(absence)} broken")
+    print(
+        "  paper-body absence terms: "
+        f"{len(ABSENCE_CLAIMS)} configured, {len(absence)} broken"
+    )
 
     print()
     if failures:
         print(f"FAIL — {len(failures)} problem(s):")
-        for f in failures:
-            print(f"  - {f}")
+        for failure in failures:
+            print(f"  - {failure}")
         return 1
-    print(f"OK — {total} citation(s) verified, all absence claims hold.")
+    print(
+        f"OK — {total} annotated line quotation(s) verified; "
+        f"{len(ABSENCE_CLAIMS)} configured paper-body absence terms checked; "
+        f"{unannotated} target(s) contain unannotated prose that was not checked."
+    )
     return 0
 
 

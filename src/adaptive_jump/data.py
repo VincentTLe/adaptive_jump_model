@@ -50,6 +50,7 @@ def fetch_source(
     start: date,
     cutoff: date,
     *,
+    repo_root: str | Path | None = None,
     yahoo_loader: YahooLoader | None = None,
     http_get: HttpGetter | None = None,
 ) -> SourcePayload:
@@ -57,7 +58,9 @@ def fetch_source(
     if source.provider == "yahoo":
         return _fetch_yahoo(source, start, cutoff, yahoo_loader or _download_yahoo)
     if source.provider == "localfile":
-        return _fetch_localfile(source, start, cutoff)
+        if repo_root is None:
+            raise AcquisitionError(f"{source.source_id}: localfile requires repo_root")
+        return _fetch_localfile(source, start, cutoff, repo_root)
     getter = http_get or _get_http
     if source.provider == "fred":
         return _fetch_fred(source, start, cutoff, getter)
@@ -118,6 +121,7 @@ def acquire(
                 source,
                 config.sample_start,
                 config.replication_cutoff,
+                repo_root=root,
                 yahoo_loader=yahoo_loader,
                 http_get=http_get,
             )
@@ -228,13 +232,23 @@ def _download_yahoo(
     return frame, {"adapter": "yfinance.download", "arguments": arguments}
 
 
-def _fetch_localfile(source: SourceConfig, start: date, cutoff: date) -> SourcePayload:
+def _fetch_localfile(
+    source: SourceConfig,
+    start: date,
+    cutoff: date,
+    repo_root: str | Path,
+) -> SourcePayload:
     """Load a hash-pinned, pre-built canonical date,value file from the repo."""
     relative = _setting(source, "file_path")
     path = Path(relative)
     if path.is_absolute() or ".." in path.parts:
         raise AcquisitionError(f"{source.source_id}: unsafe localfile path")
-    resolved = Path.cwd() / path
+    root = Path(repo_root).resolve()
+    resolved = (root / path).resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise AcquisitionError(f"{source.source_id}: unsafe localfile path") from exc
     if not resolved.is_file():
         raise AcquisitionError(f"{source.source_id}: missing localfile {relative}")
     raw = resolved.read_bytes()

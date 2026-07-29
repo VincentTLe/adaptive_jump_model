@@ -1,13 +1,14 @@
 import hashlib
 import json
 import subprocess
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-from adaptive_jump.config import load_config
+from adaptive_jump.config import SourceConfig, load_config
 from adaptive_jump.data import (
     AcquisitionError,
     HttpResult,
@@ -21,6 +22,101 @@ from adaptive_jump.data import (
 CONFIG = load_config(Path(__file__).resolve().parents[1] / "research.toml")
 START = date(1970, 1, 1)
 CUTOFF = date(2023, 12, 31)
+
+
+def _localfile_source(path: str, payload: bytes) -> SourceConfig:
+    return SourceConfig(
+        provider="localfile",
+        source_id="fixture-localfile",
+        frequency="daily",
+        value_field="value",
+        classification="test fixture",
+        settings={
+            "file_path": path,
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "construction": "test fixture",
+        },
+    )
+
+
+def test_localfile_resolves_from_repo_root_not_cwd(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    payload = b"date,value\n2023-01-03,100.0\n"
+    root = tmp_path / "repo"
+    target = root / "data/external/fixture.csv"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(payload)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    source = _localfile_source("data/external/fixture.csv", payload)
+    config = replace(
+        CONFIG,
+        path=root / "research.toml",
+        markets=tuple(
+            replace(market, equity=source, cash=source) for market in CONFIG.markets
+        ),
+    )
+
+    manifest_path = acquire(
+        config,
+        repo_root=root,
+        run_id="localfile-cwd-regression",
+        created_at=datetime(2024, 1, 2, tzinfo=UTC),
+        git_sha="abc123",
+    )
+    manifest = json.loads(manifest_path.read_text())
+    canonical_path = root / manifest["sources"][0]["canonical"]["path"]
+
+    assert {source["payload_type"] for source in manifest["sources"]} == {"local_file"}
+    assert pd.read_csv(canonical_path).to_dict("records") == [
+        {"date": "2023-01-03", "value": 100.0}
+    ]
+
+
+def test_localfile_requires_repo_root() -> None:
+    payload = b"date,value\n2023-01-03,100.0\n"
+
+    with pytest.raises(AcquisitionError, match="localfile requires repo_root"):
+        fetch_source(
+            _localfile_source("data/external/fixture.csv", payload),
+            START,
+            CUTOFF,
+        )
+
+
+@pytest.mark.parametrize("path", ["/tmp/outside.csv", "../outside.csv"])
+def test_localfile_rejects_absolute_and_traversal_paths(
+    tmp_path: Path, path: str
+) -> None:
+    payload = b"date,value\n2023-01-03,100.0\n"
+
+    with pytest.raises(AcquisitionError, match="unsafe localfile path"):
+        fetch_source(
+            _localfile_source(path, payload),
+            START,
+            CUTOFF,
+            repo_root=tmp_path,
+        )
+
+
+def test_localfile_rejects_symlink_escape(tmp_path: Path) -> None:
+    payload = b"date,value\n2023-01-03,100.0\n"
+    root = tmp_path / "repo"
+    local_dir = root / "data/external"
+    local_dir.mkdir(parents=True)
+    outside = tmp_path / "outside.csv"
+    outside.write_bytes(payload)
+    (local_dir / "fixture.csv").symlink_to(outside)
+
+    with pytest.raises(AcquisitionError, match="unsafe localfile path"):
+        fetch_source(
+            _localfile_source("data/external/fixture.csv", payload),
+            START,
+            CUTOFF,
+            repo_root=root,
+        )
 
 
 def test_yahoo_adapter_uses_exclusive_end_and_preserves_missing() -> None:

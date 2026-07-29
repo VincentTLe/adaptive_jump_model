@@ -78,7 +78,7 @@ def yahoo_close(symbol: str) -> list[tuple[str, float]]:
     closes = result["indicators"]["quote"][0]["close"]
     rows = [
         (dt.date.fromtimestamp(t).isoformat(), float(c))
-        for t, c in zip(stamps, closes)
+        for t, c in zip(stamps, closes, strict=True)
         if c is not None
     ]
     seen: dict[str, float] = {}
@@ -90,21 +90,27 @@ def yahoo_close(symbol: str) -> list[tuple[str, float]]:
 def save(name: str, text: str) -> None:
     path = INP / name
     if path.exists():
-        print(f"{name:26} exists, not overwritten "
-              f"(sha256 {hashlib.sha256(path.read_bytes()).hexdigest()})")
+        print(
+            f"{name:26} exists, not overwritten "
+            f"(sha256 {hashlib.sha256(path.read_bytes()).hexdigest()})"
+        )
         return
     path.write_text(text, encoding="utf-8")
     raw = path.read_bytes()
     lines = text.strip().split("\n")
-    print(f"{name:26} rows={len(lines) - 1:6d}  "
-          f"{lines[1].split(',')[0]}..{lines[-1].split(',')[0]}  "
-          f"sha256={hashlib.sha256(raw).hexdigest()}")
+    print(
+        f"{name:26} rows={len(lines) - 1:6d}  "
+        f"{lines[1].split(',')[0]}..{lines[-1].split(',')[0]}  "
+        f"sha256={hashlib.sha256(raw).hexdigest()}"
+    )
 
 
 def main() -> None:
     INP.mkdir(parents=True, exist_ok=True)
-    for name, symbol in (("sp500_price_daily.csv", "%5EGSPC"),
-                         ("sp500_tr_daily.csv", "%5ESP500TR")):
+    for name, symbol in (
+        ("sp500_price_daily.csv", "%5EGSPC"),
+        ("sp500_tr_daily.csv", "%5ESP500TR"),
+    ):
         rows = yahoo_close(symbol)
         if len(rows) < 5000:
             sys.exit(f"{name}: only {len(rows)} rows, refusing to write")

@@ -21,7 +21,6 @@ from threadpoolctl import threadpool_limits
 
 from adaptive_jump.config import HMMProtocol, JMProtocol, ModelProtocol
 from adaptive_jump.runtime import model_runtime as runtime
-from adaptive_jump.runtime.events import EventObserver
 
 FEATURE_COLUMNS = ("dd_10", "sortino_20", "sortino_60")
 
@@ -93,7 +92,6 @@ def fixed_jm_states(
     initial: FixedJMResult | None = None,
     checkpoint_every: int = 50,
     progress: Callable[[FixedJMResult], None] | None = None,
-    observer: EventObserver | None = None,
 ) -> FixedJMResult:
     """Generate causal terminal online states for every frozen lambda."""
     if checkpoint_every < 1:
@@ -129,8 +127,6 @@ def fixed_jm_states(
         first_terminal = resume.first_terminal
         last_refit_terminal = resume.last_refit_terminal
     total = max(0, len(complete) - fit_window + 1)
-    completed = max(0, first_terminal - fit_window + 1)
-    runtime.emit_fixed_jm_started(observer, fit_window, penalties, completed, total)
     if last_refit_terminal is not None and first_terminal < len(complete):
         refit_window = complete.iloc[
             last_refit_terminal - fit_window + 1 : last_refit_terminal + 1
@@ -166,12 +162,6 @@ def fixed_jm_states(
                     include_fit_diagnostics=include_fit_diagnostics,
                 )
             )
-            runtime.emit_fixed_jm_refit(
-                observer,
-                current_date.date(),
-                terminal - fit_window + 1,
-                total,
-            )
 
         scaled = fit.transform(window.loc[:, feature_columns])
         for penalty, fitted_model in fit.models.items():
@@ -179,16 +169,6 @@ def fixed_jm_states(
                 fitted_model, scaled
             )
         completed = terminal - fit_window + 2
-        runtime.emit_fixed_jm_terminal(
-            observer,
-            current_date.date(),
-            completed,
-            total,
-            [
-                (penalty, int(states.loc[current_date, penalty]))
-                for penalty in penalties
-            ],
-        )
         if progress is not None and (
             completed % checkpoint_every == 0 or completed == total
         ):
@@ -196,7 +176,6 @@ def fixed_jm_states(
 
     states.index.name = "date"
     refits = pd.DataFrame.from_records(records)
-    runtime.emit_stage_completed(observer, "fixed_jm", total)
     return FixedJMResult(states=states, refits=refits)
 
 
@@ -223,7 +202,6 @@ def hmm_states(
     n_jobs: int = 1,
     checkpoint_every: int = 50,
     progress: Callable[[HMMResult], None] | None = None,
-    observer: EventObserver | None = None,
 ) -> HMMResult:
     """Fit the frozen HMM daily and retain each Viterbi terminal state."""
     if n_jobs < 1 or checkpoint_every < 1:
@@ -238,16 +216,6 @@ def hmm_states(
         states = initial.states.copy()
         records = initial.fits.to_dict("records")
         first_terminal += len(records)
-    total = max(0, len(complete) - fit_window + 1)
-    runtime.emit_hmm_started(
-        observer,
-        fit_window,
-        len(hmm_protocol.seeds),
-        n_jobs,
-        len(records),
-        total,
-    )
-
     executor = (
         ProcessPoolExecutor(max_workers=n_jobs, mp_context=get_context("forkserver"))
         if n_jobs > 1
@@ -278,25 +246,12 @@ def hmm_states(
                 fit_date = pd.Timestamp(window.iloc[-1]["date"])
                 states.loc[fit_date] = fit.terminal_state
                 records.append(_hmm_fit_record(window, fit, fit_date))
-                runtime.emit_hmm_terminal(
-                    observer,
-                    fit_date.date(),
-                    len(records),
-                    total,
-                    fit.terminal_state,
-                    fit.seed,
-                    fit.log_likelihood,
-                    fit.variances,
-                    fit.accepted_starts,
-                    fit.failed_starts,
-                )
             if progress is not None:
                 progress(HMMResult(states.copy(), pd.DataFrame.from_records(records)))
     finally:
         if executor is not None:
             executor.shutdown(cancel_futures=True)
     result = HMMResult(states=states, fits=pd.DataFrame.from_records(records))
-    runtime.emit_stage_completed(observer, "hmm", total)
     return result
 
 

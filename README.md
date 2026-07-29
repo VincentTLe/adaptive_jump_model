@@ -57,21 +57,8 @@ tectonic paper/manuscript.tex --outdir artifacts/paper           # build the pap
 Raw data and run outputs live in the ignored `data/` and `artifacts/`. `uv.lock`
 records the locked dependency sources and versions.
 
-**Optional live monitor** — a read-only observer of a running study:
-
-```bash
-uv sync --locked --extra data --extra monitor
-.venv/bin/adaptive-jump monitor --config research.toml
-```
-
-Local use requires no authentication environment variables. The monitor only
-observes a separately launched `adaptive-jump run`; deployment and Cloudflare
-access control are covered in
-[docs/monitor/deployment.md](docs/monitor/deployment.md).
-
 ## Read next
 
-- [Visual results and workflow](docs/research-workflow-comparison.html)
 - [Working paper](paper/manuscript.tex) · [Current evidence](research/STATUS.md) · [Experiment ledger](research/SCIENTIFIC_LEDGER.md)
 - [Frozen protocol](research.toml) · [Original paper](2402.05272v3.pdf)
 
@@ -83,7 +70,5 @@ All source lives in `src/adaptive_jump/`. The pipeline runs
 → `walkforward` (past-only monthly selection) → `backtest` (delayed positions,
 costs, metrics). The five simple challengers and the DD loss-scale control are
 in `simple_jm_*`, with independent replay in `simple_jm_verifier`;
-`artifacts` / `cli` / `reporting` run and verify studies, and `runtime/` +
-`monitor/` support long runs (`docs/monitor/deployment.md`). Earlier
-calibration, grid, and train-window studies remain runnable (`calibration_*`,
-`grid_*`, `window_*`, `inference`).
+`artifacts` / `cli` / `reporting` run and verify studies, and `runtime/`
+supports long runs.

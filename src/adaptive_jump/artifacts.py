@@ -146,18 +146,6 @@ def verify_run(run: str | Path) -> dict[str, Any]:
         raise ArtifactError(f"run directory does not exist: {run_dir}")
     metadata = read_json(run_dir / "run.json")
     study_kind = metadata.get("study_kind")
-    if study_kind == "jm_train_window_sensitivity":
-        from adaptive_jump.window_verifier import verify_window_run
-
-        return verify_window_run(run_dir)
-    if study_kind == "persistence_calibration":
-        from adaptive_jump.calibration_runner import verify_calibration_run
-
-        return verify_calibration_run(run_dir)
-    if study_kind == "persistence_grid_evaluation":
-        from adaptive_jump.grid_runner import verify_grid_run
-
-        return verify_grid_run(run_dir)
     if study_kind == "simple-jm-suite-001":
         from adaptive_jump.simple_jm_verifier import verify_simple_jm_run
 
