@@ -53,6 +53,7 @@ artifacts/data-provenance/*
 !artifacts/hmm-residual/08-grid-identification/*.csv
 !artifacts/hmm-residual/v9-us-hmm/metrics.csv
 !artifacts/hmm-residual/v9-2-de-hmm/metrics.csv
+!artifacts/hmm-residual/jp-cash-sensitivity/metrics.csv
 reports/
 *.log
 *.pid

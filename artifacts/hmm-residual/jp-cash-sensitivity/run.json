@@ -1,0 +1,8 @@
+{
+  "what": "sensitivity of the Japanese HMM to the risk-free series; NOTHING adopted, the JST rate is a different instrument",
+  "state_disagreement": 0.0,
+  "position_disagreement": 0.0003598848368522073,
+  "sharpe_imf": 0.17710231189905384,
+  "sharpe_jst": 0.18737306607164556,
+  "written_utc": "2026-07-29T02:23:02+00:00"
+}

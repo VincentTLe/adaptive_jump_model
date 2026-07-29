@@ -1533,3 +1533,53 @@ Sharpe.
 
 The repair stands on correctness: the series was missing dividends and now is
 not. It is not claimed to improve agreement with the paper, and it does not.
+
+### Japan: the risk-free ambiguity is a yardstick, not a model
+
+The German repair predicted this and the Japanese probe tests it. Refitting the
+Japanese HMM with JST's bill rate in place of the IMF one — a level difference
+of 2pp a year through 1970-1989 and 0.7pp through the 1990s
+(`artifacts/hmm-residual/jp-cash-sensitivity/`):
+
+| | result |
+|---|---|
+| fitted states that differ | **0.00%** of 11,507 shared days |
+| traded positions that differ | 0.04% of the reported window |
+
+**Zero.** Not "small" — the regime sequence is identical, and the 0.04% of
+position days come from the selection layer scoring candidates on a validation
+Sharpe that does move. The strategy Japan runs does not depend on which
+Japanese bill series is used.
+
+The reported metrics do move, because Sharpe, Return and Calmar all touch the
+cash rate directly:
+
+| metric | IMF (ours) | JST | Shu | dev IMF | dev JST |
+|---|---|---|---|---|---|
+| Return | 2.24% | 2.59% | 2.5% | 0.003 | 0.001 |
+| Sharpe | 0.1771 | 0.1874 | 0.19 | 0.013 | 0.003 |
+| Calmar | 0.0555 | 0.0586 | 0.06 | 0.005 | 0.001 |
+| Volatility | 15.98% | 15.96% | 16.0% | 0.000 | 0.000 |
+| MDD | -51.01% | -51.01% | -48.6% | 0.024 | 0.024 |
+| Turnover | 314.4% | 311.4% | 290% | 0.244 | 0.214 |
+
+**Not adopted.** JST's series tracks the Japanese money market — its 1974 peak
+of 12.5% is the call rate — while the paper asks for a Treasury bill yield, and
+switching to the one that happens to land closer to Table 4 is the fitting this
+project forbids. What the probe buys is the band: **the reported Japanese Sharpe
+carries about ±0.010 from a data ambiguity the paper's own specification cannot
+resolve, and the strategy itself is invariant to it.**
+
+### Where Japan stands, all three layers
+
+| layer | status |
+|---|---|
+| equity series | **evidenced.** Reconstruction drifts 0.048pp/yr against the official 1979-12-28 base value across 32 years; the reconstructed 2001-2011 era matches MSCI Japan as well as the official era does (corr 0.9710 vs 0.9678, volatility ratio 1.085 vs 1.080) |
+| risk-free series | **irreducible, and bounded.** No free 3-month Japanese market rate reaches 1970 — OECD's interbank series starts 2002-04 and the only long series is the administered discount rate. Worth ±0.010 of reported Sharpe and 0.00% of the model |
+| HMM vs Table 4 | **7/8**, failing turnover alone — the same cell, for the same unidentified reason, as the US and Germany |
+
+Acquiring the official N225TR back to 1979 would close at most 16% of the
+Japanese return gap (0.031pp of 0.200pp) and is not freely available; the
+risk-free ambiguity is worth six times more and cannot be closed at all. Japan
+is therefore finished at the same level as the other two markets, and the
+remaining work there is not a data problem.
