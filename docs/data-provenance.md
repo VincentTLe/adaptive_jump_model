@@ -172,7 +172,7 @@ Checked 2026-07-28, from this machine, after the morning's fetch had succeeded:
 | `query1`/`query2.finance.yahoo.com/v8/finance/chart/...` | **429 Too Many Requests** — both hosts, caret encoded or not |
 | `finance.yahoo.com/quote/<sym>/history/` | 404 to a plain client |
 | `stooq.com/q/d/l/?s=...` | 200, but the body is a JavaScript proof-of-work challenge, not a CSV |
-| `fred.stlouisfed.org/graph/fredgraph.csv?id=...` | TLS handshake succeeds, then the read times out |
+| `fred.stlouisfed.org/graph/fredgraph.csv?id=...` | timed out 2026-07-28; **200 on 2026-07-29**, 226,513 bytes in 2.9s |
 | `raw.githubusercontent.com` (Shiller) | 200 |
 | `data-api.ecb.europa.eu` | 200 |
 
@@ -192,3 +192,34 @@ If a series ever does need refreshing, download it once in a browser, drop it in
 `data/external/inputs/`, and update the `INPUT_SHA256` pin in
 `scripts/build_external_sources.py`. The builder refuses to run on unpinned
 bytes, which is the property that makes browser downloads acceptable here.
+
+
+## The US bill rate, checked against an independent manual download
+
+FRED refused this machine on 2026-07-28 and answered normally on 2026-07-29, so
+the v9.3 bundle was acquired through the pipeline rather than by hand. The owner
+separately downloaded the same series from a browser, which turns a convenience
+into a real check: an automated fetch and a human one, made independently,
+should agree byte for byte or one of them is wrong.
+
+```
+manual download            sha256 62106f6db8dcade6dc70bdd75ae89dc08720e6fdef7e012bb193aae7d8e74471
+data/raw/shu-replication-expanding-v9-3-20260729T081133Z/us_cash.csv
+                           sha256 62106f6db8dcade6dc70bdd75ae89dc08720e6fdef7e012bb193aae7d8e74471
+```
+
+Identical, so the manual copy was deleted rather than kept as a second source of
+truth: it is already stored under `data/raw/<run>/us_cash.csv` with its hash
+recorded in that run's manifest.
+
+One note for anyone repeating the comparison. DTB3 carries **605 blank rows**
+over 1969-2023 — US market holidays, the first three being 1969-05-30,
+1969-07-04 and 1969-07-21. pandas reads those as NaN, and `(a == b).all()` is
+therefore `False` on two byte-identical files. Use `a.equals(b)`, or compare the
+hashes, which is what settles it here.
+
+The exact request the pipeline makes:
+
+```
+https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTB3&cosd=1969-05-01&coed=2023-12-31
+```
