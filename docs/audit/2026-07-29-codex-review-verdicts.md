@@ -526,3 +526,55 @@ published specification. It is withdrawn. What remains true and worth keeping:
 The honest status of the eight cells is therefore what the tolerance says — 7/8
 in all three markets — with the smoothing-window concentration reported as a
 description of the fit, not as a gate that blocks anything.
+
+
+## 15. Turnover: not unidentified because the spread is wide, but because the
+markets demand contradictory grids
+
+The candidate values k is selected from are unpublished. The paper prints
+Table 3, which tabulates persistence at k = 0, 2, 4, 8, 20, and says Bulla's
+original k was 6; the CV candidate set itself never appears.
+
+The earlier reading was that this leaves turnover unidentified because the
+spread across defensible sets is wider than the deviation. That is true and it
+understates the case. The paper runs one method with one candidate set across
+all three markets and reports all three, so a set that explains the turnover row
+has to explain it everywhere. Measured on the sealed v9.3 states, delay 1:
+
+```
+set            k                     S&P 500      DAX   Nikkei   turnover hits
+table3         0|2|4|8|20              1.765    2.197    3.295        0/3
+table3_plus6   0|2|4|6|8|20            1.795    2.256    3.144        0/3
+filtered       2|4|6|8|20              1.530    2.226    3.144        0/3
+bulla_only     6                       1.854    1.816    2.993        0/3
+dense_small    2|4|6|8|10|12           1.471    2.080    3.265        0/3
+dense_wide     4|8|12|16|20            1.412*   1.992    2.751        1/3
+reach_low      2|4                     2.942    2.432*   4.686        1/3
+reach_no_tail  0|2|4|6                 3.236    2.256    3.900        0/3
+                            Shu         1.41     2.46     2.90
+```
+
+**No set gets more than one market right.** Worse, the two that get one right
+want opposite things: the US is matched only by the longest grid on offer
+(4|8|12|16|20, which incidentally puts every US cell inside tolerance, 8/8), and
+Germany only by the shortest (2|4, likewise 8/8 for Germany). Japan is matched
+by none, although 2.90 lies inside the attainable span 2.751-4.686.
+
+So the constraint is not that we cannot find the grid. It is that the grid the
+US requires drives Germany further away and vice versa, and a single shared
+parameter cannot satisfy both. No choice of candidate set reproduces Table 4's
+turnover row.
+
+That also closes off the two explanations tried before it. Extending the grid
+(§13) degrades the replication and the gate it was aimed at is ours anyway
+(§14). Selection instability (§5) is real but describes how the rule behaves,
+not why three markets pull in different directions.
+
+What it points at instead is the data. Everything downstream of the series
+reproduces: Table 1's 1970-2023 moments, Table 3's fixed-k persistence curve,
+the buy-and-hold row, and — the sharpest of them — Shu's own published position
+path run on our returns, which reproduces their turnover to 0.002. Given their
+positions our arithmetic is right; given our data their rule produces different
+positions. The remaining difference is between free public proxies and the
+Bloomberg and GFD series the paper used, which is not something we can close
+from here and should be reported as the limitation it is.
