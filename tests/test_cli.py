@@ -64,17 +64,6 @@ def test_fetch_cli_reports_missing_config(capsys) -> None:
     assert "missing.toml" in capsys.readouterr().err
 
 
-def test_monitor_cli_delegates_to_the_loopback_server(monkeypatch) -> None:
-    calls = []
-    monkeypatch.setattr(
-        "adaptive_jump.monitor.server.run_monitor_server",
-        lambda config: calls.append(config) or 0,
-    )
-
-    assert main(["monitor", "--config", "research.toml"]) == 0
-    assert calls == ["research.toml"]
-
-
 def test_figures_cli_delegates_and_prints_each_output(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
@@ -119,61 +108,6 @@ def test_figures_cli_uses_shared_artifact_error_handling(
     assert captured.err == "adaptive-jump: invalid figure artifact\n"
 
 
-def test_calibration_cli_uses_frozen_spec(monkeypatch, capsys) -> None:
-    expected = ROOT / "artifacts/calibration-fixture"
-    calls = []
-
-    def fake_run(config, spec):
-        calls.append((config, spec))
-        return expected
-
-    monkeypatch.setattr("adaptive_jump.cli.run_calibration_study", fake_run)
-    monkeypatch.setattr(
-        "adaptive_jump.cli._artifacts.verify_run",
-        lambda artifact: {"run_id": artifact.name, "status": "complete"},
-    )
-    arguments = [
-        "run",
-        "--study",
-        "persistence-calibration",
-        "--config",
-        str(ROOT / "research.toml"),
-    ]
-
-    assert main(arguments) == 0
-    assert Path(capsys.readouterr().out.strip()) == expected
-    assert calls[0][1].name == "persistence-calibrated-search.toml"
-
-
-def test_grid_evaluation_cli_uses_frozen_spec(
-    monkeypatch: pytest.MonkeyPatch, capsys
-) -> None:
-    expected = ROOT / "artifacts/grid-fixture"
-    calls = []
-
-    def fake_run(config, spec, observer):
-        calls.append((config, spec, observer))
-        return expected
-
-    monkeypatch.setattr("adaptive_jump.cli.run_grid_evaluation", fake_run)
-    monkeypatch.setattr(
-        "adaptive_jump.cli._artifacts.verify_run",
-        lambda artifact: {"run_id": artifact.name, "status": "boundary_failed"},
-    )
-    arguments = [
-        "run",
-        "--study",
-        "persistence-grid-evaluation",
-        "--config",
-        str(ROOT / "research.toml"),
-    ]
-
-    assert main(arguments) == 0
-    assert Path(capsys.readouterr().out.strip()) == expected
-    assert calls[0][1].jm_grid[-1] == 256.0
-    assert calls[0][1].hmm_grid[-1] == 1115
-
-
 @pytest.mark.parametrize(
     ("study", "spec_name", "loader_name", "runner_name"),
     [
@@ -201,29 +135,24 @@ def test_simple_jm_cli_uses_shared_runner(
 ) -> None:
     expected = ROOT / "artifacts" / f"{study}-fixture"
     calls = []
-    events = []
+    verified = []
     loaded_spec = object()
-
-    def observer(event):
-        events.append(event)
 
     def fake_load(path, config):
         calls.append(("load", config, path))
         return loaded_spec
 
-    def fake_run(config, spec, selected_observer):
-        calls.append(("run", config, spec, selected_observer))
+    def fake_run(config, spec):
+        calls.append(("run", config, spec))
         return expected
+
+    def fake_verify(artifact):
+        verified.append(artifact)
+        return {"run_id": artifact.name, "status": "complete"}
 
     monkeypatch.setattr(f"adaptive_jump.cli.{loader_name}", fake_load)
     monkeypatch.setattr(f"adaptive_jump.cli.{runner_name}", fake_run)
-    monkeypatch.setattr(
-        "adaptive_jump.cli._artifacts.verify_run",
-        lambda artifact: {"run_id": artifact.name, "status": "complete"},
-    )
-    monkeypatch.setattr(
-        "adaptive_jump.cli.child_observer_from_environment", lambda: observer
-    )
+    monkeypatch.setattr("adaptive_jump.cli._artifacts.verify_run", fake_verify)
 
     assert (
         main(
@@ -242,82 +171,10 @@ def test_simple_jm_cli_uses_shared_runner(
     assert calls[0][2].name == spec_name
     assert calls[1][0] == "run"
     assert calls[1][2] is loaded_spec
-    assert calls[1][3] is observer
-    assert events[0].kind == "artifact_verified"
-    assert events[0].payload == {
-        "run_id": expected.name,
-        "status": "complete",
-    }
-
-
-def test_window_study_cli_uses_frozen_spec_without_manifest(
-    monkeypatch: pytest.MonkeyPatch, capsys
-) -> None:
-    expected = ROOT / "artifacts/window-fixture"
-    calls = []
-    events = []
-
-    def observer(event):
-        events.append(event)
-
-    def verify(artifact):
-        assert artifact == expected
-        return {"run_id": "window-fixture", "status": "boundary_failed"}
-
-    def fake_run(config, spec, observer):
-        calls.append((config, spec, observer))
-        return expected
-
-    monkeypatch.setattr("adaptive_jump.cli.run_window_sensitivity", fake_run)
-    monkeypatch.setattr("adaptive_jump.cli._artifacts.verify_run", verify)
-    monkeypatch.setattr(
-        "adaptive_jump.cli.child_observer_from_environment", lambda: observer
-    )
-    arguments = [
-        "run",
-        "--study",
-        "train-window-sensitivity",
-        "--config",
-        str(ROOT / "research.toml"),
-    ]
-    assert main(arguments) == 0
-    assert Path(capsys.readouterr().out.strip()) == expected
-    assert calls[0][1].challenger_window == 4000
-    assert calls[0][2] is observer
-    assert events[0].kind == "artifact_verified"
-    assert events[0].visibility == "decision"
-    assert events[0].payload == {
-        "run_id": "window-fixture",
-        "status": "boundary_failed",
-    }
-
-    def reject(_artifact):
-        raise ArtifactError("verification failed")
-
-    events.clear()
-    monkeypatch.setattr("adaptive_jump.cli._artifacts.verify_run", reject)
-    assert main(arguments) == 2
-    captured = capsys.readouterr()
-    assert captured.out == ""
-    assert "verification failed" in captured.err
-    assert events == []
-
-
-def test_window_study_cli_rejects_manifest_override(capsys) -> None:
-    result = main(
-        [
-            "run",
-            "--study",
-            "train-window-sensitivity",
-            "--config",
-            str(ROOT / "research.toml"),
-            "--manifest",
-            "other.json",
-        ]
-    )
-
-    assert result == 2
-    assert "only valid for replication" in capsys.readouterr().err
+    # The run must still be verified before its path is printed. The monitor
+    # used to observe that verification; with the monitor gone, the call itself
+    # is what the CLI contract requires.
+    assert verified == [expected]
 
 
 @pytest.mark.parametrize(
@@ -498,7 +355,7 @@ def test_replication_runner_writes_and_verifies_complete_artifact(
     assert json.loads((run_dir / "claim.json").read_text())["passed"] is False
     assert (run_dir / "us/trades/fixed_jm-delay-1.csv").is_file()
     assert not list(run_dir.rglob("*.pkl"))
-    runtime_root = tmp_path / "artifacts/.monitor/checkpoints"
+    runtime_root = tmp_path / "artifacts/.runtime/checkpoints"
     assert len(list(runtime_root.rglob("baseline-study.json"))) == 3
     assert run_replication(config, frozen) == run_dir
     assert main(["verify", "--run", str(run_dir)]) == 0
@@ -583,7 +440,7 @@ def test_replication_runner_resumes_hmm_progress_after_interruption(
     monkeypatch.setattr("adaptive_jump.cli.hmm_states", interrupted)
     with pytest.raises(RuntimeError, match="interrupted"):
         run_replication(config, frozen)
-    runtime_root = tmp_path / "artifacts/.monitor/checkpoints"
+    runtime_root = tmp_path / "artifacts/.runtime/checkpoints"
     assert len(list(runtime_root.rglob("hmm-progress.json"))) == 1
 
     resumed_inputs = []
@@ -625,7 +482,7 @@ def test_replication_runner_resumes_fixed_jm_progress_after_interruption(
     monkeypatch.setattr("adaptive_jump.cli.fixed_jm_states", interrupted)
     with pytest.raises(RuntimeError, match="interrupted"):
         run_replication(config, frozen)
-    runtime_root = tmp_path / "artifacts/.monitor/checkpoints"
+    runtime_root = tmp_path / "artifacts/.runtime/checkpoints"
     assert len(list(runtime_root.rglob("jm-progress.json"))) == 1
 
     resumed_inputs = []
@@ -678,7 +535,7 @@ def test_replication_runner_resumes_monthly_selection_after_interruption(
     monkeypatch.setattr("adaptive_jump.cli.build_baseline_study", interrupted)
     with pytest.raises(RuntimeError, match="interrupted"):
         run_replication(config, frozen)
-    runtime_root = tmp_path / "artifacts/.monitor/checkpoints"
+    runtime_root = tmp_path / "artifacts/.runtime/checkpoints"
     assert len(list(runtime_root.rglob("selection-fixed_jm-delay-1.json"))) == 1
 
     resumed_inputs = []

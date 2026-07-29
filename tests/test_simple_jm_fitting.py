@@ -129,31 +129,6 @@ def test_dd_only_excludes_unused_feature_missing_rows_and_keeps_all_dates() -> N
     assert first_refit["scaler_mean"] == pytest.approx([expected_training_rows.mean()])
 
 
-def test_dd_only_observer_is_output_neutral() -> None:
-    frame = _causal_refit_frame().iloc[:8]
-    model_protocol = _model_protocol(8)
-    jm_protocol = _jm_protocol((0.5,))
-    events = []
-
-    baseline = dd_only_states(frame, model_protocol, jm_protocol)
-    observed = dd_only_states(
-        frame,
-        model_protocol,
-        jm_protocol,
-        observer=events.append,
-    )
-
-    pd.testing.assert_frame_equal(observed.states, baseline.states, check_exact=True)
-    pd.testing.assert_frame_equal(observed.refits, baseline.refits, check_exact=True)
-    assert {event.kind for event in events} == {
-        "stage_started",
-        "refit",
-        "terminal_state",
-        "stage_completed",
-    }
-    assert {event.stage for event in events} == {"fixed_jm"}
-
-
 def test_fixed_jm_trace_receipt_reproduces_refit_objective_and_online_state() -> None:
     frame = _causal_refit_frame().iloc[:8].copy()
     model_protocol = _model_protocol(8)
@@ -258,40 +233,6 @@ def test_custom_fit_refits_causally_and_is_prefix_invariant(variant: str) -> Non
     )
     if variant == "return_aware":
         assert (short.refits["matured_targets"] == 6).all()
-
-
-@pytest.mark.parametrize("variant", ["robust_l1", "return_aware"])
-def test_custom_fit_observer_is_output_neutral(variant: str) -> None:
-    frame = _causal_refit_frame().iloc[:8]
-    model_protocol = _model_protocol(8)
-    jm_protocol = _jm_protocol((0.5,))
-    events = []
-
-    baseline = custom_variant_states(
-        frame,
-        model_protocol,
-        jm_protocol,
-        variant=variant,
-    )
-    observed = custom_variant_states(
-        frame,
-        model_protocol,
-        jm_protocol,
-        variant=variant,
-        observer=events.append,
-    )
-
-    pd.testing.assert_frame_equal(observed.states, baseline.states, check_exact=True)
-    pd.testing.assert_frame_equal(observed.refits, baseline.refits, check_exact=True)
-    assert {event.kind for event in events} == {
-        "stage_started",
-        "refit",
-        "terminal_state",
-        "stage_completed",
-    }
-    assert {event.stage for event in events} == {"fixed_jm"}
-    terminals = [event for event in events if event.kind == "terminal_state"]
-    assert terminals[-1].payload["states"] == [{"candidate": 0.5, "state": 0}]
 
 
 def test_us_smoke_compares_a_meaningful_prefix_not_only_two_rows() -> None:

@@ -140,11 +140,12 @@ def main() -> None:
                                     lineterminator="\n")
     path.to_csv(arm / "path.csv", index=False, lineterminator="\n")
 
+    variant = CONFIG.stem.replace("research-expanding-", "")
     metrics = pd.DataFrame([
         {"market": "us", "model": "hmm", "delay": DELAY, "variant": "v8-5-guard",
          "start": lo.date(), "end": hi.date(), **{k: got[k] for k in KEYS},
          "shifts": got["shifts"], "observations": got["observations"]},
-        {"market": "us", "model": "hmm", "delay": DELAY, "variant": CONFIG.stem.replace("research-expanding-", ""),
+        {"market": "us", "model": "hmm", "delay": DELAY, "variant": variant,
          "start": lo.date(), "end": hi.date(), **{k: new[k] for k in KEYS},
          "shifts": new["shifts"], "observations": new["observations"]},
     ])

@@ -24,19 +24,12 @@ data = [
     "requests==2.34.2",
     "yfinance==1.5.1",
 ]
-monitor = [
-    "fastapi==0.139.0",
-    "psutil==7.2.2",
-    "PyJWT[crypto]==2.13.0",
-    "uvicorn==0.51.0",
-]
 
 [project.scripts]
 adaptive-jump = "adaptive_jump.cli:main"
 
 [dependency-groups]
 dev = [
-    "playwright==1.61.0",
     "pytest==9.1.1",
     "ruff==0.15.20",
 ]
@@ -46,16 +39,23 @@ addopts = ["--strict-config", "--strict-markers", "-ra"]
 testpaths = ["tests"]
 
 [tool.ruff]
-extend-exclude = ["archive"]
 line-length = 88
 target-version = "py312"
 
 [tool.ruff.lint]
 select = ["B", "E", "F", "I", "UP"]
 
+[tool.ruff.lint.per-file-ignores]
+# The raw-input hash table: a sha256 is 64 characters and the filename it pins
+# has to sit on the same line to be readable as a pair, which cannot fit in 88.
+# Wrapping them would make the one thing this table exists for -- checking a
+# digest against a name by eye -- harder rather than easier.
+"scripts/build_external_sources.py" = ["E501"]
+# Shu's Table 4, transcribed verbatim into the module docstring so every target
+# number in this project has one auditable origin. Reflowing the transcription
+# to fit a line limit would destroy the only property it has.
+"scripts/_shu_table4.py" = ["E501"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["adaptive_jump*"]
-
-[tool.setuptools.package-data]
-"adaptive_jump.monitor" = ["static/*", "static/vendor/echarts/*"]

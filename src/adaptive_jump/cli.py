@@ -18,21 +18,12 @@ from typing import Any
 import pandas as pd
 
 from adaptive_jump import artifacts as _artifacts
-from adaptive_jump.calibration_runner import run_calibration_study
 from adaptive_jump.config import ConfigError, ResearchConfig, load_config
 from adaptive_jump.data import AcquisitionError, acquire, research_git_sha
 from adaptive_jump.features import effective_oos_start, prepare_market
-from adaptive_jump.grid_runner import run_grid_evaluation
-from adaptive_jump.grid_spec import load_grid_spec
 from adaptive_jump.models import FixedJMResult, HMMResult, fixed_jm_states, hmm_states
 from adaptive_jump.reporting import build_report
 from adaptive_jump.runtime import checkpoints as checkpoint_store
-from adaptive_jump.runtime import study_runtime
-from adaptive_jump.runtime.child_events import (
-    ChildEventError,
-    child_observer_from_environment,
-)
-from adaptive_jump.runtime.events import EventObserver, emit_artifact_verified
 from adaptive_jump.simple_jm_figures import render_figures
 from adaptive_jump.simple_jm_suite import (
     load_dd_loss_scale_spec,
@@ -47,8 +38,6 @@ from adaptive_jump.walkforward import (
     build_baseline_study,
     open_baseline_metrics,
 )
-from adaptive_jump.window_runner import run_window_sensitivity
-from adaptive_jump.window_spec import load_window_spec
 
 RunError = _artifacts.ArtifactError
 
@@ -198,9 +187,7 @@ def _verify_manifest(
             raise RunError(f"invalid canonical values: {path}")
 
 
-def run_replication(
-    config: ResearchConfig, frozen: FrozenData, observer: EventObserver | None = None
-) -> Path:
+def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
     """Run or exactly resume the sealed three-market baseline study."""
     root = config.path.parent
     git_sha = research_git_sha(root)
@@ -214,7 +201,7 @@ def run_replication(
         for key in ("config_sha256", "data_manifest_sha256", "git_sha")
     )
     run_dir = root / config.artifact_root / "fixed-baselines" / run_id
-    checkpoint_root = root / config.artifact_root / ".monitor" / "checkpoints" / run_id
+    checkpoint_root = root / config.artifact_root / ".runtime" / "checkpoints" / run_id
     metadata_path = run_dir / "run.json"
     if metadata_path.exists():
         metadata = _artifacts.read_json(metadata_path)
@@ -291,9 +278,6 @@ def run_replication(
                 n_jobs=_hmm_workers(),
                 checkpoint_every=MODEL_CHECKPOINT_DAYS,
                 progress=save_hmm_progress,
-                observer=study_runtime.model_observer(
-                    observer, market.id, "hmm", market_input.frame
-                ),
             )
             initial_jm = _load_cache(
                 checkpoint_dir / "jm-progress", "fixed_jm", identity, FixedJMResult
@@ -325,9 +309,6 @@ def run_replication(
                 initial=initial_jm,
                 checkpoint_every=MODEL_CHECKPOINT_DAYS,
                 progress=save_jm_progress,
-                observer=study_runtime.model_observer(
-                    observer, market.id, "fixed_jm", market_input.frame
-                ),
             )
 
             checkpoint = build_baseline_study(
@@ -337,17 +318,14 @@ def run_replication(
                 precomputed_jm=fitted_jm,
                 precomputed_hmm=fitted_hmm,
                 selection_initial=partial(_load_selection, checkpoint_dir, identity),
-                selection_progress=study_runtime.baseline_selection_recorder(
-                    partial(_save_selection, checkpoint_dir, identity),
-                    observer,
-                    market.id,
-                ),
+                # The monitor's event plumbing used to wrap this saver. With the
+                # monitor gone the wrapper returned the saver unchanged, so the
+                # checkpoint write is passed straight through.
+                selection_progress=partial(_save_selection, checkpoint_dir, identity),
             )
         elif checkpoint.oos_start != market_input.oos_start:
             raise RunError(f"{market.id}: checkpoint OOS start mismatch")
-        study_runtime.emit_selected_signals(observer, checkpoint.selections, market.id)
         _write_checkpoint(market_dir, market_input.frame, checkpoint)
-        study_runtime.emit_boundary_rows(observer, checkpoint.boundaries, market.id)
         _write_cache(
             checkpoint_dir / "baseline-study", checkpoint, "baseline_study", identity
         )
@@ -495,9 +473,6 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         choices=[
             "replication",
-            "train-window-sensitivity",
-            "persistence-calibration",
-            "persistence-grid-evaluation",
             "simple-jm-suite",
             "dd-loss-scale",
         ],
@@ -513,7 +488,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     figures.add_argument("--run", required=True, help="path to one run directory")
     figures.add_argument("--output-root", help="base output directory")
-    commands.add_parser("monitor").add_argument("--config", required=True)
     return parser
 
 
@@ -527,38 +501,23 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if arguments.command == "run":
             config = load_config(arguments.config)
-            observer = child_observer_from_environment()
             research = config.path.parent / "research"
             if arguments.study == "replication":
                 frozen = load_frozen_data(config, arguments.manifest)
-                artifact = run_replication(config, frozen, observer)
+                artifact = run_replication(config, frozen)
             elif arguments.manifest:
                 raise RunError("--manifest is only valid for replication")
-            elif arguments.study == "train-window-sensitivity":
-                spec = load_window_spec(
-                    research / "jm-train-window-sensitivity.toml", config
-                )
-                artifact = run_window_sensitivity(config, spec, observer)
-            elif arguments.study == "persistence-grid-evaluation":
-                spec = load_grid_spec(
-                    research / "persistence-grid-evaluation.toml", config
-                )
-                artifact = run_grid_evaluation(config, spec, observer)
             elif arguments.study == "simple-jm-suite":
                 spec = load_simple_jm_spec(
                     research / "simple-jm-suite-001.toml", config
                 )
-                artifact = run_simple_jm_study(config, spec, observer)
+                artifact = run_simple_jm_study(config, spec)
             elif arguments.study == "dd-loss-scale":
                 spec = load_dd_loss_scale_spec(
                     research / "dd-loss-scale-001.toml", config
                 )
-                artifact = run_dd_loss_scale_study(config, spec, observer)
-            else:
-                artifact = run_calibration_study(
-                    config, research / "persistence-calibrated-search.toml"
-                )
-            emit_artifact_verified(observer, _artifacts.verify_run(artifact))
+                artifact = run_dd_loss_scale_study(config, spec)
+            _artifacts.verify_run(artifact)
             print(artifact)
             return 0
         if arguments.command == "verify":
@@ -571,13 +530,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             for output in render_figures(arguments.run, arguments.output_root):
                 print(output)
             return 0
-        if arguments.command == "monitor":
-            from adaptive_jump.monitor.server import run_monitor_server
-
-            return run_monitor_server(arguments.config)
     except (
         AcquisitionError,
-        ChildEventError,
         ConfigError,
         RunError,
         FileNotFoundError,

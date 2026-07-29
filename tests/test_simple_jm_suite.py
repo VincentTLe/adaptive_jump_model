@@ -3,7 +3,6 @@ import json
 import tomllib
 from dataclasses import replace
 from pathlib import Path
-from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -12,7 +11,6 @@ import pytest
 import adaptive_jump.simple_jm_suite as suite
 from adaptive_jump.artifacts import TRADE_COLUMNS, ArtifactError
 from adaptive_jump.config import load_config
-from adaptive_jump.walkforward import SelectionResult
 
 
 def test_implementation_hashes_cover_result_code_and_environment_lock() -> None:
@@ -619,115 +617,3 @@ def test_run_metadata_uses_running_then_complete_lifecycle(
     assert complete["created_at_utc"] == running["created_at_utc"]
     with pytest.raises(suite.SimpleJMSuiteError, match="running state"):
         suite._finish_run(metadata_path, "not_supported", started=10.0)
-
-
-def test_parallel_fit_emits_monotonic_parent_progress(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    class ImmediateFuture:
-        def __init__(self, value: object) -> None:
-            self.value = value
-
-        def result(self) -> object:
-            return self.value
-
-    class InlineExecutor:
-        def __init__(self, **_: object) -> None:
-            pass
-
-        def __enter__(self) -> "InlineExecutor":
-            return self
-
-        def __exit__(self, *_: object) -> None:
-            pass
-
-        def submit(self, function, task) -> ImmediateFuture:
-            return ImmediateFuture(function(task))
-
-    monkeypatch.setattr(suite, "ProcessPoolExecutor", InlineExecutor)
-    monkeypatch.setattr(suite, "as_completed", lambda futures: futures)
-    monkeypatch.setattr(
-        suite,
-        "_fit_market_task",
-        lambda task: (task[1], task[2]),
-    )
-    events = []
-
-    output = suite._parallel_fit(
-        SimpleNamespace(canonical_root=tmp_path),
-        object(),
-        ("dd_only",),
-        workers=3,
-        observer=events.append,
-        progress_offset=3,
-        progress_total=6,
-    )
-
-    assert set(output) == {(market, "dd_only") for market in suite.MARKETS}
-    assert [event.completed for event in events] == [4, 5, 6]
-    assert all(event.total == 6 for event in events)
-    assert [event.market for event in events] == list(suite.MARKETS)
-    assert {event.kind for event in events} == {"variant_completed"}
-    assert {event.stage for event in events} == {"fixed_jm"}
-    assert {event.model for event in events} == {"dd_only"}
-
-
-def test_runner_events_use_existing_contract_without_stdout(capsys) -> None:
-    events = []
-    suite._emit_stage(events.append, "stage_started", "fixed_jm", completed=0, total=15)
-    suite._emit_stage(
-        events.append, "stage_completed", "fixed_jm", completed=15, total=15
-    )
-    suite._emit_stage(events.append, "stage_started", "selection", completed=0, total=9)
-    dates = pd.bdate_range("2023-01-02", periods=2)
-    signal = pd.Series([0.0, 1.0], index=dates, name="selected_signal")
-    selection = SelectionResult(
-        signal=signal,
-        choices=pd.DataFrame({"decision_date": [dates[-1]], "selected": [35.0]}),
-        surface=pd.DataFrame(),
-        candidate_returns=pd.DataFrame(),
-    )
-    output = suite.VariantOutput(
-        market="us",
-        variant="dd_only",
-        states=pd.DataFrame(),
-        refits=pd.DataFrame(),
-        selection=selection,
-        selected_state=1.0 - signal,
-        signal=signal,
-        full_trades=pd.DataFrame(),
-        boundary={
-            "upper_candidate": 1200.0,
-            "selected_months": 1,
-            "total_months": 2,
-            "fraction": 0.5,
-            "limit": 0.05,
-            "passed": False,
-            "descriptive_only": True,
-        },
-    )
-
-    suite._emit_variant_events(events.append, {("us", "dd_only"): output})
-    suite._emit_stage(
-        events.append, "stage_completed", "selection", completed=9, total=9
-    )
-
-    assert [event.kind for event in events] == [
-        "stage_started",
-        "stage_completed",
-        "stage_started",
-        "selected_signal",
-        "boundary_diagnostic",
-        "stage_completed",
-    ]
-    assert [event.stage for event in events] == [
-        "fixed_jm",
-        "fixed_jm",
-        "selection",
-        "selection",
-        "selection",
-        "selection",
-    ]
-    assert events[3].market == events[4].market == "us"
-    assert events[3].model == events[4].model == "dd_only"
-    assert capsys.readouterr().out == ""
