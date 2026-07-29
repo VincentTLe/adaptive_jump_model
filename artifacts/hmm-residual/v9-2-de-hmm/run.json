@@ -1,0 +1,15 @@
+{
+  "what": "HMM arm only, Germany only, v9.2; NOT a sealed run",
+  "config": "research-expanding-v9-2.toml",
+  "config_sha256": "816e8117b1992ccd636c9a68c9a4297b0430cd4301d85ee39168b78e4b58f83d",
+  "guard_run": "fixed-baselines-7b95ec50dece-6bd27647967d-13641890668f",
+  "guard_max_drift": 2.425837308805967e-14,
+  "drawdown_basis": "risky_leg_wealth_flat_in_cash",
+  "scoring_window": [
+    "1990-01-02",
+    "2023-12-29"
+  ],
+  "within_tol_before": 7,
+  "within_tol_after": 7,
+  "written_utc": "2026-07-29T02:00:12+00:00"
+}

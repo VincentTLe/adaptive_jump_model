@@ -1493,3 +1493,43 @@ sealed runs replay at difference 0.0; 508 tests pass.
   administered and so no better than what we have. No free 3-month Japanese
   market rate covers the training window. That ambiguity is irreducible with
   free data, and is now recorded as such rather than as an open action.
+
+### What the German repair actually changed: almost nothing
+
+The German HMM refitted on the repaired series, delay 1, scored on the sealed
+window under v9.1's drawdown basis. The guard reproduced v8.5's sealed German
+row at 2.43e-14 first (`artifacts/hmm-residual/v9-2-de-hmm/`):
+
+| metric | v9.1 | v9.2 | Shu | dev before | dev after |
+|---|---|---|---|---|---|
+| Return | 6.80% | 6.78% | 6.4% | 0.004 | 0.004 |
+| Volatility | 14.00% | 14.00% | 14.0% | 0.000 | 0.000 |
+| Sharpe | 0.3681 | 0.3670 | 0.35 | 0.018 | 0.017 |
+| MDD | -43.85% | -43.85% | -40.5% | 0.034 | 0.034 |
+| Calmar | 0.1175 | 0.1171 | 0.12 | 0.003 | 0.003 |
+| ES 5% | -2.20% | -2.20% | -2.2% | 0.000 | 0.000 |
+| Turnover | 222.7% | 225.6% | 246% | 0.234 | **0.204** |
+| Leverage | 72.98% | 72.95% | 73% | 0.000 | 0.001 |
+| shifts | 152 | 154 | | | |
+
+Still 7/8. Eighteen years of training data gained 3.24% a year of drift and the
+German Sharpe moved 0.001.
+
+**That is the finding, and it is worth more than the repair.** This HMM is
+almost indifferent to a drift error and highly sensitive to a volatility error.
+The dividend defect added about 1.3 basis points a day to the mean against a
+daily volatility near 90 — invisible to a model whose states are separated by
+variance. The CRSP substitution, by contrast, changed what happened on
+1987-10-19, and moved the fitted high-state volatility by eight percentage
+points across every window containing that day.
+
+So the two data defects found in this project are not comparable in
+consequence, and the reason is structural rather than accidental: **errors in
+the tails of the training data propagate to the regimes; errors in its drift do
+not.** That is the right prior for auditing the remaining series, and it says
+the Japanese risk-free level -- a drift error of 2pp a year -- is very unlikely
+to be moving the Japanese regimes either, whatever it does to the reported
+Sharpe.
+
+The repair stands on correctness: the series was missing dividends and now is
+not. It is not claimed to improve agreement with the paper, and it does not.
