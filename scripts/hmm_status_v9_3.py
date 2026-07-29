@@ -55,8 +55,8 @@ BOUNDARY_LIMIT = 0.05
 A, D = "total_wealth", "risky_leg_wealth_flat_in_cash"
 MARKETS = ("us", "de", "jp")
 NAMES = {"us": "S&P 500", "de": "DAX", "jp": "Nikkei 225"}
-SERIES = {"us": "v9.3", "de": "v9.2", "jp": "v8.5"}
-CACHE = {"us": RESIDUAL / "v9-3-us-hmm", "de": RESIDUAL / "v9-2-de-hmm"}
+SERIES = {"us": "v9.3", "de": "v9.3", "jp": "v9.3=v8.5"}
+CACHE = {"us": RESIDUAL / "v9-3-us-hmm", "de": RESIDUAL / "v9-3-de-hmm"}
 
 
 def arm(market: str) -> Path | None:
