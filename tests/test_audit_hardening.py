@@ -290,6 +290,70 @@ def test_paper_drawdown_basis_requires_the_equity_column() -> None:
         performance_metrics(path, drawdown_basis="something_else")
 
 
+VARIANT_V9_2 = ROOT / "research-expanding-v9-2.toml"
+
+
+def test_variant_v9_2_differs_from_v9_1_only_in_the_de_equity_series() -> None:
+    """v9.2 must isolate the German dividend repair.
+
+    The repair restores dividends missing from the DAX before 1988. It touches
+    only the training window -- Table 4's German column covers 1990-2023, which
+    is inside the untouched official segment -- so if any other frozen value
+    moves alongside it the run stops measuring that repair.
+    """
+    v9_1 = load_config(VARIANT_V9_1)
+    v9_2 = load_config(VARIANT_V9_2)
+
+    assert v9_2.config_id == "shu-replication-expanding-v9-2"
+    assert v9_2.sample_start == v9_1.sample_start
+    assert v9_2.replication_cutoff == v9_1.replication_cutoff
+    assert v9_2.model_protocol == v9_1.model_protocol
+    assert v9_2.jm_protocol == v9_1.jm_protocol
+    assert v9_2.hmm_protocol == v9_1.hmm_protocol
+    assert v9_2.selection_protocol == v9_1.selection_protocol
+    assert v9_2.metrics_protocol == v9_1.metrics_protocol
+    assert v9_2.backtest_protocol == v9_1.backtest_protocol
+
+    old = {m.id: m for m in v9_1.markets}
+    new = {m.id: m for m in v9_2.markets}
+    assert set(old) == set(new)
+    for market in ("us", "jp"):
+        assert new[market] == old[market], market
+    assert new["de"].cash == old["de"].cash
+    assert new["de"].equity != old["de"].equity
+    assert new["de"].equity.source_id == "STOOQ_DAX_TR"
+    assert new["de"].equity.settings["file_path"].endswith(
+        "de_equity_tr_dividend_adjusted.csv")
+
+
+def test_de_repair_only_touches_the_backcast_era() -> None:
+    """The official segment must come through byte-identical.
+
+    From 1987-12-30 the DAX performance index is used as published in both
+    files. If the repair leaked into that segment it would change results the
+    paper reports on, and the repair would no longer be a training-window fix.
+    """
+    external = ROOT / "data" / "external"
+    old_path = external / "de_equity_tr.csv"
+    new_path = external / "de_equity_tr_dividend_adjusted.csv"
+    if not new_path.is_file():
+        pytest.skip("repaired German series not built")
+    old = pd.read_csv(old_path, parse_dates=["date"]).set_index("date")["value"]
+    new = pd.read_csv(new_path, parse_dates=["date"]).set_index("date")["value"]
+
+    official = old.index >= pd.Timestamp("1987-12-30")
+    pd.testing.assert_series_equal(old[official], new[official])
+
+    # And the backcast era must have moved, in the right direction: adding a
+    # dividend makes past values lower once the series is chained backwards.
+    early = old.index < pd.Timestamp("1987-12-30")
+    assert (new[early] < old[early]).mean() > 0.99
+    ratio = float(old[early].iloc[0] / new[early].iloc[0])
+    years = (pd.Timestamp("1987-12-30") - old.index[0]).days / 365.25
+    implied = ratio ** (1 / years) - 1
+    assert 0.02 < implied < 0.05, f"implied dividend {implied:.4f}"
+
+
 def test_manifest_rejects_duplicated_source_entry() -> None:
     config = load_config(VARIANT)
     sources = [

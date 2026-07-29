@@ -302,20 +302,76 @@ def pass_e_independent(lines: list[str]) -> None:
            "kiểm chứng được; chỉ eq_dp được tiêu thụ và nó đã có kiểm riêng")
     lines.append("")
 
-    # --- DE: the source the ledger cites for the backcast is not on disk ------
-    oecd = sorted(INP.glob("*share*")) + sorted(INP.glob("*OECD*")) \
-        + sorted(INP.glob("*SPAST*"))
-    lines.append("  Đức — nguồn đối chiếu độc lập cho đoạn backcast trước 1988:")
-    if oecd:
-        lines.append(f"      có {len(oecd)} file: {[p.name for p in oecd]}")
+    # --- DE: the backcast against the OECD share-price index -----------------
+    lines.append("  Đức — đoạn backcast trước 1988 vs chỉ số giá cổ phiếu OECD:")
+    oecd_path = INP / "oecd_de_share_price_monthly.csv"
+    if not oecd_path.is_file():
+        lines.append("      KHÔNG CÓ file OECD; chạy scripts/fetch_oecd_reference.py")
+        record("PROBLEM", "de", "thiếu chuỗi tham chiếu OECD cho backcast DAX")
     else:
-        lines.append("      KHÔNG CÓ. Sổ audit dẫn 'tương quan tháng 0.979-0.985")
-        lines.append("      với chỉ số giá cổ phiếu OECD MEI' nhưng file nguồn")
-        lines.append("      không nằm trong data/external/inputs/, nên khẳng định")
-        lines.append("      đó hiện KHÔNG tái lập được.")
-        record("PROBLEM", "de",
-               "nguồn OECD dùng để kiểm chứng backcast DAX trước 1988 không "
-               "còn trong repo; khẳng định corr 0.979-0.985 không tái lập được")
+        oecd = pd.read_csv(oecd_path, parse_dates=["date"]).set_index("date")["value"]
+        de = series_for("de")[["date", "equity_simple"]].dropna()
+        # OECD publishes a monthly average of a price index; the DAX is a
+        # performance index, so LEVELS cannot be compared -- dividends make ours
+        # drift upward without limit. Monthly RETURNS can, and the dividend
+        # stream contributes about 0.3% a month, which is the size of the gap to
+        # expect rather than a defect.
+        level = (1.0 + de.set_index("date")["equity_simple"]).cumprod()
+        # OECD publishes a MONTHLY AVERAGE of daily values. Comparing that with
+        # an end-of-month level correlates two different statistics and lands
+        # near 0.6 even for identical data, so ours is averaged the same way.
+        monthly = level.resample("MS").mean()
+        ours = monthly.pct_change().dropna()
+        theirs = oecd.pct_change().dropna()
+        joined = pd.concat({"ours": ours, "oecd": theirs}, axis=1).dropna()
+        for label, lo, hi in (("1970-1987 (backcast)", "1970", "1987"),
+                              ("1988-1999 (chính thức)", "1988", "1999"),
+                              ("2000-2023 (chính thức)", "2000", "2023")):
+            sub = joined.loc[f"{lo}-01-01":f"{hi}-12-31"]
+            if len(sub) < 24:
+                continue
+            corr = float(sub["ours"].corr(sub["oecd"]))
+            lines.append(f"      {label:<24}{len(sub):>4} tháng   "
+                         f"tương quan {corr:.4f}   "
+                         f"chênh lợi suất TB {(sub['ours'] - sub['oecd']).mean():+.4%}/tháng")
+            if lo == "1970" and corr < 0.90:
+                record("PROBLEM", "de",
+                       f"backcast DAX chỉ tương quan {corr:.3f} với OECD theo tháng")
+        # Correlation cannot see a missing dividend stream; only the LEVEL can.
+        # OECD's is a price index, so a performance index must run above it by
+        # the dividend yield -- in both eras, or one of them is not one.
+        # joined holds RETURNS; the level gap needs the levels themselves.
+        levels = pd.concat({"ours": monthly, "oecd": oecd}, axis=1).dropna()
+
+        def cagr_gap(lo: str, hi: str) -> float:
+            sub = levels.loc[lo:hi]
+            yrs = (sub.index[-1] - sub.index[0]).days / 365.25
+            return float((sub["ours"].iloc[-1] / sub["ours"].iloc[0]) ** (1 / yrs)
+                         - (sub["oecd"].iloc[-1] / sub["oecd"].iloc[0]) ** (1 / yrs))
+
+        back, official = cagr_gap("1970-01-01", "1987-12-31"), \
+            cagr_gap("1988-01-01", "2023-12-31")
+        lines.append(f"      cổ tức ngụ ý (chênh CAGR so với chỉ số GIÁ): "
+                     f"backcast {back:+.2%}/năm, chính thức {official:+.2%}/năm")
+        if abs(back - official) > 0.01:
+            record("PROBLEM", "de",
+                   f"đoạn backcast mang {back:+.2%}/năm cổ tức còn đoạn chính "
+                   f"thức {official:+.2%}/năm — chuỗi trước 1988 THIẾU CỔ TỨC "
+                   "(sửa ở research-expanding-v9-2.toml)")
+        early = joined.loc["1970-01-01":"1987-12-31"]
+        late = joined.loc["1988-01-01":"2023-12-31"]
+        gap = abs(float(early["ours"].corr(early["oecd"]))
+                  - float(late["ours"].corr(late["oecd"])))
+        lines.append(f"      -> chênh lệch tương quan giữa đoạn backcast và đoạn")
+        lines.append(f"         chính thức: {gap:.4f}. Đoạn chính thức là nhóm đối")
+        lines.append(f"         chứng: nó cho biết hai chỉ số khác nhau thì lệch")
+        lines.append(f"         bao nhiêu khi CẢ HAI đều đúng.")
+        if gap > 0.05:
+            record("PROBLEM", "de",
+                   f"backcast khớp OECD kém hơn đoạn chính thức {gap:.3f}")
+        else:
+            record("NOTE", "de",
+                   f"backcast DAX khớp OECD ngang đoạn chính thức (chênh {gap:.4f})")
     lines.append("")
 
 
@@ -400,9 +456,9 @@ def pass_g_cash_level(lines: list[str]) -> None:
     if abs(early) > 0.01:
         record("PROBLEM", "jp cash",
                f"thấp hơn JST {abs(early)*100:.1f} điểm/năm suốt 1970-1989 và "
-               f"{abs(nineties)*100:.1f} điểm trong 1990-1999; đây là ứng viên "
-               "hàng đầu giải thích vì sao Nhật là thị trường duy nhất có ô "
-               "buy-and-hold lệch quá 0.01")
+               f"{abs(nineties)*100:.1f} điểm trong 1990-1999. Không tách bạch "
+               "được với phần cổ phiếu: hai nguồn cùng cỡ (~0.2 điểm mỗi bên) "
+               "mà tổng khoảng lệch chỉ 0.245 điểm/năm")
     lines.append("")
 
 

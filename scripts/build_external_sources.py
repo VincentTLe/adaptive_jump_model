@@ -75,6 +75,15 @@ INPUT_SHA256 = {
         "6aa6e894492bed5bd4c84440fb4617be0657a6b9ed39e7c8d01fef308caed147",
     "sp500_tr_daily.csv":
         "d8e614aaf868f48d5683c8b2e58bda01362648d4cdb7e00ca903ca644936c193",
+    # The German dividend yields that repair the pre-1988 DAX, and the two
+    # OECD reference series the audit validates against. See
+    # scripts/build_de_total_return.py and scripts/fetch_oecd_reference.py.
+    "jst_germany_eq.csv":
+        "25e61f413ecdea07af90f3680aaa16ae7051c92b70f0767131c360ad8c74d087",
+    "oecd_de_share_price_monthly.csv":
+        "5ea98b658ffd6f5848493632f2fe6a364c4dec24d5326a15e0a6d11d57a1076a",
+    "oecd_jp_central_bank_rate_monthly.csv":
+        "0f6e86fe29f82deeccdbe94e5fa3508b734a2f6b4dcff1037f2037c43dee3dd1",
     "shiller_sp500_monthly.csv":
         "28d16941c581bda9bdcae4e0f9e3cc4b61204f8484e8c2249abdde2efe2cc3c4",
 }
@@ -191,6 +200,15 @@ def main() -> None:
     from build_sp500_tr import build_series as build_sp500  # noqa: PLC0415
 
     write("us_equity_tr_sp500.csv", build_sp500())
+
+    # DE equity, dividends restored before 1988. Kept alongside the original so
+    # the v8 and v9.1 contracts still rebuild byte-identically; only v9.2 reads
+    # it. build_de_total_return refuses to return unless the repaired era
+    # carries the same dividend yield as the official one and the resulting
+    # equity premium lands near JST's independent figure.
+    from build_de_total_return import build_series as build_de  # noqa: PLC0415
+
+    write("de_equity_tr_dividend_adjusted.csv", build_de())
 
     # DE equity: Stooq DAX daily close
     dax = pd.read_csv(INP / "stooq_dax_daily.csv")[["Date", "Close"]]

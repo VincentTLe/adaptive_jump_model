@@ -1415,3 +1415,81 @@ be decided before the next freeze rather than mid-audit.
    Germany-symmetry rule, stated before the numbers are looked at.
 3. Only if neither is obtainable: keep the current series and carry the measured
    band — roughly 0.008 of Japanese Sharpe from the rate ambiguity.
+
+## PROBLEM 2 closed, and a second data defect found behind it (2026-07-28)
+
+Network access was granted. FRED still refuses this machine on every series and
+every retry, inside and outside the sandbox, so DBnomics is used as a transport
+for the same OECD MEI tables (`scripts/fetch_oecd_reference.py`). That restored
+the German share-price index the ledger cited and could not produce.
+
+### The claim is reproduced — and reveals the real problem
+
+Compared on the same monthly-average basis OECD publishes (an earlier draft
+compared their average against our month-end and got 0.68 for identical data):
+
+| era | our source | corr with OECD | mean return gap |
+|---|---|---|---|
+| 1970-1987 | backcast | 0.9797 | **-0.008%/month** |
+| 1988-1999 | official | 0.9822 | +0.311%/month |
+| 2000-2023 | official | 0.9891 | +0.213%/month |
+
+The correlation claim holds — 0.9797 is inside the ledger's 0.979-0.985, and the
+backcast tracks OECD as well as the official segment does. But the *level* row
+says something the correlation row cannot: OECD's index is a PRICE index, so a
+performance index must run above it by the dividend yield. Ours does, by
++3.02%/yr, from 1988 onward. Before 1988 it runs 0.15%/yr **below**.
+
+**The pre-1988 German series carries no dividends.** The vendor spliced the DAX
+Kursindex backcast onto the performance index; both are 1000.0 on 1987-12-30, so
+the joint leaves no trace. This is the same class of defect as the CRSP
+substitution: invisible on 1990-2023, wrong across the whole training window.
+
+Two independent confirmations:
+
+- **The equity risk premium.** On the unrepaired series German equities return
+  2.67%/yr over 1970-1987 against a 6.63% cash rate — a premium of **-3.96%/yr
+  sustained for eighteen years**. JST Macrohistory reports German equities at
+  6.29%/yr against a 6.26% bill rate for the same window, a premium of +0.02%.
+- **The size of the gap.** Measured from OECD: 3.02%/yr. JST's German dividend
+  yield for 1970-1987: 3.24%/yr. Two sources that know nothing of each other.
+
+### The repair
+
+Same recipe already used and validated for Japan: the official segment as
+published from 1987-12-30, and before it the same price path plus JST annual
+German dividend yields, chained onto the base value.
+`scripts/build_de_total_return.py` writes nothing unless three gates pass:
+
+| gate | result |
+|---|---|
+| repaired era's dividend vs official era's | +3.24% vs +3.02%, difference **0.21pp** |
+| equity premium vs JST's independent figure | -3.98% -> **-0.60%**, JST +0.02%, gap 0.63pp |
+| daily volatility must not move | **0.0042pp** |
+
+The premium gate originally demanded a positive number. JST says the German
+premium really was about zero in that window, so "positive" was a prior of mine
+and not a fact; the gate now tests agreement with the independent figure.
+
+**This cannot be fitting.** Table 4's German column covers 1990-2023, entirely
+inside the untouched official segment, and a smooth dividend drift moves daily
+volatility by 0.004pp so Table 1 cannot see it either. The repair is justified
+by internal consistency alone and is invisible to every number being reproduced.
+Its effect is on the training window, hence on the fitted regimes, hence on the
+German signal — which is exactly why it matters.
+
+Lands as `research-expanding-v9-2.toml`, one field from v9.1. The original file
+is kept and every pre-existing output still rebuilds byte-identically; both live
+sealed runs replay at difference 0.0; 508 tests pass.
+
+### Japan, after the same search
+
+- The official N225TR is calculated retroactively to **1979-12-28 at 6569.47**;
+  our mirror starts 2011-12-19. Acquiring the published history would put the
+  whole reported window on official data. Not obtainable programmatically.
+- The Germany-symmetric risk-free option is **dead**: OECD's Japanese 3-month
+  interbank series (`IR3TIB01JPM156N`) begins 2002-04, and the only Japanese
+  short rate reaching 1970 on OECD is the central bank discount rate, which is
+  administered and so no better than what we have. No free 3-month Japanese
+  market rate covers the training window. That ambiguity is irreducible with
+  free data, and is now recorded as such rather than as an open action.

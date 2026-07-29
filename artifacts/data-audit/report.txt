@@ -81,11 +81,15 @@ E. ĐỐI CHIẾU NGUỒN ĐỘC LẬP THỨ HAI
       file này là eq_dp, và cột đó đã được kiểm trên đoạn chồng
       lấn 2012-2023 (lợi suất cổ tức ngụ ý lệch trong 0.3 điểm).
 
-  Đức — nguồn đối chiếu độc lập cho đoạn backcast trước 1988:
-      KHÔNG CÓ. Sổ audit dẫn 'tương quan tháng 0.979-0.985
-      với chỉ số giá cổ phiếu OECD MEI' nhưng file nguồn
-      không nằm trong data/external/inputs/, nên khẳng định
-      đó hiện KHÔNG tái lập được.
+  Đức — đoạn backcast trước 1988 vs chỉ số giá cổ phiếu OECD:
+      1970-1987 (backcast)     216 tháng   tương quan 0.9797   chênh lợi suất TB -0.0081%/tháng
+      1988-1999 (chính thức)   144 tháng   tương quan 0.9822   chênh lợi suất TB +0.3109%/tháng
+      2000-2023 (chính thức)   288 tháng   tương quan 0.9891   chênh lợi suất TB +0.2131%/tháng
+      cổ tức ngụ ý (chênh CAGR so với chỉ số GIÁ): backcast -0.15%/năm, chính thức +3.02%/năm
+      -> chênh lệch tương quan giữa đoạn backcast và đoạn
+         chính thức: 0.0068. Đoạn chính thức là nhóm đối
+         chứng: nó cho biết hai chỉ số khác nhau thì lệch
+         bao nhiêu khi CẢ HAI đều đúng.
 
 F. CHUỖI LÃI SUẤT TIỀN MẶT
 
@@ -148,13 +152,14 @@ I. NEO GỐC CHÍNH THỨC CỦA N225TR — kiểm phép dựng lại xuyên 32 
 TỔNG HỢP PHÁT HIỆN
 
   PROBLEM: 2
-      [de] nguồn OECD dùng để kiểm chứng backcast DAX trước 1988 không còn trong repo; khẳng định corr 0.979-0.985 không tái lập được
-      [jp cash] thấp hơn JST 2.0 điểm/năm suốt 1970-1989 và 0.7 điểm trong 1990-1999; đây là ứng viên hàng đầu giải thích vì sao Nhật là thị trường duy nhất có ô buy-and-hold lệch quá 0.01
+      [de] đoạn backcast mang -0.15%/năm cổ tức còn đoạn chính thức +3.02%/năm — chuỗi trước 1988 THIẾU CỔ TỨC (sửa ở research-expanding-v9-2.toml)
+      [jp cash] thấp hơn JST 2.0 điểm/năm suốt 1970-1989 và 0.7 điểm trong 1990-1999. Không tách bạch được với phần cổ phiếu: hai nguồn cùng cỡ (~0.2 điểm mỗi bên) mà tổng khoảng lệch chỉ 0.245 điểm/năm
 
-  NOTE: 7
+  NOTE: 8
       [jp] 3 khoảng trống lịch >7 ngày
       [us 1970-1979] tự tương quan bậc 1 = 0.249, cao hơn bình thường
       [jp] eq_tr của JST là chỉ số khác (tương quan 0.69), không dùng kiểm chứng được; chỉ eq_dp được tiêu thụ và nó đã có kiểm riêng
+      [de] backcast DAX khớp OECD ngang đoạn chính thức (chênh 0.0068)
       [de cash] 413 phiên liên tiếp cùng một lãi suất
       [jp cash] chỉ đổi 6.0 lần/năm; với Nhật đây là lãi suất bị ghim gần 0 suốt 2000-2023 chứ không phải chuỗi đóng băng
       [jp cash] 740 phiên liên tiếp cùng một lãi suất
