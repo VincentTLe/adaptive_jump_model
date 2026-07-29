@@ -13,9 +13,11 @@ protocol choice and both readings are worth printing side by side:
                                 Figure 5 pin down together
 
 Sources, all inside the repository:
-  us      artifacts/hmm-residual/v9-us-hmm/  (the S&P 500 the paper names)
-  de, jp  the sealed v8.5 run, whose market definitions v9 leaves untouched
-  Shu     scripts/_shu_table4.py
+  us    artifacts/hmm-residual/v9-us-hmm/   (v9.1, the S&P 500 the paper names)
+  de    artifacts/hmm-residual/v9-2-de-hmm/ (v9.2, dividends restored pre-1988)
+  jp    the sealed v8.5 run, whose Japanese market definition v9.1 and v9.2
+        both leave untouched, so its states are the current contract's states
+  Shu   scripts/_shu_table4.py
 
 Regime shifts are compared against the count Shu's turnover row implies through
 the identity the paper states in words at line 781-783: turnover of 44% means
@@ -40,6 +42,7 @@ from adaptive_jump.backtest import apply_signal, performance_metrics  # noqa: E4
 SEALED = ROOT / ("artifacts/fixed-baselines/"
                  "fixed-baselines-7b95ec50dece-6bd27647967d-13641890668f")
 V9 = ROOT / "artifacts" / "hmm-residual" / "v9-us-hmm"
+V9_2_DE = ROOT / "artifacts" / "hmm-residual" / "v9-2-de-hmm"
 OUT = ROOT / "artifacts" / "hmm-residual" / "01-status"
 TOL = 0.05
 DELAY, COST = 1, 10.0
@@ -47,12 +50,21 @@ PAPER_BASIS = "risky_leg_wealth_flat_in_cash"
 LEGACY_BASIS = "total_wealth"
 MARKETS = ("us", "de", "jp")
 NAMES = {"us": "S&P 500", "de": "DAX", "jp": "Nikkei 225"}
-SERIES = {"us": "v9 (S&P 500)", "de": "v8.5", "jp": "v8.5"}
+SERIES = {"us": "v9.1 (S&P 500)", "de": "v9.2 (cổ tức)", "jp": "v9.1"}
 
 
 def hmm_path(market: str) -> pd.DataFrame:
+    """The current contract's path for each market.
+
+    The US runs on v9.1 (the S&P 500 the paper names) and Germany on v9.2 (the
+    same, plus the dividends its backcast was missing before 1988). Japan is
+    untouched by both, so its sealed v8.5 states are v9.1's by construction.
+    """
     if market == "us":
         return pd.read_csv(V9 / "hmm-delay-1" / "path.csv", parse_dates=["date"])
+    if market == "de" and (V9_2_DE / "hmm-delay-1" / "path.csv").is_file():
+        return pd.read_csv(V9_2_DE / "hmm-delay-1" / "path.csv",
+                           parse_dates=["date"])
     feats = pd.read_csv(SEALED / market / "features.csv", parse_dates=["date"])
     sig = pd.read_csv(SEALED / market / "hmm-delay-1" / "selected-signal.csv",
                       parse_dates=["date"])

@@ -1,55 +1,55 @@
 market,series,basis,metric,ours,shu,deviation,within_tol,unresolvable
-us,v9 (S&P 500),risky_leg_wealth_flat_in_cash,cagr,0.0849601059322056,0.085,3.989406779440763e-05,True,True
-us,v9 (S&P 500),risky_leg_wealth_flat_in_cash,volatility,0.11311868110671373,0.113,0.00011868110671373056,True,True
-us,v9 (S&P 500),risky_leg_wealth_flat_in_cash,sharpe,0.5470980664684357,0.54,0.007098066468435693,True,False
-us,v9 (S&P 500),risky_leg_wealth_flat_in_cash,maximum_drawdown,-0.29235184370075074,-0.289,0.003351843700750756,True,False
-us,v9 (S&P 500),risky_leg_wealth_flat_in_cash,calmar,0.21168675022378086,0.21,0.0016867502237808696,True,True
-us,v9 (S&P 500),risky_leg_wealth_flat_in_cash,expected_shortfall_5pct,-0.017948971138569313,-0.018,5.10288614306853e-05,True,True
-us,v9 (S&P 500),risky_leg_wealth_flat_in_cash,turnover,1.7064798598949213,1.41,0.2964798598949214,False,False
-us,v9 (S&P 500),risky_leg_wealth_flat_in_cash,leverage,0.7239929947460595,0.72,0.003992994746059519,True,True
-us,v9 (S&P 500),risky_leg_wealth_flat_in_cash,shifts,116.0,95.84525667351129,20.154743326488713,False,False
-us,v9 (S&P 500),total_wealth,cagr,0.0849601059322056,0.085,3.989406779440763e-05,True,True
-us,v9 (S&P 500),total_wealth,volatility,0.11311868110671373,0.113,0.00011868110671373056,True,True
-us,v9 (S&P 500),total_wealth,sharpe,0.5470980664684357,0.54,0.007098066468435693,True,False
-us,v9 (S&P 500),total_wealth,maximum_drawdown,-0.23211837419675108,-0.289,0.0568816258032489,False,False
-us,v9 (S&P 500),total_wealth,calmar,0.2666183232116093,0.21,0.056618323211609284,False,False
-us,v9 (S&P 500),total_wealth,expected_shortfall_5pct,-0.017948971138569313,-0.018,5.10288614306853e-05,True,True
-us,v9 (S&P 500),total_wealth,turnover,1.7064798598949213,1.41,0.2964798598949214,False,False
-us,v9 (S&P 500),total_wealth,leverage,0.7239929947460595,0.72,0.003992994746059519,True,True
-us,v9 (S&P 500),total_wealth,shifts,116.0,95.84525667351129,20.154743326488713,False,False
-de,v8.5,risky_leg_wealth_flat_in_cash,cagr,0.06796435858820504,0.064,0.003964358588205041,True,False
-de,v8.5,risky_leg_wealth_flat_in_cash,volatility,0.13997649097093892,0.14,2.3509029061091757e-05,True,True
-de,v8.5,risky_leg_wealth_flat_in_cash,sharpe,0.368095914944661,0.35,0.018095914944661007,True,False
-de,v8.5,risky_leg_wealth_flat_in_cash,maximum_drawdown,-0.4385111729766794,-0.405,0.03351117297667938,True,False
-de,v8.5,risky_leg_wealth_flat_in_cash,calmar,0.11749934252514699,0.12,0.0025006574748530075,True,True
-de,v8.5,risky_leg_wealth_flat_in_cash,expected_shortfall_5pct,-0.02201070904034612,-0.022,1.0709040346119914e-05,True,True
-de,v8.5,risky_leg_wealth_flat_in_cash,turnover,2.226458963031853,2.46,0.233541036968147,False,False
-de,v8.5,risky_leg_wealth_flat_in_cash,leverage,0.7298302720297605,0.73,0.00016972797023950825,True,True
-de,v8.5,risky_leg_wealth_flat_in_cash,shifts,152.0,167.2193839835729,15.219383983572897,False,False
-de,v8.5,total_wealth,cagr,0.06796435858820504,0.064,0.003964358588205041,True,False
-de,v8.5,total_wealth,volatility,0.13997649097093892,0.14,2.3509029061091757e-05,True,True
-de,v8.5,total_wealth,sharpe,0.368095914944661,0.35,0.018095914944661007,True,False
-de,v8.5,total_wealth,maximum_drawdown,-0.4019871423007396,-0.405,0.0030128576992604073,True,False
-de,v8.5,total_wealth,calmar,0.1281751804791395,0.12,0.00817518047913951,True,False
-de,v8.5,total_wealth,expected_shortfall_5pct,-0.02201070904034612,-0.022,1.0709040346119914e-05,True,True
-de,v8.5,total_wealth,turnover,2.226458963031853,2.46,0.233541036968147,False,False
-de,v8.5,total_wealth,leverage,0.7298302720297605,0.73,0.00016972797023950825,True,True
-de,v8.5,total_wealth,shifts,152.0,167.2193839835729,15.219383983572897,False,False
-jp,v8.5,risky_leg_wealth_flat_in_cash,cagr,0.022415727300098665,0.025,0.002584272699901337,True,False
-jp,v8.5,risky_leg_wealth_flat_in_cash,volatility,0.15980463276395357,0.16,0.00019536723604643425,True,True
-jp,v8.5,risky_leg_wealth_flat_in_cash,sharpe,0.17710231189905581,0.19,0.012897688100944188,True,False
-jp,v8.5,risky_leg_wealth_flat_in_cash,maximum_drawdown,-0.510087343941346,-0.486,0.02408734394134604,True,False
-jp,v8.5,risky_leg_wealth_flat_in_cash,calmar,0.05548416413548606,0.06,0.004515835864513935,True,True
-jp,v8.5,risky_leg_wealth_flat_in_cash,expected_shortfall_5pct,-0.025137238548276552,-0.025,0.0001372385482765505,True,True
-jp,v8.5,risky_leg_wealth_flat_in_cash,turnover,3.1439539347408827,2.9,0.24395393474088278,False,False
-jp,v8.5,risky_leg_wealth_flat_in_cash,leverage,0.6795825335892515,0.68,0.00041746641074857926,True,True
-jp,v8.5,risky_leg_wealth_flat_in_cash,shifts,208.0,196.8585900068446,11.141409993155406,False,False
-jp,v8.5,total_wealth,cagr,0.022415727300098665,0.025,0.002584272699901337,True,False
-jp,v8.5,total_wealth,volatility,0.15980463276395357,0.16,0.00019536723604643425,True,True
-jp,v8.5,total_wealth,sharpe,0.17710231189905581,0.19,0.012897688100944188,True,False
-jp,v8.5,total_wealth,maximum_drawdown,-0.5173253550929867,-0.486,0.03132535509298673,True,False
-jp,v8.5,total_wealth,calmar,0.054707873171205124,0.06,0.005292126828794874,True,False
-jp,v8.5,total_wealth,expected_shortfall_5pct,-0.025137238548276552,-0.025,0.0001372385482765505,True,True
-jp,v8.5,total_wealth,turnover,3.1439539347408827,2.9,0.24395393474088278,False,False
-jp,v8.5,total_wealth,leverage,0.6795825335892515,0.68,0.00041746641074857926,True,True
-jp,v8.5,total_wealth,shifts,208.0,196.8585900068446,11.141409993155406,False,False
+us,v9.1 (S&P 500),risky_leg_wealth_flat_in_cash,cagr,0.0849601059322056,0.085,3.989406779440763e-05,True,True
+us,v9.1 (S&P 500),risky_leg_wealth_flat_in_cash,volatility,0.11311868110671373,0.113,0.00011868110671373056,True,True
+us,v9.1 (S&P 500),risky_leg_wealth_flat_in_cash,sharpe,0.5470980664684357,0.54,0.007098066468435693,True,False
+us,v9.1 (S&P 500),risky_leg_wealth_flat_in_cash,maximum_drawdown,-0.29235184370075074,-0.289,0.003351843700750756,True,False
+us,v9.1 (S&P 500),risky_leg_wealth_flat_in_cash,calmar,0.21168675022378086,0.21,0.0016867502237808696,True,True
+us,v9.1 (S&P 500),risky_leg_wealth_flat_in_cash,expected_shortfall_5pct,-0.017948971138569313,-0.018,5.10288614306853e-05,True,True
+us,v9.1 (S&P 500),risky_leg_wealth_flat_in_cash,turnover,1.7064798598949213,1.41,0.2964798598949214,False,False
+us,v9.1 (S&P 500),risky_leg_wealth_flat_in_cash,leverage,0.7239929947460595,0.72,0.003992994746059519,True,True
+us,v9.1 (S&P 500),risky_leg_wealth_flat_in_cash,shifts,116.0,95.84525667351129,20.154743326488713,False,False
+us,v9.1 (S&P 500),total_wealth,cagr,0.0849601059322056,0.085,3.989406779440763e-05,True,True
+us,v9.1 (S&P 500),total_wealth,volatility,0.11311868110671373,0.113,0.00011868110671373056,True,True
+us,v9.1 (S&P 500),total_wealth,sharpe,0.5470980664684357,0.54,0.007098066468435693,True,False
+us,v9.1 (S&P 500),total_wealth,maximum_drawdown,-0.23211837419675108,-0.289,0.0568816258032489,False,False
+us,v9.1 (S&P 500),total_wealth,calmar,0.2666183232116093,0.21,0.056618323211609284,False,False
+us,v9.1 (S&P 500),total_wealth,expected_shortfall_5pct,-0.017948971138569313,-0.018,5.10288614306853e-05,True,True
+us,v9.1 (S&P 500),total_wealth,turnover,1.7064798598949213,1.41,0.2964798598949214,False,False
+us,v9.1 (S&P 500),total_wealth,leverage,0.7239929947460595,0.72,0.003992994746059519,True,True
+us,v9.1 (S&P 500),total_wealth,shifts,116.0,95.84525667351129,20.154743326488713,False,False
+de,v9.2 (cổ tức),risky_leg_wealth_flat_in_cash,cagr,0.0678029885959035,0.064,0.0038029885959035004,True,False
+de,v9.2 (cổ tức),risky_leg_wealth_flat_in_cash,volatility,0.1399556446635385,0.14,4.435533646152123e-05,True,True
+de,v9.2 (cổ tức),risky_leg_wealth_flat_in_cash,sharpe,0.3670499669225602,0.35,0.017049966922560222,True,False
+de,v9.2 (cổ tức),risky_leg_wealth_flat_in_cash,maximum_drawdown,-0.43851117297667896,-0.405,0.03351117297667894,True,False
+de,v9.2 (cổ tức),risky_leg_wealth_flat_in_cash,calmar,0.11714801790719571,0.12,0.002851982092804281,True,True
+de,v9.2 (cổ tức),risky_leg_wealth_flat_in_cash,expected_shortfall_5pct,-0.02201070904034612,-0.022,1.0709040346119914e-05,True,True
+de,v9.2 (cổ tức),risky_leg_wealth_flat_in_cash,turnover,2.2557544757033248,2.46,0.2042455242966752,False,False
+de,v9.2 (cổ tức),risky_leg_wealth_flat_in_cash,leverage,0.7294815159265288,0.73,0.0005184840734712148,True,True
+de,v9.2 (cổ tức),risky_leg_wealth_flat_in_cash,shifts,154.0,167.2193839835729,13.219383983572897,False,False
+de,v9.2 (cổ tức),total_wealth,cagr,0.0678029885959035,0.064,0.0038029885959035004,True,False
+de,v9.2 (cổ tức),total_wealth,volatility,0.1399556446635385,0.14,4.435533646152123e-05,True,True
+de,v9.2 (cổ tức),total_wealth,sharpe,0.3670499669225602,0.35,0.017049966922560222,True,False
+de,v9.2 (cổ tức),total_wealth,maximum_drawdown,-0.40198714230073873,-0.405,0.0030128576992612954,True,False
+de,v9.2 (cổ tức),total_wealth,calmar,0.12779193496180383,0.12,0.007791934961803831,True,False
+de,v9.2 (cổ tức),total_wealth,expected_shortfall_5pct,-0.02201070904034612,-0.022,1.0709040346119914e-05,True,True
+de,v9.2 (cổ tức),total_wealth,turnover,2.2557544757033248,2.46,0.2042455242966752,False,False
+de,v9.2 (cổ tức),total_wealth,leverage,0.7294815159265288,0.73,0.0005184840734712148,True,True
+de,v9.2 (cổ tức),total_wealth,shifts,154.0,167.2193839835729,13.219383983572897,False,False
+jp,v9.1,risky_leg_wealth_flat_in_cash,cagr,0.022415727300098665,0.025,0.002584272699901337,True,False
+jp,v9.1,risky_leg_wealth_flat_in_cash,volatility,0.15980463276395357,0.16,0.00019536723604643425,True,True
+jp,v9.1,risky_leg_wealth_flat_in_cash,sharpe,0.17710231189905581,0.19,0.012897688100944188,True,False
+jp,v9.1,risky_leg_wealth_flat_in_cash,maximum_drawdown,-0.510087343941346,-0.486,0.02408734394134604,True,False
+jp,v9.1,risky_leg_wealth_flat_in_cash,calmar,0.05548416413548606,0.06,0.004515835864513935,True,True
+jp,v9.1,risky_leg_wealth_flat_in_cash,expected_shortfall_5pct,-0.025137238548276552,-0.025,0.0001372385482765505,True,True
+jp,v9.1,risky_leg_wealth_flat_in_cash,turnover,3.1439539347408827,2.9,0.24395393474088278,False,False
+jp,v9.1,risky_leg_wealth_flat_in_cash,leverage,0.6795825335892515,0.68,0.00041746641074857926,True,True
+jp,v9.1,risky_leg_wealth_flat_in_cash,shifts,208.0,196.8585900068446,11.141409993155406,False,False
+jp,v9.1,total_wealth,cagr,0.022415727300098665,0.025,0.002584272699901337,True,False
+jp,v9.1,total_wealth,volatility,0.15980463276395357,0.16,0.00019536723604643425,True,True
+jp,v9.1,total_wealth,sharpe,0.17710231189905581,0.19,0.012897688100944188,True,False
+jp,v9.1,total_wealth,maximum_drawdown,-0.5173253550929867,-0.486,0.03132535509298673,True,False
+jp,v9.1,total_wealth,calmar,0.054707873171205124,0.06,0.005292126828794874,True,False
+jp,v9.1,total_wealth,expected_shortfall_5pct,-0.025137238548276552,-0.025,0.0001372385482765505,True,True
+jp,v9.1,total_wealth,turnover,3.1439539347408827,2.9,0.24395393474088278,False,False
+jp,v9.1,total_wealth,leverage,0.6795825335892515,0.68,0.00041746641074857926,True,True
+jp,v9.1,total_wealth,shifts,208.0,196.8585900068446,11.141409993155406,False,False
