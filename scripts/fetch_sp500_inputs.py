@@ -57,7 +57,11 @@ UA = {"User-Agent": "Mozilla/5.0"}
 YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/{sym}?period1={a}&period2={b}&interval=1d"
 SHILLER = "https://raw.githubusercontent.com/datasets/s-and-p-500/main/data/data.csv"
 
-# 1976-01-01 .. 2023-12-31; the builder trims to the frozen window anyway.
+# The window requested, as Unix timestamps: seconds since 1970-01-01 UTC, so a
+# NEGATIVE period1 asks for dates before 1970 and is the whole trick to getting
+# pre-1970 history out of this endpoint. -126230400 is 1966-01-01 and 1704067200
+# is 2024-01-01. (An earlier comment here read "1976-01-01", which was simply
+# wrong about its own constant.) The builder trims to the frozen window anyway.
 A, B = -126230400, 1704067200
 
 
