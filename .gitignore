@@ -41,6 +41,7 @@ artifacts/data-provenance/*
 !artifacts/data-provenance/report.txt
 !artifacts/data-provenance/reply-to-andrew-leahy.md
 !artifacts/data-provenance/progress-report-plain.md
+!artifacts/data-provenance/reply-yahoo-provenance.md
 !artifacts/data-provenance/progress-report-to-andrew-leahy.md
 !artifacts/hmm-residual/README.md
 !artifacts/hmm-residual/*/report.txt

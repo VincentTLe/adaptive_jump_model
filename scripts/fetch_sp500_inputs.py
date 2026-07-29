@@ -10,9 +10,16 @@ on 1987-10-19 the S&P 500 fell 20.47% and CRSP fell 17.41%, and every 3000-day
 training window containing that day fits a high-volatility regime about 8
 percentage points below Shu's (docs/audit/2026-07-full-audit.md).
 
-Three files, all free and unauthenticated:
+Three files, all free and unauthenticated. Note what is NOT used: Yahoo's
+"Download" button on the quote page, which is gated behind a paid tier for long
+ranges. These come from the chart endpoint underneath it -- the same JSON the
+page itself plots -- which needs no account. The distinction matters because it
+is the first thing anyone will ask.
 
-  sp500_price_daily.csv   Yahoo ^GSPC daily close from 1977. This is what the
+  sp500_price_daily.csv   Yahoo ^GSPC daily close. An earlier note here said
+                          1977, which was an estimate made before the fetch ran;
+                          the endpoint actually returns 14,598 sessions from
+                          1966-01-03. This is what the
                           HMM needs: over the 9,070 sessions the two series
                           share, the daily log-return volatility of price and
                           total return differ by 0.0011pp with correlation
@@ -24,7 +31,7 @@ Three files, all free and unauthenticated:
   shiller_sp500_monthly.csv  Shiller's monthly S&P 500 price and dividend series
                           from 1871, mirrored as CSV by the datasets/s-and-p-500
                           project so no xls reader is needed. Supplies the
-                          dividend accrual for 1977-1987, the only stretch that
+                          dividend accrual for 1966-1987, the only stretch that
                           has to be reconstructed -- and one that lies entirely
                           inside the training window, never in the reported
                           1990-2023 sample.

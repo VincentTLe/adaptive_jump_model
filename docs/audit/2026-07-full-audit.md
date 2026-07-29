@@ -1648,3 +1648,34 @@ It also predicts something checkable about the jump model, whose penalty is
 chosen by the same rule over the same window: the same instability should appear
 there, and any JM turnover disagreement should be read in that light before it
 is treated as a modelling defect.
+
+### Provenance of the Yahoo-sourced files, asked and answered (2026-07-28)
+
+The advisor asked how 1970s history came out of Yahoo Finance when its download
+button is a paid feature. The answer is that the button is not what we used: the
+chart endpoint underneath it (`query1.finance.yahoo.com/v8/finance/chart/...`)
+serves the full history as JSON with no account, and that is what
+`scripts/fetch_sp500_inputs.py` calls for `^GSPC` and `^SP500TR`. The Japanese
+price file came through `yfinance`, which reads the same endpoint. Spans as
+delivered: `^GSPC` 14,598 sessions from 1966-01-03, `^SP500TR` 9,070 from
+1988-01-04, `^N225` 14,508 from 1965-01-05.
+
+A stale note in that script claimed the free S&P 500 price history begins in
+1977. That was an estimate written before the fetch ran; the endpoint returns
+data from 1966-01-03. Corrected.
+
+The provenance question is answerable without trusting the vendor, which is the
+better answer and the one given:
+
+| independent source | what it checks | result |
+|---|---|---|
+| Shiller monthly S&P 500 (Yale) | our daily US file, averaged by month, 1966-2023 | 696 months, correlation 0.99999328, median error 0.0005% |
+| Kenneth French daily market (Dartmouth/CRSP) | our daily US price returns | 0.9867 over 1970-1989, 0.9927 over 1990-2023 |
+| Nikkei Inc.'s own 1979-12-28 base value | our Japanese series, chained back 32 years | 6,470.24 against 6,569.47, -0.048pp/yr |
+| Table 1 of the paper | all three series jointly, 1970-2023 | nine cells, worst 0.0035 |
+| the historical record | dating rather than scaling | 20 of 20 extreme sessions in named crises |
+
+Note the French correlations here are against our S&P 500 PRICE series; the
+figures recorded earlier in this ledger (0.9851 / 0.9924) are against the
+total-return series, which is the one the model consumes. Both are reported so
+neither number looks like a correction of the other.
