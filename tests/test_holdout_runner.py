@@ -55,6 +55,32 @@ def test_metric_row_counts_switches_and_cash_fraction() -> None:
     assert "sharpe" in row and "maximum_drawdown" in row
 
 
+def test_metric_row_uses_the_contract_turnover_scale() -> None:
+    """The holdout must not silently fall back to the function default.
+
+    `performance_metrics` defaults to 0.5 (the paper's half-turnover identity)
+    while the holdout contract declares `mean_one_way_turnover_times_252`, which
+    is 1.0. Omitting the argument published every 2026 turnover at half its
+    contracted value, and nothing caught it because both numbers are plausible.
+    """
+    dates = pd.bdate_range("2024-01-02", periods=6)
+    frame = _trades(dates, [0.0, 1.0, 1.0, 0.0, 0.0, 1.0])
+    expected = frame["one_way_turnover"].mean() * 252
+
+    holdout_config = load_config(ROOT / "research-holdout-2026.toml")
+    assert holdout_config.metrics_protocol.turnover_scale == 1.0
+    assert holdout._metric_row(frame, holdout_config)["turnover"] == pytest.approx(
+        expected
+    )
+
+    # And a contract asking for the half convention still gets the half.
+    paper_config = load_config(ROOT / "research-expanding-v9-3.toml")
+    assert paper_config.metrics_protocol.turnover_scale == 0.5
+    assert holdout._metric_row(frame, paper_config)["turnover"] == pytest.approx(
+        0.5 * expected
+    )
+
+
 def test_spec_requires_frozen_registration(tmp_path: Path) -> None:
     (tmp_path / "research").mkdir()
     (tmp_path / "research" / holdout.SPEC_NAME).write_text("schema_version = 1\n")

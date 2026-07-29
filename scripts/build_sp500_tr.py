@@ -113,7 +113,8 @@ def validate(px: pd.DataFrame, official: pd.DataFrame) -> None:
     cagr_t = (truth.iloc[-1] ** (1 / yrs) - 1) * 100
 
     print(f"VALIDATION on the {len(j)} sessions where the official index exists")
-    print(f"  {j['date'].iloc[0].date()} .. {j['date'].iloc[-1].date()}  ({yrs:.1f} năm)")
+    print(f"  {j['date'].iloc[0].date()} .. {j['date'].iloc[-1].date()}"
+          f"  ({yrs:.1f} năm)")
     print(f"  tương quan log-return ngày : {corr:.6f}   (ngưỡng {MIN_CORR})")
     print(f"  độ biến động quy năm       : dựng {vol_b:.4f}%  chính thức {vol_t:.4f}%"
           f"   lệch {abs(vol_b - vol_t):.4f} điểm  (ngưỡng {MAX_VOL_DIFF_PP})")
@@ -132,6 +133,34 @@ def validate(px: pd.DataFrame, official: pd.DataFrame) -> None:
     print("  -> đạt cả ba ngưỡng\n")
 
 
+def stitch(px: pd.DataFrame, official: pd.DataFrame) -> pd.DataFrame:
+    """Chain the reconstructed era onto the official one, losing no session.
+
+    The splice date must be one the reconstruction ALSO covers. The official
+    index begins on OFFICIAL_START, and a series' first row carries a level but
+    no return, so the return of that session exists only in the reconstruction.
+    Earlier this function anchored the reconstruction's last point -- the
+    session BEFORE the splice -- to the official index's first close, then
+    dropped it. That silently deleted 1988-01-04, a +3.59% session, and left the
+    row labelled 1988-01-04 carrying 1987-12-31's return instead.
+
+    So: reconstruct THROUGH the splice date, anchor it there, and let the
+    official index take over the day after.
+    """
+    split = pd.Timestamp(OFFICIAL_START)
+    early = px[px["date"] <= split].reset_index(drop=True)
+    if early.empty or early["date"].iloc[-1] != split:
+        raise SystemExit(f"price path does not reach the splice date {split.date()}")
+    built = reconstruct(early)
+    # built.iloc[-1] is the splice date itself, so this leaves the official
+    # level unchanged there and every reconstructed return intact behind it.
+    early_level = built / built.iloc[-1] * float(official["close"].iloc[0])
+    return pd.concat([
+        pd.DataFrame({"date": early["date"], "value": early_level}),
+        official[official["date"] > split].rename(columns={"close": "value"}),
+    ], ignore_index=True)
+
+
 def build_series() -> pd.DataFrame:
     """Validated date/value frame, for build_external_sources to write.
 
@@ -141,34 +170,13 @@ def build_series() -> pd.DataFrame:
     """
     px, official = load_price(), load_official()
     validate(px, official)
-    split = pd.Timestamp(OFFICIAL_START)
-    early = px[px["date"] < split].reset_index(drop=True)
-    built = reconstruct(early)
-    early_level = built / built.iloc[-1] * float(official["close"].iloc[0])
-    return pd.concat([
-        pd.DataFrame({"date": early["date"].iloc[:-1],
-                      "value": early_level.iloc[:-1]}),
-        official.rename(columns={"close": "value"}),
-    ], ignore_index=True)
+    return stitch(px, official)
 
 
 def main() -> None:
     px, official = load_price(), load_official()
     validate(px, official)
-
-    split = pd.Timestamp(OFFICIAL_START)
-    early = px[px["date"] < split].reset_index(drop=True)
-    built = reconstruct(early)
-
-    # Chain the reconstructed era onto the official one so the join is seamless.
-    anchor = float(official["close"].iloc[0])
-    early_level = built / built.iloc[-1] * anchor
-    # Drop the last reconstructed point: the official index owns that date onward.
-    frame = pd.concat([
-        pd.DataFrame({"date": early["date"].iloc[:-1],
-                      "value": early_level.iloc[:-1]}),
-        official.rename(columns={"close": "value"}),
-    ], ignore_index=True)
+    frame = stitch(px, official)
 
     frame = frame[(frame["date"] >= START) & (frame["date"] <= CUTOFF)]
     frame["date"] = frame["date"].dt.date.astype(str)

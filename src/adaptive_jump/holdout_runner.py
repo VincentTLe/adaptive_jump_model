@@ -112,6 +112,12 @@ def _metric_row(trades: pd.DataFrame, config: ResearchConfig) -> dict[str, float
         trades,
         periods_per_year=config.metrics_protocol.periods_per_year,
         volatility_ddof=config.metrics_protocol.volatility_ddof,
+        # Omitting this took the function default of 0.5 while the holdout
+        # contract declares mean_one_way_turnover_times_252, which is 1.0, so
+        # every turnover the 2026 readout published is half the contracted
+        # figure. Sharpe and its 0/3 conclusion do not read turnover and are
+        # unaffected. Found by an external review, 2026-07-29.
+        turnover_scale=config.metrics_protocol.turnover_scale,
     )
     switches = int((trades["position"].diff().fillna(0.0) != 0).sum())
     cash_fraction = float((trades["position"] == 0).mean())

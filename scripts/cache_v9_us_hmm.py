@@ -43,7 +43,12 @@ from adaptive_jump.walkforward import select_monthly_candidate  # noqa: E402
 
 SEALED = ROOT / ("artifacts/fixed-baselines/"
                  "fixed-baselines-7b95ec50dece-6bd27647967d-13641890668f")
-OUT = ROOT / "artifacts" / "hmm-residual" / "v9-us-hmm"
+# Which contract to fit under, and where its cache lands. v9.3 corrects the S&P
+# splice that deleted 1988-01-04; pass it explicitly to rebuild that cache
+# without disturbing the v9 one it is compared against.
+CONFIG = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "research-expanding-v9.toml"
+OUT = (ROOT / "artifacts" / "hmm-residual"
+       / (sys.argv[2] if len(sys.argv) > 2 else "v9-us-hmm"))
 DELAY, COST = 1, 10.0
 KEYS = ("sharpe", "cagr", "volatility", "maximum_drawdown", "calmar",
         "expected_shortfall_5pct", "turnover", "leverage")
@@ -110,7 +115,7 @@ def main() -> None:
         raise SystemExit("GUARD FAILED — không ghi gì cả")
 
     # --- v9 ----------------------------------------------------------------
-    cfg9 = load_config(ROOT / "research-expanding-v9.toml")
+    cfg9 = load_config(CONFIG)
     frozen = load_frozen_data(cfg9)
     market = prepare_manifest_market(cfg9, frozen, "us")
     print(f"v9 khung Mỹ: {len(market.frame)} dòng, OOS bắt đầu {market.oos_start}")
@@ -139,7 +144,7 @@ def main() -> None:
         {"market": "us", "model": "hmm", "delay": DELAY, "variant": "v8-5-guard",
          "start": lo.date(), "end": hi.date(), **{k: got[k] for k in KEYS},
          "shifts": got["shifts"], "observations": got["observations"]},
-        {"market": "us", "model": "hmm", "delay": DELAY, "variant": "v9",
+        {"market": "us", "model": "hmm", "delay": DELAY, "variant": CONFIG.stem.replace("research-expanding-", ""),
          "start": lo.date(), "end": hi.date(), **{k: new[k] for k in KEYS},
          "shifts": new["shifts"], "observations": new["observations"]},
     ])
@@ -147,7 +152,7 @@ def main() -> None:
 
     (OUT / "run.json").write_text(json.dumps({
         "what": "HMM arm only, US only, v9 config; NOT a sealed run",
-        "config": "research-expanding-v9.toml",
+        "config": CONFIG.name,
         "config_sha256": cfg9.sha256,
         "guard_run": SEALED.name,
         "guard_max_drift": drift,

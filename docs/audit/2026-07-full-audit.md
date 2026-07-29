@@ -1602,8 +1602,22 @@ candidate from two samples of the same window
 | DAX | **15.1%** | 16.7% | 0.032 | 31.2% |
 | Nikkei 225 | **17.4%** | 16.7% | 0.047 | 27.8% |
 
-**At chance, in all three.** The two halves of the same validation window pick
-the same smoothing window no more often than a die would.
+> **CORRECTION, 2026-07-29 (external review).** The chance column above is wrong.
+> `1/len(grid)` is the agreement rate for two draws from a *uniform* choice
+> distribution, and the rule's choices are far from uniform. Under independence
+> the rate is the cross-marginal product of the two halves' own argmax
+> distributions, recomputed from the stored candidate returns:
+>
+> | | observed | `1/k` (wrong) | independence baseline |
+> |---|---|---|---|
+> | S&P 500 | 17.1% | 16.7% | **20.2%** |
+> | DAX | 15.1% | 16.7% | **20.8%** |
+> | Nikkei 225 | 17.4% | 16.7% | **22.7%** |
+>
+> Agreement is therefore *below* the independence baseline in all three markets,
+> not equal to it. The rule still shows no stable cross-period preference, but
+> the phrase "17.1% against chance 16.7%" was a coincidence of the wrong
+> baseline and must not be quoted again.
 
 ### Three controls, and the two that "failed" are part of the evidence
 
@@ -1643,6 +1657,37 @@ defect, it is not a missing specification we could ask the authors for, and
 chasing it with a better grid would be chasing a coin flip. The honest report is
 the fixed-k persistence curve, which reproduces Table 3 to 1.9%, plus the
 statement that the selected-k turnover is not an identified quantity.
+
+> **RETRACTED, 2026-07-29 (external review).** The two paragraphs above are
+> withdrawn. Three errors, in increasing order of seriousness.
+>
+> **The reproducibility sentence is a logic error.** The selection rule is
+> deterministic. Two researchers with identical data, identical code and
+> identical grids select the *same* smoothing window in *every* month, always.
+> What the split-half result measures is **sampling reliability** — the choice is
+> unstable with respect to which sample it is estimated on — which is a different
+> and weaker statement. Nothing here makes the rule irreproducible.
+>
+> **The design cannot separate "no signal" from "the optimum genuinely moves".**
+> The two halves of a validation window are two consecutive periods, not two
+> draws from one distribution. If the best smoothing window really does drift
+> with the market, disagreement is signal, not noise. The controls in the table
+> above already demonstrate the confound — always-invested against always-cash
+> agrees only 77/63/46% — and that was read as corroboration when it is equally
+> an indictment of the instrument.
+>
+> **"Chasing it with a better grid would be chasing a coin flip" was wrong, and
+> it stopped a test that should have been run.** The grid is pinned against its
+> own ceiling: the selection picks the largest candidate, k=20, in 33.0% of US
+> months under v9, 9.6% of German months under v9.2, and 39.5% of Japanese months
+> under v8.5 — against the frozen `upper_boundary_month_fraction_limit` of 5%.
+> A binding ceiling means the rule wants more smoothing than the grid offers and
+> is therefore forced to trade more than its own objective would choose, which is
+> the direction of both the US deviation (1.71 against 1.41) and the Japanese one
+> (3.14 against 2.90). Extending the grid until the boundary stops binding is not
+> fitting to Table 4, because the stopping rule is the project's own gate,
+> defined without reference to the paper's numbers. See
+> `docs/audit/2026-07-29-codex-review-verdicts.md` §11.
 
 It also predicts something checkable about the jump model, whose penalty is
 chosen by the same rule over the same window: the same instability should appear

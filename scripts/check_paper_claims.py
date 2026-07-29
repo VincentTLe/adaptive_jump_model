@@ -54,8 +54,14 @@ DEFAULT_PAPER = REPO / "data" / "external" / "inputs" / "shu_paper.txt"
 PAPER_SHA256 = "dc81ad9d96767f86a4bb"  # first 20 hex chars; full check below
 DEFAULT_TARGETS = [
     REPO / "docs" / "unspecified-choices.md",
-    REPO / "docs" / "audit" / "2026-07-full-audit.md",
+    *sorted((REPO / "docs" / "audit").glob("*.md")),
     REPO / "CLAUDE.md",
+    # The two documents a reader actually reads. An external review pointed out
+    # that this checker claimed to "verify every claim" while skipping exactly
+    # the manuscript and the README -- the only places a misquote reaches an
+    # audience outside the repository.
+    REPO / "paper" / "manuscript.tex",
+    REPO / "README.md",
     # Frozen contracts justify their settings by quoting the paper, so those
     # quotes need checking for the same reason the prose does -- a config
     # comment is where a misquote does the most damage, because it is the

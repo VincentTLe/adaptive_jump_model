@@ -274,7 +274,43 @@ de 151 against 167 implied; jp 208 against 197 implied. The US bear share is
 
 ---
 
-## 8. Drawdown basis — CLOSED, two published facts pin it down
+## 8. Drawdown basis — REOPENED 2026-07-29, the "pin" does not hold
+
+> **This row was wrong and is retracted.** Fact 2 below misreads the caption it
+> quotes. Figure 5's y-axis is *cumulative excess return* —
+>
+> > [line 786] "alongside the curves of cumulative excess returns from the three"
+>
+> — and a cumulative **excess** return curve is flat while in cash for the
+> trivial reason that excess return is zero there. The flatness is implied by the
+> axis label alone and carries no information about which path a drawdown is read
+> from. Fact 1 stands but discriminates nothing relevant: buy-and-hold is never
+> in cash, so `total_wealth`, `risky_leg_wealth_flat_in_cash` and its
+> cost-retaining variant agree to every digit on all three control rows.
+>
+> With the pin gone, the only discriminating evidence is the four cells driven by
+> Shu's own published positions — and there the two published rows disagree about
+> the winner (MDD prefers the cost-free flat path at 0.0072 against 0.0116;
+> Calmar prefers the cost-retaining one at 0.0030 against 0.0055). The selection
+> in `scripts/probe_mdd_convention.py` is "whichever convention minimises error"
+> against Table 4, which is exactly the search over an unspecified knob that
+> `CLAUDE.md` forbids.
+>
+> A further objection to the adopted basis, independent of the fitting: it drops
+> the 10bp trading cost from the drawdown path while the Return row charges it,
+> so one Table 4 column would report return net of cost and drawdown gross of it.
+>
+> **What we do now.** `total_wealth` is the a-priori default again — the
+> conventional reading of a portfolio drawdown, and what v8.x used. The
+> flat-in-cash bases are reported as alternatives, not as the faithful choice.
+>
+> **What the retraction costs: nothing.** Rescored under both bases at the 0.05
+> tolerance, every cell in all three markets gives the same verdict, and all
+> three markets are 7/8 either way. See
+> `artifacts/hmm-residual/01-status/hmm-vs-table4-v9-3.txt` and
+> `docs/audit/2026-07-29-codex-review-verdicts.md` §2.
+
+## 8a. The superseded argument, kept for the record
 
 **What the paper says.** Nothing directly. Table 4's caption defines the row as
 "maximum drawdown ("MDD")" and stops there, and the return row above it is

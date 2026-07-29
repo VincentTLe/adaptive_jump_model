@@ -167,23 +167,29 @@ menus; trading frequency ranges from about 130% to 290% in the US alone — far
 wider than the gap we are trying to explain. So this number is not pinned down
 by what was published.
 
-**Second, the rule they use cannot really choose.** I tested it directly: split
-each eight-year window in half, ask which setting wins on the first half and
-which wins on the second, and see how often the two agree. A rule detecting
-something real would usually agree.
+**Second, the rule's choice is unstable.** I tested it directly: split each
+eight-year window in half, ask which setting wins on the first half and which
+wins on the second, and see how often the two agree. A rule detecting something
+real would usually agree. They agree **15-17% of the time**, against the
+**20-23%** you would get by picking at random from the rule's own distribution
+of answers — so, if anything, slightly worse than random. The same in all three
+markets.
 
-They agree **17% of the time. With six options on the menu, guessing gives 17%.**
-The same result in all three markets.
+I should be careful about what that does and does not mean. It does **not** mean
+the rule is irreproducible: it is a deterministic procedure, so anyone with our
+data and our code gets our answer exactly. It means the answer is sensitive to
+which eight years you happen to measure it on. And there is a competing
+explanation I cannot yet rule out — the two halves are two different periods, so
+the disagreement might be telling us the best setting genuinely changes over
+time rather than that the rule is reading noise.
 
-I then checked that the test itself works, by giving it two strategies where one
-is genuinely and consistently better: it found the winner **100% of the time**,
-even for a very small advantage. So the test can see a real difference — the
-settings simply do not have one.
-
-In plain terms: two researchers with the same data, the same code and the same
-menu would make different choices in roughly a third of the months, purely by
-chance. This is not something we got wrong, and not something we could resolve
-by writing to the authors.
+**One thing I got wrong here, which I am now fixing.** I had concluded from this
+that the trading-frequency number was a dead end. It is not. The menu of settings
+we use runs out at its top end, and the rule picks that top setting in a third of
+all months — which means it wants a smoother, less-trading signal than the menu
+lets it have, and is forced to trade more than it would choose. That is the
+direction of our disagreement in both the US and Japan. Extending the menu is the
+obvious next test and I had talked myself out of running it.
 
 # 7. What is next, and two questions
 
