@@ -59,17 +59,22 @@ def test_metric_row_uses_the_contract_turnover_scale() -> None:
     """The holdout must not silently fall back to the function default.
 
     `performance_metrics` defaults to 0.5 (the paper's half-turnover identity)
-    while the holdout contract declares `mean_one_way_turnover_times_252`, which
-    is 1.0. Omitting the argument published every 2026 turnover at half its
+    while the 2026 holdout contract declared `mean_one_way_turnover_times_252`,
+    which is 1.0. Omitting the argument published every 2026 turnover at half its
     contracted value, and nothing caught it because both numbers are plausible.
+
+    The holdout contract itself was removed in the 2026-07-29 config trim, so the
+    two conventions are exercised through the contracts that remain. What is
+    under test is that the scale comes from the config at all, not from the
+    function default -- which is the defect, and is contract-independent.
     """
     dates = pd.bdate_range("2024-01-02", periods=6)
     frame = _trades(dates, [0.0, 1.0, 1.0, 0.0, 0.0, 1.0])
     expected = frame["one_way_turnover"].mean() * 252
 
-    holdout_config = load_config(ROOT / "research-holdout-2026.toml")
-    assert holdout_config.metrics_protocol.turnover_scale == 1.0
-    assert holdout._metric_row(frame, holdout_config)["turnover"] == pytest.approx(
+    legacy_config = load_config(ROOT / "research.toml")
+    assert legacy_config.metrics_protocol.turnover_scale == 1.0
+    assert holdout._metric_row(frame, legacy_config)["turnover"] == pytest.approx(
         expected
     )
 
