@@ -1,6 +1,6 @@
-"""The sealed v9.3 HMM result against Table 4, every delay, both drawdown bases.
+"""The sealed v9.4 HMM result against Table 4, every delay, both drawdown bases.
 
-This reads the first full sealed run of the v9.3 contract -- three markets,
+This reads the sealed run of the v9.4 contract -- three markets,
 delays 1/5/10, its own acquisition manifest, config lock and inventory -- and
 scores it the way the audit ledger now says it must be scored.
 
@@ -11,9 +11,13 @@ disagreement is documented rather than quietly resolved:
                                 flat-in-cash basis was withdrawn (it had been
                                 chosen by minimising error against Table 4, which
                                 is fitting an unspecified knob to the target).
-  risky_leg_wealth_flat_in_cash what research-expanding-v9-3.toml still declares,
-                                inherited from v9.2, and therefore what the
-                                sealed run's own metrics table reports.
+  risky_leg_wealth_flat_in_cash what v9.1 through v9.3 declared, kept here as
+                                the alternative so the withdrawal can be checked
+                                rather than taken on trust.
+
+v9.4 is the run scored below and it declares total_wealth. Its predecessor v9.3
+was run separately end to end; the two agree to 0.00e+00 on every metric that
+does not read the drawdown path, which is six of the eight.
 
 Only maximum drawdown and Calmar can differ between them; the other six metrics
 never touch the drawdown path.
@@ -44,9 +48,9 @@ from adaptive_jump.backtest import (  # noqa: E402
 )
 
 RUN = ROOT / "artifacts" / "fixed-baselines" / (
-    "fixed-baselines-9aec0f58a8bf-f31f60d08cbb-b23238411618"
+    "fixed-baselines-34e51cd7a388-967806b961b4-e690dbe396f3"
 )
-OUT = ROOT / "artifacts" / "hmm-residual" / "11-sealed-v9-3"
+OUT = ROOT / "artifacts" / "hmm-residual" / "11-sealed-v9"
 TOL, COST = 0.05, 10.0
 DELAYS = (1, 5, 10)
 A, D = "total_wealth", "risky_leg_wealth_flat_in_cash"
@@ -84,12 +88,12 @@ def main() -> None:
     boundaries = pd.read_csv(RUN / "boundaries.csv")
 
     lines = [
-        "SEALED RUN v9.3 — HMM vs Table 4, delay 1/5/10, hai quy ước drawdown",
+        "SEALED RUN v9.4 — HMM vs Table 4, delay 1/5/10, hai quy ước drawdown",
         f"run: {RUN.name}",
         "",
         f"(ngưỡng {TOL:.2f}; * = dưới nửa chữ số cuối paper in ra; ! = ngoài ngưỡng)",
-        "A = total_wealth (mặc định a-priori)   "
-        "D = flat_in_cash (hợp đồng khai, đã rút)",
+        "A = total_wealth (hợp đồng v9.4 khai)   "
+        "D = flat_in_cash (v9.1-v9.3, đã rút)",
         "",
     ]
     records = []
