@@ -190,6 +190,18 @@ noticed only after measuring that the 9% of months selecting k = 0 drive about
 Japan is unchanged and Germany gets slightly worse. A rule that works in one
 market out of three is a fit, not a rule.
 
+**And the rule cannot choose reliably even with the set fixed.** Splitting each
+8-year validation window in half and comparing the argmax of each half gives
+agreement of 17.1% (us), 15.1% (de) and 17.4% (jp) against a chance rate of
+16.7%. A deterministic control — identical return paths, one handicapped by a
+constant 0.1 of Sharpe — agrees 100% of the time, so the test detects a
+consistent advantage an order of magnitude smaller than the spread between real
+candidates. The candidates simply do not have a consistent advantage over one
+another at this horizon. Median winning margin is 0.030-0.047 of Sharpe and
+about a third of months are decided by less than 0.02. Turnover is therefore
+unidentified twice over: the set is unpublished, and the rule that picks from it
+is not reproducible in principle.
+
 **No set reproduces Table 4 in all three markets at once.** Scored on all eight
 metrics rather than turnover alone, the best any of the eight achieves is 8/8
 (us), 7/8 (de) and 7/8 (jp) — and by three different sets. Turnover also trades

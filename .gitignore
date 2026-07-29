@@ -51,6 +51,7 @@ artifacts/data-provenance/*
 !artifacts/hmm-residual/06-mdd-convention/*.csv
 !artifacts/hmm-residual/07-table5-delays/*.csv
 !artifacts/hmm-residual/08-grid-identification/*.csv
+!artifacts/hmm-residual/09-selection-noise/summary.csv
 !artifacts/hmm-residual/v9-us-hmm/metrics.csv
 !artifacts/hmm-residual/v9-2-de-hmm/metrics.csv
 !artifacts/hmm-residual/jp-cash-sensitivity/metrics.csv

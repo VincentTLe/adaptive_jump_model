@@ -1583,3 +1583,68 @@ Japanese return gap (0.031pp of 0.200pp) and is not freely available; the
 risk-free ambiguity is worth six times more and cannot be closed at all. Japan
 is therefore finished at the same level as the other two markets, and the
 remaining work there is not a data problem.
+
+## The selection rule itself reads no stable signal (2026-07-28)
+
+Turnover is the last failing cell in all three markets, everything upstream is
+cleared, and the candidate set has been shown unidentified. This asks the more
+basic question: given a grid, does the rule that picks from it carry signal?
+
+Section 3.4.3 takes the candidate with the highest Sharpe over an 8-year
+validation window. Split each window into its first and second halves, take the
+argmax of each, and count agreement — a rule reading signal picks the same
+candidate from two samples of the same window
+(`artifacts/hmm-residual/09-selection-noise/`):
+
+| market | split-half agreement | chance | median winning margin | months decided by < 0.02 |
+|---|---|---|---|---|
+| S&P 500 | **17.1%** | 16.7% | 0.030 | 33.0% |
+| DAX | **15.1%** | 16.7% | 0.032 | 31.2% |
+| Nikkei 225 | **17.4%** | 16.7% | 0.047 | 27.8% |
+
+**At chance, in all three.** The two halves of the same validation window pick
+the same smoothing window no more often than a die would.
+
+### Three controls, and the two that "failed" are part of the evidence
+
+The test is only worth anything if it can detect a real difference. Three
+attempts, recorded in the order they were made because the first two were
+mine to get wrong:
+
+| control | US | DE | JP |
+|---|---|---|---|
+| always invested vs always cash | 77.1% | 62.6% | **46.4%** |
+| a signal vs its own mirror image | 61.4% | 58.3% | 43.5% |
+| identical paths, one handicapped by a constant drift of 0.1 Sharpe | **100%** | **100%** | **100%** |
+
+The third shows the machinery works: when one candidate is consistently better,
+the split-half test says so every single time, at a handicap of one tenth of a
+Sharpe — an order of magnitude below the 0.16-0.36 spread the real candidates
+show between best and worst.
+
+The first two land near chance, and Japan's first control lands *below* it. That
+is not the instrument failing. It is the same finding arriving from a different
+direction: **over four-year windows, even strategies with wildly different
+long-run Sharpes swap ranks routinely.** Japanese equities really did lose to
+cash across many four-year stretches of 1990-2012. A rule that ranks candidates
+by realised Sharpe over such a window is ranking noise, and that is exactly what
+the paper's selection procedure does.
+
+### What this means for the replication
+
+Turnover is not merely unidentified because the candidate set is unpublished. It
+is unidentified **even with the set fixed**, because the rule that chooses from
+it is not reproducible in principle: two researchers with identical data,
+identical code and identical grids would select different smoothing windows in
+any month whose margin falls inside the noise, which is about a third of them.
+
+This closes the turnover question as far as it can be closed. It is not our
+defect, it is not a missing specification we could ask the authors for, and
+chasing it with a better grid would be chasing a coin flip. The honest report is
+the fixed-k persistence curve, which reproduces Table 3 to 1.9%, plus the
+statement that the selected-k turnover is not an identified quantity.
+
+It also predicts something checkable about the jump model, whose penalty is
+chosen by the same rule over the same window: the same instability should appear
+there, and any JM turnover disagreement should be read in that light before it
+is treated as a modelling defect.
