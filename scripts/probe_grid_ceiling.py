@@ -85,13 +85,13 @@ OOS_START = pd.Timestamp("1990-01-01").date()
 BASE_GRID = (0, 2, 4, 6, 8, 20)
 EXTENSIONS = (40, 80, 160, 320)
 NAMES = {"us": "S&P 500", "de": "DAX", "jp": "Nikkei 225"}
-# Every market on the v9.3 contract. Japan's v9.3 definition names the same two
-# files with the same hashes as v8.5, so the sealed states already are v9.3's.
-SOURCE = {
-    "us": RESIDUAL / "v9-3-us-hmm",
-    "de": RESIDUAL / "v9-3-de-hmm",
-    "jp": SEALED / "jp",
-}
+# All three markets from the sealed v9.4 run. The per-market HMM caches this
+# probe originally read were stripped to metrics/run.json in the 2026-07-30
+# cleanup, after the sealed run was shown to carry bit-identical states.
+V9_RUN = ROOT / "artifacts" / "fixed-baselines" / (
+    "fixed-baselines-34e51cd7a388-967806b961b4-e690dbe396f3"
+)
+SOURCE = {"us": V9_RUN / "us", "de": V9_RUN / "de", "jp": V9_RUN / "jp"}
 
 
 def grids() -> list[tuple[int, ...]]:
