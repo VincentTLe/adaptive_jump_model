@@ -1,0 +1,62 @@
+schema_version = 1
+experiment_id = "jm-standardizer-geometry-002"
+frozen_at_utc = "2026-07-31T00:55:00Z"
+claim_class = "EXPLORATORY"
+analysis_label = "JM STANDARDIZER GEOMETRY ON SEALED V9.4 — MECHANISM-FIRST REVISIT"
+hypothesis = "The per-refit training-window scaler geometries move the US Table-3 persistence curve toward the paper's published values (ratio 0.75 -> nearer 1.0), and the direction of the move at lambda = 0 identifies the feature-geometry contribution separately from the lambda scale."
+primary_estimand = "per_variant_table3_curve_plus_selected_anchors_plus_table4_cells"
+extension_access = false
+adaptive_experiment = false
+model_refitting = true
+
+# Revisit declaration (CLAUDE.md rule). Prior art: the v8-era standardizer
+# spread in docs/unspecified-choices.md row 1, whose ledger conclusion was "no
+# single preprocessing variant reproduces Table 3 and Table 4 at the same
+# time; bounded evidence, do not re-litigate". Premises changed since that
+# conclusion, each material and named:
+#   1. every US figure in that table was computed on the CRSP total-market
+#      substitute, before the v9 S&P substitution and the v9.3 splice repair;
+#   2. the sealed v9.4 contract and its parallel replay did not exist;
+#   3. a new mechanism instrument was measured on 2026-07-30
+#      (jm-grid-identification-001 B1): the fixed-lambda Table-3 curve fails
+#      systematically at ratio ~0.75 INCLUDING at lambda = 0, where the lambda
+#      scale plays no role — isolating feature geometry;
+#   4. the author-source sweeps pinned the dissertation feature formulas (ours
+#      match) and the author-code recipe (clip 3 sigma then a scaler fitted on
+#      the training window only).
+prior_art = "docs/unspecified-choices.md row 1 (v8-era spread) and jm-grid-identification-001"
+premise_changes = ["US index substitution and splice repair postdate all prior rows", "sealed v9.4 contract", "lambda-zero Table-3 instrument", "author-side formula and recipe pins"]
+
+[parent]
+config_path = "research-expanding-v9-4.toml"
+config_sha256 = "34e51cd7a3880ea47067c346b1fc4c6a9c88cff8cac7b67a63d18d0ccea820ad"
+run_id = "fixed-baselines-34e51cd7a388-967806b961b4-e690dbe396f3"
+inputs = "sealed per-market features.csv (raw inputs and excess_return); JM lambda grid fixed at the sealed [0, 5, 15, 35, 70, 150] throughout"
+
+# Variants, named before any run. The HMM is untouched by all of them (it
+# consumes raw equity_log only).
+[variants]
+V0_expanding_sealed = "control: sealed expanding_full_history_ddof1 features + IdentityScaler; must replay the sealed jm-states.csv exactly (parity gate)"
+V1_window_scaler = "raw (unstandardized) features; per-refit StandardScaler fitted on each 3000-day training window (the supported sklearn_standard_scaler_ddof0 path)"
+V2_author_recipe = "raw features; per refit, clip each feature at 3 standard deviations of the training window THEN StandardScaler, both fitted on the training window only (the author's example-code recipe; example-code provenance, not paper text)"
+probe_loop_gate = "V1 is computed twice — once through src fixed_jm_states and once through the probe-local loop used for V2 — and the two must agree exactly before any V2 number is read"
+
+[instruments]
+I1_mechanism = "US Table-3 curve, shifts/year 1982-2023 at lambda in {0,5,15,35,70,150}; reproduces = within 0.15 of the published value at >= 5 of 6 lambdas"
+I2_anchors = "CV-selected US path (sealed grid): shifts and bear share vs the authors' printed 30 / 19.7%"
+I3_table4 = "all eight JM Table-4 cells, three markets, delay 1, 10bp, total_wealth basis, tolerance 0.05"
+registered_order = "I1 is read first and is a mechanism observable; I2/I3 are read after and never alone"
+
+[decision]
+winner_selection_allowed = false
+config_changes_allowed = false
+registered_interpretations = [
+  "if V1/V2 move the lambda-0 shift rate toward 9.7, feature geometry is confirmed as the dominant axis of the JM residual",
+  "if a variant passes I1 and is not majority-worse on I3, it becomes a documented CANDIDATE for a config-change proposal to the owner — adoption is a separate, owner-approved reseal, and the a-priori argument must rest on the author-code recipe, never on the I3 outcome",
+  "if no variant improves I1, the geometry axis closes as bounded (the v8-era ledger conclusion survives the premise changes) and the residual attribution moves to data",
+]
+no_sensitivity_claim = "results bound only the three named geometries"
+
+[storage]
+artifact_subdir = "artifacts/jm-residual/02-standardizer-geometry"
+required_outputs = ["parity note (V0 and probe-loop gate)", "table3-curves.csv", "anchors.csv", "table4-cells.csv", "report.txt"]

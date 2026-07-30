@@ -20,6 +20,9 @@ data/*.tar.zst
 data/raw/*
 data/processed/*
 artifacts/*
+!artifacts/jm-residual/
+artifacts/jm-residual/*/*/union-states.csv
+artifacts/jm-residual/*/*/union-refits.csv
 reports/
 *.log
 *.pid

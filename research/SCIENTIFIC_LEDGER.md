@@ -977,3 +977,25 @@ The complete final-v3 paper grids remain unidentified.
   This repeatedly inspected exploratory result supports no performance, alpha,
   profitability, robustness, holdout, paper-replication, or generalization
   claim.
+
+### 2026-07-30/31 — `jm-grid-identification-001` (complete)
+
+- The Section-15 identification question asked of the JM row on sealed v9.4,
+  frozen before any new lambda was fitted; 29-lambda union pass replayed the
+  sealed states exactly (parity gate, three markets).
+- **Registered interpretation drawn: the paper's own Table-3 persistence curve
+  does not reproduce** — 1/6 lambdas within the printed half-unit, systematic
+  ratio ~0.75, including at lambda = 0 where the lambda scale plays no role.
+  The feature/standardization geometry is thereby isolated as the dominant
+  unresolved axis, and the grid table is conditional on our geometry.
+- Conditional on that geometry: no pre-named grid (eight, all sourced) reaches
+  8/8 in any market; the registered turnover-alone criterion is met by no grid
+  in US or DE; DAX's published turnover 1.70 lies above the entire tested
+  spread. US CV-selected path: 34 shifts / 21.9% bear vs the authors' printed
+  30 / 19.7%.
+- Adversarially verified (3 independent auditors): recomputation bit-for-bit
+  PASS; two process findings (post-hoc glyph threshold, missing artifacts and
+  completion event) remediated with numbers unchanged.
+- Next frozen question, registered in advance: `jm-standardizer-geometry-002`.
+- Artifact: `artifacts/jm-residual/01-grid-identification/`. This exploratory
+  result supports no performance, replication, or grid-choice claim.
