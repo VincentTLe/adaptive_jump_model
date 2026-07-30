@@ -158,6 +158,40 @@ them lands in the gap our grid leaves between 8 and 20. Our v9 US picks are k20
 33%, k8 29%, k6 21%, k0 9%, k4 6%; the 9% of months at k = 0, where no filter is
 applied at all, contribute about 23% of all our trading.
 
+**Update 2026-07-30, after the sealed runs and an external source sweep.**
+
+*Identification, sharpened.* Measured on the sealed v9.3/v9.4 states across
+eight defensible candidate sets: no single set puts turnover inside tolerance in
+more than one market, and the two that manage one demand opposite ends — the US
+is matched only by 4|8|12|16|20 (which makes the US column 8/8) and Germany only
+by 2|4 (likewise 8/8 for Germany); Japan by none, though its 2.90 is attainable.
+One shared candidate set cannot satisfy both, so no grid choice reproduces the
+row. This matches the effective-k inversion above (13.4 / 3.6 / 6.4).
+
+*The grids are unpublished everywhere, now checked at the source.* The author's
+`jumpmodels` package (PyPI 0.1.1, sole release) has no CV code, no grid, no HMM
+and no median filter; the GitHub repo's only example hard-codes λ = 50 on
+Nasdaq-100 data; arXiv v1 published a λ grid ({10, 22, 50, 100, 220, 500, 1000})
+for a *different* protocol and dataset and v3 withdrew it; the companion paper
+gives only endpoints (0-100, log-spaced). Externally verified 2026-07-29/30,
+three-vote adversarial check per claim.
+
+*Where our excess concentrates.* Episode-level comparison against Shu's own
+Figure 6 path: 13 extra US bear episodes, 10 of them five sessions or shorter,
+mostly post-2000 (so not attributable to the reconstructed pre-1988 segment),
+7 of 11 post-2000 flickers in months where the CV picked k = 0. Removing the
+k = 0 excess arithmetically (1.795 → 1.528) agrees with the no-zero candidate
+set measured independently (1.530) — and still leaves the US outside tolerance,
+so this refines the attribution without changing the verdict. There is a
+defensible a-priori reading that k = 0 is not a *filter window* candidate at
+all; it is recorded, not adopted, because adopting it for its effect on Table 4
+would be fitting.
+
+*External echo.* Li, Chen, Tao & Ji (2025), citing the paper, select λ by
+information criteria from {0, 5, 10, 25, 50, 100} and land on the upper endpoint
+for all twelve assets — the same top-of-grid concentration our runs show, under
+a different rule on different data.
+
 **This row is therefore recorded as UNIDENTIFIED, not as an open gap to be
 closed.** The paper publishes a selection procedure and no candidate set, and
 the turnover row is reachable from within our grid — so a set that reproduces

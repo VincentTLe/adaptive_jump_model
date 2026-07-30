@@ -2,8 +2,10 @@
 
 Figure 6 annotates the US HMM panel with two numbers: 27.8% of days in the bear
 regime, and 96 regime shifts. Our sealed v9.4 run spends 27.95% of days in bear
--- inside the printed precision -- and shifts 122 times. Same total time, 27%
-more transitions.
+and shifts 122 times. (27.95 is NOT within the printed half-digit of 27.8 --
+that band is [27.75, 27.85] -- an earlier draft of this docstring said it was,
+which was wrong. It is 0.15pp away: close, not printed-equal.) Same total time
+to within 0.15pp, 27% more transitions.
 
 That is a shape difference, not a level difference, and counting shifts does not
 describe it. This compares the full distribution of episode durations against
@@ -14,9 +16,17 @@ Why it matters for the open question. Turnover is the only Table 4 cell that
 misses, in every market and at every delay, and no candidate smoothing set fixes
 more than one market at a time. The remaining hypothesis is that our state
 sequence differs from theirs even where the totals agree. If our bear episodes
-are systematically shorter and more numerous, that is the signature of a noisier
-underlying series being pushed through the same threshold -- which points at the
-data rather than at the model or the grid.
+are systematically shorter and more numerous, one candidate explanation is a
+noisier underlying series pushed through the same threshold. WHERE the excess
+episodes fall discriminates further, and the follow-up (recorded in
+docs/audit/2026-07-30-self-audit.md) found they do NOT concentrate where the
+fit window still contains reconstructed pre-1988 data: 12 of 16 short episodes
+fall after 2000, and 7 of those 11 post-2000 flickers occur in months where the
+cross-validation selected k=0 -- no smoothing at all. k=0 rules 9.5% of days but
+carries 23.0% of all turnover. Removing that excess arithmetically (1.795 ->
+1.528) agrees with the independent grid probe's no-zero candidate set (1.530)
+and still leaves the US outside tolerance, so the identification conclusion is
+unchanged; but the proximate amplifier is the k=0 months, not raw data noise.
 
 Reads only stored artifacts. Writes artifacts/hmm-residual/13-episode-shape/.
 """
