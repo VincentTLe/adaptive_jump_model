@@ -55,11 +55,12 @@ class MarketInput:
     oos_start: date
 
 
-def _hmm_workers() -> int:
-    """Worker count for the HMM refit loop.
+def _model_workers() -> int:
+    """Worker count for the HMM and fixed-JM day loops.
 
-    Fitting one window is independent of every other window, so this is a
-    scheduling knob and never changes a result. It was pinned at 16 while the
+    Fitting one window is independent of every other window, and every JM
+    inference day is independent given its governing biannual refit, so this is
+    a scheduling knob and never changes a result. It was pinned at 16 while the
     machine had 32 cores, which left half of them idle. ADAPTIVE_JUMP_N_JOBS
     (set by scripts/run_fast.sh) overrides it; otherwise leave two cores for the
     parent process and the rest of the machine.
@@ -275,7 +276,7 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
                 config.model_protocol,
                 config.hmm_protocol,
                 initial=initial_hmm,
-                n_jobs=_hmm_workers(),
+                n_jobs=_model_workers(),
                 checkpoint_every=MODEL_CHECKPOINT_DAYS,
                 progress=save_hmm_progress,
             )
@@ -307,6 +308,7 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
                 config.model_protocol,
                 config.jm_protocol,
                 initial=initial_jm,
+                n_jobs=_model_workers(),
                 checkpoint_every=MODEL_CHECKPOINT_DAYS,
                 progress=save_jm_progress,
             )

@@ -236,3 +236,18 @@ JM 30 shifts / 19.7% bear) used in
 `docs/audit/2026-07-30-deep-research-round2.md`. It is an author artifact, not
 a data source: nothing in it feeds a run, and per CLAUDE.md nothing in it may
 be promoted into a claim about the paper.
+
+`data/external/inputs/shu-princeton-dissertation-2025.pdf` — Yizhan Shu's 2025
+Princeton ORFE dissertation, downloaded 2026-07-30 from DataSpace (handle
+`88435/dsp01g158bm716`; the site sits behind an ALTCHA browser check, fetched
+with a headless browser), sha256
+`af6301c4b626217eb46d29d55efb78b1494078eb00c2b68ec5a3e9c72cd3759d`. Chapter 3
+is the JAM paper; used in `docs/audit/2026-07-30-jm-deep-research.md`. Author
+artifact, not a data source.
+
+`data/external/inputs/shu-qwafafew-2024-04-22-slides.pdf` — Shu's QWAFAFEW ×
+NEW deck (2024-04-22), downloaded 2026-07-30 from the author's public Google
+Drive link, sha256
+`4be6671a6ddb19e85c5c698f3e665bc6834b9c996dcb68cecdc279d14c084e0c`. Source of
+the λ_is-vs-λ_oos idea recorded (and excluded from the replication) in the
+same audit note. Author artifact, not a data source.

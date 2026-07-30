@@ -231,6 +231,64 @@ def test_fixed_jm_resumes_exactly_from_causal_checkpoint() -> None:
     assert resumed.refits["fit_date"].value_counts().eq(1).all()
 
 
+def test_fixed_jm_parallel_matches_serial_exactly() -> None:
+    model, jm = _protocols()
+    frame = _frame(periods=20)
+    serial_snaps: list[FixedJMResult] = []
+    parallel_snaps: list[FixedJMResult] = []
+
+    serial = fixed_jm_states(
+        frame,
+        model,
+        jm,
+        include_fit_diagnostics=True,
+        checkpoint_every=3,
+        progress=serial_snaps.append,
+    )
+    parallel = fixed_jm_states(
+        frame,
+        model,
+        jm,
+        include_fit_diagnostics=True,
+        checkpoint_every=3,
+        progress=parallel_snaps.append,
+        n_jobs=2,
+    )
+
+    pd.testing.assert_frame_equal(parallel.states, serial.states, check_exact=True)
+    pd.testing.assert_frame_equal(parallel.refits, serial.refits)
+    assert len(parallel_snaps) == len(serial_snaps)
+    for parallel_snap, serial_snap in zip(parallel_snaps, serial_snaps, strict=True):
+        pd.testing.assert_frame_equal(
+            parallel_snap.states, serial_snap.states, check_exact=True
+        )
+
+
+def test_fixed_jm_parallel_resumes_exactly_from_causal_checkpoint() -> None:
+    model, jm = _protocols()
+    frame = _frame(periods=20)
+    captured: list[FixedJMResult] = []
+
+    def interrupt(result: FixedJMResult) -> None:
+        captured.append(result)
+        raise RuntimeError("simulated interruption")
+
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        fixed_jm_states(frame, model, jm, checkpoint_every=3, progress=interrupt)
+    resumed = fixed_jm_states(frame, model, jm, initial=captured[0], n_jobs=2)
+    uninterrupted = fixed_jm_states(frame, model, jm)
+
+    pd.testing.assert_frame_equal(resumed.states, uninterrupted.states)
+    pd.testing.assert_frame_equal(resumed.refits, uninterrupted.refits)
+
+
+def test_fixed_jm_rejects_non_positive_worker_count() -> None:
+    model, jm = _protocols()
+
+    with pytest.raises(ModelError, match="worker count must be positive"):
+        fixed_jm_states(_frame(), model, jm, n_jobs=0)
+
+
 def test_fixed_jm_accepts_empty_checkpoint() -> None:
     model, jm = _protocols()
     frame = _frame()
