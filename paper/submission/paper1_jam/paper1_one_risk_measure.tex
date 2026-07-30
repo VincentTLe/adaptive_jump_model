@@ -1,0 +1,691 @@
+% =====================================================================
+% Paper 1 -- Journal of Asset Management submission
+% "One Risk Measure, Fewer Trades: A Parsimonious Jump Model for
+%  U.S. Downside Protection"
+% Chicago author-date references (natbib + chicagoa.bst).
+% Two builds from one source:
+%   full-author build : compile this file directly.
+%   anonymous build   : compile paper1_anon.tex (sets \ANONYMOUS).
+% No reported number, sample, date, or claim differs from the retained
+% experiments; main tables show 3 decimals, exact values are in
+% supplementary_S1_exact_values.csv.
+% =====================================================================
+\newif\ifanon
+\ifdefined\ANONYMOUS\anontrue\else\anonfalse\fi
+
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{threeparttable}
+\usepackage{siunitx}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage[round,authoryear]{natbib}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage[nameinlink]{cleveref}
+
+\graphicspath{{figures/}{../figures/}{./}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\setlength{\emergencystretch}{2em}
+\captionsetup{font=small,labelfont=bf}
+
+\sisetup{
+  detect-weight = true,
+  detect-family = true,
+  group-digits  = false,
+  table-align-text-post = false
+}
+
+\newcommand{\BH}{Buy\,\&\,Hold}
+\newcommand{\ind}{\mathbf{1}}
+
+\title{\textbf{One Risk Measure, Fewer Trades:}\\
+A Parsimonious Jump Model for U.S. Downside Protection}
+
+\ifanon
+  \author{}
+  \date{}
+\else
+  \author{Tan Le\thanks{Corresponding author: \texttt{lethongtan4@gmail.com}.
+  ORCID: 0000-0000-0000-0000 (placeholder).}\\[2pt]
+  \small Independent Researcher\\
+  \small Ho Chi Minh City, Vietnam}
+  \date{July 2026}
+\fi
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Regime models are useful only if their signals survive the delay between
+observing the market and trading it. We revisit a recent market-or-cash
+experiment that evaluates a statistical jump model (JM) against a Gaussian
+hidden Markov model (HMM), using public equity and cash-rate proxies, past
+information only, monthly walk-forward model selection, a one-day trading delay,
+and ten basis points of one-way trading cost. The public-proxy reconstruction
+does not recover the original three-market ordering: the standard three-feature
+jump model does not beat both the HMM and buy-and-hold in the United States,
+Germany, or Japan. A simpler model does much better in the United States. Using
+exponentially weighted downside deviation as the only jump-model feature raises
+net Sharpe from 0.570 to 0.908, improves maximum drawdown from $-33.9\%$ to
+$-19.4\%$, and reduces position changes from 21 to 11. Its drawdown is
+essentially the same as the HMM's, but it trades far less and earns a higher
+Sharpe ratio. A prespecified control that triples the downside-deviation loss
+retains most of the improvement, suggesting that feature content matters more
+than loss scale alone. The same model does not beat buy-and-hold in Germany or
+Japan, and one-state fits remain common there. The evidence supports a focused
+U.S. hypothesis about feature parsimony, not a cross-market or live-performance
+claim.
+\end{abstract}
+
+\noindent\textbf{Keywords:} statistical jump models; market regimes; downside
+deviation; feature parsimony; hidden Markov models; downside risk.
+
+\bigskip
+\noindent\textbf{JEL classification:} C38; G11; G17.
+
+\section{Introduction}
+
+A market-regime signal has to solve a practical problem before it solves a
+statistical one. A signal that changes every few days is difficult to trade and
+quickly loses money to delay and transaction costs. A signal that almost never
+changes is easier to trade, but may react too late to protect a portfolio. The
+useful signal lies somewhere between those extremes.
+
+The 0/1 strategy makes this trade-off easy to see. It holds the equity market
+when the current regime is favorable and local cash when it is unfavorable.
+There is no portfolio optimizer to conceal a weak signal. If the regime model
+reacts to noise, the strategy whipsaws. If it reacts too slowly, the strategy
+stays invested through the drawdown or misses the rebound.
+
+\citet{shu2024} use this setting to compare a Gaussian HMM with a statistical
+jump model. The HMM estimates a latent Markov chain from returns. The jump model
+is closer to temporal clustering: it assigns observations to fitted centers and
+charges a fixed cost whenever the state changes \citep{bemporad2018,nystrup2020}.
+The parent study selects the HMM smoothing window and the JM jump penalty with a
+trailing eight-year validation exercise that includes trading delay and
+transaction cost. On licensed 1990--2023 data, the JM-guided strategy has a
+higher Sharpe ratio and a smaller maximum drawdown than both the HMM strategy
+and buy-and-hold in the United States, Germany, and Japan.
+
+We reconstruct the same economic question on public proxies. The reconstruction
+preserves the parts of the design that matter for a live strategy: models use
+past data only, tuning is walk-forward, a signal formed after day $t$ is first
+reflected in portfolio return at $t+2$, and every one-way position change costs
+ten basis points. It is not a numerical replication. The public instruments,
+cash-rate definitions, warm-up histories, and evaluation periods differ
+materially from the licensed sample.
+
+The standard three-feature jump model does not recover the original model
+ordering on these proxies. This failure leads to a smaller question: does the
+model need all three features? The parent study uses one downside-risk
+measure---exponentially weighted downside deviation---and two exponentially
+weighted Sortino ratios. The return features are economically sensible, but they
+are also noisy. Removing them produces a one-dimensional jump model whose state
+changes are driven only by recent downside risk.
+
+That simple model is the clearest empirical result in the project. In the U.S.
+proxy sample, the downside-deviation-only jump model achieves a net Sharpe ratio
+of 0.908, compared with 0.570 for the standard model, 0.654 for the HMM, and
+0.513 for buy-and-hold. It also cuts the standard model's maximum drawdown from
+$-33.9\%$ to $-19.4\%$ and reduces the number of position changes from 21 to 11.
+The result is not reproduced in Germany or Japan.
+
+A one-feature loss is smaller, in raw objective units, than a three-feature
+loss. Keeping the same jump-penalty grid could therefore make the one-feature
+model look more persistent for a mechanical reason. We address that concern with
+a prespecified scale control that multiplies the downside-deviation loss by
+three while leaving the data, grid, timing, refits, and validation procedure
+unchanged. The control keeps most of the improvement over the standard model.
+This does not prove that the Sortino features are harmful, but it makes raw loss
+scale an incomplete explanation.
+
+The paper makes three contributions. First, it provides a transparent
+public-proxy reconstruction of the economic test in \citet{shu2024}. Second, it
+shows that a one-feature downside-risk jump model can deliver a much cleaner U.S.
+market-or-cash path than the standard three-feature model. Third, it separates
+feature removal from a simple loss-scale effect and reports the cases where the
+interpretation breaks down. The evidence is deliberately narrow: it is
+exploratory, the through-2023 sample has been inspected repeatedly, and no
+untouched confirmation period is used.
+
+\subsection{Related work}
+
+The downside-risk features used here descend from the safety-first tradition of
+\citet{roy1952} and the diversification framework of \citet{markowitz1959}, in
+which the relevant risk is the probability and depth of shortfall rather than
+symmetric variance. The empirical fact that motivates any regime model is that
+market volatility is itself time-varying and clusters
+\citep{schwert1989,pagan2003}: quiet and turbulent periods persist long enough
+that a slow-moving state estimate can, in principle, be traded. Regime-switching
+approaches to asset allocation have a mixed track record; \citet{bulla2011} find
+that Markov-switching allocation rules can add value but are sensitive to
+estimation and implementation choices, which is precisely why we hold the
+trading protocol---delay, cost, and the 0/1 mapping---fixed across models.
+Within the jump-model family, \citet{bemporad2018} introduced the fitting
+algorithm, \citet{nystrup2020} connected it to persistent-state hidden Markov
+estimation, and \citet{nystrup2021} studied feature selection directly. Our
+contribution is narrower and more empirical than the last: rather than search
+over feature subsets, we test one economically motivated reduction to a single
+downside-risk coordinate and audit whether its advantage is a feature effect or
+an artefact of loss scale.
+
+\section{Data and empirical design}
+
+\subsection{Public proxies and evaluation samples}
+
+The parent study uses licensed total-return indices and country-specific
+three-month Treasury-bill yields beginning in 1970. Those exact series and the
+complete empirical package are not available. We therefore use public
+instruments that play similar economic roles, summarized in \cref{tab:data}. The
+data are capped at 31 December 2023.
+
+\begin{table}[t]
+\centering
+\caption{Public proxy data and primary evaluation samples.}
+\label{tab:data}
+\small
+\begin{threeparttable}
+\begin{tabular}{@{}p{1.6cm}p{4.1cm}p{4.1cm}p{1.7cm}r@{}}
+\toprule
+Market & Equity proxy & Cash-rate proxy & Eval.\ start & Obs. \\
+\midrule
+US & S\&P 500 total-return candidate (Yahoo \texttt{\char94 SP500TR}) &
+Three-month U.S. Treasury-bill discount rate (FRED \texttt{DTB3}) & 4 Dec 2007 &
+4046 \\
+Germany & DAX performance-index candidate (Yahoo \texttt{\char94 GDAXI}) &
+Three-month interbank-rate proxy (FRED \texttt{IR3TIB01DEM156N}) & 3 Jan 2008 &
+4059 \\
+Japan & Nikkei 225 price index (Yahoo \texttt{\char94 N225}) & Uncollateralized
+call-rate proxy (Bank of Japan \texttt{STRACLUC3M}) & 7 May 2009 & 3586 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]\footnotesize
+\item \emph{Notes:} All samples end on 29 December 2023 after training,
+validation, trading-delay, and common-date alignment. The Japanese equity proxy
+excludes dividends. The German and Japanese cash series are not Treasury-bill
+series. These differences prevent a like-for-like replication of the parent
+sample.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+Equity simple return is computed from consecutive valid market dates. Cash rates
+are converted to daily returns and aligned backward only after a conservative
+publication lag. No missing value is filled from the future. Excess return is
+equity return minus the aligned cash return.
+
+The backward alignment is deliberately conservative. Interest-rate series are
+published with administrative lags and, for the German and Japanese proxies, at
+lower than daily frequency; aligning them only after a publication lag avoids
+crediting the strategy with information it could not have held in real time. The
+same principle governs feature construction. Every exponentially weighted
+quantity at date $t$ uses only returns realized on or before $t$, and the
+standardization is estimated on the fitting window alone, so no test-period
+moment enters the features. These choices cost some responsiveness, but they keep
+the reconstruction honest about what a live implementation could actually have
+observed.
+
+The jump-model features are based on excess return and follow the downside-risk
+tradition of \citet{roy1952} and \citet{markowitz1959}. They are exponentially
+weighted downside deviation with half-life 10 and Sortino ratios with half-lives
+20 and 60:
+\begin{equation}
+DD_h(t)=\sqrt{\operatorname{EWM}_h\!\left[(r_t^x)^2\ind\{r_t^x<0\}\right]},
+\qquad
+Sortino_h(t)=\frac{\operatorname{EWM}_h[r_t^x]}{DD_h(t)}.
+\end{equation}
+Features are standardized on the training window only.
+
+\subsection{The market-or-cash strategy}
+
+Let $a_t\in\{0,1\}$ denote the equity signal formed after observing day $t$. The
+strategy holds equity when $a_t=1$ and cash when $a_t=0$. The signal is executed
+at the close of the next trading day, so the first affected return is day $t+2$.
+If $w_u$ is the equity position earning the return on day $u$, the net portfolio
+return is
+\begin{equation}
+r^{p,net}_u=w_u r^e_u+(1-w_u)r^c_u-0.001\lvert w_u-w_{u-1}\rvert.
+\end{equation}
+The first observed position receives no artificial opening cost. Annualized
+Sharpe is computed from daily net excess return, maximum drawdown includes
+initial wealth one, and turnover is
+$\tfrac{1}{2}\,252\,\operatorname{mean}\lvert w_u-w_{u-1}\rvert$, where the
+factor one-half counts an equity-to-cash-to-equity round trip once.
+
+\subsection{Models and walk-forward selection}
+
+The benchmark HMM is a two-state Gaussian model fitted to daily log return on a
+trailing 3000-observation window. The lower-volatility state is treated as
+favorable; the terminal Viterbi state is smoothed by a trailing majority rule,
+with the smoothing window selected monthly. The standard two-state jump model is
+fitted on the three standardized features $x_t\in\mathbb{R}^3$ by minimizing
+\begin{equation}
+\min_{\Theta,S}\sum_{t=0}^{T-1}\frac{1}{2}\lVert x_t-\theta_{s_t}\rVert_2^2
++\lambda\sum_{t=1}^{T-1}\ind\{s_t\neq s_{t-1}\}.
+\label{eq:fixedjm}
+\end{equation}
+The model is refitted in January and July on the trailing 3000 complete
+observations. The state with the higher cumulative training excess return is
+labeled favorable. Between refits, the scaler and centers are frozen and only the
+terminal state of the exact dynamic-programming path is emitted.
+
+The jump model is estimated by coordinate descent. With the states fixed, each
+center is the mean of its assigned standardized observations; with the centers
+fixed, the optimal state sequence is the exact minimizer of \cref{eq:fixedjm},
+computed by dynamic programming over the states in $O(TK^2)$ time for $K$ states
+\citep{bemporad2018}. The two steps alternate to a local optimum, and the fit is
+repeated from several initializations to reduce sensitivity to starting centers.
+Because the switching term is a simple count of state changes, the dynamic
+program is exact rather than approximate. That exactness is what makes the
+penalty $\lambda$ directly interpretable as the price of a single regime change,
+and it is the property that the later scale control relies on
+\citep{nystrup2020}.
+
+For both HMM and jump model, the smoothing parameter is selected at the end of
+each month by replaying the preceding eight calendar years. Candidate signals are
+evaluated with the same trading delay and transaction cost as the outer strategy.
+The candidate with the highest validation Sharpe is used during the following
+month, again subject to the trading delay. This follows the practical selection
+principle of \citet{shu2024}: tune the regime signal for the economic task in
+which it will be used.
+
+\subsection{The parsimonious model and its scale control}
+
+The downside-deviation-only model replaces the three-dimensional observation in
+\cref{eq:fixedjm} with standardized downside deviation $z_t^{DD}$:
+\begin{equation}
+\min_{\theta,S}\sum_{t=0}^{T-1}\frac{1}{2}(z_t^{DD}-\theta_{s_t})^2
++\lambda\sum_{t=1}^{T-1}\ind\{s_t\neq s_{t-1}\}.
+\label{eq:dd}
+\end{equation}
+Everything else---the complete-row calendar, training window, refit schedule,
+jump-penalty grid, validation window, signal timing, and trading cost---is
+unchanged. This comparison has an immediate scale confound: \cref{eq:dd} has one
+standardized loss coordinate, whereas the standard model has three. We therefore
+also estimate a three-times-loss control,
+\begin{equation}
+J_3(\theta,S;\lambda)=\sum_{t=0}^{T-1}\frac{3}{2}(z_t^{DD}-\theta_{s_t})^2
++\lambda\sum_{t=1}^{T-1}\ind\{s_t\neq s_{t-1}\},
+\end{equation}
+which satisfies $J_3(\theta,S;\lambda)=3J_1(\theta,S;\lambda/3)$ for the same
+data and tie rules, so it has a precise mechanical interpretation. The raw
+candidate grid is deliberately left unchanged; the exercise asks whether the
+observed result disappears when the observation loss is returned to roughly the
+three-coordinate scale.
+
+The DD-only model was one member of a frozen five-model challenger suite, not the
+only idea examined. The other challengers fixed $\lambda=50$, required two
+consecutive observations before switching, added matured future-return
+information to the training loss without using it online, or replaced squared
+Euclidean loss with cityblock loss. Their complete results are reported in
+\cref{app:suite}.
+
+\section{Results}
+
+\subsection{The public proxy does not reproduce the parent ordering}
+
+\Cref{tab:parentproxy} compares the headline Sharpe ratios reported by
+\citet{shu2024} with the public-proxy reconstruction. The numbers are not
+like-for-like: the source instruments and test periods differ. The comparison is
+useful because it shows the empirical problem that motivates the parsimonious
+model. On the public proxies, the standard jump model is not the strongest of
+buy-and-hold, HMM, and JM in any market.
+
+\begin{table}[t]
+\centering
+\caption{Net Sharpe in the parent study and the public-proxy reconstruction.}
+\label{tab:parentproxy}
+\begin{threeparttable}
+\begin{tabular}{l c c}
+\toprule
+Market & Shu et al.: \BH{}/HMM/JM & Public proxy: \BH{}/HMM/standard JM \\
+\midrule
+US & 0.48 / 0.54 / 0.68 & 0.513 / 0.654 / 0.570 \\
+Germany & 0.30 / 0.35 / 0.44 & 0.290 / 0.008 / 0.166 \\
+Japan & 0.12 / 0.19 / 0.31 & 0.545 / 0.399 / 0.329 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]\footnotesize
+\item \emph{Notes:} Parent figures are as reported by \citet{shu2024} on
+licensed 1990--2023 data. Proxy figures are net of ten-basis-point one-way costs
+on the samples in \cref{tab:data}. This is a proxy non-replication, not a
+refutation of the original study.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+The Japanese sample makes the difference especially clear: public-proxy
+buy-and-hold Sharpe is about 0.545, compared with 0.12 in the parent paper, and
+the proxy excludes dividends.
+
+\subsection{One risk measure changes the U.S. result}
+
+\Cref{tab:mainresults} reports the main net results. The U.S. DD-only jump model
+is the only tested variant that beats both same-sample controls. Its Sharpe ratio
+is 0.908, a gain of 0.338 over the standard model and 0.254 over the stronger
+benchmark, the HMM.
+
+\begin{table}[t]
+\centering
+\caption{Primary-delay net results. Maximum drawdown, turnover, and cash fraction
+are in percent. Values are shown to three decimals; exact values are in the
+supplementary file.}
+\label{tab:mainresults}
+\small
+\begin{threeparttable}
+\begin{tabular}{l l
+  S[table-format=1.3]
+  S[table-format=-2.3]
+  S[table-format=3.3]
+  S[table-format=2.3]
+  S[table-format=2.0]}
+\toprule
+Market & Model & {Sharpe} & {MDD} & {Turnover} & {Cash} & {Switches} \\
+\midrule
+US & \BH{}                    & 0.513 & -53.963 & 0.000   & 0.000  & 0 \\
+US & Gaussian HMM             & 0.654 & -19.363 & 143.253 & 24.221 & 46 \\
+US & Standard three-feature JM& 0.570 & -33.857 & 65.398  & 21.157 & 21 \\
+US & DD-only JM               & 0.908 & -19.364 & 34.256  & 13.569 & 11 \\
+US & Three-times DD JM        & 0.884 & -19.531 & 46.713  & 14.137 & 15 \\
+\addlinespace
+Germany & \BH{}                    & 0.290 & -53.876 & 0.000   & 0.000  & 0 \\
+Germany & Gaussian HMM             & 0.008 & -54.590 & 105.543 & 11.949 & 34 \\
+Germany & Standard three-feature JM& 0.166 & -38.779 & 99.335  & 18.280 & 32 \\
+Germany & DD-only JM               & 0.226 & -42.833 & 80.710  & 11.358 & 26 \\
+Germany & Three-times DD JM        & 0.196 & -44.517 & 49.667  & 11.210 & 16 \\
+\addlinespace
+Japan & \BH{}                    & 0.545 & -31.799 & 0.000   & 0.000  & 0 \\
+Japan & Gaussian HMM             & 0.399 & -34.656 & 130.006 & 5.633  & 37 \\
+Japan & Standard three-feature JM& 0.329 & -32.162 & 45.678  & 27.886 & 13 \\
+Japan & DD-only JM               & 0.424 & -43.241 & 66.760  & 8.728  & 19 \\
+Japan & Three-times DD JM        & 0.428 & -34.529 & 80.814  & 13.887 & 23 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]\footnotesize
+\item \emph{Notes:} Net of ten-basis-point one-way costs, one-day trading delay
+($t+2$ first affected return). ``Switches'' counts executed position changes.
+The U.S. DD-only jump model is the only row whose Sharpe exceeds both
+same-sample buy-and-hold and HMM.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+The U.S. risk and activity profile is as important as the Sharpe ratio. DD-only
+improves maximum drawdown from $-33.9\%$ for the standard model to $-19.4\%$,
+essentially matching the HMM's $-19.4\%$. It does so with turnover of $34.3\%$,
+compared with $143.3\%$ for the HMM, and with 11 position changes instead of 46.
+The model spends only $13.6\%$ of the sample in cash, compared with $24.2\%$ for
+the HMM. \Cref{fig:uspaths} shows the difference directly: the standard model and
+HMM identify many more cash intervals, while the DD-only path keeps the long
+2008--2009 defensive episode, avoids a portion of the 2020 crash, and exits
+during the 2022 decline, but removes several shorter switches that do not improve
+the net strategy.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.94\textwidth]{fig_us_paths.png}
+\caption{U.S. market wealth and delayed cash positions, 4 December 2007 to
+29 December 2023. Shading is the executable cash position after the one-day
+trading delay, not a latent ground-truth label.}
+\label{fig:uspaths}
+\end{figure}
+
+\subsection{The result is local, not cross-market}
+
+The same DD-only specification raises the standard model Sharpe in all three
+markets: by 0.338 in the United States, 0.060 in Germany, and 0.095 in Japan.
+That comparison alone is not enough. The relevant economic question is whether
+the model also beats the stronger of buy-and-hold and HMM on the same dates. It
+does so only in the United States. In Germany, DD-only remains below buy-and-hold
+and has a worse maximum drawdown than the standard model. In Japan, it remains
+well below buy-and-hold, its maximum drawdown deteriorates to $-43.2\%$, and its
+switch count rises from 13 to 19. \Cref{fig:wealth} makes the asymmetry visible:
+DD-only finishes well above the other strategies in the U.S. panel, but not in
+the German or Japanese panels.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.94\textwidth]{fig_wealth_markets.png}
+\caption{Net executable wealth after ten-basis-point one-way costs. The hatching
+marks the delayed DD-only cash position. DD-only finishes above both buy-and-hold
+and HMM in the United States, but not in Germany or Japan.}
+\label{fig:wealth}
+\end{figure}
+
+These external-market failures are part of the result. Choosing DD-only for the
+United States and different models for Germany and Japan after observing all
+outcomes would create an ex-post envelope, not a deployable rule.
+
+\subsection{The scale control keeps most of the improvement}
+
+Multiplying the DD loss by three changes the monthly penalty choices in the
+expected direction. Relative to ordinary DD-only, the selector chooses a larger
+raw $\lambda$ in $73.7\%$, $81.3\%$, and $66.1\%$ of paired U.S., German, and
+Japanese months. The resulting state paths do not move uniformly: the control
+adds four switches in the United States, removes ten in Germany, and adds four in
+Japan. The Sharpe ratio changes only modestly. Scaled minus ordinary DD-only is
+$-0.023$ in the United States, $-0.031$ in Germany, and $+0.004$ in Japan. More
+importantly, scaled DD still exceeds the standard model Sharpe by 0.314, 0.029,
+and 0.099 across the three markets. Most of the one-feature improvement therefore
+survives the scale adjustment.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.94\textwidth]{fig_dd_scale_paths.png}
+\caption{Ordinary and three-times-DD delayed cash positions on identical dates.
+Scaling the observation loss makes the German path calmer but makes the U.S. and
+Japanese paths more active.}
+\label{fig:scale}
+\end{figure}
+
+The control supports a limited interpretation. The U.S. improvement is unlikely
+to be explained mainly by the one-dimensional loss being smaller relative to the
+unchanged penalty grid. It does not establish that the two Sortino features are
+universally harmful. The finite grid still binds in Germany and Japan, and the
+one-dimensional model often collapses to a single fitted state there.
+
+\subsection{Degenerate fits and repeated inspection}
+
+A two-state algorithm can return a training fit that occupies only one state. The
+decoder remains deterministic---the unused state is made unreachable---but the
+selected candidate is then economically a one-state rule, not evidence that two
+regimes were recovered. For ordinary DD-only, monthly validation selected a
+collapsed fit in 0 of 194 U.S. months, 43 of 193 German months, and 75 of 177
+Japanese months. For three-times DD, the corresponding counts were 0, 44, and 63.
+The U.S. result is therefore not driven by selected one-state fits. In Germany
+and Japan, collapse is material and weakens any regime interpretation.
+
+The data through 2023 have also been used repeatedly during model development.
+The five-model challenger suite and the scale control were frozen before their
+respective results, but the broader samples are not untouched holdouts. The
+correct interpretation is exploratory development evidence. A performance claim
+would require a fixed specification evaluated on data that did not shape it.
+
+\section{Discussion}
+
+The U.S. result suggests a simple possibility: recent downside risk may contain
+most of the information that this market-or-cash jump model can use reliably,
+while the two smoothed Sortino coordinates add more estimation noise than
+economic value on this sample. This interpretation is plausible because return
+averages are much noisier than risk measures at daily frequency, even after
+exponential smoothing, and it is consistent with the volatility-clustering
+evidence of \citet{schwert1989}.
+
+There is also a model-selection explanation. The jump penalty is selected from a
+finite raw grid. Changing the feature set changes the scale and geometry of the
+observation loss, which changes which penalties are effective and which state
+paths are reachable. The three-times-loss control shows that raw scale is not the
+whole story, but it does not isolate a unique causal channel. The result may
+reflect a combination of cleaner feature content, simpler clustering geometry,
+and more favorable interaction with the finite validation grid. This is exactly
+the kind of interaction that \citet{nystrup2021} warn about when feature sets and
+penalties are chosen jointly, and it is why we report the scale control rather
+than a single headline number.
+
+The cross-market evidence prevents a stronger claim. Germany and Japan have
+different proxy definitions, different cash-rate frequencies, and different
+market paths. The Japanese price-index proxy excludes dividends and has a
+buy-and-hold Sharpe far above the parent paper's sample. A model that protects
+the U.S. market during a few long drawdowns may miss too many rapid recoveries
+elsewhere; the mixed record of regime-switching allocation reported by
+\citet{bulla2011} is a useful caution against generalizing a single-market win.
+
+Several limitations bound the reading of these results. The 0/1 mapping is a
+deliberate simplification. It exposes the raw quality of the regime signal, but
+it also discards any information a continuous allocation could use, so the Sharpe
+levels here are conservative relative to a sized strategy and are not directly
+comparable to leveraged or volatility-targeted implementations. The cost model
+charges a flat ten basis points per one-way turnover and ignores market impact,
+borrowing spreads, and the tax treatment of frequent switching; these omissions
+penalize the higher-turnover benchmarks more than the parsimonious model, so the
+reported turnover advantage of DD-only is, if anything, understated. Finally, the
+evaluation is single-path. Each market contributes one realized history, and the
+disagreement between the United States on one side and Germany and Japan on the
+other is itself only a handful of independent regime episodes. None of these
+caveats changes the direction of the U.S. result, but each limits how far it can
+be generalized.
+
+The most useful next test is therefore not another search over the same
+through-2023 data. It is a genuinely fixed, prospective evaluation of the DD-only
+and three-times-DD specifications. The present result gives that test a clear
+target: preserve the U.S. reduction in drawdown and trading activity without
+relying on market-specific retuning after outcomes are known.
+
+\section{Conclusion}
+
+\citet{shu2024} show that a persistent regime signal can be evaluated in the same
+terms in which it would be traded: with delayed decisions, transaction costs, and
+an explicit market-or-cash allocation. Our public-proxy reconstruction preserves
+that economic discipline but does not reproduce the original three-market
+ranking. The strongest result comes from making the jump model smaller, not more
+elaborate. A model driven only by exponentially weighted downside deviation
+produces a much better U.S. strategy than the standard three-feature model. It
+earns a higher net Sharpe ratio than both buy-and-hold and the Gaussian HMM,
+matches the HMM's maximum drawdown, and trades far less. A scale-matched control
+retains most of the gain, making feature removal a more convincing explanation
+than raw loss scale alone. The same rule does not win in Germany or Japan, and
+degenerate one-state fits are frequent in those markets. The evidence therefore
+supports a focused hypothesis: for U.S. downside protection, one carefully chosen
+risk feature may be more useful than a small mixed set of risk and return
+features. It does not yet support a general performance claim.
+
+% ---------------------------------------------------------------------
+\ifanon\else
+\section*{Statements and declarations}
+\small
+\textbf{Funding.} The author received no specific grant from any funding agency
+in the public, commercial, or not-for-profit sectors.
+
+\textbf{Competing interests.} The author declares no competing interests.
+
+\textbf{Data availability.} All series are public. The equity proxies are
+retrieved from Yahoo Finance (\texttt{\char94 SP500TR}, \texttt{\char94 GDAXI},
+\texttt{\char94 N225}); the cash-rate proxies from the Federal Reserve Economic
+Data service (\texttt{DTB3}, \texttt{IR3TIB01DEM156N}) and the Bank of Japan
+(\texttt{STRACLUC3M}). Derived features and the exact metric values behind every
+table are provided in the supplementary file
+\texttt{supplementary\_S1\_exact\_values.csv}.
+
+\textbf{Code availability.} The reconstruction pipeline, frozen study contracts,
+and independent replay-verification routines are available in the project
+repository. Results were produced with Python~3.12, the \texttt{jumpmodels}
+package (v0.1.1), \texttt{hmmlearn}, NumPy, and pandas.
+
+\textbf{Author contributions.} T.L. designed the study, implemented the
+pipeline, ran the experiments, and wrote the manuscript.
+
+\textbf{AI-assistance disclosure.} An AI coding assistant was used for software
+engineering, refactoring, and manuscript-production tasks under author
+supervision. All scientific claims, experimental designs, and numerical results
+were defined, checked, and approved by the author. This disclosure is provided in
+line with current journal policy on generative-AI tools.
+
+\textbf{Acknowledgments.} The author thanks colleagues and reviewers whose
+feedback sharpened the framing of the reproduction and the scale control.
+
+\bigskip
+\noindent\textbf{Author biography.}\\
+Tan Le is an independent quantitative researcher working on statistical
+regime-switching models for financial markets, with a focus on downside-risk
+signals, jump models, and honest out-of-sample evaluation. His work emphasizes
+reproducible research protocols: frozen study contracts, walk-forward validation
+that respects trading delay and transaction cost, and independent replay
+verification of every reported result. He is particularly interested in when
+parsimonious risk features outperform richer feature sets, and in distinguishing
+genuine economic signal from selection and loss-scale artefacts in backtested
+strategies.
+\fi
+
+\clearpage
+\appendix
+
+\section{The full simple-challenger suite}
+\label{app:suite}
+
+\Cref{tab:suite} reports all five frozen challengers. A positive benchmark gap
+means the model's Sharpe exceeds both same-sample buy-and-hold and HMM. DD-only
+is the only challenger with a positive gap in any market, and that occurs only in
+the United States.
+
+\begin{table}[t]
+\centering
+\caption{Net Sharpe and gap to the stronger same-sample control.}
+\label{tab:suite}
+\small
+\begin{threeparttable}
+\begin{tabular}{l l S[table-format=1.3] S[table-format=-1.3]}
+\toprule
+Market & Challenger & {Sharpe} & {Benchmark gap} \\
+\midrule
+US & Static $\lambda=50$            & 0.586 & -0.068 \\
+US & DD-only                        & 0.908 &  0.254 \\
+US & Two-observation confirmation   & 0.619 & -0.034 \\
+US & Return-aware training loss     & 0.560 & -0.094 \\
+US & Robust $L_1$ loss              & 0.373 & -0.281 \\
+\addlinespace
+Germany & Static $\lambda=50$          & 0.156 & -0.133 \\
+Germany & DD-only                      & 0.226 & -0.063 \\
+Germany & Two-observation confirmation & 0.150 & -0.140 \\
+Germany & Return-aware training loss   & 0.150 & -0.140 \\
+Germany & Robust $L_1$ loss            & 0.173 & -0.116 \\
+\addlinespace
+Japan & Static $\lambda=50$          & 0.184 & -0.361 \\
+Japan & DD-only                      & 0.424 & -0.121 \\
+Japan & Two-observation confirmation & 0.297 & -0.247 \\
+Japan & Return-aware training loss   & 0.329 & -0.215 \\
+Japan & Robust $L_1$ loss            & 0.361 & -0.183 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]\footnotesize
+\item \emph{Notes:} Exact values in \texttt{supplementary\_S1\_exact\_values.csv}.
+Confirmation removes one-observation excursions and reduces switching in the
+United States and Germany but does not beat the stronger benchmark. The
+return-aware loss changes very few selected signal dates and produces no Sharpe
+improvement. Robust $L_1$ loss changes paths materially but raises activity in
+the United States and Japan.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\section{Reproducibility note}
+\label{app:repro}
+
+The accepted pipeline stores frozen study contracts, exact model and accounting
+outputs, source inventories, and independent replay checks. The primary sample is
+hard-capped at 31 December 2023. The verification routines check the one-day
+trading delay, $t+2$ return and cost accounting, ten-basis-point one-way costs,
+the turnover convention, monthly selection, candidate paths, and reported
+metrics. These controls establish numerical agreement for the retained
+experiments; they do not turn an inspected development sample into a confirmatory
+holdout.
+
+\bibliographystyle{chicagoa}
+\bibliography{references}
+
+\end{document}

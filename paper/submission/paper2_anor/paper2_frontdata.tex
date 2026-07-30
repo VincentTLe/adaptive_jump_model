@@ -1,0 +1,35 @@
+% Shared front-matter data for Paper 2, used by both build wrappers so the
+% title, abstract, and keywords never diverge between the Springer submission
+% build and the local-preview build.
+
+\newcommand{\PaperTitle}{When Should a Jump Model Switch? Evidence-Adaptive
+Transition Costs with Exact Decoding}
+\newcommand{\PaperShortTitle}{When Should a Jump Model Switch?}
+
+% Abstract: 150--250 words, citation-free.
+\newcommand{\PaperAbstract}{A statistical jump model encourages persistent state
+sequences by charging a fixed cost whenever the state changes. The rule is
+transparent, but inflexible: a switch supported by a large loss difference pays
+the same price as one supported by almost none. We study transition costs that
+respond to state-fit evidence while preserving the exact dynamic program of the
+standard jump model. The first rule discounts the arrival-day transition cost
+when the current observation fits the destination state better. In the two-state
+case, an exact value-difference recursion shows that this rule can use the same
+observation twice, once in the state loss and again by moving the switching
+barrier. A lagged rule removes that direct same-day reuse. A pair-balanced rule
+additionally keeps the two directional transition costs centered on the fixed
+penalty. All three models nest the standard jump model at zero adaptation and
+retain order $TK^2$ decoding. On public U.S., German, and Japanese equity
+proxies, the mechanisms behave as designed but their economic effects differ
+sharply. Lagging reduces candidate-path whipsaws from seventeen to six and
+improves the standard model's Sharpe ratio in all three markets, yet it beats
+both buy-and-hold and a Gaussian hidden Markov model only in Germany and
+increases switching in Japan. Pair balancing does not improve the lagged model
+overall. The contribution is a set of exact adaptive objectives and a clear
+account of when their mechanisms fail, not a general performance claim.}
+
+\newcommand{\PaperKeywords}{Statistical jump models \and Time-varying transition
+costs \and Dynamic programming \and Regime persistence \and Walk-forward
+validation}
+\newcommand{\PaperKeywordsComma}{Statistical jump models, Time-varying transition
+costs, Dynamic programming, Regime persistence, Walk-forward validation}

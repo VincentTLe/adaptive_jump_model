@@ -1,0 +1,25 @@
+paper,claim_id,claim_short,supporting_references,evidence_type,notes
+paper1,P1-C1,"Parent study finds JM beats HMM and B&H on Sharpe/MDD in US/DE/JP on licensed 1990-2023 data",shu2024,cited-literature,as reported by the parent paper
+paper1,P1-C2,"Public-proxy reconstruction does NOT recover the parent three-market ordering",own-experiment,own-experiment,Table 2 (parent vs proxy)
+paper1,P1-C3,"US DD-only net Sharpe 0.908 vs 0.570 fixed / 0.654 HMM / 0.513 B&H",own-experiment,own-experiment,Table 3; supplementary_S1
+paper1,P1-C4,"US DD-only MDD -19.4% (matches HMM) with 11 switches vs 46 (HMM)",own-experiment,own-experiment,Table 3
+paper1,P1-C5,"DD-only beats both same-sample controls only in the US (1/3)",own-experiment,own-experiment,Table 3; Table A1 (suite)
+paper1,P1-C6,"3x-DD scale control retains most of the improvement (feature effect not pure loss-scale)",own-experiment,own-experiment,Sec. 4.4; supplementary_S1 scale_control rows
+paper1,P1-C7,"One-state collapse frequent in DE/JP (0/194 US, 43/193 DE, 75/177 JP)",own-experiment,own-experiment,Sec. 4.5
+paper1,P1-C8,"Jump model = k-means fit cost + fixed switch penalty; exact DP O(TK^2)",bemporad2018;nystrup2020,cited-literature,method provenance
+paper1,P1-C9,"Downside-risk / safety-first feature lineage",roy1952;markowitz1959,cited-literature,feature motivation
+paper1,P1-C10,"Volatility is time-varying and clusters (motivates regime models)",schwert1989;pagan2003,cited-literature,background
+paper1,P1-C11,"Regime-switching allocation has a mixed track record",bulla2011,cited-literature,caution against generalizing
+paper1,P1-C12,"Feature choice interacts with penalty selection (feature-selection caution)",nystrup2021,cited-literature,discussion of selection interaction
+paper2,P2-C1,"Fixed jump penalty charges the same cost regardless of transition evidence",bemporad2018;nystrup2020,cited-literature,motivation
+paper2,P2-C2,"Time-varying transition costs retain exact DP, O(TK^2) (Prop. 1)",own-derivation,own-derivation,Proposition 1 (proof by additivity)
+paper2,P2-C3,"Binary value-difference recursion d_t = g_t + clip(d_{t-1}, -b_t, a_t) (Prop. 2)",own-derivation,own-derivation,Appendix A proof
+paper2,P2-C4,"Arrival rule can amplify a single observation beyond one-for-one (|d d_t/d g_t|>1)",own-derivation,own-derivation,Eq. amplification; local branch identity
+paper2,P2-C5,"All three rules nest fixed JM exactly at beta=0",own-derivation,own-derivation,bounds + nesting
+paper2,P2-C6,"Directed-cost identity: asymmetry = symmetric penalty + endpoint bias",own-derivation,own-derivation,Appendix B proof
+paper2,P2-C7,"Lagging reduces pooled candidate-path whipsaws 17->6 (US 6->2, DE 6->3, JP 5->1)",own-experiment,own-experiment,Fig. 1; supplementary_S2 whipsaw rows
+paper2,P2-C8,"Lagged-minus-fixed Sharpe positive in all three markets (+0.017/+0.171/+0.084)",own-experiment,own-experiment,Table 3; supplementary_S2
+paper2,P2-C9,"Lagged beats both B&H and HMM only in Germany; more active in Japan",own-experiment,own-experiment,Table 3
+paper2,P2-C10,"Path/choice/interaction attribution: +0.091 total = -0.035 path + 0.126 choice + 0.205 interaction",own-experiment,own-experiment,Sec. 5.3; supplementary_S2 attribution rows
+paper2,P2-C11,"Pair balancing does not improve the lagged model (mean balanced-minus-lagged -0.047)",own-experiment,own-experiment,Sec. 5.4; supplementary_S2
+paper2,P2-C12,"Related jump-model extensions (continuous state, feature selection, pattern ID)",aydinhan2024;nystrup2021,cited-literature,related work

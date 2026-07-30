@@ -1,0 +1,37 @@
+table,market,model,beta,sharpe_net,max_drawdown_pct,turnover_pct,switches,note
+arrival,US,Arrival JM,0,0.569865,,,,beta=0 reproduces fixed JM
+arrival,US,Arrival JM,log2,0.512427,,,,
+arrival,US,Arrival JM,log4,0.501745,,,,
+arrival,Germany,Arrival JM,0,0.166440,,,,
+arrival,Germany,Arrival JM,log2,0.271817,,,,
+arrival,Germany,Arrival JM,log4,0.277070,,,,
+arrival,Japan,Arrival JM,0,0.329270,,,,
+arrival,Japan,Arrival JM,log2,0.143204,,,,
+arrival,Japan,Arrival JM,log4,0.385254,,,,
+perf_log4,US,Fixed JM,log4,0.569865,-33.857,65.398,21,
+perf_log4,US,Arrival JM,log4,0.501745,-33.790,59.170,19,
+perf_log4,US,Lagged JM,log4,0.586777,-33.790,46.713,15,
+perf_log4,US,Pair-balanced JM,log4,0.616326,-33.790,40.484,13,
+perf_log4,Germany,Fixed JM,log4,0.166440,-38.779,99.335,32,
+perf_log4,Germany,Arrival JM,log4,0.277070,-38.779,43.459,14,
+perf_log4,Germany,Lagged JM,log4,0.337888,-38.779,24.834,8,
+perf_log4,Germany,Pair-balanced JM,log4,0.335543,-38.779,49.667,16,
+perf_log4,Japan,Fixed JM,log4,0.329270,-32.162,45.678,13,
+perf_log4,Japan,Arrival JM,log4,0.385254,-41.348,94.869,27,
+perf_log4,Japan,Lagged JM,log4,0.413215,-31.799,115.951,33,
+perf_log4,Japan,Pair-balanced JM,log4,0.244542,-41.303,137.033,39,
+whipsaw,US,arrival->lagged,log4,,,,,6 to 2
+whipsaw,Germany,arrival->lagged,log4,,,,,6 to 3
+whipsaw,Japan,arrival->lagged,log4,,,,,5 to 1
+whipsaw,pooled,arrival->lagged,log4,,,,,17 to 6
+lagged_minus_fixed,US,Lagged-Fixed Sharpe,log4,0.016912,,,,
+lagged_minus_fixed,Germany,Lagged-Fixed Sharpe,log4,0.171448,,,,
+lagged_minus_fixed,Japan,Lagged-Fixed Sharpe,log4,0.083945,,,,
+attribution,all,equal-market mean total,log4,0.090769,,,,total lagged-minus-fixed
+attribution,all,path Shapley component,log4,-0.034835,,,,
+attribution,all,choice-schedule component,log4,0.125603,,,,
+attribution,all,interaction component,log4,0.205076,,,,
+balanced_minus_lagged,US,Balanced-Lagged Sharpe,log4,0.029500,,,,
+balanced_minus_lagged,Germany,Balanced-Lagged Sharpe,log4,-0.002300,,,,
+balanced_minus_lagged,Japan,Balanced-Lagged Sharpe,log4,-0.168700,,,,
+balanced_minus_lagged,mean,Balanced-Lagged Sharpe,log4,-0.047200,,,,equal-market mean

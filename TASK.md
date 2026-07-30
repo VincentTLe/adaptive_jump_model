@@ -1,53 +1,50 @@
 # Active Task: None in progress
 
-## Last completed: holdout-2026-001 (window not supported; full walk-forward unchanged)
+## Last completed: HMM baseline closed on sealed v9.4 (2026-07-30)
 
-The public proxies were extended to 30 June 2026 and the previously untouched
-2024-01-02 to 2026-06-30 window was opened once for a pre-declared variant,
-DD-only JM.
+The HMM replication is as closed as public data allows: 7/8 Table-4 cells inside
+the 0.05 tolerance in all three markets at delay 1, on sealed runs that replay
+at metric difference 0.0 (`fixed-baselines-34e51cd7…` and its v9.3 twin, which
+agree to 0.00e+00 on every metric the drawdown basis cannot touch).
 
-Every evaluation here is walk-forward causal: each monthly decision uses only
-trailing data, so the whole 2008/2009--2026 span is out-of-sample per decision.
-There is no future leakage on any window. The only thing special about
-2024-2026 is that it is free of *selection bias*: DD-only was chosen after
-inspecting the through-2023 sample, and this window was not.
+The one open cell, turnover, is closed as a question rather than as a number:
 
-### Net Sharpe, both evaluation windows (both walk-forward)
+- no single smoothing-candidate set puts it inside tolerance in more than one
+  market, and the US and Germany demand opposite ends of the grid — so no grid
+  choice reproduces the row (`docs/audit/2026-07-29-codex-review-verdicts.md`
+  §15);
+- the proximate amplifier is months where the CV selects k = 0 (9.5% of days,
+  23% of US turnover), and the residual points at data we cannot obtain: the
+  candidate grids are published nowhere (primary-source sweep, 2026-07-29), and
+  the official Nikkei TR series does not exist before 1979-12-28 even for the
+  paper's own authors;
+- Shu's own Figure-6 position path on our returns reproduces their turnover to
+  0.002, so the accounting is right and the difference lives in the state
+  sequence.
 
-| Market | window | B&H | HMM | Fixed JM | DD-only | DD-only beats both? |
-| --- | --- | ---: | ---: | ---: | ---: | --- |
-| US | full 2008-2026 | 0.5678 | 0.6326 | 0.5684 | **0.8903** | Yes (`+0.258`) |
-| DE | full 2008-2026 | 0.3499 | 0.1096 | 0.2596 | 0.3102 | No |
-| JP | full 2008-2026 | 0.6708 | 0.5596 | 0.5115 | 0.5597 | No |
-| US | 2024-2026 only | **1.0521** | 0.5316 | 0.5737 | 0.7750 | No |
-| DE | 2024-2026 only | 0.9041 | 0.9041 | 0.9041 | 0.9041 | No (exact tie) |
-| JP | 2024-2026 only | **1.2701** | 1.2701 | 1.2701 | 1.1696 | No |
+Three data defects were found and fixed along the way (CRSP-for-S&P, missing
+German dividends pre-1988, a splice that deleted the 1988-01-04 session), each
+now guarded by a test or a build gate.
 
-On the full walk-forward through 2026, DD-only still beats both controls in the
-US (`1/3`, unchanged from development); adding 2.5 years barely moved the US
-number. On the isolated 2024-2026 window the frozen binary rule returns
-`not_supported` (`0/3`), but that window is short (~620 days), its paired
-bootstrap intervals include zero, and it was a broad bull that penalizes any
-cash rotation. So the window **fails to confirm** the US edge on
-selection-independent data and **does not refute** the 18-year result. It is
-weak evidence, not a clean negative.
+## Earlier milestone kept for context: holdout-2026-001
 
-## Provenance
+The 2024-2026 window returned `not_supported` (0/3) for DD-only against the
+stronger control, while the full walk-forward US edge persisted; the window is
+short, bull-only, and post-selection (see `research/SCIENTIFIC_LEDGER.md` and
+`artifacts/holdout-2026-001.tar.zst`). Its labels were demoted from
+"selection-clean" to post-selection readout on 2026-07-29.
 
-- Precondition met: a fresh v7 replication at HEAD byte-matched the sealed
-  baseline on all 123 scientific files before any post-2023 output was read.
-- Frozen contract `research/holdout-2026-001.toml` (`7618924a8e67...`),
-  registered before the window was opened.
-- Evidence: `artifacts/holdout-2026-001/holdout-20260722T111757Z`.
-- Extended acquisition: `data/raw/shu-proxy-holdout-2026-20260722T093350Z`
-  (byte-identical overlap with sealed v7).
+## Next: the jump model
 
-## Next candidates (each needs a fresh frozen question)
+Per the standing instruction, the JM was not touched while the HMM was open.
+Candidate extensions already named in the ledger (each needs its own frozen
+question before any code): capped gap, two-day confirmation, semi-Markov dwell
+cost, a regime-stratified or longer holdout. The k=0 concentration finding and
+the author-example pipeline notes (`docs/audit/2026-07-30-self-audit.md` §C7)
+are recorded inputs to that design, not licences to fit.
 
-- A longer or regime-stratified holdout: 2.5 bull years cannot separate the
-  variants. A stronger test needs either more post-selection time or a
-  drawdown-conditional readout that does not credit cash rotation only when the
-  market falls.
-- Lagged-log4 batch 2 on the same window (available under the current contract).
-- Semi-Markov dwell cost: the standing mathematical candidate that escapes the
-  zero-diagonal degeneracy. Not yet frozen.
+## Standing rules
+
+Walk-forward causal everywhere; no confidence intervals; never search an
+unspecified knob for the value that best matches the paper; quote the paper
+with `[line N] "…"` and run `scripts/check_paper_claims.py`.

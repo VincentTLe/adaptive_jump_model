@@ -50,3 +50,18 @@ What the directory establishes, in order:
    (de) and 2.751-4.686 (jp), several times the deviation under investigation
    (`08-grid-identification/`). No set reproduces Table 4 in all three markets
    at once.
+
+## Reorganised 2026-07-30
+
+`superseded-caches/` holds the four pre-sealed HMM caches (v9-us, v9-2-de,
+v9-3-us, v9-3-de), each reduced to `metrics.csv` + `run.json`: their bulk was
+deleted after the sealed v9.3/v9.4 runs were shown to carry bit-identical
+states. Audit documents written before this date cite them at their old paths
+(`artifacts/hmm-residual/v9-3-us-hmm/...`); those citations describe the state
+of the tree at the time and were deliberately not rewritten.
+
+`11-sealed-v9/` now holds both scorings: `sealed-v9-4-vs-table4.csv` +
+`report.txt` (the v9.4 contract, both drawdown bases) and
+`sealed-v9-3-vs-table4.csv` + `report-v9-3.txt` (its v9.3 predecessor). The
+v9.4 CSV previously carried the v9.3 name — a leftover from pointing the script
+at the newer run without renaming its output.

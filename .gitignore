@@ -16,6 +16,7 @@ build/
 dist/
 
 # Market data and generated outputs
+data/*.tar.zst
 data/raw/*
 data/processed/*
 artifacts/*

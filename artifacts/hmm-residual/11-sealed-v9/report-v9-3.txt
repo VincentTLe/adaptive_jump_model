@@ -1,0 +1,50 @@
+SEALED RUN v9.3 — HMM vs Table 4, delay 1/5/10, hai quy ước drawdown
+run: fixed-baselines-34e51cd7a388-967806b961b4-e690dbe396f3
+
+(ngưỡng 0.05; * = dưới nửa chữ số cuối paper in ra; ! = ngoài ngưỡng)
+A = total_wealth (hợp đồng v9.4 khai)   D = flat_in_cash (v9.1-v9.3, đã rút)
+
+=== S&P 500
+chỉ số                d1 A          d1 D          d5 A          d5 D         d10 A         d10 D     Shu
+Return             0.0820        0.0820        0.0877        0.0877        0.0851*       0.0851*   0.085
+Volatility         0.1124        0.1124        0.1150        0.1150        0.1176        0.1176    0.113
+Sharpe             0.5255        0.5255        0.5617        0.5617        0.5316        0.5316    0.540
+MDD               -0.2520       -0.3130       -0.2537       -0.2984       -0.2402       -0.3018   -0.289
+Calmar             0.2343        0.1887        0.2546        0.2164        0.2603!       0.2072*   0.210
+ES 5%             -0.0179*      -0.0179*      -0.0181*      -0.0181*      -0.0186       -0.0186   -0.018
+Turnover           1.7947!       1.7947!       2.4420!       2.4420!       2.0595!       2.0595!   1.410
+Leverage           0.7205*       0.7205*       0.7253        0.7253        0.7271        0.7271    0.720
+   delay 1   A 7/8   D 7/8   | ngoài ngưỡng: Turnover   | chọn đỉnh lưới 90/408 = 22.1%
+   delay 5   A 7/8   D 7/8   | ngoài ngưỡng: Turnover   | chọn đỉnh lưới 5/408 = 1.2%
+   delay 10  A 6/8   D 7/8   | ngoài ngưỡng: Calmar, Turnover   | chọn đỉnh lưới 164/408 = 40.2%
+
+=== DAX
+chỉ số                d1 A          d1 D          d5 A          d5 D         d10 A         d10 D     Shu
+Return             0.0678        0.0678        0.0537        0.0537        0.0438        0.0438    0.064
+Volatility         0.1400*       0.1400*       0.1421        0.1421        0.1463        0.1463    0.140
+Sharpe             0.3670        0.3670        0.2700!       0.2700!       0.2019!       0.2019!   0.350
+MDD               -0.4020       -0.4385       -0.3951       -0.4361       -0.3979       -0.4268   -0.405
+Calmar             0.1278        0.1171*       0.0971        0.0880        0.0743        0.0692!   0.120
+ES 5%             -0.0220*      -0.0220*      -0.0225*      -0.0225*      -0.0232       -0.0232   -0.022
+Turnover           2.2558!       2.2558!       2.5780!       2.5780!       2.9588!       2.9588!   2.460
+Leverage           0.7295*       0.7295*       0.7270*       0.7270*       0.7281*       0.7281*   0.730
+   delay 1   A 7/8   D 7/8   | ngoài ngưỡng: Turnover   | chọn đỉnh lưới 22/408 = 5.4%
+   delay 5   A 6/8   D 6/8   | ngoài ngưỡng: Sharpe, Turnover   | chọn đỉnh lưới 36/408 = 8.8%
+   delay 10  A 6/8   D 5/8   | ngoài ngưỡng: Sharpe, Turnover   | chọn đỉnh lưới 20/408 = 4.9%
+
+=== Nikkei 225
+chỉ số                d1 A          d1 D          d5 A          d5 D         d10 A         d10 D     Shu
+Return             0.0224        0.0224        0.0171        0.0171        0.0086        0.0086    0.025
+Volatility         0.1598*       0.1598*       0.1628        0.1628        0.1648        0.1648    0.160
+Sharpe             0.1771        0.1771        0.1446        0.1446        0.0943!       0.0943!   0.190
+MDD               -0.5173       -0.5101       -0.5261       -0.5161       -0.5530!      -0.5213   -0.486
+Calmar             0.0547        0.0555*       0.0448        0.0456        0.0281        0.0298    0.060
+ES 5%             -0.0251*      -0.0251*      -0.0257       -0.0257       -0.0261       -0.0261   -0.025
+Turnover           3.1440!       3.1440!       3.0533!       3.0533!       3.7788!       3.7788!   2.900
+Leverage           0.6796*       0.6796*       0.6765*       0.6765*       0.6771*       0.6771*   0.680
+   delay 1   A 7/8   D 7/8   | ngoài ngưỡng: Turnover   | chọn đỉnh lưới 161/408 = 39.5%
+   delay 5   A 7/8   D 7/8   | ngoài ngưỡng: Turnover   | chọn đỉnh lưới 122/408 = 29.9%
+   delay 10  A 5/8   D 6/8   | ngoài ngưỡng: Sharpe, MDD, Turnover   | chọn đỉnh lưới 25/408 = 6.1%
+
+Turnover ngoài ngưỡng ở 9/9 ô (3 thị trường × 3 delay).
+Bảy chỉ số còn lại: 5/63 ô ngoài ngưỡng.

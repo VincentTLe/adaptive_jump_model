@@ -1,0 +1,58 @@
+% =====================================================================
+% LOCAL PREVIEW build of Paper 2 (NOT the submission file).
+% Uses article + apacite so it renders and can be page-checked with tectonic.
+% The authoritative Springer submission source is
+% paper2_adaptive_switching.tex (documentclass[sn-apa]{sn-jnl}); see
+% README_BUILD.md. Both share paper2_frontdata.tex and paper2_content.tex, so
+% the science, tables, and references are identical between the two builds.
+% =====================================================================
+\newif\ifanon
+\ifdefined\ANONYMOUS\anontrue\else\anonfalse\fi
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{threeparttable}
+\usepackage{siunitx}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage[natbibapa]{apacite}
+\usepackage{caption}
+\usepackage[hidelinks]{hyperref}
+\usepackage[nameinlink]{cleveref}
+
+\graphicspath{{figures/}{../figures/}{./}}
+\setlength{\parindent}{0pt}\setlength{\parskip}{0.55em}
+\setlength{\emergencystretch}{2em}
+\captionsetup{font=small,labelfont=bf}
+\sisetup{detect-weight=true,detect-family=true,group-digits=false}
+
+\newcommand{\ind}{\mathbf{1}}
+\newcommand{\clip}{\operatorname{clip}}
+\newtheorem{proposition}{Proposition}
+
+% --- compatibility shims for Springer sn-jnl commands used in the shared body ---
+\providecommand{\backmatter}{\bigskip\hrule\bigskip}
+\providecommand{\bmhead}[1]{\medskip\noindent\textbf{#1.}\;\ignorespaces}
+\newenvironment{appendices}{\appendix}{}
+
+\input{paper2_frontdata.tex}
+
+\title{\textbf{\PaperTitle}}
+\ifanon\author{}\date{}\else
+\author{Tan Le\thanks{Corresponding author: \texttt{lethongtan4@gmail.com}.
+ORCID: 0000-0000-0000-0000 (placeholder).}\\[2pt]
+\small Independent Researcher, Ho Chi Minh City, Vietnam}
+\date{July 2026}\fi
+
+\bibliographystyle{apacite}
+
+\begin{document}
+\maketitle
+\begin{abstract}\PaperAbstract\end{abstract}
+\noindent\textbf{Keywords:} \PaperKeywordsComma.
+\medskip
+
+\input{paper2_content.tex}
+\end{document}

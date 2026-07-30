@@ -57,6 +57,27 @@ tectonic paper/manuscript.tex --outdir artifacts/paper           # build the pap
 Raw data and run outputs live in the ignored `data/` and `artifacts/`. `uv.lock`
 records the locked dependency sources and versions.
 
+## Layout
+
+```
+research*.toml            frozen study contracts (root: the dirty-tree gate scans here)
+src/adaptive_jump/        the pipeline: config/data/features -> models -> walkforward -> backtest
+tests/                    341 tests, incl. regression pins for every repaired data defect
+scripts/                  builders (build_*), the paper-claim checker, and the probes
+                          whose outputs the audit ledger cites
+data/external/            canonical input series, sha-pinned by the contracts
+data/raw|processed/       one generation per living contract (v7, v8-5, v9-3, v9-4);
+                          orphans archived in superseded-generations-20260730.tar.zst
+artifacts/fixed-baselines three live sealed runs (v8.5 anchor, v9.3, v9.4); older runs
+                          as verified .tar.zst
+artifacts/hmm-residual/   the numbered evidence trail 01..13 behind the audit docs
+research/                 experiment specs, registry, ledger, status
+docs/audit/               the review-verdict and self-audit ledgers
+docs/LEARN_data_flow.html the visual walkthrough of everything above
+paper/                    manuscript.tex + split-v1/ + submission/ (all paper work)
+.agent/                   session handoff log
+```
+
 ## Read next
 
 - [Working paper](paper/manuscript.tex) · [Current evidence](research/STATUS.md) · [Experiment ledger](research/SCIENTIFIC_LEDGER.md)

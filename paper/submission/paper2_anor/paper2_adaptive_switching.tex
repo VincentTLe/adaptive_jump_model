@@ -1,0 +1,59 @@
+% =====================================================================
+% Paper 2 -- SUBMISSION SOURCE for Annals of Operations Research.
+% Official Springer Nature template: \documentclass[sn-apa]{sn-jnl}
+% (APA 7th author-year reference style via sn-apacite.bst).
+%
+% BUILD: compile on Overleaf ("Springer Nature LaTeX Template") or a full
+% TeX Live 2024+ installation. The vendored sn-jnl.cls + sn-apacite.bst are
+% included for convenience. A locally-renderable twin (article + apacite) is
+% paper2_local_preview.tex -- it shares paper2_frontdata.tex and
+% paper2_content.tex, so its science/tables/references are identical.
+% See README_BUILD.md for details and the known tectonic limitation.
+%
+% Anonymous build: compile paper2_anon.tex (sets \ANONYMOUS).
+% =====================================================================
+\documentclass[sn-apa]{sn-jnl}
+
+\newif\ifanon
+\ifdefined\ANONYMOUS\anontrue\else\anonfalse\fi
+
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{threeparttable}
+\usepackage{siunitx}
+\usepackage{graphicx}
+\usepackage[nameinlink]{cleveref}
+
+\graphicspath{{figures/}{./}}
+\sisetup{detect-weight=true,detect-family=true,group-digits=false}
+
+\newcommand{\ind}{\mathbf{1}}
+\newcommand{\clip}{\operatorname{clip}}
+\newtheorem{proposition}{Proposition}
+
+\input{paper2_frontdata.tex}
+
+\raggedbottom
+
+\begin{document}
+
+\title[\PaperShortTitle]{\PaperTitle}
+
+\ifanon
+  \author{}
+\else
+  \author[1]{\fnm{Tan} \sur{Le}}
+  \email{lethongtan4@gmail.com}
+  \affil[1]{\orgname{Independent Researcher}, \city{Ho Chi Minh City},
+  \country{Vietnam}}
+\fi
+
+\abstract{\PaperAbstract}
+
+\keywords{\PaperKeywords}
+
+\maketitle
+
+\input{paper2_content.tex}
+
+\end{document}
