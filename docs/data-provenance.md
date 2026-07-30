@@ -223,3 +223,16 @@ The exact request the pipeline makes:
 ```
 https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTB3&cosd=1969-05-01&coed=2023-12-31
 ```
+
+## Author artifacts kept as evidence (not data inputs)
+
+`data/external/inputs/shu-wolfe-research-2024-10-23-slides.pdf` — Yizhan Shu's
+Wolfe Research presentation deck (2024-10-23), downloaded 2026-07-30 from the
+author's public Google Drive link
+(`https://drive.google.com/file/d/1-8a9GzfyDELUIq0rq7NF2iqmyMikCmGr/view`),
+sha256 `6b20017d8099f3a005159dc78cca2bcc8ee196eff1af296e9bc7dd17ab1bba96`.
+Slides 18-19 print the US state-sequence anchors (HMM 96 shifts / 27.8% bear,
+JM 30 shifts / 19.7% bear) used in
+`docs/audit/2026-07-30-deep-research-round2.md`. It is an author artifact, not
+a data source: nothing in it feeds a run, and per CLAUDE.md nothing in it may
+be promoted into a claim about the paper.

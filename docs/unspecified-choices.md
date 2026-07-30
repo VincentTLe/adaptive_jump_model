@@ -444,6 +444,42 @@ the warm-up, never a training window that produces a reported signal.
 
 ---
 
+## 10. hmmlearn estimation constants — BOUNDED by structural identity, spread unmeasured
+
+**What the paper says.** The stack and the restart rule, and nothing finer:
+
+> [line 371] "we execute the algorithm ten times from"
+
+different k-means++-derived initial values, retaining the highest
+log-likelihood; and
+
+> [line 382] "On the training window ending at day t, we use the Viterbi algorithm to decode the hidden"
+
+state sequence. It does not name min_covar, priors, iteration cap or
+convergence tolerance.
+
+**What we chose (sealed v9.4).** min_covar 1e-3 (the hmmlearn default),
+covars_prior 0.0, transmat_prior 1.0, n_iter 1000, tol 1e-6 with a symmetric
+strict-convergence gate.
+
+**The author-code point of comparison (not the paper).** Shu's 2023 simulation
+codebase (`continuous-jump-model`, see the 2026-07-30 round-2 audit note) is
+structurally identical — same init_params set, same 10× k-means++ restart rule,
+same Viterbi `.predict()` decoding — and differs only in five constants:
+min_covar 1e-6, covars_prior 1e-6, transmat_prior 1+1e-5, n_iter 500, tol 1e-4.
+Both parameterizations are near-MLE (zero or ~1e-6 pseudo-counts), so a priori
+they should reach the same local optima under our stricter convergence gate.
+
+**Not adopted, spread unmeasured.** These are example-code defaults from a
+different study, exactly the class of artifact CLAUDE.md forbids promoting into
+paper claims, and switching to them now — after knowing our turnover sits above
+the target — would be searching a knob near the answer. The row exists so the
+axis is on the books: if a spread measurement is ever wanted, it needs its own
+frozen question first. Until then this row's honest status is: sensitivity
+unknown, prior expectation small.
+
+---
+
 ## Do not report confidence intervals in this project
 
 Standing instruction from the owner, and it is the right call. Intervals were

@@ -20,7 +20,13 @@ The one open cell, turnover, is closed as a question rather than as a number:
   paper's own authors;
 - Shu's own Figure-6 position path on our returns reproduces their turnover to
   0.002, so the accounting is right and the difference lives in the state
-  sequence.
+  sequence;
+- (round 2, 2026-07-30) the authors' Wolfe Research slides print the
+  state-sequence target directly — HMM: 96 shifts, 27.8% bear; JM: 30 shifts,
+  19.7% bear — our sealed path has 122 shifts on a 27.95% bear share, and the
+  lineage itself (Nystrup 2018, Paper D) published why Sharpe-CV cannot pin
+  turnover down: Sharpe is nearly flat across filter windows while turnover is
+  not (`docs/audit/2026-07-30-deep-research-round2.md`).
 
 Three data defects were found and fixed along the way (CRSP-for-S&P, missing
 German dividends pre-1988, a splice that deleted the 1988-01-04 session), each
