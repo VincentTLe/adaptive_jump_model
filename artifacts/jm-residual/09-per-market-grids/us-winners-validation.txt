@@ -1,0 +1,11 @@
+0|20|60 us-d1: PASS (8 ô, lệch tệ nhất 0.031) sharpe=0.666 turnover=0.471
+0|20|60 us-d5: PASS (3 ô, lệch tệ nhất 0.026) sharpe=0.736 turnover=0.942
+0|20|60 us-d10: PASS (3 ô, lệch tệ nhất 0.019) sharpe=0.686 turnover=0.324
+0|20|80 us-d1: PASS (8 ô, lệch tệ nhất 0.020) sharpe=0.700 turnover=0.441
+0|20|80 us-d5: PASS (3 ô, lệch tệ nhất 0.012) sharpe=0.722 turnover=0.942
+0|20|80 us-d10: PASS (3 ô, lệch tệ nhất 0.016) sharpe=0.684 turnover=0.441
+0|21.5443|70 us-d1: PASS (8 ô, lệch tệ nhất 0.011) sharpe=0.683 turnover=0.441
+0|21.5443|70 us-d5: PASS (3 ô, lệch tệ nhất 0.023) sharpe=0.698 turnover=1.177
+0|21.5443|70 us-d10: PASS (3 ô, lệch tệ nhất 0.014) sharpe=0.686 turnover=0.353
+
+TOTAL FAILURES: 0 / 9 arm-runs

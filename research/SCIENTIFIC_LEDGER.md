@@ -1089,3 +1089,20 @@ The complete final-v3 paper grids remain unidentified.
   pipeline: 24/24 PASS. Artifacts:
   `artifacts/jm-residual/08-exhaustive-nine-arms/`. Exploratory; no
   performance, replication, or adoption claim.
+
+### 2026-07-31 — `jm-per-market-grid-009` (complete; per-market grids and the blocking cells)
+
+- Owner-instructed: per-market grids meeting Shu at delays 1, 5 AND 10, with
+  every nonexistence statement scoped to the 29-lambda menu and quantified by
+  a blocking-cell frontier instead of asserted.
+- **US: 36,657 grids satisfy all fourteen published cells**; three winners
+  validated through the real pipeline 9/9 PASS (example {0, 21.5, 70}, worst
+  delay-1 deviation 0.011 across all eight Table-4 cells).
+- **DE/JP: best available is 13/14** (366 and 2,948 grids respectively; one
+  example each validated 6/6 PASS). The d1 miss is pinned by the frontier:
+  DE turnover is a joint constraint (range reaches 4.63 but only 1.465 when
+  the other seven cells hold); JP leverage has a lattice ceiling of 0.737 vs
+  the 0.75 target (0.636 given the rest) — state-sequence shape, not menu
+  narrowness, within the tested menu.
+- Artifacts: `artifacts/jm-residual/09-per-market-grids/`. Calibration
+  artifacts only; reseal is an owner decision.

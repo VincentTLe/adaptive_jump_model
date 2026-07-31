@@ -1,0 +1,8 @@
+de 150|500 d1: PASS (7/8, ô trượt: turnover (lệch 1.436))
+de 150|500 d5: PASS (3 ô, lệch tệ nhất 0.022)
+de 150|500 d10: PASS (3 ô, lệch tệ nhất 0.020)
+jp 10|220 d1: PASS (7/8, ô trượt: leverage (lệch 0.150))
+jp 10|220 d5: PASS (3 ô, lệch tệ nhất 0.017)
+jp 10|220 d10: PASS (3 ô, lệch tệ nhất 0.040)
+
+TOTAL FAILURES: 0 / 6
