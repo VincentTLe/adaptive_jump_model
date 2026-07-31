@@ -1,0 +1,44 @@
+schema_version = 1
+experiment_id = "jm-inferred-grid-006"
+frozen_at_utc = "2026-07-31T03:04:26Z"
+timestamp_source = "date -u at write time"
+claim_class = "EXPLORATORY"
+analysis_label = "INFERRED GRID, SHIFT-MONTHS ESTIMATOR — SECOND AND FINAL"
+hypothesis = "Restricting the -005 estimator to months in which the authors' path actually shifts removes the quiet-month tie artifact that flooded the support with tiny lambdas, concentrates the US support near the -004 constant-lambda finding (~35), and the conditional run's US turnover moves toward 0.44."
+primary_estimand = "same as -005 with the informative-months weighting"
+extension_access = false
+adaptive_experiment = true
+
+# SEQUENTIAL DECLARATION. This spec is frozen AFTER seeing -005: its all-month
+# estimator was contaminated by a registered-but-underestimated tie artifact
+# (months with zero shifts are matched perfectly by many lambdas and the
+# inherited first-argmax hands them to the smallest). Restricting to months
+# that contain at least one shift of the authors' path is the standard
+# identification fix (quiet months carry no information about lambda) and is
+# the ONLY estimator change permitted: the estimator family
+# {all-months, shift-months} is declared exhausted, and no third derivation
+# rule may be frozen without a new primary source.
+prior_art = "jm-inferred-grid-005"
+estimator_family_exhausted = true
+
+[derivation_rule]
+informative_months = "keep only months where the authors' regime sequence has at least one state change within the month"
+weight = "best_agreement * days, computed on informative months only, per market, V0_expanding geometry; best-lambda per month recomputed from -004 inputs restricted to those months with ties broken toward the LARGEST lambda among maxima (the opposite bias direction from -005, so the pair brackets any residual tie effect)"
+support = "smallest weight-descending prefix reaching >= 90%"
+union_grid = "union of per-market supports, as in -005"
+
+[validation_run]
+design = "identical to -005: monthly-CV selection replay on the inferred grids, V0 sealed geometry, delay 1, 10bp, all eight Table-4 JM cells"
+registered_status = "conditional diagnostic, never confirmatory; adoption owner-gated with the full two-estimator derivation chain disclosed"
+
+[decision]
+winner_selection_allowed = false
+config_changes_allowed = false
+registered_interpretations = [
+  "if the shift-month support concentrates near lambda 35 for the US and the conditional US row reaches or passes 7/8 with turnover nearer 0.44, the inference chain is coherent end to end (path -> constant-lambda -> grid -> pipeline)",
+  "if DE/JP still fail to improve, the -004 expressibility bound stands as the final word for those markets",
+]
+
+[storage]
+artifact_subdir = "artifacts/jm-residual/06-inferred-grid-shift-months"
+required_outputs = ["support.csv", "inferred-grid.txt", "conditional-table4.csv", "report.txt"]

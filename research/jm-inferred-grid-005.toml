@@ -1,0 +1,53 @@
+schema_version = 1
+experiment_id = "jm-inferred-grid-005"
+frozen_at_utc = "2026-07-31T03:01:21Z"
+timestamp_source = "date -u at write time, per the -004 process correction"
+claim_class = "EXPLORATORY"
+analysis_label = "GRID INFERRED FROM THE AUTHORS' OWN MONTHLY CHOICES, THEN ONE CONDITIONAL RUN"
+hypothesis = "The support of the monthly effective-lambda distribution of the authors' Figure-5 paths (through our lambda family) is concentrated on a small set; running our full monthly-CV pipeline over that inferred set moves the US JM row toward Table 4 and moves DE/JP less, because -004 showed their DE/JP sequences are not expressible under our geometries."
+primary_estimand = "inferred_candidate_support_per_market_plus_one_conditional_table4_run"
+extension_access = false
+adaptive_experiment = false
+model_refitting = false
+
+# WHY THIS IS NOT KNOB-FITTING, recorded for the ledger. The forbidden move is
+# choosing our grid to maximize agreement with the authors' TABLE. Here the
+# estimand is the AUTHORS' hidden grid, the estimator is the AUTHORS' published
+# path (-004 trajectory, derived before any Table-4 number of this experiment
+# exists), and the derivation rule below is frozen before the monthly
+# histogram is looked at. The single validation run afterwards is CONDITIONAL
+# ("if their grid were the inferred one, our pipeline gives X") — its result
+# is correlated with the derivation through their path and is therefore
+# registered as diagnostic, not confirmatory. The owner explicitly instructed
+# this inference (2026-07-31, "tu doan hoac tim cach reverse engineer di").
+owner_instruction = "reverse-engineer the grid from their published choices"
+prior_art = "jm-effective-lambda-inversion-004 (trajectory.csv), hmm effective-k inversion (unspecified-choices row 3)"
+
+[inputs]
+trajectory = "artifacts/jm-residual/04-effective-lambda-inversion/trajectory.csv (V0_expanding geometry primary; V1_window and V3_frozen reported as robustness)"
+union_states = "artifacts/jm-residual/01-grid-identification/{market}/union-states.csv (29 lambdas; every monthly best lambda is a member by construction)"
+returns = "sealed v9.4 per-market features.csv"
+
+[derivation_rule]
+weight = "each month contributes best_agreement * days"
+support = "sort lambdas by total weight descending; the inferred per-market set is the smallest prefix reaching >= 90% of total weight"
+union_grid = "the union of the three per-market sets is the primary candidate grid (the paper applies one protocol to all markets); per-market sets are secondary reads"
+low_agreement_months = "months below 0.9 agreement keep their weight; their misfit is geometry noise, not evidence about the grid"
+tie_handling = "inherits trajectory.csv's argmax (first maximum)"
+
+[validation_run]
+design = "one monthly-CV selection replay per market over the inferred union grid, V0 sealed geometry, delay 1, 10bp, all eight Table-4 JM cells; secondary replays over per-market sets"
+registered_status = "conditional diagnostic — a hit does NOT prove the inferred grid is the authors' grid (the derivation and the target share their path); a miss bounds the inference"
+
+[decision]
+winner_selection_allowed = false
+config_changes_allowed = false
+adoption = "any future adoption of the inferred grid is an owner decision requiring a fresh reseal with this derivation chain disclosed in full"
+registered_interpretations = [
+  "US: if the conditional run improves the US row over the sealed 4/8, the inference is informative there, consistent with -004's 95.7% single-lambda match",
+  "DE/JP: improvement is NOT expected (their sequences are outside our expressible space per -004); if it nonetheless appears, that is evidence the geometry mismatch matters less at the selection level than at the daily level",
+]
+
+[storage]
+artifact_subdir = "artifacts/jm-residual/05-inferred-grid"
+required_outputs = ["support.csv", "inferred-grid.txt", "conditional-table4.csv", "report.txt"]

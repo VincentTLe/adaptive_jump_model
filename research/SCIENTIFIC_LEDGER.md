@@ -1044,3 +1044,28 @@ The complete final-v3 paper grids remain unidentified.
   localized to unpublished choices on unavailable vintages. Artifact:
   `artifacts/jm-residual/04-effective-lambda-inversion/`. Exploratory; no
   performance, replication, or adoption claim.
+
+### 2026-07-31 — `jm-inferred-grid-005` / `-006` (complete; owner-instructed inference)
+
+- The owner instructed reverse-engineering the unpublished lambda grid. Done
+  as estimation FROM the authors' own Figure-5 monthly choices (never as a
+  search of our knobs against their table): derivation rules frozen before
+  the histograms were looked at; validation replays registered as
+  conditional diagnostics; adoption owner-gated.
+- -005 (all months): supports flooded by tiny lambdas — the registered tie
+  rule's artifact (quiet months are uninformative and first-argmax hands
+  them to the smallest lambda). US conditional replay still 7/8 with Sharpe
+  0.680 vs 0.68.
+- -006 (shift months only, ties to largest; estimator family declared
+  exhausted): **US support concentrates in the 10-100 band with mass near
+  35** — matching -004's constant-lambda finding from the independent
+  daily-agreement direction; only 23/408 US months informative. Conditional
+  replays: US lands turnover in tolerance (0.412 vs 0.44) or Sharpe in
+  tolerance (0.724 vs 0.68) depending on the grid variant, never both — the
+  documented CV-instability mechanism; DE 4/8, JP 3/8, so the -004
+  expressibility bound is the final word for DE/JP.
+- Best available answer to "what was their grid": through our lambda family,
+  their US selections live in ~[10, 100] centered near 35; DE/JP cannot be
+  resolved because their sequences are outside our expressible space.
+  Descriptive only; artifacts in `artifacts/jm-residual/05-inferred-grid/`
+  and `06-inferred-grid-shift-months/`. Exploratory; no adoption.

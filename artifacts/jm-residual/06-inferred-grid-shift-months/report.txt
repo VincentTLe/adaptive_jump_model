@@ -1,0 +1,18 @@
+jm-inferred-grid-006 — estimator tháng-có-lật (bản cuối)
+(chẩn đoán CÓ ĐIỀU KIỆN; cấm nhận nuôi; họ estimator đã cạn)
+
+Lưới suy ra (chỉ tháng có cú lật, tie về λ LỚN nhất):
+   us: 10|13.895|15|26.827|30|35|40|60|80|100|1000   (23 tháng tin cậy, 385 tháng yên)
+   de: 0|0.1|1|5|7.19686|10|25|40|80|100|220|1000   (57 tháng tin cậy, 351 tháng yên)
+   jp: 0.1|1|1.9307|3.72759|5|7.19686|13.895|15|26.827|35|40|51.7947|70|1000   (44 tháng tin cậy, 364 tháng yên)
+   union: 0|0.1|1|1.9307|3.72759|5|7.19686|10|13.895|15|25|26.827|30|35|40|51.7947|60|70|80|100|220|1000
+
+Chạy điều kiện (CV tháng của TA, V0 sealed):
+   us [union] 6/8 | sharpe 0.724 (Shu 0.68) | turnover 0.559 (Shu 0.44)
+   us [per_market] 5/8 | sharpe 0.752 (Shu 0.68) | turnover 0.412 (Shu 0.44)
+   de [union] 4/8 | sharpe 0.304 (Shu 0.44) | turnover 0.937 (Shu 1.70)
+   de [per_market] 4/8 | sharpe 0.278 (Shu 0.44) | turnover 0.908 (Shu 1.70)
+   jp [union] 3/8 | sharpe 0.179 (Shu 0.31) | turnover 1.360 (Shu 0.72)
+   jp [per_market] 3/8 | sharpe 0.177 (Shu 0.31) | turnover 1.391 (Shu 0.72)
+
+Đối chiếu: sealed 4/3/3; -005 union 7/3/3; geometry V3 (mô tả) 6/4/5.
