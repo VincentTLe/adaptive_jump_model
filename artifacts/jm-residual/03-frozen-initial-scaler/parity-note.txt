@@ -1,0 +1,3 @@
+us: V3 replay with fit-time validation gates PASSED — identical to the committed artifact on 64338 cells; every refit passed the finite-objective and binary-state gates (remediation of verification DISCREPANCY 2, 2026-07-31)
+de: V3 replay with fit-time validation gates PASSED — identical to the committed artifact on 64026 cells; every refit passed the finite-objective and binary-state gates (remediation of verification DISCREPANCY 2, 2026-07-31)
+jp: V3 replay with fit-time validation gates PASSED — identical to the committed artifact on 62052 cells; every refit passed the finite-objective and binary-state gates (remediation of verification DISCREPANCY 2, 2026-07-31)

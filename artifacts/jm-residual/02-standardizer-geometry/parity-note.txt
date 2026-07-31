@@ -1,3 +1,10 @@
 us: probe-loop gate PASSED — src and probe-local V1 agree on 64338 cells exactly
 de: probe-loop gate PASSED — src and probe-local V1 agree on 64026 cells exactly
 jp: probe-loop gate PASSED — src and probe-local V1 agree on 62052 cells exactly
+
+us: V0 replay parity PASSED — sealed pipeline recomputed through fixed_jm_states equals sealed jm-states.csv on 64338 cells exactly (remediation of verification DISCREPANCY 1, 2026-07-31)
+us: V3 replay with fit-time validation gates PASSED — identical to the committed artifact on 64338 cells; every refit passed the finite-objective and binary-state gates (remediation of verification DISCREPANCY 2, 2026-07-31)
+de: V0 replay parity PASSED — sealed pipeline recomputed through fixed_jm_states equals sealed jm-states.csv on 64026 cells exactly (remediation of verification DISCREPANCY 1, 2026-07-31)
+de: V3 replay with fit-time validation gates PASSED — identical to the committed artifact on 64026 cells; every refit passed the finite-objective and binary-state gates (remediation of verification DISCREPANCY 2, 2026-07-31)
+jp: V0 replay parity PASSED — sealed pipeline recomputed through fixed_jm_states equals sealed jm-states.csv on 62052 cells exactly (remediation of verification DISCREPANCY 1, 2026-07-31)
+jp: V3 replay with fit-time validation gates PASSED — identical to the committed artifact on 62052 cells; every refit passed the finite-objective and binary-state gates (remediation of verification DISCREPANCY 2, 2026-07-31)

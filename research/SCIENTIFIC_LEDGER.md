@@ -999,3 +999,28 @@ The complete final-v3 paper grids remain unidentified.
 - Next frozen question, registered in advance: `jm-standardizer-geometry-002`.
 - Artifact: `artifacts/jm-residual/01-grid-identification/`. This exploratory
   result supports no performance, replication, or grid-choice claim.
+
+### 2026-07-31 — `jm-standardizer-geometry-002` / `-003` (complete; axis closed)
+
+- Mechanism-first revisit of the standardizer axis on sealed v9.4 (premise
+  changes named in the -002 spec; prior v8-era rows were CRSP-era). Probe
+  gates: src-vs-probe-local V1 exact in all three markets.
+- **Owner correction recorded:** the clip-3σ variant was withdrawn from
+  interpretation (registry AMENDED event) — example-code recipes are not
+  author-method candidates, per the standing CLAUDE.md rule the variant list
+  should never have included it. No conclusion depended on it (clip was
+  immaterial where measured). -003's justification reframed to cadence-family
+  enumeration, without example-code appeal.
+- **Finding: the paper's Table-3 persistence curve is bracketed by the
+  exhausted cadence family and matched by no member** — λ=0 shift rate:
+  expanding 7.24, per-refit 15.07, frozen-initial 5.88, published 9.7;
+  registered I1 rule failed by all (2/6, 1/6, 3/6). The axis is dominant
+  (2x swing) yet unidentifiable from public information.
+- Descriptives adopted nowhere: frozen-initial gives the closest US anchor
+  (32 shifts / 19.4% bear vs printed 30 / 19.7%) and best conditional
+  Table-4 counts (6/4/5 of 8). Registered closure: JM residual attribution
+  moves to data/vintage differences, mirroring the HMM turnover closure;
+  further geometry variants barred without a new primary source.
+- Artifacts: `artifacts/jm-residual/02-standardizer-geometry/`,
+  `artifacts/jm-residual/03-frozen-initial-scaler/`. Exploratory; no
+  performance, replication, or adoption claim.

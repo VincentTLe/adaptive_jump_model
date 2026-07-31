@@ -211,6 +211,14 @@ def _probe_fit_task(task):
                 tol=cfg.jm_protocol.tol,
                 n_init=cfg.jm_protocol.n_init,
             ).fit(scaled, ret_ser=window.loc[:, "excess_return"], sort_by="cumret")
+            # same fit-time gates as fit_fixed_jm_window, so every variant is
+            # validated on equal footing
+            if not np.isfinite(float(fitted.val_)):
+                raise SystemExit(
+                    f"JM lambda {penalty:g} produced a non-finite objective"
+                )
+            if not np.isin(np.asarray(fitted.labels_), [0, 1]).all():
+                raise SystemExit(f"JM lambda {penalty:g} produced invalid states")
             models[penalty] = fitted
         return ProbeFit(scaler, models)
 
