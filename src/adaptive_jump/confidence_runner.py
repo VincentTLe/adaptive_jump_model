@@ -1,4 +1,4 @@
-"""Execute adaptive-confidence-001 against the verified sealed v7 parent."""
+"""Execute the arrival-rule refit study against a verified sealed parent."""
 
 from __future__ import annotations
 
@@ -38,6 +38,7 @@ from adaptive_jump.confidence_model import (
     generate_adaptive_states,
 )
 from adaptive_jump.confidence_spec import (
+    EXPERIMENT_ID,
     MARKETS,
     ConfidenceSpec,
     ConfidenceStudyError,
@@ -46,22 +47,28 @@ from adaptive_jump.confidence_spec import (
 from adaptive_jump.config import ResearchConfig, load_config
 from adaptive_jump.data import research_git_sha
 from adaptive_jump.models import FEATURE_COLUMNS
+from adaptive_jump.study_sources import verify_source_identity
 
 
 def _verify_parent(
     root: Path, config: ResearchConfig, spec: ConfidenceSpec
 ) -> tuple[Path, dict[str, Any]]:
-    parent = root / config.artifact_root / "fixed-baselines" / spec.parent_run_id
+    parent = spec.parent.directory(root, config.artifact_root)
     receipt = verify_run(parent)
-    metadata = read_json(parent / "run.json")
+    verify_source_identity(
+        parent,
+        spec.parent,
+        error=ConfidenceStudyError,
+        label="fixed",
+        config_sha256=config.sha256,
+    )
     if (
         receipt.get("status") != "complete"
         or receipt.get("run_id") != spec.parent_run_id
-        or metadata.get("config_sha256") != config.sha256
         or sha256_file(parent / "inventory.json") != spec.parent_inventory_sha256
         or sha256_file(parent / "data-manifest.json") != spec.data_manifest_sha256
     ):
-        raise ConfidenceStudyError("sealed v7 parent identity changed")
+        raise ConfidenceStudyError("sealed parent identity changed")
     return parent, receipt
 
 
@@ -84,7 +91,7 @@ def _run_market(
         )
         _assert_beta_zero_states(
             evidence.states[0.0],
-            _parent_states(parent, market, spec.lambdas),
+            _parent_states(parent, market, spec.lambdas_for(market)),
             market=market,
         )
         selections = _select_beta_paths(frame, evidence, config, spec)
@@ -184,7 +191,7 @@ def run_us_smoke(config: ResearchConfig, spec: ConfidenceSpec) -> dict[str, Any]
     )
     _assert_beta_zero_states(
         evidence.states[0.0],
-        _parent_states(parent, "us", spec.lambdas),
+        _parent_states(parent, "us", spec.lambdas_for("us")),
         market="us-smoke",
     )
 
@@ -249,7 +256,7 @@ def _conclusion(
         for label in ("log2", "log4")
     )
     return {
-        "experiment_id": "adaptive-confidence-001",
+        "experiment_id": EXPERIMENT_ID,
         "claim_class": "EXPLORATORY",
         "performance_claim_allowed": False,
         "tradeoff_result": tradeoff,
@@ -303,6 +310,8 @@ def run_confidence_study(
             "created_at_utc": datetime.now(UTC).isoformat(),
             "spec_sha256": spec.sha256,
             "config_sha256": config.sha256,
+            "config_path": config.path.name,
+            "fixed_experiment_id": spec.parent.experiment_id,
             "data_manifest_sha256": spec.data_manifest_sha256,
             "parent_inventory_sha256": spec.parent_inventory_sha256,
             "git_sha": git_sha,
@@ -365,7 +374,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--config", required=True)
     parser.add_argument(
         "--spec",
-        default="research/adaptive-confidence-001.toml",
+        default=f"research/{EXPERIMENT_ID}.toml",
     )
     parser.add_argument("--smoke", action="store_true")
     return parser

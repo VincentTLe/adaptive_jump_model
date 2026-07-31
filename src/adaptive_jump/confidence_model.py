@@ -17,7 +17,7 @@ from adaptive_jump.config import ResearchConfig
 from adaptive_jump.models import (
     FEATURE_COLUMNS,
     _complete_model_frame,
-    _fit_fixed_jm,
+    fit_fixed_jm_window,
 )
 from adaptive_jump.tv_jump import (
     TVJumpModel,
@@ -68,7 +68,9 @@ def _parent_states(
     stored["date"] = pd.to_datetime(stored["date"], errors="raise")
     stored = stored.set_index("date")
     stored.columns = tuple(float(column) for column in stored.columns)
-    if tuple(stored.columns) != lambdas:
+    # ``lambdas`` is this market's own grid; a sealed run stores exactly the
+    # columns its contract fitted, so a mismatch means the parent moved.
+    if tuple(stored.columns) != tuple(lambdas):
         raise ConfidenceStudyError(f"{market}: parent lambda grid changed")
     return stored
 
@@ -128,13 +130,20 @@ def generate_adaptive_states(
     market: str,
     terminal_limit: int | None = None,
 ) -> StateEvidence:
-    """Reconstruct v7 fits and emit terminal states for every beta/lambda."""
+    """Reconstruct the parent fits and emit terminal states per beta/lambda."""
     complete, all_dates = _complete_model_frame(
         frame, (*FEATURE_COLUMNS, "excess_return")
     )
     fit_window = config.model_protocol.fit_window
     if len(complete) < fit_window:
         raise ConfidenceStudyError(f"{market}: insufficient fixed-JM observations")
+    # Smoke helpers pass synthetic market labels ("us-smoke"); resolve the grid
+    # from the spec, which carries one entry per real market.
+    grid_market = market.split("-", 1)[0]
+    lambdas = spec.lambdas_for(grid_market)
+    jm_protocol = config.jm_protocol_for(grid_market)
+    if tuple(jm_protocol.lambda_grid) != lambdas:
+        raise ConfidenceStudyError(f"{market}: contract and spec lambda grids differ")
 
     parent_refits = parent_refits.copy()
     for column in ("fit_date", "training_start", "training_end"):
@@ -142,18 +151,18 @@ def generate_adaptive_states(
     parent_refits["lambda"] = pd.to_numeric(parent_refits["lambda"], errors="raise")
 
     states = {
-        beta: pd.DataFrame(index=all_dates, columns=spec.lambdas, dtype=float)
+        beta: pd.DataFrame(index=all_dates, columns=lambdas, dtype=float)
         for beta in spec.betas
     }
-    loss0 = pd.DataFrame(index=all_dates, columns=spec.lambdas, dtype=float)
-    loss1 = pd.DataFrame(index=all_dates, columns=spec.lambdas, dtype=float)
-    q_frame = pd.DataFrame(index=all_dates, columns=spec.lambdas, dtype=float)
+    loss0 = pd.DataFrame(index=all_dates, columns=lambdas, dtype=float)
+    loss1 = pd.DataFrame(index=all_dates, columns=lambdas, dtype=float)
+    q_frame = pd.DataFrame(index=all_dates, columns=lambdas, dtype=float)
     c01 = {
-        beta: pd.DataFrame(index=all_dates, columns=spec.lambdas, dtype=float)
+        beta: pd.DataFrame(index=all_dates, columns=lambdas, dtype=float)
         for beta in spec.betas
     }
     c10 = {
-        beta: pd.DataFrame(index=all_dates, columns=spec.lambdas, dtype=float)
+        beta: pd.DataFrame(index=all_dates, columns=lambdas, dtype=float)
         for beta in spec.betas
     }
 
@@ -174,12 +183,12 @@ def generate_adaptive_states(
         window = complete.iloc[terminal - fit_window + 1 : terminal + 1]
         current_date = pd.Timestamp(window.iloc[-1]["date"])
         anchor = (current_date.year, current_date.month)
-        scheduled = current_date.month in config.jm_protocol.refit_months
+        scheduled = current_date.month in jm_protocol.refit_months
         if fit is None or (scheduled and anchor != last_anchor):
-            fit = _fit_fixed_jm(
+            fit = fit_fixed_jm_window(
                 window,
                 config.model_protocol,
-                config.jm_protocol,
+                jm_protocol,
                 feature_columns=FEATURE_COLUMNS,
             )
             _validate_refit(market, current_date, window, fit, parent_refits)
@@ -192,10 +201,10 @@ def generate_adaptive_states(
                 q_train = robust_loss_scale(train_loss)
                 tv = TVJumpModel(
                     n_components=config.model_protocol.n_states,
-                    random_state=config.jm_protocol.random_state,
-                    max_iter=config.jm_protocol.max_iter,
-                    tol=config.jm_protocol.tol,
-                    n_init=config.jm_protocol.n_init,
+                    random_state=jm_protocol.random_state,
+                    max_iter=jm_protocol.max_iter,
+                    tol=jm_protocol.tol,
+                    n_init=jm_protocol.n_init,
                 )
                 tv.centers_ = np.asarray(fixed_model.centers_, dtype=float).copy()
                 tv.feat_weights = None
@@ -217,7 +226,7 @@ def generate_adaptive_states(
                 )
 
         scaled = fit.scaler.transform(window.loc[:, FEATURE_COLUMNS])
-        for penalty in spec.lambdas:
+        for penalty in lambdas:
             losses = loss_matrix(scaled, tv_models[penalty].centers_)
             q_train = scales[penalty]
             loss0.loc[current_date, penalty] = losses[-1, 0]
@@ -246,9 +255,12 @@ def generate_adaptive_states(
                 flush=True,
             )
 
+    # At lambda0 = 0 every transition penalty is 0 whatever beta discounts it,
+    # so that column must be beta-invariant. Markets whose calibrated grid has
+    # no zero lambda simply have no such column to check.
     for beta, values in states.items():
         values.index.name = "date"
-        if not np.array_equal(
+        if 0.0 in lambdas and not np.array_equal(
             values[0.0].to_numpy(),
             states[0.0][0.0].to_numpy(),
             equal_nan=True,

@@ -1,4 +1,10 @@
-"""Frozen contract for adaptive-confidence-001."""
+"""Frozen contract for the arrival-rule refit study.
+
+-002 reruns the -001 question against the calibrated-v10 baseline: the betas,
+the q_train definition, the timing conventions and the output schemas are
+unchanged, but the candidate grid is now one grid per market and the sealed
+parent is named by the spec rather than by a literal in this file.
+"""
 
 from __future__ import annotations
 
@@ -11,13 +17,24 @@ from pathlib import Path
 
 from adaptive_jump.config import ResearchConfig
 from adaptive_jump.models import FEATURE_COLUMNS
+from adaptive_jump.study_grids import (
+    MarketGrids,
+    grid_for,
+    grids_equal,
+    market_grids,
+    parse_grid_table,
+)
+from adaptive_jump.study_sources import SourceReference, read_source_reference
 
+# The rerun of adaptive-confidence-001 against the calibrated-v10 baseline.
+# Verifying the archived -001 run requires the pre-restoration commit.
+EXPERIMENT_ID = "adaptive-confidence-002"
 BETAS = (0.0, math.log(2.0), math.log(4.0))
 MARKETS = ("us", "de", "jp")
 
 
 class ConfidenceStudyError(ValueError):
-    """Raised when the frozen study or its v7 nesting contract is violated."""
+    """Raised when the frozen study or its parent nesting contract is violated."""
 
 
 @dataclass(frozen=True)
@@ -25,18 +42,29 @@ class ConfidenceSpec:
     path: Path
     sha256: str
     experiment_id: str
-    parent_run_id: str
-    parent_inventory_sha256: str
+    parent: SourceReference
     data_manifest_sha256: str
     data_cutoff: date
     betas: tuple[float, ...]
-    lambdas: tuple[float, ...]
+    lambdas: MarketGrids
     markets: tuple[str, ...]
     artifact_subdir: Path
 
+    @property
+    def parent_run_id(self) -> str:
+        return self.parent.run_id
+
+    @property
+    def parent_inventory_sha256(self) -> str:
+        return self.parent.inventory_sha256
+
+    def lambdas_for(self, market: str) -> tuple[float, ...]:
+        """The candidate lambda grid governing one market."""
+        return grid_for(self.lambdas, market)
+
 
 def load_confidence_spec(path: str | Path, config: ResearchConfig) -> ConfidenceSpec:
-    """Load the compact frozen contract and bind it to canonical v7."""
+    """Load the compact frozen contract and bind it to its sealed parent."""
     spec_path = Path(path).resolve()
     payload = spec_path.read_bytes()
     try:
@@ -46,7 +74,7 @@ def load_confidence_spec(path: str | Path, config: ResearchConfig) -> Confidence
 
     required_flags = (
         document.get("schema_version") == 1,
-        document.get("experiment_id") == "adaptive-confidence-001",
+        document.get("experiment_id") == EXPERIMENT_ID,
         document.get("claim_class") == "EXPLORATORY",
         document.get("performance_claim_allowed") is False,
         document.get("extension_access") is False,
@@ -55,20 +83,27 @@ def load_confidence_spec(path: str | Path, config: ResearchConfig) -> Confidence
     if not all(required_flags):
         raise ConfidenceStudyError("confidence study identity or evidence lane changed")
 
-    parent = document.get("parent", {})
+    parent_table = document.get("parent", {})
+    parent = read_source_reference(
+        parent_table, error=ConfidenceStudyError, label="fixed"
+    )
+    manifest = parent_table.get("data_manifest_sha256")
     if (
-        parent.get("config_sha256") != config.sha256
-        or parent.get("data_cutoff") != config.replication_cutoff.isoformat()
-        or date.fromisoformat(parent["data_cutoff"]) > date(2023, 12, 31)
+        parent_table.get("config_sha256") != config.sha256
+        or not isinstance(manifest, str)
+        or not manifest
+        or parent_table.get("data_cutoff") != config.replication_cutoff.isoformat()
+        or date.fromisoformat(parent_table["data_cutoff"]) > date(2023, 12, 31)
     ):
         raise ConfidenceStudyError("confidence study parent or cutoff changed")
 
     penalty = document.get("penalty", {})
     betas = tuple(float(value) for value in penalty.get("beta", ()))
     candidates = document.get("candidates", {})
-    lambdas = tuple(float(value) for value in candidates.get("raw_lambda_grid", ()))
-    controls = document.get("controls", {})
     comparison = document.get("comparison", {})
+    markets = tuple(comparison.get("markets", ()))
+    lambdas = parse_grid_table(candidates.get("raw_lambda_grid"), markets or MARKETS)
+    controls = document.get("controls", {})
     if (
         betas != BETAS
         or penalty.get("q_train")
@@ -82,7 +117,8 @@ def load_confidence_spec(path: str | Path, config: ResearchConfig) -> Confidence
             "unoccupied fitted state"
         )
         or penalty.get("q_train_fallback") != "none"
-        or lambdas != config.jm_protocol.lambda_grid
+        or markets != MARKETS
+        or not grids_equal(lambdas, market_grids(config, markets))
         or candidates.get("raw_grid_expansion") is not False
         or candidates.get("calibration_framework") is not False
         or candidates.get("beta_selected") is not False
@@ -97,7 +133,6 @@ def load_confidence_spec(path: str | Path, config: ResearchConfig) -> Confidence
         != config.backtest_protocol.return_offset
         or controls.get("one_way_cost_bps") != config.backtest_protocol.one_way_cost_bps
         or controls.get("provider_access") is not False
-        or tuple(comparison.get("markets", ())) != MARKETS
     ):
         raise ConfidenceStudyError("confidence study controls changed")
 
@@ -109,16 +144,16 @@ def load_confidence_spec(path: str | Path, config: ResearchConfig) -> Confidence
         or ".." in artifact_subdir.parts
     ):
         raise ConfidenceStudyError("invalid confidence artifact subdirectory")
+    assert lambdas is not None
     return ConfidenceSpec(
         path=spec_path,
         sha256=hashlib.sha256(payload).hexdigest(),
         experiment_id=document["experiment_id"],
-        parent_run_id=str(parent["run_id"]),
-        parent_inventory_sha256=str(parent["run_inventory_sha256"]),
-        data_manifest_sha256=str(parent["data_manifest_sha256"]),
-        data_cutoff=date.fromisoformat(parent["data_cutoff"]),
+        parent=parent,
+        data_manifest_sha256=str(manifest),
+        data_cutoff=date.fromisoformat(parent_table["data_cutoff"]),
         betas=betas,
         lambdas=lambdas,
-        markets=tuple(comparison["markets"]),
+        markets=markets,
         artifact_subdir=artifact_subdir,
     )
