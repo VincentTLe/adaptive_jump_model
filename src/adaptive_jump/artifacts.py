@@ -130,16 +130,27 @@ def directional_gate(
         }
         rows.append({"market": market, **checks, "passed": all(checks.values())})
     passed = len(rows) == 3 and all(row["passed"] for row in rows)
+    if claim_label == "calibrated baseline":
+        # Never phrase a calibrated run as replication: with grids searched
+        # against the published targets, passing this gate is expected, not
+        # evidence.
+        conclusion = (
+            "directional gate passed on the calibrated baseline"
+            if passed
+            else "directional gate failed on the calibrated baseline"
+        )
+    else:
+        conclusion = (
+            "directional proxy replication"
+            if passed
+            else "non-replication; adaptive work remains blocked"
+        )
     return {
         "claim_label": claim_label,
         "primary_delay": primary_delay,
         "markets": rows,
         "passed": passed,
-        "conclusion": (
-            "directional proxy replication"
-            if passed
-            else "non-replication; adaptive work remains blocked"
-        ),
+        "conclusion": conclusion,
     }
 
 
