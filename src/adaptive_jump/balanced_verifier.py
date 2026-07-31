@@ -15,6 +15,7 @@ from adaptive_jump.balanced_decision_replay import classify, dated_audit, summar
 from adaptive_jump.balanced_event_replay import extract_events, matched_response
 from adaptive_jump.balanced_mechanics import mechanical_prerequisites
 from adaptive_jump.balanced_model import (
+    EXPERIMENT_ID,
     BalancedSpec,
     BalancedStudyError,
     beta_label,
@@ -37,8 +38,7 @@ from adaptive_jump.config import ResearchConfig, load_config
 from adaptive_jump.lagged_model import LockedStateEvidence
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-CANONICAL_CONFIG = Path("research.toml")
-CANONICAL_SPEC = Path("research/balanced-lagged-mechanism-001.toml")
+CANONICAL_SPEC = Path(f"research/{EXPERIMENT_ID}.toml")
 DATE_COLUMNS = ("start", "end", "signal_date", "evidence_date", "fit_date")
 VERIFIER_IMPLEMENTATION_PATH = "src/adaptive_jump/balanced_verifier.py"
 ROOT_FILES = {
@@ -78,7 +78,9 @@ SMOKE_EXPECTED = {
 }
 
 
-def _smoke_coverage_exact(smoke: dict[str, Any], spec: BalancedSpec) -> bool:
+def _smoke_coverage_exact(
+    smoke: dict[str, Any], spec: BalancedSpec, market: str
+) -> bool:
     integer_fields = (
         "terminal_dates",
         "generated_terminal_dates",
@@ -98,7 +100,8 @@ def _smoke_coverage_exact(smoke: dict[str, Any], spec: BalancedSpec) -> bool:
     prefix = smoke["terminal_dates"]
     generated = smoke["generated_terminal_dates"]
     formula_dates = smoke["actual_formula_terminal_dates_checked"]
-    lambda_count = len(spec.lambdas)
+    lambda_count = len(spec.lambdas_for(market))
+    event_lambda_count = len(spec.event_lambdas_for(market))
     prefix_cells = prefix * lambda_count
     generated_cells = generated * lambda_count
     minimum_stale = smoke.get("refit_convention_min_stale_distance")
@@ -119,10 +122,10 @@ def _smoke_coverage_exact(smoke: dict[str, Any], spec: BalancedSpec) -> bool:
         and smoke["actual_formula_lambda_values_checked"] == lambda_count
         and smoke["actual_formula_directed_cells_checked"]
         == formula_dates * lambda_count * 2
-        and smoke["refit_convention_lambdas_checked"] == len(spec.event_lambdas)
+        and smoke["refit_convention_lambdas_checked"] == event_lambda_count
         and 1
         <= smoke["refit_convention_informative_lambdas"]
-        <= len(spec.event_lambdas)
+        <= event_lambda_count
         and smoke["refit_convention_distinct_lambdas"]
         == smoke["refit_convention_informative_lambdas"]
         and minimum_stale > spec.numerical_tolerance
@@ -241,8 +244,11 @@ def _read_like(path: Path, expected: pd.DataFrame) -> pd.DataFrame:
     return frame
 
 
-def _read_state(path: Path, spec: BalancedSpec) -> pd.DataFrame:
-    columns = ("date", *(str(value) for value in spec.lambdas))
+def _read_state(
+    path: Path, spec: BalancedSpec, market: str
+) -> pd.DataFrame:
+    lambdas = spec.lambdas_for(market)
+    columns = ("date", *(str(value) for value in lambdas))
     try:
         frame = pd.read_csv(path, float_precision="round_trip")
     except (OSError, ValueError) as exc:
@@ -252,7 +258,7 @@ def _read_state(path: Path, spec: BalancedSpec) -> pd.DataFrame:
     frame["date"] = pd.to_datetime(frame["date"], errors="raise")
     frame = frame.set_index("date")
     frame.index = pd.DatetimeIndex(frame.index, name="date")
-    frame.columns = spec.lambdas
+    frame.columns = lambdas
     return frame
 
 
@@ -276,8 +282,10 @@ def expected_files(spec: BalancedSpec) -> set[str]:
     return files
 
 
-def _canonical_context() -> tuple[ResearchConfig, BalancedSpec]:
-    config = load_config(REPOSITORY_ROOT / CANONICAL_CONFIG)
+def _canonical_context(config_name: str) -> tuple[ResearchConfig, BalancedSpec]:
+    # The contract is whichever one the run recorded, not a literal
+    # "research.toml": a calibrated rerun uses a different contract.
+    config = load_config(REPOSITORY_ROOT / config_name)
     spec = load_balanced_spec(REPOSITORY_ROOT / CANONICAL_SPEC, config)
     return config, spec
 
@@ -296,6 +304,7 @@ def _replay_market(
     behavior = path_behavior(inputs, evidence, spec)
     events, own_audit = extract_events(inputs, evidence, spec)
     anchors, matched_audit = matched_response(
+        market,
         events,
         evidence["balanced"].states[spec.decision_beta],
         inputs.candidates[0.0],
@@ -334,6 +343,7 @@ def _verify_market(path: Path, replay: MarketReplay, spec: BalancedSpec) -> None
             stored = _read_state(
                 path / market / f"candidate-states-{rule}-beta-{beta_label(beta)}.csv",
                 spec,
+                market,
             )
             _assert_frame_exact(
                 stored,
@@ -362,7 +372,7 @@ def _mechanical_checks(
     smoke_checks = {key: smoke.get(key) for key in SMOKE_EXPECTED}
     smoke_passed = all(
         smoke_checks[key] is expected for key, expected in SMOKE_EXPECTED.items()
-    ) and _smoke_coverage_exact(smoke, spec)
+    ) and _smoke_coverage_exact(smoke, spec, str(smoke["market"]))
     replays_passed = set(market_replays) == set(spec.markets) and all(
         replay.get("parent_lagged_exact") is True
         and replay.get("beta_zero_exact") is True
@@ -417,6 +427,9 @@ def _verify_metadata(
         "monthly_selection_performed": False,
         "spec_sha256": spec.sha256,
         "config_sha256": config.sha256,
+        "config_path": config.path.name,
+        "fixed_experiment_id": spec.fixed.experiment_id,
+        "parent_experiment_id": spec.parent.experiment_id,
         "fixed_inventory_sha256": spec.fixed_inventory_sha256,
         "parent_inventory_sha256": spec.parent_inventory_sha256,
         "parent_spec_sha256": spec.parent_spec_sha256,
@@ -462,7 +475,10 @@ def verify_balanced_run(run: str | Path) -> dict[str, Any]:
     path = raw.resolve()
     if not path.is_dir() or any(item.is_symlink() for item in path.rglob("*")):
         raise BalancedStudyError("balanced artifact tree is invalid")
-    config, spec = _canonical_context()
+    config_name = read_json(path / "run.json").get("config_path")
+    if not isinstance(config_name, str) or Path(config_name).name != config_name:
+        raise BalancedStudyError("run metadata does not name its contract file")
+    config, spec = _canonical_context(config_name)
     actual = {str(item.relative_to(path)) for item in path.rglob("*") if item.is_file()}
     if actual != expected_files(spec):
         raise BalancedStudyError("balanced artifact allowlist changed")
@@ -477,7 +493,8 @@ def verify_balanced_run(run: str | Path) -> dict[str, Any]:
     )
     stored_implementation = read_json(path / "implementation-lock.json")
     _assert_implementation_compatible(
-        stored_implementation, implementation_lock(REPOSITORY_ROOT, spec)
+        stored_implementation,
+        implementation_lock(REPOSITORY_ROOT, spec, config.path),
     )
     smoke = run_independent_smoke(config, spec, sources)
     _assert_json_exact(read_json(path / "smoke.json"), smoke, "independent smoke")
@@ -551,10 +568,10 @@ def verify_balanced_run(run: str | Path) -> dict[str, Any]:
         "run_id": run_id,
         "result": conclusion["result"],
         "markets_reconstructed": len(replays),
-        "candidate_paths_reconstructed": len(spec.markets)
-        * len(spec.rules)
-        * len(spec.betas)
-        * len(spec.lambdas),
+        "candidate_paths_reconstructed": sum(
+            len(spec.rules) * len(spec.betas) * len(spec.lambdas_for(market))
+            for market in spec.markets
+        ),
         **counts,
         "mechanical_prerequisites_passed": mechanics["passed"],
     }

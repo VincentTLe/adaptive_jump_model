@@ -58,12 +58,12 @@ def _generate(
 
 
 def _penalty_checks(
-    evidence: LockedStateEvidence, spec: BalancedSpec
+    evidence: LockedStateEvidence, spec: BalancedSpec, market: str
 ) -> tuple[int, int, float]:
     discounts = 0
     surcharges = 0
     pair_error = 0.0
-    for lambda0 in spec.event_lambdas:
+    for lambda0 in spec.event_lambdas_for(market):
         c01 = evidence.c01[spec.decision_beta][lambda0]
         c10 = evidence.c10[spec.decision_beta][lambda0]
         valid = c01.notna() & c10.notna()
@@ -97,16 +97,19 @@ def _actual_formula_checks(
     if len(fit_dates) < 2:
         raise BalancedStudyError("independent smoke needs a second refit")
     previous_fit, second_fit = pd.Timestamp(fit_dates[0]), pd.Timestamp(fit_dates[1])
-    terminal_dates = evidence.states[spec.decision_beta][spec.lambdas[0]].dropna().index
+    lambdas = spec.lambdas_for(inputs.market)
+    terminal_dates = (
+        evidence.states[spec.decision_beta][lambdas[0]].dropna().index
+    )
     terminal_dates = terminal_dates[terminal_dates <= second_fit]
     if len(terminal_dates) == 0 or pd.Timestamp(terminal_dates[-1]) != second_fit:
         raise BalancedStudyError("independent formula replay missed second refit")
     rows_by_lambda = {
         float(value): rows.sort_values("fit_date").reset_index(drop=True)
         for value, rows in evidence.refits.groupby("lambda0")
-        if float(value) in spec.lambdas
+        if float(value) in lambdas
     }
-    if set(rows_by_lambda) != set(spec.lambdas):
+    if set(rows_by_lambda) != set(lambdas):
         raise BalancedStudyError("independent smoke refit lambda coverage changed")
     formula_error = 0.0
     pair_error = 0.0
@@ -118,7 +121,7 @@ def _actual_formula_checks(
         terminal = int(inputs.model_dates.get_loc(current_date))
         dates = inputs.model_dates[terminal - spec.fit_window + 1 : terminal + 1]
         raw = inputs.features.loc[dates, list(FEATURE_COLUMNS)].to_numpy(float)
-        for lambda0 in spec.lambdas:
+        for lambda0 in lambdas:
             row = _row_for_date(rows_by_lambda[lambda0], current_date)
             mean, scale, centers = _sealed_parameters(row)
             losses = loss_matrix((raw - mean) / scale, centers)
@@ -155,10 +158,11 @@ def _actual_formula_checks(
     previous_raw = inputs.features.loc[
         inputs.model_dates[second_terminal - 1], list(FEATURE_COLUMNS)
     ].to_numpy(dtype=float, copy=True)[None, :]
+    event_lambdas = spec.event_lambdas_for(inputs.market)
     positive_event_lambdas = tuple(
-        lambda0 for lambda0 in spec.event_lambdas if lambda0 > 0.0
+        lambda0 for lambda0 in event_lambdas if lambda0 > 0.0
     )
-    if len(positive_event_lambdas) != len(spec.event_lambdas):
+    if len(positive_event_lambdas) != len(event_lambdas):
         raise BalancedStudyError("independent smoke event lambda coverage changed")
     stale_distances: list[float] = []
     informative_lambdas = 0
@@ -205,7 +209,7 @@ def _actual_formula_checks(
         "first_terminal_date": pd.Timestamp(terminal_dates[0]),
         "second_refit_date": second_fit,
         "terminal_dates_checked": len(terminal_dates),
-        "lambda_values_checked": len(spec.lambdas),
+        "lambda_values_checked": len(lambdas),
         "directed_cells_checked": directed_cells,
         "maximum_formula_abs_error": formula_error,
         "maximum_second_refit_formula_abs_error": second_error,
@@ -316,13 +320,14 @@ def run_independent_smoke(
     changed_cells = int((changes > spec.numerical_tolerance).sum())
     max_change = float(changes.max()) if changes.size else 0.0
     discounts, surcharges, summary_pair_error = _penalty_checks(
-        evidence["balanced"], spec
+        evidence["balanced"], spec, inputs.market
     )
     actual = _actual_formula_checks(inputs, evidence["balanced"], spec)
     pair_error = max(summary_pair_error, float(actual["maximum_pair_sum_abs_error"]))
     mechanics = mechanical_prerequisites(spec)
-    prefix_candidate_cells = prefix_terminal_dates * len(spec.lambdas)
-    generated_candidate_cells = generation_limit * len(spec.lambdas)
+    market_lambdas = spec.lambdas_for(inputs.market)
+    prefix_candidate_cells = prefix_terminal_dates * len(market_lambdas)
+    generated_candidate_cells = generation_limit * len(market_lambdas)
     checks = {
         "parent_lagged_exact": parent_cells
         == generated_candidate_cells * len(spec.betas),
@@ -343,7 +348,7 @@ def run_independent_smoke(
         "formula_through_second_refit": actual["second_refit_date"] == refit_date
         and int(actual["terminal_dates_checked"]) == refit_limit
         and int(actual["terminal_dates_checked"]) >= 2
-        and int(actual["lambda_values_checked"]) == len(spec.lambdas),
+        and int(actual["lambda_values_checked"]) == len(market_lambdas),
         "pair_balance_exact": pair_error <= spec.numerical_tolerance,
         "balanced_discounts_present": discounts > 0,
         "balanced_surcharges_present": surcharges > 0,
@@ -352,7 +357,8 @@ def run_independent_smoke(
         )
         <= spec.numerical_tolerance
         and float(actual["minimum_stale_fit_distance"]) > spec.numerical_tolerance
-        and int(actual["stale_fit_lambdas_checked"]) == len(spec.event_lambdas)
+        and int(actual["stale_fit_lambdas_checked"])
+        == len(spec.event_lambdas_for(inputs.market))
         and int(actual["stale_fit_lambdas_informative"]) >= 1
         and int(actual["stale_fit_lambdas_distinct"])
         == int(actual["stale_fit_lambdas_informative"]),

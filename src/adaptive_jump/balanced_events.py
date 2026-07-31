@@ -79,7 +79,7 @@ def extract_events(
     refits = {
         value: rows.sort_values("fit_date").reset_index(drop=True)
         for value, rows in inputs.refits.groupby("lambda0")
-        if value in spec.event_lambdas
+        if value in spec.event_lambdas_for(inputs.market)
     }
     fixed_frame = inputs.candidates[0.0]
     records: list[dict[str, Any]] = []
@@ -104,7 +104,7 @@ def extract_events(
             "nonfinite_ablated_state_margin_count": 0,
         }
         model_frame = evidence[rule].states[spec.decision_beta]
-        for lambda0 in spec.event_lambdas:
+        for lambda0 in spec.event_lambdas_for(inputs.market):
             model = model_frame[lambda0].dropna().astype(int)
             fixed = fixed_frame[lambda0].reindex(model.index).astype(int)
             first = int(

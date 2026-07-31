@@ -172,7 +172,7 @@ def extract_events(
     refits = {
         float(value): rows.sort_values("fit_date").reset_index(drop=True)
         for value, rows in inputs.refits.groupby("lambda0")
-        if float(value) in spec.event_lambdas
+        if float(value) in spec.event_lambdas_for(inputs.market)
     }
     fixed_frame = inputs.candidates[0.0]
     records: list[dict[str, Any]] = []
@@ -197,7 +197,7 @@ def extract_events(
             "nonfinite_ablated_state_margin_count": 0,
         }
         model_frame = evidence[rule].states[spec.decision_beta]
-        for lambda0 in spec.event_lambdas:
+        for lambda0 in spec.event_lambdas_for(inputs.market):
             model = model_frame[lambda0].dropna().astype(int)
             fixed = fixed_frame[lambda0].reindex(model.index).astype(int)
             first = int(
@@ -360,6 +360,7 @@ def extract_events(
 
 
 def matched_response(
+    market: str,
     events: pd.DataFrame,
     balanced_states: pd.DataFrame,
     fixed_states: pd.DataFrame,
@@ -377,7 +378,7 @@ def matched_response(
     refits_by_lambda = {
         float(lambda0): rows.sort_values("fit_date").reset_index(drop=True)
         for lambda0, rows in refits.groupby("lambda0")
-        if float(lambda0) in spec.event_lambdas
+        if float(lambda0) in spec.event_lambdas_for(market)
     }
     for anchor in lagged.itertuples(index=False):
         lambda0 = float(anchor.lambda0)

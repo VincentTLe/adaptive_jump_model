@@ -21,6 +21,7 @@ from adaptive_jump.balanced_analysis import (
     summarize,
 )
 from adaptive_jump.balanced_model import (
+    EXPERIMENT_ID,
     BalancedSpec,
     beta_label,
     load_balanced_spec,
@@ -76,7 +77,7 @@ def _run_market(
             evidence["balanced"], spec
         )
         terminal_rows = int(fixed.notna().all(axis=1).sum())
-        cells_per_path = terminal_rows * len(spec.lambdas)
+        cells_per_path = terminal_rows * len(spec.lambdas_for(inputs.market))
         all_candidate_cells = sum(
             int(evidence[rule].states[beta].notna().sum().sum())
             for rule in spec.rules
@@ -216,7 +217,7 @@ def run_balanced_study(config: ResearchConfig, spec: BalancedSpec) -> Path:
     root = config.path.parent
     sources = verify_source_inputs(root, config, spec)
     smoke = run_us_smoke(config, spec)
-    implementation = implementation_lock(root, spec)
+    implementation = implementation_lock(root, spec, config.path)
     run_id = (
         f"balanced-lagged-{spec.sha256[:12]}-"
         f"{spec.parent_inventory_sha256[:12]}-"
@@ -261,6 +262,11 @@ def run_balanced_study(config: ResearchConfig, spec: BalancedSpec) -> Path:
             "created_at_utc": datetime.now(UTC).isoformat(),
             "spec_sha256": spec.sha256,
             "config_sha256": config.sha256,
+            # Which contract this run was produced under: the verifier
+            # reloads it instead of assuming "research.toml".
+            "config_path": config.path.name,
+            "fixed_experiment_id": spec.fixed.experiment_id,
+            "parent_experiment_id": spec.parent.experiment_id,
             "fixed_inventory_sha256": spec.fixed_inventory_sha256,
             "parent_inventory_sha256": spec.parent_inventory_sha256,
             "parent_spec_sha256": spec.parent_spec_sha256,
@@ -340,7 +346,7 @@ def run_balanced_study(config: ResearchConfig, spec: BalancedSpec) -> Path:
 def main() -> int:
     parser = argparse.ArgumentParser(prog="balanced-lagged-mechanism")
     parser.add_argument("--config", required=True)
-    parser.add_argument("--spec", default="research/balanced-lagged-mechanism-001.toml")
+    parser.add_argument("--spec", default=f"research/{EXPERIMENT_ID}.toml")
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--verify")
     arguments = parser.parse_args()

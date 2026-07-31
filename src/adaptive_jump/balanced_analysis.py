@@ -69,10 +69,11 @@ def path_behavior(
     fixed = inputs.candidates[0.0]
     parent = inputs.candidates[spec.decision_beta]
     start = pd.Timestamp(spec.evaluation_starts[inputs.market])
+    event_lambdas = spec.event_lambdas_for(inputs.market)
     rows: list[dict[str, Any]] = []
     for rule in spec.rules:
         states = evidence[rule].states[spec.decision_beta]
-        for lambda0 in spec.event_lambdas:
+        for lambda0 in event_lambdas:
             complete = states[lambda0].dropna().astype(int)
             first = int(complete.index.searchsorted(start, side="left"))
             path = complete.iloc[first:]
@@ -113,7 +114,7 @@ def penalty_summary(
     rows: list[dict[str, Any]] = []
     for rule in spec.rules:
         item = evidence[rule]
-        for lambda0 in spec.event_lambdas:
+        for lambda0 in spec.event_lambdas_for(market):
             c01 = item.c01[spec.decision_beta][lambda0]
             c10 = item.c10[spec.decision_beta][lambda0]
             valid = c01.notna() & c10.notna()
@@ -142,6 +143,7 @@ def penalty_summary(
 
 
 def matched_response(
+    market: str,
     parent_events: pd.DataFrame,
     balanced_states: pd.DataFrame,
     fixed_states: pd.DataFrame,
@@ -158,7 +160,7 @@ def matched_response(
     refits_by_lambda = {
         float(lambda0): rows.sort_values("fit_date").reset_index(drop=True)
         for lambda0, rows in refits.groupby("lambda0")
-        if float(lambda0) in spec.event_lambdas
+        if float(lambda0) in spec.event_lambdas_for(market)
     }
     records: list[dict[str, Any]] = []
     for anchor in lagged_events.itertuples():
@@ -288,7 +290,7 @@ def summarize(
         (market, rule, float(lambda0))
         for market in spec.markets
         for rule in spec.rules
-        for lambda0 in spec.event_lambdas
+        for lambda0 in spec.event_lambdas_for(market)
     }
     observed_paths = {
         (str(row.market), str(row.rule), float(row.lambda0))
@@ -481,6 +483,7 @@ def analyze_market(
     behavior = path_behavior(inputs, evidence, spec)
     events, own_audit = extract_events(inputs, evidence, spec)
     anchors, matched_audit = matched_response(
+        inputs.market,
         events,
         evidence["balanced"].states[spec.decision_beta],
         inputs.candidates[0.0],

@@ -1,4 +1,10 @@
-"""Frozen inputs and pair-balanced penalty for the balanced lagged study."""
+"""Frozen inputs and pair-balanced penalty for the balanced lagged study.
+
+-002 reruns the -001 question against the calibrated-v10 baseline. The
+pair-balanced penalty, the toy contract, the event definitions and the
+output schemas are unchanged; the candidate grid is one grid per market and
+the two sealed sources are named by the spec.
+"""
 
 from __future__ import annotations
 
@@ -17,15 +23,33 @@ from adaptive_jump.config import ResearchConfig
 from adaptive_jump.lagged_model import LockedStateEvidence, generate_locked_candidates
 from adaptive_jump.models import FEATURE_COLUMNS
 from adaptive_jump.separation_analysis import MarketInputs
+from adaptive_jump.study_grids import (
+    MarketGrids,
+    grid_for,
+    grids_equal,
+    market_grids,
+    parse_grid_table,
+    positive_grids,
+)
+from adaptive_jump.study_sources import SourceReference, read_source_reference
 from adaptive_jump.tv_jump import lagged_evidence_penalty_seq
 
-SPEC_SHA256 = "a7d9914ca1a8ab8660cd262c1f759c2e6b25972062536dc151492c8b92ff4cfc"
+# The rerun of balanced-lagged-mechanism-001 against the calibrated-v10
+# baseline. The -001 loader pinned the spec by its exact SHA-256; that pin
+# is now the registry lock in balanced_sources._registry_lock, which ties
+# the spec hash to the FROZEN registry row instead of to this file.
+EXPERIMENT_ID = "balanced-lagged-mechanism-002"
 MARKETS = ("us", "de", "jp")
 BETAS = (0.0, math.log(4.0))
 DECISION_BETA = math.log(4.0)
-LAMBDAS = (0.0, 5.0, 15.0, 35.0, 70.0, 150.0, 300.0, 600.0, 1200.0)
-POSITIVE_LAMBDAS = LAMBDAS[1:]
 RULES = ("lagged", "balanced")
+# The per-market first out-of-sample decision date; fixed by the sample and
+# the 3000-observation fit window, not by the candidate grid.
+EVALUATION_STARTS = {
+    "us": date(2007, 12, 4),
+    "de": date(2008, 1, 3),
+    "jp": date(2009, 5, 7),
+}
 FIXED_FILES = ("features.csv", "jm-states.csv")
 PARENT_FILES = (
     "candidate-states-beta-0.csv",
@@ -54,10 +78,8 @@ class BalancedSpec:
     path: Path
     sha256: str
     experiment_id: str
-    fixed_run_id: str
-    fixed_inventory_sha256: str
-    parent_run_id: str
-    parent_inventory_sha256: str
+    fixed: SourceReference
+    parent: SourceReference
     parent_spec_sha256: str
     data_manifest_sha256: str
     data_cutoff: date
@@ -65,8 +87,8 @@ class BalancedSpec:
     markets: tuple[str, ...]
     betas: tuple[float, ...]
     decision_beta: float
-    lambdas: tuple[float, ...]
-    event_lambdas: tuple[float, ...]
+    lambdas: MarketGrids
+    event_lambdas: MarketGrids
     rules: tuple[str, ...]
     fit_window: int
     horizon: int
@@ -80,6 +102,30 @@ class BalancedSpec:
     artifact_subdir: Path
     toy_losses: dict[str, np.ndarray]
     toy_paths: dict[str, dict[str, list[int]]]
+
+    @property
+    def fixed_run_id(self) -> str:
+        return self.fixed.run_id
+
+    @property
+    def fixed_inventory_sha256(self) -> str:
+        return self.fixed.inventory_sha256
+
+    @property
+    def parent_run_id(self) -> str:
+        return self.parent.run_id
+
+    @property
+    def parent_inventory_sha256(self) -> str:
+        return self.parent.inventory_sha256
+
+    def lambdas_for(self, market: str) -> tuple[float, ...]:
+        """The full candidate lambda grid governing one market."""
+        return grid_for(self.lambdas, market)
+
+    def event_lambdas_for(self, market: str) -> tuple[float, ...]:
+        """The market's positive lambdas -- the only ones admitting events."""
+        return grid_for(self.event_lambdas, market)
 
 
 def beta_label(beta: float) -> str:
@@ -117,12 +163,10 @@ def _toy_contract(
 
 
 def load_balanced_spec(path: str | Path, config: ResearchConfig) -> BalancedSpec:
-    """Load the exact corrected frozen study; any byte change requires refreeze."""
+    """Load the frozen study; the registry row pins its exact bytes."""
     spec_path = Path(path).resolve()
     payload = spec_path.read_bytes()
     digest = hashlib.sha256(payload).hexdigest()
-    if digest != SPEC_SHA256:
-        raise BalancedStudyError("balanced study spec differs from its frozen hash")
     try:
         document = tomllib.loads(payload.decode("utf-8"))
     except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
@@ -148,9 +192,10 @@ def load_balanced_spec(path: str | Path, config: ResearchConfig) -> BalancedSpec
         raise BalancedStudyError("balanced source or scope fields are invalid") from exc
 
     betas = tuple(float(value) for value in penalty.get("beta", ()))
-    lambdas = tuple(float(value) for value in candidates.get("raw_lambda_grid", ()))
-    event_lambdas = tuple(
-        float(value) for value in candidates.get("event_lambda_grid", ())
+    contract_grids = market_grids(config, MARKETS)
+    lambdas = parse_grid_table(candidates.get("raw_lambda_grid"), MARKETS)
+    event_lambdas = parse_grid_table(
+        candidates.get("event_lambda_grid"), MARKETS
     )
     rules = tuple(candidates.get("rules", ()))
     fixed_files = tuple(fixed.get("allowed_market_files", ()))
@@ -160,10 +205,18 @@ def load_balanced_spec(path: str | Path, config: ResearchConfig) -> BalancedSpec
     matched_followup = events.get("matched_followup_candidate_dates")
     matched_anchor_censor = events.get("matched_anchor_censor_candidate_dates")
     losses, paths = _toy_contract(document)
+    fixed_reference = read_source_reference(
+        fixed, error=BalancedStudyError, label="fixed"
+    )
+    parent_reference = read_source_reference(
+        parent, error=BalancedStudyError, label="parent"
+    )
+    manifest = fixed.get("data_manifest_sha256")
+    parent_spec_sha256 = parent.get("spec_sha256")
 
     if (
         document.get("schema_version") != 1
-        or document.get("experiment_id") != "balanced-lagged-mechanism-001"
+        or document.get("experiment_id") != EXPERIMENT_ID
         or document.get("claim_class") != "EXPLORATORY"
         or document.get("stage")
         != "DEVELOPMENT_SAMPLE_PERFORMANCE_FREE_MECHANISM_STUDY"
@@ -178,25 +231,19 @@ def load_balanced_spec(path: str | Path, config: ResearchConfig) -> BalancedSpec
                 "monthly_selection_allowed",
             )
         )
-        or fixed.get("experiment_id") != "fixed-baselines-001-v7"
         or fixed.get("config_sha256") != config.sha256
-        or parent.get("experiment_id") != "lagged-evidence-mechanism-001"
-        or parent.get("spec_sha256")
-        != "6f964f5724b23cffff43c37ca050af1dd7eb37a3c7e7588462a86571e8825ed1"
+        or not isinstance(manifest, str)
+        or not manifest
+        or not isinstance(parent_spec_sha256, str)
+        or not parent_spec_sha256
         or cutoff != date(2023, 12, 31)
         or tuple(scope.get("markets", ())) != MARKETS
         or tuple(scope.get("features", ())) != FEATURE_COLUMNS
-        or starts
-        != {
-            "us": date(2007, 12, 4),
-            "de": date(2008, 1, 3),
-            "jp": date(2009, 5, 7),
-        }
+        or starts != EVALUATION_STARTS
         or betas != BETAS
         or float(penalty.get("decision_beta", math.nan)) != DECISION_BETA
-        or lambdas != LAMBDAS
-        or lambdas != config.jm_protocol.lambda_grid
-        or event_lambdas != POSITIVE_LAMBDAS
+        or not grids_equal(lambdas, contract_grids)
+        or not grids_equal(event_lambdas, positive_grids(contract_grids))
         or rules != RULES
         or fixed_files != FIXED_FILES
         or parent_files != PARENT_FILES
@@ -219,7 +266,7 @@ def load_balanced_spec(path: str | Path, config: ResearchConfig) -> BalancedSpec
         or execution.get("full_markets_parallel") is not True
         or execution.get("market_workers") != len(MARKETS)
         or execution.get("threadpool_limit_per_worker") != 1
-        or artifact_subdir != Path("balanced-lagged-mechanism-001")
+        or artifact_subdir != Path(EXPERIMENT_ID)
         or artifact_subdir.is_absolute()
         or ".." in artifact_subdir.parts
     ):
@@ -229,12 +276,10 @@ def load_balanced_spec(path: str | Path, config: ResearchConfig) -> BalancedSpec
         path=spec_path,
         sha256=digest,
         experiment_id=str(document["experiment_id"]),
-        fixed_run_id=str(fixed["run_id"]),
-        fixed_inventory_sha256=str(fixed["run_inventory_sha256"]),
-        parent_run_id=str(parent["run_id"]),
-        parent_inventory_sha256=str(parent["run_inventory_sha256"]),
-        parent_spec_sha256=str(parent["spec_sha256"]),
-        data_manifest_sha256=str(fixed["data_manifest_sha256"]),
+        fixed=fixed_reference,
+        parent=parent_reference,
+        parent_spec_sha256=str(parent_spec_sha256),
+        data_manifest_sha256=str(manifest),
         data_cutoff=cutoff,
         evaluation_starts=starts,
         markets=MARKETS,
@@ -307,8 +352,11 @@ BUILDERS = {
 }
 
 
-def _read_candidates(path: Path, spec: BalancedSpec) -> pd.DataFrame:
-    columns = ["date", *(str(value) for value in spec.lambdas)]
+def _read_candidates(
+    path: Path, spec: BalancedSpec, market: str
+) -> pd.DataFrame:
+    lambdas = spec.lambdas_for(market)
+    columns = ["date", *(str(value) for value in lambdas)]
     frame = pd.read_csv(path, usecols=columns)
     frame["date"] = pd.to_datetime(frame["date"], errors="raise")
     if (
@@ -318,7 +366,7 @@ def _read_candidates(path: Path, spec: BalancedSpec) -> pd.DataFrame:
     ):
         raise BalancedStudyError(f"candidate dates changed: {path}")
     frame = frame.set_index("date")
-    frame.columns = spec.lambdas
+    frame.columns = lambdas
     values = frame.to_numpy(dtype=float)
     present = np.isfinite(values)
     if not np.array_equal(present.any(axis=1), present.all(axis=1)):
@@ -355,9 +403,11 @@ def load_market_inputs(
     features = features.set_index("date")
 
     candidates = {
-        0.0: _read_candidates(parent_market_dir / "candidate-states-beta-0.csv", spec),
+        0.0: _read_candidates(
+            parent_market_dir / "candidate-states-beta-0.csv", spec, market
+        ),
         DECISION_BETA: _read_candidates(
-            parent_market_dir / "candidate-states-beta-log4.csv", spec
+            parent_market_dir / "candidate-states-beta-log4.csv", spec, market
         ),
     }
     if any(not frame.index.equals(features.index) for frame in candidates.values()):
@@ -391,14 +441,15 @@ def load_market_inputs(
     if (
         set(refits["market"]) != {market}
         or refits.duplicated(["fit_date", "lambda0"]).any()
-        or set(refits["lambda0"]) != set(spec.lambdas)
+        or set(refits["lambda0"]) != set(spec.lambdas_for(market))
         or (refits["training_end"] != refits["fit_date"]).any()
         or refits["fit_date"].max().date() > spec.data_cutoff
         or not np.isfinite(refits[["lambda0", "q_train"]]).all().all()
         or (refits["q_train"] <= 0).any()
     ):
         raise BalancedStudyError(f"{market}: refit table changed")
-    if not (refits.groupby("fit_date")["lambda0"].nunique() == len(spec.lambdas)).all():
+    lambda_count = len(spec.lambdas_for(market))
+    if not (refits.groupby("fit_date")["lambda0"].nunique() == lambda_count).all():
         raise BalancedStudyError(f"{market}: refit lambda coverage changed")
 
     first_fit = pd.Timestamp(refits["fit_date"].min())
@@ -420,7 +471,9 @@ def load_market_inputs(
     if features.loc[state_dates, FEATURE_COLUMNS].isna().any().any():
         raise BalancedStudyError(f"{market}: candidate date has missing feature")
 
-    fixed = _read_candidates(fixed_market_dir / "jm-states.csv", spec)
+    fixed = _read_candidates(
+        fixed_market_dir / "jm-states.csv", spec, market
+    )
     if not fixed.index.equals(features.index) or not np.array_equal(
         fixed.to_numpy(), candidates[0.0].to_numpy(), equal_nan=True
     ):

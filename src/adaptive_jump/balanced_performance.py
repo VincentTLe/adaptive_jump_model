@@ -36,17 +36,39 @@ from adaptive_jump.confidence_evaluation import (
 )
 from adaptive_jump.confidence_model import _load_parent_frame, _parent_states
 from adaptive_jump.config import ResearchConfig, load_config
+from adaptive_jump.study_grids import (
+    MarketGrids,
+    grid_for,
+    grids_equal,
+    market_grids,
+    parse_grid_table,
+)
+from adaptive_jump.study_sources import (
+    SourceReference,
+    read_source_reference,
+    verify_source_identity,
+)
 from adaptive_jump.walkforward import (
     SelectionResult,
     boundary_diagnostic,
     select_monthly_candidate,
 )
 
-SPEC_SHA256 = "3ae665413a01622be6bdda19a4a9eba6b063a65ef75607fdbb6153396f97f7cc"
+# The rerun of balanced-lagged-performance-001 against the calibrated-v10
+# baseline. The -001 loader pinned the spec by its exact SHA-256; that pin
+# is now the registry lock in _registry_lock, which ties the spec hash to
+# the FROZEN registry row instead of to this file.
+EXPERIMENT_ID = "balanced-lagged-performance-002"
 MODELS = ("fixed", "lagged_log4", "balanced_log4")
 BASELINES = ("fixed", "lagged_log4")
 MARKETS = ("us", "de", "jp")
-LAMBDAS = (0.0, 5.0, 15.0, 35.0, 70.0, 150.0, 300.0, 600.0, 1200.0)
+# The per-market first out-of-sample decision date; fixed by the sample and
+# the 3000-observation fit window, not by the candidate grid.
+OUTER_START = {
+    "us": "2007-12-04",
+    "de": "2008-01-03",
+    "jp": "2009-05-07",
+}
 BETA = math.log(4.0)
 TURNOVER_SCALE = 0.5
 MDD_DEADBAND = 1e-9
@@ -80,28 +102,60 @@ class BalancedPerformanceSpec:
     path: Path
     sha256: str
     experiment_id: str
-    fixed_run_id: str
-    fixed_inventory_sha256: str
+    fixed: SourceReference
+    lagged: SourceReference
+    balanced: SourceReference
+    oracle: SourceReference
     data_manifest_sha256: str
-    lagged_run_id: str
-    lagged_inventory_sha256: str
     lagged_spec_sha256: str
-    balanced_run_id: str
-    balanced_inventory_sha256: str
     balanced_run_json_sha256: str
     balanced_spec_sha256: str
     balanced_candidate_sha256: dict[str, str]
-    oracle_run_id: str
-    oracle_inventory_sha256: str
     oracle_run_json_sha256: str
     oracle_spec_sha256: str
     cutoff: date
     markets: tuple[str, ...]
     outer_start: dict[str, date]
     outer_end: date
-    lambdas: tuple[float, ...]
+    lambdas: MarketGrids
     beta: float
     artifact_subdir: Path
+
+    @property
+    def fixed_run_id(self) -> str:
+        return self.fixed.run_id
+
+    @property
+    def fixed_inventory_sha256(self) -> str:
+        return self.fixed.inventory_sha256
+
+    @property
+    def lagged_run_id(self) -> str:
+        return self.lagged.run_id
+
+    @property
+    def lagged_inventory_sha256(self) -> str:
+        return self.lagged.inventory_sha256
+
+    @property
+    def balanced_run_id(self) -> str:
+        return self.balanced.run_id
+
+    @property
+    def balanced_inventory_sha256(self) -> str:
+        return self.balanced.inventory_sha256
+
+    @property
+    def oracle_run_id(self) -> str:
+        return self.oracle.run_id
+
+    @property
+    def oracle_inventory_sha256(self) -> str:
+        return self.oracle.inventory_sha256
+
+    def lambdas_for(self, market: str) -> tuple[float, ...]:
+        """The candidate lambda grid governing one market."""
+        return grid_for(self.lambdas, market)
 
 
 @dataclass(frozen=True)
@@ -159,11 +213,26 @@ def load_balanced_performance_spec(
     execution = doc.get("execution", {})
     storage = doc.get("storage", {})
     candidate_hashes = balanced.get("candidate_sha256", {})
-    expected_outer = {"us": "2007-12-04", "de": "2008-01-03", "jp": "2009-05-07"}
+    expected_outer = OUTER_START
+    fixed_reference = read_source_reference(
+        fixed, error=BalancedPerformanceError, label="fixed"
+    )
+    lagged_reference = read_source_reference(
+        lagged, error=BalancedPerformanceError, label="lagged"
+    )
+    balanced_reference = read_source_reference(
+        balanced, error=BalancedPerformanceError, label="balanced"
+    )
+    oracle_reference = read_source_reference(
+        oracle, error=BalancedPerformanceError, label="oracle"
+    )
+    markets = tuple(protocol.get("markets", ()))
+    lambdas = parse_grid_table(
+        model.get("raw_lambda_grid"), markets or MARKETS
+    )
     controls = (
-        digest == SPEC_SHA256,
         doc.get("schema_version") == 1,
-        doc.get("experiment_id") == "balanced-lagged-performance-001",
+        doc.get("experiment_id") == EXPERIMENT_ID,
         doc.get("claim_class") == "EXPLORATORY",
         doc.get("stage") == "POST_RESULT_DEVELOPMENT_SAMPLE_PNL_STUDY",
         doc.get("performance_claim_allowed") is False,
@@ -184,11 +253,14 @@ def load_balanced_performance_spec(
         model.get("primary_challenger") == "balanced_log4",
         model.get("primary_baseline") == "lagged_log4",
         model.get("required_benchmark") == "fixed",
-        tuple(float(value) for value in model.get("raw_lambda_grid", ())) == LAMBDAS,
+        grids_equal(lambdas, market_grids(config, markets or MARKETS)),
         float(model.get("beta", math.nan)) == BETA,
         model.get("fitted_parameters")
-        == "sealed v7 scalers and centers; no refit or state regeneration in the P&L runner",  # noqa: E501
-        tuple(protocol.get("markets", ())) == MARKETS,
+        == (
+            f"sealed {fixed_reference.experiment_id} scalers and centers; "
+            "no refit or state regeneration in the P&L runner"
+        ),
+        markets == MARKETS,
         protocol.get("outer_start") == expected_outer,
         protocol.get("outer_end") == "2023-12-29",
         protocol.get("selection")
@@ -275,7 +347,7 @@ def load_balanced_performance_spec(
         raise BalancedPerformanceError("balanced performance controls changed")
     artifact_subdir = Path(str(storage.get("artifact_subdir", "")))
     if (
-        artifact_subdir != Path("balanced-lagged-performance-001")
+        artifact_subdir != Path(EXPERIMENT_ID)
         or artifact_subdir.is_absolute()
         or ".." in artifact_subdir.parts
     ):
@@ -284,31 +356,27 @@ def load_balanced_performance_spec(
         path=spec_path,
         sha256=digest,
         experiment_id=str(doc["experiment_id"]),
-        fixed_run_id=str(fixed["run_id"]),
-        fixed_inventory_sha256=str(fixed["run_inventory_sha256"]),
+        fixed=fixed_reference,
+        lagged=lagged_reference,
+        balanced=balanced_reference,
+        oracle=oracle_reference,
         data_manifest_sha256=str(fixed["data_manifest_sha256"]),
-        lagged_run_id=str(lagged["run_id"]),
-        lagged_inventory_sha256=str(lagged["run_inventory_sha256"]),
         lagged_spec_sha256=str(lagged["spec_sha256"]),
-        balanced_run_id=str(balanced["run_id"]),
-        balanced_inventory_sha256=str(balanced["run_inventory_sha256"]),
         balanced_run_json_sha256=str(balanced["run_json_sha256"]),
         balanced_spec_sha256=str(balanced["spec_sha256"]),
         balanced_candidate_sha256={
             key: str(value) for key, value in candidate_hashes.items()
         },
-        oracle_run_id=str(oracle["run_id"]),
-        oracle_inventory_sha256=str(oracle["run_inventory_sha256"]),
         oracle_run_json_sha256=str(oracle["run_json_sha256"]),
         oracle_spec_sha256=str(oracle["spec_sha256"]),
         cutoff=date.fromisoformat(str(fixed["data_cutoff"])),
-        markets=tuple(protocol["markets"]),
+        markets=markets,
         outer_start={
             key: date.fromisoformat(value)
             for key, value in protocol["outer_start"].items()
         },
         outer_end=date.fromisoformat(str(protocol["outer_end"])),
-        lambdas=tuple(float(value) for value in model["raw_lambda_grid"]),
+        lambdas=lambdas,
         beta=float(model["beta"]),
         artifact_subdir=artifact_subdir,
     )
@@ -404,21 +472,24 @@ def verify_performance_sources(
     """Verify every frozen source identity before opening balanced metrics."""
     _registry_lock(root, spec)
     paths = PerformanceSources(
-        fixed=root / config.artifact_root / "fixed-baselines" / spec.fixed_run_id,
-        lagged=root
-        / config.artifact_root
-        / "lagged-evidence-mechanism-001"
-        / spec.lagged_run_id,
-        balanced=root
-        / config.artifact_root
-        / "balanced-lagged-mechanism-001"
-        / spec.balanced_run_id,
-        oracle=root
-        / config.artifact_root
-        / "lagged-evidence-performance-001"
-        / spec.oracle_run_id,
+        fixed=spec.fixed.directory(root, config.artifact_root),
+        lagged=spec.lagged.directory(root, config.artifact_root),
+        balanced=spec.balanced.directory(root, config.artifact_root),
+        oracle=spec.oracle.directory(root, config.artifact_root),
         source_lock={},
     )
+    for run_dir, reference, label in (
+        (paths.fixed, spec.fixed, "fixed"),
+        (paths.lagged, spec.lagged, "lagged"),
+        (paths.balanced, spec.balanced, "balanced"),
+        (paths.oracle, spec.oracle, "oracle"),
+    ):
+        verify_source_identity(
+            run_dir,
+            reference,
+            error=BalancedPerformanceError,
+            label=label,
+        )
     if any(
         item.is_symlink()
         for run in (paths.fixed, paths.lagged, paths.balanced, paths.oracle)
@@ -466,7 +537,7 @@ def verify_performance_sources(
         raise BalancedPerformanceError("fixed source metadata changed")
     _assert_run_metadata(
         lagged_meta,
-        experiment_id="lagged-evidence-mechanism-001",
+        experiment_id=spec.lagged.experiment_id,
         run_id=spec.lagged_run_id,
         spec_sha256=spec.lagged_spec_sha256,
         result="supported",
@@ -476,7 +547,7 @@ def verify_performance_sources(
         raise BalancedPerformanceError("lagged source selected beta changed")
     _assert_run_metadata(
         balanced_meta,
-        experiment_id="balanced-lagged-mechanism-001",
+        experiment_id=spec.balanced.experiment_id,
         run_id=spec.balanced_run_id,
         spec_sha256=spec.balanced_spec_sha256,
         result="not_supported",
@@ -491,7 +562,7 @@ def verify_performance_sources(
         raise BalancedPerformanceError("balanced source beta changed")
     _assert_run_metadata(
         oracle_meta,
-        experiment_id="lagged-evidence-performance-001",
+        experiment_id=spec.oracle.experiment_id,
         run_id=spec.oracle_run_id,
         spec_sha256=spec.oracle_spec_sha256,
         result="supported",
@@ -590,7 +661,13 @@ def verify_performance_sources(
                 "sortino_20",
                 "sortino_60",
             ],
-            "candidate_states": ["date", *[str(value) for value in spec.lambdas]],
+            "candidate_states": {
+                market: [
+                    "date",
+                    *[str(value) for value in spec.lambdas_for(market)],
+                ]
+                for market in spec.markets
+            },
             "oracle": ["choices", "signals", "trades", "metrics"],
         },
         "columns_used_for_selection_and_accounting": {
@@ -626,11 +703,17 @@ def _git_information(root: Path) -> tuple[str, str]:
     return head, descriptive
 
 
-def implementation_lock(root: Path, spec: BalancedPerformanceSpec) -> dict[str, Any]:
+def _lock_key(path: Path, root: Path) -> str:
+    """Label a locked file by its repository path, or its name if outside."""
+    return str(path.relative_to(root)) if path.is_relative_to(root) else path.name
+
+def implementation_lock(
+    root: Path, spec: BalancedPerformanceSpec, config_path: Path
+) -> dict[str, Any]:
     """Hash scientific content; Git fields are descriptive, never identity gates."""
     paths = (
         spec.path,
-        root / "research.toml",
+        config_path,
         root / "pyproject.toml",
         root / "uv.lock",
         root / "src/adaptive_jump/artifacts.py",
@@ -641,7 +724,7 @@ def implementation_lock(root: Path, spec: BalancedPerformanceSpec) -> dict[str, 
         root / "src/adaptive_jump/walkforward.py",
         root / "src/adaptive_jump/balanced_performance.py",
     )
-    files = {str(path.relative_to(root)): sha256_file(path) for path in paths}
+    files = {_lock_key(path, root): sha256_file(path) for path in paths}
     digest = hashlib.sha256(
         json.dumps(files, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
@@ -655,20 +738,23 @@ def implementation_lock(root: Path, spec: BalancedPerformanceSpec) -> dict[str, 
     }
 
 
-def _read_states(path: Path, spec: BalancedPerformanceSpec) -> pd.DataFrame:
+def _read_states(
+    path: Path, spec: BalancedPerformanceSpec, market: str
+) -> pd.DataFrame:
+    lambdas = spec.lambdas_for(market)
     try:
         frame = pd.read_csv(path)
     except (FileNotFoundError, OSError, pd.errors.ParserError) as exc:
         raise BalancedPerformanceError(f"cannot read candidate states: {path}") from exc
     if (
         "date" not in frame
-        or tuple(float(column) for column in frame.columns[1:]) != spec.lambdas
+        or tuple(float(column) for column in frame.columns[1:]) != lambdas
     ):
         raise BalancedPerformanceError(f"candidate-state schema changed: {path}")
     frame["date"] = pd.to_datetime(frame["date"], errors="raise")
     dates = pd.DatetimeIndex(frame.pop("date"), name="date")
     frame.index = dates
-    frame.columns = spec.lambdas
+    frame.columns = lambdas
     values = frame.stack()
     if (
         dates.empty
@@ -687,13 +773,16 @@ def _load_market(
     spec: BalancedPerformanceSpec,
 ) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
     frame = _load_parent_frame(sources.fixed, market, spec.cutoff)
-    fixed = _parent_states(sources.fixed, market, spec.lambdas)
+    fixed = _parent_states(sources.fixed, market, spec.lambdas_for(market))
     lagged = _read_states(
-        sources.lagged / market / "candidate-states-beta-log4.csv", spec
+        sources.lagged / market / "candidate-states-beta-log4.csv",
+        spec,
+        market,
     )
     balanced = _read_states(
         sources.balanced / market / "candidate-states-balanced-beta-log4.csv",
         spec,
+        market,
     )
     for model, candidate in (("lagged_log4", lagged), ("balanced_log4", balanced)):
         if not candidate.index.equals(fixed.index):
@@ -710,6 +799,7 @@ def _select_paths(
     frame: pd.DataFrame,
     states: dict[str, pd.DataFrame],
     config: ResearchConfig,
+    lambdas: tuple[float, ...],
 ) -> dict[str, SelectionResult]:
     returns = frame[["date", "equity_simple", "cash_return"]]
     selections = {
@@ -740,7 +830,8 @@ def _select_paths(
             "eligible",
         ):
             raise BalancedPerformanceError(f"{model}: full selection surface missing")
-        if tuple(sorted(selected.surface["candidate"].unique())) != LAMBDAS:
+        surface_grid = tuple(sorted(selected.surface["candidate"].unique()))
+        if surface_grid != tuple(sorted(lambdas)):
             raise BalancedPerformanceError(f"{model}: selection grid changed")
         if not np.array_equal(
             pd.to_datetime(
@@ -1186,7 +1277,7 @@ def _boundary_rows(
     for model in MODELS:
         diagnostic = boundary_diagnostic(
             selections[model].choices,
-            spec.lambdas,
+            spec.lambdas_for(market),
             oos_start=spec.outer_start[market],
             fraction_limit=config.selection_protocol.boundary_fraction_limit,
         )
@@ -1201,7 +1292,7 @@ def _market_evidence(
     spec: BalancedPerformanceSpec,
 ) -> MarketEvidence:
     frame, states = _load_market(market, sources, spec)
-    selections = _select_paths(frame, states, config)
+    selections = _select_paths(frame, states, config, spec.lambdas_for(market))
     _assert_beta_zero_selection(sources.fixed, market, selections["fixed"])
     full = {model: _full_path(frame, selections[model], config) for model in MODELS}
     aligned = {
@@ -1346,7 +1437,7 @@ def run_us_smoke(
         equal_nan=True,
     ):
         raise BalancedPerformanceError("US balanced candidate paths are vacuous")
-    selections = _select_paths(frame, states, config)
+    selections = _select_paths(frame, states, config, spec.lambdas_for("us"))
     _assert_beta_zero_selection(sources.fixed, "us", selections["fixed"])
     full = {model: _full_path(frame, selections[model], config) for model in MODELS}
     aligned = {
@@ -1410,7 +1501,7 @@ def _decision(summary: pd.DataFrame) -> dict[str, Any]:
     supported = primary["passed"] and fixed["passed"]
     return {
         "schema_version": 1,
-        "experiment_id": "balanced-lagged-performance-001",
+        "experiment_id": EXPERIMENT_ID,
         "claim_class": "EXPLORATORY",
         "primary_contrast": "balanced_log4_minus_lagged_log4",
         "required_fixed_contrast": "balanced_log4_minus_fixed",
@@ -1501,7 +1592,7 @@ def _verify_run_identity(
     ):
         raise BalancedPerformanceError("run locks differ from frozen study")
     stored_implementation = read_json(path / "implementation-lock.json")
-    current_implementation = implementation_lock(root, spec)
+    current_implementation = implementation_lock(root, spec, config.path)
     if (
         stored_implementation.get("schema_version") != 1
         or stored_implementation.get("implementation_sha256")
@@ -1560,7 +1651,7 @@ def verify_balanced_performance_run(
         raise BalancedPerformanceError("run directory may not be a symlink")
     path = raw.resolve()
     spec = spec or load_balanced_performance_spec(
-        config.path.parent / "research/balanced-lagged-performance-001.toml",
+        config.path.parent / f"research/{EXPERIMENT_ID}.toml",
         config,
     )
     metadata, sources = _verify_run_identity(path, config, spec)
@@ -1688,7 +1779,7 @@ def run_balanced_performance_study(
     smoke = run_us_smoke(config, spec, sources)
     if smoke.get("metrics_opened") is not False:
         raise BalancedPerformanceError("US smoke opened aggregate metrics")
-    implementation = implementation_lock(root, spec)
+    implementation = implementation_lock(root, spec, config.path)
     run_id = (
         f"balanced-pnl-{spec.sha256[:12]}-"
         f"{spec.balanced_inventory_sha256[:12]}-"
@@ -1718,6 +1809,11 @@ def run_balanced_performance_study(
         "created_at_utc": datetime.now(UTC).isoformat(),
         "spec_sha256": spec.sha256,
         "config_sha256": config.sha256,
+        "config_path": config.path.name,
+        "fixed_experiment_id": spec.fixed.experiment_id,
+        "lagged_experiment_id": spec.lagged.experiment_id,
+        "balanced_experiment_id": spec.balanced.experiment_id,
+        "oracle_experiment_id": spec.oracle.experiment_id,
         "implementation_sha256": implementation["implementation_sha256"],
         "git_head_informational": implementation["git_head_informational"],
         "git_describe_informational": implementation["git_describe_informational"],
@@ -1790,7 +1886,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="balanced-lagged-performance")
     parser.add_argument("--config", default="research.toml")
     parser.add_argument(
-        "--spec", default="research/balanced-lagged-performance-001.toml"
+        "--spec", default=f"research/{EXPERIMENT_ID}.toml"
     )
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--verify")

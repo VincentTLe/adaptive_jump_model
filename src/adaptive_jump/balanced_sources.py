@@ -13,6 +13,7 @@ from adaptive_jump.artifacts import read_json, sha256_file
 from adaptive_jump.balanced_model import BalancedSpec, BalancedStudyError
 from adaptive_jump.config import ResearchConfig
 from adaptive_jump.models import FEATURE_COLUMNS
+from adaptive_jump.study_sources import verify_source_identity
 
 
 @dataclass(frozen=True)
@@ -63,12 +64,23 @@ def verify_source_inputs(
 ) -> SourcePaths:
     """Verify source identities while opening only performance-free files."""
     _registry_lock(root, spec)
-    fixed_dir = root / config.artifact_root / "fixed-baselines" / spec.fixed_run_id
-    parent_dir = (
-        root
-        / config.artifact_root
-        / "lagged-evidence-mechanism-001"
-        / spec.parent_run_id
+    # Both directories come from the spec; run.json must carry the
+    # declared experiment id.
+    fixed_dir = spec.fixed.directory(root, config.artifact_root)
+    parent_dir = spec.parent.directory(root, config.artifact_root)
+    verify_source_identity(
+        fixed_dir,
+        spec.fixed,
+        error=BalancedStudyError,
+        label="fixed",
+        config_sha256=config.sha256,
+    )
+    verify_source_identity(
+        parent_dir,
+        spec.parent,
+        error=BalancedStudyError,
+        label="parent",
+        config_sha256=config.sha256,
     )
     if sha256_file(fixed_dir / "data-manifest.json") != spec.data_manifest_sha256:
         raise BalancedStudyError("fixed data manifest changed")
@@ -79,10 +91,7 @@ def verify_source_inputs(
         raise BalancedStudyError("parent lagged spec changed")
     parent_meta = read_json(parent_dir / "run.json")
     if (
-        parent_meta.get("experiment_id") != "lagged-evidence-mechanism-001"
-        or parent_meta.get("run_id") != spec.parent_run_id
-        or parent_meta.get("status") != "complete"
-        or parent_meta.get("spec_sha256") != spec.parent_spec_sha256
+        parent_meta.get("spec_sha256") != spec.parent_spec_sha256
         or parent_meta.get("result") != "supported"
         or parent_meta.get("selected_beta_label") != "log4"
     ):
@@ -111,8 +120,10 @@ def verify_source_inputs(
         parent_markets=parent_markets,
         source_lock={
             "schema_version": 1,
+            "fixed_experiment_id": spec.fixed.experiment_id,
             "fixed_run_id": spec.fixed_run_id,
             "fixed_inventory_sha256": spec.fixed_inventory_sha256,
+            "parent_experiment_id": spec.parent.experiment_id,
             "parent_run_id": spec.parent_run_id,
             "parent_inventory_sha256": spec.parent_inventory_sha256,
             "parent_spec_sha256": spec.parent_spec_sha256,
@@ -120,11 +131,22 @@ def verify_source_inputs(
             "allowed_file_hashes": hashes,
             "columns_read": {
                 "fixed/features.csv": ["date", *FEATURE_COLUMNS],
-                "fixed/jm-states.csv": ["date", *[str(x) for x in spec.lambdas]],
-                "parent/candidate-states": [
-                    "date",
-                    *[str(x) for x in spec.lambdas],
-                ],
+                # One column set per market: each sealed run stores
+                # that market's own calibrated grid.
+                "fixed/jm-states.csv": {
+                    market: [
+                        "date",
+                        *[str(x) for x in spec.lambdas_for(market)],
+                    ]
+                    for market in spec.markets
+                },
+                "parent/candidate-states": {
+                    market: [
+                        "date",
+                        *[str(x) for x in spec.lambdas_for(market)],
+                    ]
+                    for market in spec.markets
+                },
                 "parent/refits-and-scales.csv": [
                     "market",
                     "fit_date",
@@ -144,10 +166,16 @@ def verify_source_inputs(
     )
 
 
-def implementation_lock(root: Path, spec: BalancedSpec) -> dict[str, Any]:
+def _lock_key(path: Path, root: Path) -> str:
+    """Label a locked file by its repository path, or its name if outside."""
+    return str(path.relative_to(root)) if path.is_relative_to(root) else path.name
+
+def implementation_lock(
+    root: Path, spec: BalancedSpec, config_path: Path
+) -> dict[str, Any]:
     paths = (
         spec.path,
-        root / "research.toml",
+        config_path,
         root / "pyproject.toml",
         root / "uv.lock",
         root / "src/adaptive_jump/artifacts.py",
@@ -159,6 +187,8 @@ def implementation_lock(root: Path, spec: BalancedSpec) -> dict[str, Any]:
         root / "src/adaptive_jump/lagged_study.py",
         root / "src/adaptive_jump/separation_analysis.py",
         root / "src/adaptive_jump/separation_study.py",
+        root / "src/adaptive_jump/study_grids.py",
+        root / "src/adaptive_jump/study_sources.py",
         root / "src/adaptive_jump/balanced_model.py",
         root / "src/adaptive_jump/balanced_sources.py",
         root / "src/adaptive_jump/balanced_mechanics.py",
@@ -172,7 +202,7 @@ def implementation_lock(root: Path, spec: BalancedSpec) -> dict[str, Any]:
         root / "src/adaptive_jump/balanced_decision_replay.py",
         root / "src/adaptive_jump/balanced_smoke_replay.py",
     )
-    files = {str(path.relative_to(root)): sha256_file(path) for path in paths}
+    files = {_lock_key(path, root): sha256_file(path) for path in paths}
     digest = hashlib.sha256(
         json.dumps(files, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()

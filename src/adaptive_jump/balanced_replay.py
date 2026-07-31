@@ -112,7 +112,7 @@ def candidate_checks(
     discounts = 0
     surcharges = 0
     pair_error = 0.0
-    for lambda0 in spec.event_lambdas:
+    for lambda0 in spec.event_lambdas_for(inputs.market):
         c01 = evidence["balanced"].c01[spec.decision_beta][lambda0]
         c10 = evidence["balanced"].c10[spec.decision_beta][lambda0]
         valid = c01.notna() & c10.notna()
@@ -127,7 +127,7 @@ def candidate_checks(
                 float(np.max(np.abs(left + right - 2.0 * lambda0))),
             )
     terminal_rows = int(fixed.notna().all(axis=1).sum())
-    cells_per_path = terminal_rows * len(spec.lambdas)
+    cells_per_path = terminal_rows * len(spec.lambdas_for(inputs.market))
     all_candidate_cells = sum(
         int(evidence[rule].states[beta].notna().sum().sum())
         for rule in spec.rules
@@ -161,7 +161,7 @@ def path_behavior(
     rows: list[dict[str, Any]] = []
     for rule in spec.rules:
         states = evidence[rule].states[spec.decision_beta]
-        for lambda0 in spec.event_lambdas:
+        for lambda0 in spec.event_lambdas_for(inputs.market):
             complete = states[lambda0].dropna().astype(int)
             first = int(complete.index.searchsorted(start, side="left"))
             selected = complete.iloc[first:]
@@ -201,7 +201,7 @@ def penalty_summary(
 ) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for rule in spec.rules:
-        for lambda0 in spec.event_lambdas:
+        for lambda0 in spec.event_lambdas_for(market):
             c01 = evidence[rule].c01[spec.decision_beta][lambda0]
             c10 = evidence[rule].c10[spec.decision_beta][lambda0]
             valid = c01.notna() & c10.notna()

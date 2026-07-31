@@ -52,7 +52,7 @@ def summarize(
         (market, rule, lambda0)
         for market in spec.markets
         for rule in spec.rules
-        for lambda0 in spec.event_lambdas
+        for lambda0 in spec.event_lambdas_for(market)
     }
     observed_paths = {
         (row.market, row.rule, float(row.lambda0))
