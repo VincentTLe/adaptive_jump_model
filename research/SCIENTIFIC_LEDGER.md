@@ -1024,3 +1024,23 @@ The complete final-v3 paper grids remain unidentified.
 - Artifacts: `artifacts/jm-residual/02-standardizer-geometry/`,
   `artifacts/jm-residual/03-frozen-initial-scaler/`. Exploratory; no
   performance, replication, or adoption claim.
+
+### 2026-07-31 — `jm-effective-lambda-inversion-004` (complete; JM row closed)
+
+- The owner-requested inversion, done by READING the authors' choices from
+  their own Figure 5 (lossless vector extraction, re-validated against each
+  panel's printed annotations) rather than searching our knobs.
+- **QA: their paths on our data reproduce their table — 8/8 us, 8/8 de,
+  7/8 jp (23/24 cells); turnover deviations 0.001/0.030/0.005.** Accounting,
+  costs, conventions and the reconstructed data are thereby proven at table
+  level; the entire JM residual is the unpublished state sequences.
+- QB/QC: the authors' US path is ~a single fixed lambda 35 under our sealed
+  geometry (95.7% daily agreement); DE/JP are not expressible by any
+  constant lambda under any tested geometry (89.5%/81.6%) though per-month
+  ceilings reach 96-99%. Effective lambdas are descriptive only — grid
+  candidacy from these results is forbidden by the frozen spec.
+- Together with -001/-002/-003 this closes the JM row the way the HMM
+  turnover row closed: mechanism characterized, accounting proven, residual
+  localized to unpublished choices on unavailable vintages. Artifact:
+  `artifacts/jm-residual/04-effective-lambda-inversion/`. Exploratory; no
+  performance, replication, or adoption claim.

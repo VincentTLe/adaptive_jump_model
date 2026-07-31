@@ -1,0 +1,18 @@
+jm-effective-lambda-inversion-004 — kết quả
+(path Figure 5 của chính tác giả trên dữ liệu của ta; EXPLORATORY; λ hiệu dụng là mô tả, không phải ứng viên lưới)
+
+QA. Path của HỌ áp lên returns của TA, chấm cả 8 ô Table 4:
+   us: 8/8 trong ngưỡng | turnover 0.441 (Shu 0.44, lệch 0.001) | sharpe 0.672 (Shu 0.68, lệch 0.008)
+   de: 8/8 trong ngưỡng | turnover 1.670 (Shu 1.70, lệch 0.030) | sharpe 0.437 (Shu 0.44, lệch 0.003)
+   jp: 7/8 trong ngưỡng | turnover 0.725 (Shu 0.72, lệch 0.005) | sharpe 0.333 (Shu 0.31, lệch 0.023)
+
+QB/QC. Khớp chuỗi trạng thái của họ bằng các path λ của ta:
+   us V0_expanding: λ hằng tốt nhất 35 khớp 95.7% ngày; trần chọn-λ-theo-tháng 98.7%; 13/408 tháng dưới mức khớp 90%
+   us V1_window: λ hằng tốt nhất 150 khớp 90.6% ngày; trần chọn-λ-theo-tháng 98.1%; 22/408 tháng dưới mức khớp 90%
+   us V3_frozen: λ hằng tốt nhất 35 khớp 95.6% ngày; trần chọn-λ-theo-tháng 97.0%; 23/408 tháng dưới mức khớp 90%
+   de V0_expanding: λ hằng tốt nhất 26.827 khớp 89.5% ngày; trần chọn-λ-theo-tháng 98.0%; 24/408 tháng dưới mức khớp 90%
+   de V1_window: λ hằng tốt nhất 35 khớp 72.7% ngày; trần chọn-λ-theo-tháng 88.4%; 78/408 tháng dưới mức khớp 90%
+   de V3_frozen: λ hằng tốt nhất 5 khớp 92.5% ngày; trần chọn-λ-theo-tháng 96.6%; 37/408 tháng dưới mức khớp 90%
+   jp V0_expanding: λ hằng tốt nhất 150 khớp 81.6% ngày; trần chọn-λ-theo-tháng 98.8%; 12/408 tháng dưới mức khớp 90%
+   jp V1_window: λ hằng tốt nhất 15 khớp 67.4% ngày; trần chọn-λ-theo-tháng 85.5%; 95/408 tháng dưới mức khớp 90%
+   jp V3_frozen: λ hằng tốt nhất 150 khớp 81.3% ngày; trần chọn-λ-theo-tháng 95.9%; 36/408 tháng dưới mức khớp 90%
