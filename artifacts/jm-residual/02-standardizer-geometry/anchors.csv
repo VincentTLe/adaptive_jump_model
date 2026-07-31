@@ -1,0 +1,10 @@
+market,variant,shifts,bear_share
+us,V0_expanding_sealed,34,0.21868067717454753
+us,V1_window_scaler,30,0.24366608289550495
+us,V2_author_recipe,41,0.29001751313485113
+de,V0_expanding_sealed,80,0.256568239944199
+de,V1_window_scaler,70,0.45466170657986515
+de,V2_author_recipe,100,0.4004882585445245
+jp,V0_expanding_sealed,93,0.4175863723608445
+jp,V1_window_scaler,133,0.6227207293666026
+jp,V2_author_recipe,63,0.5869721689059502
