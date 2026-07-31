@@ -1069,3 +1069,23 @@ The complete final-v3 paper grids remain unidentified.
   resolved because their sequences are outside our expressible space.
   Descriptive only; artifacts in `artifacts/jm-residual/05-inferred-grid/`
   and `06-inferred-grid-shift-months/`. Exploratory; no adoption.
+
+### 2026-07-31 — `jm-grid-exhaustive-007`/`-008` (complete; the existence map)
+
+- Owner-instructed target-conditioned exhaustive search over all 6,474,511
+  subsets (sizes 2-8) of the 29-lambda sourced union, nine arms (3 markets x
+  delays 1/5/10; Table-5 cells for the long delays, delay inside the CV per
+  the Table-5 caption). Honesty label in both specs: solutions are
+  calibration artifacts, never the authors' grid; nothing adopted.
+- **Delay 1: the three-market common grid DOES NOT EXIST** — Germany and
+  Japan are individually unreachable (0 passing grids each) even with full
+  calibration freedom; the US row is comfortably reachable (109,400 grids).
+  The -004 expressibility bound reappears at the table level.
+- **Delays 5/10: common grids are abundant** — 71,349 (d5), 454,762 (d10),
+  7,107 surviving both, clustering around {small lambda, ~20-22, 220}; zero
+  survive all nine arms (forced by the d1 zeros).
+- Machinery verified at machine precision (nine parity gates, worst 3.33e-14)
+  and every headline example re-validated through the real unaccelerated
+  pipeline: 24/24 PASS. Artifacts:
+  `artifacts/jm-residual/08-exhaustive-nine-arms/`. Exploratory; no
+  performance, replication, or adoption claim.

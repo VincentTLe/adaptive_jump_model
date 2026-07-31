@@ -1,0 +1,11 @@
+jm-grid-exhaustive-008 — kết quả
+(tìm-kiếm-theo-đích theo lệnh owner; nghiệm = lưới hiệu chuẩn; cấm nhận nuôi)
+
+   jp-d10: 513280 vector đạt / 3160488
+
+Giao-tập trên TOÀN lattice 6.474.511 tập con:
+   d1_common: 0
+   d5_common: 71349
+   d10_common: 454762
+   d5_and_d10_common: 7107
+   all_nine: 0

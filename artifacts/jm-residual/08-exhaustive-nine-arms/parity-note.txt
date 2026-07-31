@@ -1,0 +1,1 @@
+jp-d10: parity PASSED (named 7.22e-15, 50-sample 1.55e-15)

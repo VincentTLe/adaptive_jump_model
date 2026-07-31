@@ -24,6 +24,8 @@ artifacts/*
 artifacts/jm-residual/*/*-states.csv
 artifacts/jm-residual/*/*/*-states.csv
 artifacts/jm-residual/*/*/union-refits.csv
+artifacts/jm-residual/*/*.npz
+artifacts/jm-residual/*/*.npy
 reports/
 *.log
 *.pid
