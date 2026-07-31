@@ -20,6 +20,7 @@ from adaptive_jump.backtest import (
 from adaptive_jump.config import (
     LEGACY_COMPARISON_SAMPLE,
     PAPER_COMPARISON_SAMPLE,
+    JMProtocol,
     ResearchConfig,
     SelectionProtocol,
 )
@@ -91,10 +92,13 @@ def build_baseline_study(
     precomputed_hmm: HMMResult | None = None,
     selection_initial: SelectionLoader | None = None,
     selection_progress: SelectionSaver | None = None,
+    jm_protocol: JMProtocol | None = None,
 ) -> BaselineStudy:
     """Build all baseline choices and boundary checks without OOS metrics."""
+    if jm_protocol is None:
+        jm_protocol = config.jm_protocol
     jm = precomputed_jm or fixed_jm_states(
-        frame, config.model_protocol, config.jm_protocol
+        frame, config.model_protocol, jm_protocol
     )
     hmm = precomputed_hmm or hmm_states(
         frame, config.model_protocol, config.hmm_protocol
@@ -105,7 +109,7 @@ def build_baseline_study(
     boundary_rows: list[dict[str, object]] = []
     candidates = {"fixed_jm": jm.states, "hmm": hmm_candidates}
     grids = {
-        "fixed_jm": config.jm_protocol.lambda_grid,
+        "fixed_jm": jm_protocol.lambda_grid,
         "hmm": tuple(float(value) for value in config.hmm_protocol.smoothing_grid),
     }
     backtest = config.backtest_protocol

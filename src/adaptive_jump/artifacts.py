@@ -105,7 +105,11 @@ def verify_inventory(run_dir: Path) -> None:
         raise ArtifactError("artifact inventory mismatch")
 
 
-def directional_gate(metrics: pd.DataFrame, primary_delay: int) -> dict[str, Any]:
+def directional_gate(
+    metrics: pd.DataFrame,
+    primary_delay: int,
+    claim_label: str = "proxy replication",
+) -> dict[str, Any]:
     """Evaluate the frozen three-condition replication gate."""
     rows = []
     primary = metrics.loc[metrics["delay"] == primary_delay]
@@ -127,7 +131,7 @@ def directional_gate(metrics: pd.DataFrame, primary_delay: int) -> dict[str, Any
         rows.append({"market": market, **checks, "passed": all(checks.values())})
     passed = len(rows) == 3 and all(row["passed"] for row in rows)
     return {
-        "claim_label": "proxy replication",
+        "claim_label": claim_label,
         "primary_delay": primary_delay,
         "markets": rows,
         "passed": passed,
@@ -168,7 +172,9 @@ def verify_run(run: str | Path) -> dict[str, Any]:
         metrics, maximum_difference = _verify_metrics(run_dir, config)
         claim = read_json(run_dir / "claim.json")
         expected_claim = directional_gate(
-            metrics, config.backtest_protocol.primary_delay
+            metrics,
+            config.backtest_protocol.primary_delay,
+            config.document["study"]["claim_label"],
         )
         if claim != expected_claim:
             raise ArtifactError("claim does not match recomputed primary metrics")
@@ -263,10 +269,11 @@ def _verify_boundaries(
         raise ArtifactError("boundary market/model/delay coverage is invalid")
     if not frame["passed"].isin([True, False]).all():
         raise ArtifactError("boundary pass flags are invalid")
-    upper = {
-        "fixed_jm": max(config.jm_protocol.lambda_grid),
-        "hmm": max(config.hmm_protocol.smoothing_grid),
-    }
+    def upper_candidate(model: str, market: str) -> float:
+        if model == "fixed_jm":
+            return max(config.jm_protocol_for(market).lambda_grid)
+        return max(config.hmm_protocol.smoothing_grid)
+
     for row in frame.itertuples(index=False):
         total = int(row.total_months)
         selected = int(row.selected_months)
@@ -285,7 +292,7 @@ def _verify_boundaries(
         if (
             not math.isclose(
                 float(row.upper_candidate),
-                float(upper[row.model]),
+                upper_candidate(str(row.model), str(row.market)),
                 rel_tol=0,
                 abs_tol=1e-12,
             )

@@ -226,7 +226,7 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
                 "schema_version": 1,
                 "run_id": run_id,
                 "status": "running",
-                "claim_label": "proxy replication",
+                "claim_label": config.document["study"]["claim_label"],
                 "metrics_opened": False,
                 "created_at_utc": datetime.now(UTC).isoformat(),
                 "packages": _package_versions(),
@@ -306,7 +306,7 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
             fitted_jm = fixed_jm_states(
                 market_input.frame,
                 config.model_protocol,
-                config.jm_protocol,
+                config.jm_protocol_for(market.id),
                 initial=initial_jm,
                 n_jobs=_model_workers(),
                 checkpoint_every=MODEL_CHECKPOINT_DAYS,
@@ -317,6 +317,7 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
                 market_input.frame,
                 config,
                 oos_start=market_input.oos_start,
+                jm_protocol=config.jm_protocol_for(market.id),
                 precomputed_jm=fitted_jm,
                 precomputed_hmm=fitted_hmm,
                 selection_initial=partial(_load_selection, checkpoint_dir, identity),
@@ -381,7 +382,11 @@ def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
                 path.to_csv(trades / f"{model_name}-delay-{delay}.csv", index=False)
     metrics = pd.concat(metric_frames, ignore_index=True)
     metrics.to_csv(run_dir / "metrics.csv", index=False)
-    gate = _artifacts.directional_gate(metrics, config.backtest_protocol.primary_delay)
+    gate = _artifacts.directional_gate(
+        metrics,
+        config.backtest_protocol.primary_delay,
+        config.document["study"]["claim_label"],
+    )
     _artifacts.write_json(run_dir / "claim.json", gate)
     _artifacts.write_inventory(run_dir)
     _finish_run(

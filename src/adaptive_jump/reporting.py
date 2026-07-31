@@ -88,13 +88,13 @@ def _render(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="run-id" content="{_text(metadata["run_id"])}">
-  <title>Fixed-Baseline Proxy Replication Report</title>
+  <title>Fixed-Baseline {_text(str(metadata.get("claim_label", "proxy replication")).title())} Report</title>
   <style>{_css()}</style>
 </head>
 <body><main>
   <header>
     <div class="eyebrow">Verified research artifact</div>
-    <h1>Fixed-baseline proxy replication</h1>
+    <h1>Fixed-baseline {_text(str(metadata.get("claim_label", "proxy replication")))}</h1>
     <p class="lead">Shu, Yu, and Mulvey protocol through 2023 using documented free-source proxies.</p>
     <div class="verdict"><span>Frozen conclusion</span><strong>{_text(status)}</strong></div>
   </header>

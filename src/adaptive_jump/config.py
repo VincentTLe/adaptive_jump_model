@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -22,6 +22,27 @@ LEGACY_COMPARISON_SAMPLE = "per_market_delay_intersection_of_complete_metric_row
 # tests/test_audit_hardening.py.
 PAPER_DRAWDOWN_BASIS = "risky_leg_wealth_flat_in_cash"
 LEGACY_DRAWDOWN_BASIS = "total_wealth"
+
+# The only JM candidate grids a replication contract may carry: the arXiv-v1
+# author grid and the Table-3 grid. Anything else would be a grid we chose,
+# which a replication claim must never smuggle in.
+HISTORICAL_JM_GRIDS = (
+    (0.0, 5.0, 15.0, 35.0, 70.0, 150.0, 300.0, 600.0, 1200.0),
+    (0.0, 5.0, 15.0, 35.0, 70.0, 150.0),
+)
+# Calibration grids adopted by owner decision on 2026-07-31, one per market,
+# from the exhaustive-search chain jm-grid-exhaustive-007/-008 and
+# jm-per-market-grid-009 (registry events + docs/audit/2026-07-31-*.md).
+# They were found BY searching subsets of a sourced lambda menu against the
+# published Table-4/Table-5 cells, so agreement with those cells is by
+# construction: they are calibration artifacts, never "the authors' grid".
+# A contract carrying one must therefore declare claim_label
+# "calibrated baseline"; load_config enforces the coupling both ways.
+CALIBRATED_JM_GRIDS = (
+    (0.0, 21.544346900318832, 70.0),  # us: passes all 14 target cells
+    (150.0, 500.0),  # de: best 13/14, turnover is the measured blocking cell
+    (10.0, 220.0),  # jp: best 13/14, leverage is the measured blocking cell
+)
 
 
 class ConfigError(ValueError):
@@ -47,6 +68,9 @@ class MarketConfig:
     deviations: tuple[str, ...]
     equity: SourceConfig
     cash: SourceConfig
+    # Optional per-market JM grid override; permitted only inside a
+    # "calibrated baseline" contract and only from CALIBRATED_JM_GRIDS.
+    jm_lambda_grid: tuple[float, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -148,6 +172,15 @@ class ResearchConfig:
     metrics_protocol: MetricsProtocol
     document: dict[str, Any]
 
+    def jm_protocol_for(self, market_id: str) -> JMProtocol:
+        """The JM protocol governing one market, honoring any grid override."""
+        for market in self.markets:
+            if market.id == market_id:
+                if market.jm_lambda_grid is None:
+                    return self.jm_protocol
+                return replace(self.jm_protocol, lambda_grid=market.jm_lambda_grid)
+        raise ConfigError(f"unknown market: {market_id}")
+
 
 def load_config(path: str | Path) -> ResearchConfig:
     """Parse a TOML config and enforce acquisition safety invariants."""
@@ -160,10 +193,12 @@ def load_config(path: str | Path) -> ResearchConfig:
 
     _require(document.get("schema_version") == 1, "schema_version must be 1")
     study = _table(document, "study")
+    claim_label = study.get("claim_label")
     _require(
-        study.get("claim_label") == "proxy replication",
-        "claim_label must be proxy replication",
+        claim_label in {"proxy replication", "calibrated baseline"},
+        "claim_label must be proxy replication or calibrated baseline",
     )
+    calibrated = claim_label == "calibrated baseline"
     _require(
         study.get("extension_download_enabled") is False,
         "extension download must be disabled",
@@ -223,7 +258,7 @@ def load_config(path: str | Path) -> ResearchConfig:
         isinstance(market_rows, list) and market_rows,
         "markets must be a non-empty array",
     )
-    markets = tuple(_market(row) for row in market_rows)
+    markets = tuple(_market(row, calibrated) for row in market_rows)
     market_ids = [market.id for market in markets]
     _require(len(set(market_ids)) == len(market_ids), "market IDs must be unique")
 
@@ -240,9 +275,9 @@ def load_config(path: str | Path) -> ResearchConfig:
     features = _feature_protocol(_table(document, "features"))
     backtest = _backtest_protocol(_table(document, "backtest"))
     model = _model_protocol(_table(document, "model"))
-    jm = _jm_protocol(_table(document, "jm"))
+    jm = _jm_protocol(_table(document, "jm"), calibrated)
     hmm = _hmm_protocol(_table(document, "hmm"))
-    selection = _selection_protocol(_table(document, "selection"))
+    selection = _selection_protocol(_table(document, "selection"), calibrated)
     metrics = _metrics_protocol(_table(document, "metrics"))
     oos = _table(document, "oos_start")
     fit_window = _integer(oos, "fit_window_observations")
@@ -279,7 +314,7 @@ def load_config(path: str | Path) -> ResearchConfig:
     )
 
 
-def _market(row: Any) -> MarketConfig:
+def _market(row: Any, calibrated: bool = False) -> MarketConfig:
     _require(isinstance(row, dict), "each market must be a table")
     market_id = _text(row, "id")
     classification = _text(row, "classification")
@@ -294,6 +329,17 @@ def _market(row: Any) -> MarketConfig:
         and all(isinstance(item, str) and item for item in deviations),
         f"{market_id}: deviations must be non-empty strings",
     )
+    jm_grid: tuple[float, ...] | None = None
+    if "jm_lambda_grid" in row:
+        _require(
+            calibrated,
+            f"{market_id}: jm_lambda_grid requires claim_label calibrated baseline",
+        )
+        jm_grid = _number_tuple(row, "jm_lambda_grid")
+        _require(
+            jm_grid in HISTORICAL_JM_GRIDS + CALIBRATED_JM_GRIDS,
+            f"{market_id}: jm_lambda_grid is not a registered grid",
+        )
     return MarketConfig(
         id=market_id,
         name=_text(row, "name"),
@@ -302,6 +348,7 @@ def _market(row: Any) -> MarketConfig:
         deviations=tuple(deviations),
         equity=_source(row, "equity", market_id),
         cash=_source(row, "cash", market_id),
+        jm_lambda_grid=jm_grid,
     )
 
 
@@ -434,16 +481,10 @@ def _model_protocol(row: dict[str, Any]) -> ModelProtocol:
     return ModelProtocol(n_states, fit_window, risky, cash, standardizer, min_obs)
 
 
-def _jm_protocol(row: dict[str, Any]) -> JMProtocol:
+def _jm_protocol(row: dict[str, Any], calibrated: bool = False) -> JMProtocol:
     grid = _number_tuple(row, "lambda_grid")
-    _require(
-        grid
-        in (
-            (0, 5, 15, 35, 70, 150, 300, 600, 1200),
-            (0, 5, 15, 35, 70, 150),
-        ),
-        "invalid JM lambda grid",
-    )
+    allowed = HISTORICAL_JM_GRIDS + (CALIBRATED_JM_GRIDS if calibrated else ())
+    _require(grid in allowed, "invalid JM lambda grid")
     _fixed(row, "implementation", "jumpmodels.JumpModel")
     _fixed(row, "sort_by", "cumret")
     _fixed(row, "online_terminal_only", True)
@@ -515,7 +556,9 @@ def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
     return protocol
 
 
-def _selection_protocol(row: dict[str, Any]) -> SelectionProtocol:
+def _selection_protocol(
+    row: dict[str, Any], calibrated: bool = False
+) -> SelectionProtocol:
     _fixed(row, "cadence", "monthly_prior_month_last_complete_date")
     _fixed(row, "objective", "annualized_strategy_excess_sharpe")
     _fixed(row, "tie_rule", "lower_smoothing")
@@ -525,8 +568,18 @@ def _selection_protocol(row: dict[str, Any]) -> SelectionProtocol:
         _positive_number(row, "tie_tolerance"),
         _positive_number(row, "upper_boundary_month_fraction_limit"),
     )
+    # A calibrated-baseline contract may disable the upper-boundary stop
+    # (limit 1.0): a 2-3 value calibration grid concentrates at its upper
+    # edge by construction, and the contract never claims the grid brackets
+    # an optimum. The fractions are still computed and reported. A
+    # replication contract keeps the hard 0.05 stop.
+    allowed_limits = (0.05, 1.0) if calibrated else (0.05,)
     _require(
-        protocol == SelectionProtocol(8, 252, 1e-12, 0.05), "invalid selection settings"
+        protocol.validation_years == 8
+        and protocol.minimum_valid_returns == 252
+        and protocol.tie_tolerance == 1e-12
+        and protocol.boundary_fraction_limit in allowed_limits,
+        "invalid selection settings",
     )
     return protocol
 
