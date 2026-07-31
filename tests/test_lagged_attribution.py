@@ -1,36 +1,45 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
 import pytest
+from conftest import calibrated_config, calibrated_spec_text
 
 from adaptive_jump import lagged_attribution as attribution
 from adaptive_jump.config import load_config
 from adaptive_jump.walkforward import SelectionResult
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = ROOT / "research/lagged-selection-attribution-001.toml"
-REGISTRY = ROOT / "research/experiment_registry.jsonl"
+SOURCE = "lagged-selection-attribution-001.toml"
 
 
-def test_frozen_attribution_spec_matches_latest_registry() -> None:
-    config = load_config(ROOT / "research.toml")
-    spec = attribution.load_attribution_spec(SPEC, config)
-    rows = [
-        json.loads(line)
-        for line in REGISTRY.read_text(encoding="utf-8").splitlines()
-        if json.loads(line).get("experiment_id") == spec.experiment_id
-    ]
+def _spec(tmp_path: Path):
+    path = tmp_path / "lagged-selection-attribution-002.toml"
+    path.write_text(
+        calibrated_spec_text(SOURCE, calibrated_config()),
+        encoding="utf-8",
+    )
+    return attribution.load_attribution_spec(path, calibrated_config())
 
-    assert rows[-1]["status"] == "EXPERIMENT_COMPLETE"
-    assert rows[-1]["frozen_spec_hash"] == spec.sha256
+
+def test_frozen_attribution_spec_binds_cells_and_per_market_grids(
+    tmp_path: Path,
+) -> None:
+    config = calibrated_config()
+    spec = _spec(tmp_path)
+
     assert spec.cells == attribution.CELLS
-    assert spec.lambdas == attribution.LAMBDAS
+    for market in spec.markets:
+        assert (
+            spec.lambdas_for(market)
+            == config.jm_protocol_for(market).lambda_grid
+        )
+    assert len({spec.lambdas_for(m) for m in spec.markets}) == 3
     assert spec.cutoff.isoformat() == "2023-12-31"
+    assert spec.artifact_subdir == Path(attribution.EXPERIMENT_ID)
 
 
 def test_two_by_two_signal_axes_are_not_reversed() -> None:
@@ -56,7 +65,10 @@ def test_two_by_two_signal_axes_are_not_reversed() -> None:
             },
         ]
     )
-    inputs = SimpleNamespace(choices=choices)
+    inputs = SimpleNamespace(
+        choices=choices,
+        parent_spec=SimpleNamespace(lambdas_for=lambda market: (0.0, 5.0)),
+    )
 
     selected = attribution._cell_selections(frame, states, inputs, "us")
 
@@ -187,9 +199,10 @@ def test_change_trace_skips_initial_nan_trade_and_finds_real_trade() -> None:
     assert np.isfinite([trade["ff_trade"], trade["cell_trade"]]).all()
 
 
-def test_artifact_allowlist_contains_exact_four_cell_trade_coverage() -> None:
-    config = load_config(ROOT / "research.toml")
-    spec = attribution.load_attribution_spec(SPEC, config)
+def test_artifact_allowlist_contains_exact_four_cell_trade_coverage(
+    tmp_path: Path,
+) -> None:
+    spec = _spec(tmp_path)
     files = attribution._expected_files(spec)
 
     assert len(files) == 27
@@ -224,7 +237,12 @@ def test_identical_axis_has_zero_effect_and_interaction(identical_axis: str) -> 
     assert np.allclose(result[list(zero_fields)], 0.0, rtol=0, atol=1e-12)
 
 
-def test_choice_schedule_rejects_candidate_outside_frozen_grid() -> None:
+def test_choice_schedule_rejects_candidate_outside_frozen_grid(
+    tmp_path: Path,
+) -> None:
+    parent_spec = SimpleNamespace(
+        lambdas_for=lambda market: (0.0, 5.0),
+    )
     choices = pd.DataFrame(
         [
             {
@@ -236,4 +254,8 @@ def test_choice_schedule_rejects_candidate_outside_frozen_grid() -> None:
         ]
     )
     with pytest.raises(attribution.AttributionError, match="invalid frozen"):
-        attribution._schedule(SimpleNamespace(choices=choices), "us", "fixed")
+        attribution._schedule(
+            SimpleNamespace(choices=choices, parent_spec=parent_spec),
+            "us",
+            "fixed",
+        )

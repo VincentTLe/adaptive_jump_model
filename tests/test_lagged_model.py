@@ -24,15 +24,18 @@ from adaptive_jump.tv_jump import (
 
 
 def _controls():
+    # The contract resolves a grid per market; the toy market is 'us'.
+    grid = (0.0, 4.0)
     config = SimpleNamespace(
         model_protocol=SimpleNamespace(n_states=2, fit_window=4),
-        jm_protocol=SimpleNamespace(lambda_grid=(0.0, 4.0)),
+        jm_protocol_for=lambda market: SimpleNamespace(lambda_grid=grid),
     )
     spec = SimpleNamespace(
         markets=("us",),
         data_cutoff=date(2020, 1, 31),
         fit_window=4,
-        lambdas=(0.0, 4.0),
+        lambdas={"us": grid},
+        lambdas_for=lambda market: grid,
         betas=(0.0, math.log(4.0)),
         rules=("arrival", "lagged"),
     )
@@ -122,7 +125,9 @@ def test_locked_generator_needs_no_returns_or_refitting(monkeypatch) -> None:
     def forbidden_fit(*_args, **_kwargs):
         raise AssertionError("locked generator attempted a model fit")
 
-    monkeypatch.setattr("adaptive_jump.models._fit_fixed_jm", forbidden_fit)
+    monkeypatch.setattr(
+        "adaptive_jump.models.fit_fixed_jm_window", forbidden_fit
+    )
     result = generate_locked_candidates(
         features,
         fixed,

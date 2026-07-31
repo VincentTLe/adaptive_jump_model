@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from conftest import calibrated_config, calibrated_spec_text
 
 from adaptive_jump.balanced_analysis import (
     ANCHOR_COLUMNS,
@@ -21,7 +22,6 @@ from adaptive_jump.balanced_events import EVENT_COLUMNS, extract_events
 from adaptive_jump.balanced_model import (
     load_balanced_spec,
 )
-from adaptive_jump.config import load_config
 from adaptive_jump.lagged_model import LockedStateEvidence
 from adaptive_jump.models import FEATURE_COLUMNS
 from adaptive_jump.separation_analysis import MarketInputs
@@ -30,10 +30,22 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture(scope="module")
-def spec():
-    config = load_config(ROOT / "research.toml")
-    return load_balanced_spec(
-        ROOT / "research/balanced-lagged-mechanism-001.toml", config
+def spec(tmp_path_factory):
+    config = calibrated_config()
+    path = tmp_path_factory.mktemp("spec") / "study.toml"
+    path.write_text(
+        calibrated_spec_text("balanced-lagged-mechanism-001.toml", config),
+        encoding="utf-8",
+    )
+    loaded = load_balanced_spec(path, config)
+    # This module exercises the matched-response machinery on toy frames whose
+    # candidate columns are 5/15/35; keep the per-market table shape and swap in
+    # that grid so the toy anchors stay inside the event grid.
+    toy = {market: (0.0, 5.0, 15.0, 35.0) for market in loaded.markets}
+    return replace(
+        loaded,
+        lambdas=toy,
+        event_lambdas={market: values[1:] for market, values in toy.items()},
     )
 
 
@@ -91,7 +103,9 @@ def _matched_inputs(spec):
 def test_all_seven_matched_categories_partition_every_anchor(spec):
     parent, states, fixed, refits, expected = _matched_inputs(spec)
 
-    result, audit = matched_response(parent, states, fixed, refits, spec)
+    result, audit = matched_response(
+        "us", parent, states, fixed, refits, spec
+    )
 
     assert result.columns.tolist() == ANCHOR_COLUMNS
     assert result["matched_category"].tolist() == expected
@@ -126,7 +140,7 @@ def test_all_seven_matched_categories_partition_every_anchor(spec):
 def test_matched_latency_retention_is_strictly_early_and_no_return(spec):
     parent, states, fixed, refits, _ = _matched_inputs(spec)
 
-    result, _ = matched_response(parent, states, fixed, refits, spec)
+    result, _ = matched_response("us", parent, states, fixed, refits, spec)
     result = result.set_index("matched_category")
 
     assert result.loc[
@@ -148,8 +162,8 @@ def test_empty_own_event_path_has_stable_schema(spec):
         spec,
         markets=("us",),
         rules=("lagged", "balanced"),
-        lambdas=(0.0, 5.0),
-        event_lambdas=(5.0,),
+        lambdas={"us": (0.0, 5.0)},
+        event_lambdas={"us": (5.0,)},
         fit_window=3,
         horizon=2,
         evaluation_starts={"us": date(2020, 1, 1)},
@@ -380,7 +394,9 @@ def test_late_entries_and_baseline_have_exact_equal_follow_exposure(spec):
     )
     refits = pd.DataFrame({"fit_date": [dates[0]] * 3, "lambda0": lambdas})
 
-    result, audit = matched_response(events, balanced, fixed, refits, spec)
+    result, audit = matched_response(
+        "us", events, balanced, fixed, refits, spec
+    )
 
     assert result["first_destination_h"].tolist() == [-1, 19, 20]
     assert result["matched_follow_end_h"].tolist() == [19, 39, 40]
@@ -421,7 +437,9 @@ def test_matched_eligibility_checks_t40_before_same_refit(spec):
         ]
     )
 
-    result, audit = matched_response(events, balanced, fixed, refits, spec)
+    result, audit = matched_response(
+        "us", events, balanced, fixed, refits, spec
+    )
 
     assert len(result) == 1
     assert result.iloc[0]["lambda0"] == 35.0
@@ -435,7 +453,10 @@ def test_matched_eligibility_checks_t40_before_same_refit(spec):
 
 def test_summary_reports_minimum_admitted_margins(spec):
     mini = replace(
-        spec, markets=("us",), event_lambdas=(5.0,), rules=("lagged", "balanced")
+        spec,
+        markets=("us",),
+        event_lambdas={"us": (5.0,)},
+        rules=("lagged", "balanced"),
     )
     behavior = pd.DataFrame.from_records(
         [

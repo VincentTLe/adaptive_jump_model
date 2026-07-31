@@ -8,8 +8,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from conftest import calibrated_config, calibrated_spec_text
 
-from adaptive_jump.config import load_config
 from adaptive_jump.lagged_analysis import (
     _extract_events,
     _path_behavior,
@@ -32,24 +32,40 @@ from adaptive_jump.tv_jump import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = ROOT / "research/lagged-evidence-mechanism-001.toml"
-REGISTRY = ROOT / "research/experiment_registry.jsonl"
+SOURCE = "lagged-evidence-mechanism-001.toml"
 
 
-def test_lagged_spec_is_bound_to_registry_sources_and_cutoff() -> None:
-    config = load_config(ROOT / "research.toml")
-    spec = load_lagged_spec(SPEC, config)
-    records = [
-        json.loads(line)
-        for line in REGISTRY.read_text(encoding="utf-8").splitlines()
-        if json.loads(line)["experiment_id"] == spec.experiment_id
-    ]
+def _spec_text() -> str:
+    return calibrated_spec_text(SOURCE, calibrated_config())
 
-    assert records[-1]["frozen_spec_hash"] == spec.sha256
-    assert records[-1]["status"] in {"FROZEN", "EXPERIMENT_COMPLETE"}
+
+def _write_spec(tmp_path: Path) -> Path:
+    path = tmp_path / "lagged-evidence-mechanism-002.toml"
+    path.write_text(_spec_text(), encoding="utf-8")
+    return path
+
+
+def _loaded_spec(tmp_path: Path):
+    return load_lagged_spec(_write_spec(tmp_path), calibrated_config())
+
+
+def test_lagged_spec_binds_sources_grids_and_cutoff(tmp_path: Path) -> None:
+    config = calibrated_config()
+    spec = _loaded_spec(tmp_path)
+
     assert spec.data_cutoff.isoformat() == "2023-12-31"
     assert spec.betas == (0.0, np.log(2.0), np.log(4.0))
-    assert spec.lambdas == config.jm_protocol.lambda_grid
+    for market in spec.markets:
+        grid = config.jm_protocol_for(market).lambda_grid
+        assert spec.lambdas_for(market) == grid
+        # the event grid is the market's positive lambdas
+        assert spec.event_lambdas_for(market) == tuple(
+            value for value in grid if value > 0.0
+        )
+    assert len({spec.lambdas_for(m) for m in spec.markets}) == 3
+    # both sealed sources are named by the spec, never by a literal
+    assert str(spec.fixed.artifact_subdir) == "fixed-baselines"
+    assert spec.arrival.experiment_id.startswith("adaptive-confidence-")
     assert spec.fixed_allowed_files == ("features.csv", "jm-states.csv")
     assert spec.performance_files_forbidden == (
         "summary.csv",
@@ -86,12 +102,12 @@ def test_lagged_spec_rejects_evidence_lane_or_control_changes(
 ) -> None:
     changed = tmp_path / "study.toml"
     changed.write_text(
-        SPEC.read_text(encoding="utf-8").replace(old, new),
+        _spec_text().replace(old, new),
         encoding="utf-8",
     )
 
     with pytest.raises(LaggedStudyError):
-        load_lagged_spec(changed, load_config(ROOT / "research.toml"))
+        load_lagged_spec(changed, calibrated_config())
 
 
 def _toy_candidates(
@@ -115,9 +131,9 @@ def _toy_candidates(
     return result
 
 
-def _toy_inputs(rule: str):
-    config = load_config(ROOT / "research.toml")
-    base = load_lagged_spec(SPEC, config)
+def _toy_inputs(rule: str, tmp_path: Path):
+    config = calibrated_config()
+    base = load_lagged_spec(_write_spec(tmp_path), config)
     dates = pd.bdate_range("2020-01-01", periods=9, name="date")
     loss_gaps = np.array([-8.0] * 5 + [2.0, -2.0, -8.0, -8.0])
     x_value = (loss_gaps + 2.0) / 2.0
@@ -182,8 +198,8 @@ def _toy_inputs(rule: str):
         evaluation_starts={"us": dates[4].date()},
         betas=(0.0, beta),
         event_betas=(beta,),
-        lambdas=(lambda0,),
-        event_lambdas=(lambda0,),
+        lambdas={"us": (lambda0,)},
+        event_lambdas={"us": (lambda0,)},
         rules=("arrival", "lagged"),
         fit_window=5,
         horizon=2,
@@ -191,9 +207,11 @@ def _toy_inputs(rule: str):
     return inputs, candidates, spec
 
 
-def test_arrival_event_is_locally_attributed_but_lagged_filters_the_shock() -> None:
-    arrival_inputs, arrival_candidates, spec = _toy_inputs("arrival")
-    lagged_inputs, lagged_candidates, _ = _toy_inputs("lagged")
+def test_arrival_event_is_locally_attributed_but_lagged_filters_the_shock(
+    tmp_path: Path,
+) -> None:
+    arrival_inputs, arrival_candidates, spec = _toy_inputs("arrival", tmp_path)
+    lagged_inputs, lagged_candidates, _ = _toy_inputs("lagged", tmp_path)
 
     arrival, arrival_audit = _extract_events(
         arrival_inputs, arrival_candidates, "arrival", spec
@@ -217,24 +235,29 @@ def test_arrival_event_is_locally_attributed_but_lagged_filters_the_shock() -> N
     assert lagged_audit["admitted_events"] == 0
 
 
-def test_path_behavior_counts_switches_and_differences_without_selection() -> None:
-    inputs, candidates, spec = _toy_inputs("arrival")
+def test_path_behavior_counts_switches_and_differences_without_selection(
+    tmp_path: Path,
+) -> None:
+    inputs, candidates, spec = _toy_inputs("arrival", tmp_path)
 
     rows = _path_behavior(inputs, candidates, "arrival", spec)
 
     assert len(rows) == 1
-    expected = candidates[spec.event_betas[0]][spec.event_lambdas[0]].dropna()
-    fixed = candidates[0.0][spec.event_lambdas[0]].reindex(expected.index)
+    lambda0 = spec.event_lambdas_for("us")[0]
+    expected = candidates[spec.event_betas[0]][lambda0].dropna()
+    fixed = candidates[0.0][lambda0].reindex(expected.index)
     assert rows[0]["switch_count"] == int(
         np.count_nonzero(np.diff(expected.to_numpy()))
     )
     assert rows[0]["state_differences_vs_fixed"] == int((expected != fixed).sum())
 
 
-def test_path_behavior_counts_transition_into_evaluation_start() -> None:
-    inputs, candidates, spec = _toy_inputs("arrival")
+def test_path_behavior_counts_transition_into_evaluation_start(
+    tmp_path: Path,
+) -> None:
+    inputs, candidates, spec = _toy_inputs("arrival", tmp_path)
     beta = spec.event_betas[0]
-    lambda0 = spec.event_lambdas[0]
+    lambda0 = spec.event_lambdas_for("us")[0]
     model = candidates[beta][lambda0].copy()
     valid = model.dropna().index
     model.loc[valid] = [0, 1, 1, 1, 1]
@@ -276,8 +299,10 @@ def _decision_summary() -> pd.DataFrame:
     return pd.DataFrame.from_records(records)
 
 
-def test_mechanism_gate_requires_every_frozen_condition_and_prefers_log2() -> None:
-    spec = load_lagged_spec(SPEC, load_config(ROOT / "research.toml"))
+def test_mechanism_gate_requires_every_frozen_condition_and_prefers_log2(
+    tmp_path: Path,
+) -> None:
+    spec = _loaded_spec(tmp_path)
     passing = _decision_summary()
 
     conclusion = classify_mechanism(passing, spec, mechanical_prerequisites_passed=True)
@@ -331,8 +356,10 @@ def test_mechanism_gate_requires_every_frozen_condition_and_prefers_log2() -> No
         assert not result["by_beta"]["log2"]["advances"]
 
 
-def test_mechanism_gate_fails_when_mechanical_prerequisites_fail() -> None:
-    spec = load_lagged_spec(SPEC, load_config(ROOT / "research.toml"))
+def test_mechanism_gate_fails_when_mechanical_prerequisites_fail(
+    tmp_path: Path,
+) -> None:
+    spec = _loaded_spec(tmp_path)
 
     conclusion = classify_mechanism(
         _decision_summary(),
@@ -344,8 +371,8 @@ def test_mechanism_gate_fails_when_mechanical_prerequisites_fail() -> None:
     assert conclusion["selected_beta_label"] is None
 
 
-def test_summary_counts_events_and_complete_path_rows() -> None:
-    spec = load_lagged_spec(SPEC, load_config(ROOT / "research.toml"))
+def test_summary_counts_events_and_complete_path_rows(tmp_path: Path) -> None:
+    spec = _loaded_spec(tmp_path)
     events = pd.DataFrame(
         [
             {
@@ -374,7 +401,7 @@ def test_summary_counts_events_and_complete_path_rows() -> None:
             for market in spec.markets
             for beta in spec.event_betas
             for rule in spec.rules
-            for lambda0 in spec.event_lambdas
+            for lambda0 in spec.event_lambdas_for(market)
         ]
     )
 
@@ -387,7 +414,7 @@ def test_summary_counts_events_and_complete_path_rows() -> None:
     ).all()
     assert (
         summary.loc[summary["rule"] == "lagged", "state_differences_vs_fixed"]
-        == len(spec.event_lambdas)
+        == len(spec.event_lambdas_for("us"))
     ).all()
 
     with pytest.raises(LaggedStudyError, match="path coverage changed"):

@@ -35,8 +35,21 @@ from adaptive_jump.lagged_model import LockedStateEvidence
 
 def _spec() -> SimpleNamespace:
     return SimpleNamespace(
-        experiment_id="balanced-lagged-mechanism-001",
+        experiment_id="balanced-lagged-mechanism-002",
         sha256="1" * 64,
+        # Both sources are named by the spec, never by a literal in the harness.
+        fixed=SimpleNamespace(
+            experiment_id="fixed-baselines-001-v7",
+            artifact_subdir=Path("fixed-baselines"),
+            run_id="fixed-run",
+            inventory_sha256="2" * 64,
+        ),
+        parent=SimpleNamespace(
+            experiment_id="lagged-evidence-mechanism-002",
+            artifact_subdir=Path("lagged-evidence-mechanism-002"),
+            run_id="lagged-run",
+            inventory_sha256="3" * 64,
+        ),
         fixed_inventory_sha256="2" * 64,
         parent_inventory_sha256="3" * 64,
         parent_spec_sha256="4" * 64,
@@ -46,8 +59,10 @@ def _spec() -> SimpleNamespace:
         rules=("lagged", "balanced"),
         betas=(0.0, math.log(4.0)),
         decision_beta=math.log(4.0),
-        lambdas=(0.0, 5.0),
-        event_lambdas=(5.0,),
+        lambdas={"us": (0.0, 5.0)},
+        lambdas_for=lambda market: (0.0, 5.0),
+        event_lambdas={"us": (5.0,)},
+        event_lambdas_for=lambda market: (5.0,),
         numerical_tolerance=1e-12,
         horizon=2,
         matched_entry_search=2,
@@ -134,7 +149,9 @@ def _market_replay(market: str, spec: SimpleNamespace) -> MarketReplay:
         "lagged": {0.0: base.copy(), spec.decision_beta: base.copy()},
         "balanced": {0.0: base.copy(), spec.decision_beta: changed},
     }
-    blank = pd.DataFrame(index=dates, columns=spec.lambdas, dtype=float)
+    blank = pd.DataFrame(
+        index=dates, columns=spec.lambdas_for("us"), dtype=float
+    )
     evidence = {
         rule: LockedStateEvidence(
             states=states[rule],
@@ -295,9 +312,13 @@ def _market_replay(market: str, spec: SimpleNamespace) -> MarketReplay:
 @pytest.fixture
 def synthetic_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     spec = _spec()
-    config = SimpleNamespace(sha256="6" * 64)
+    config = SimpleNamespace(
+        sha256="6" * 64,
+        # The verifier reloads whichever contract the run recorded.
+        path=Path("research-calibrated-v10.toml"),
+    )
     implementation_files = {
-        "research/balanced-lagged-mechanism-001.toml": "7" * 64,
+        "research/balanced-lagged-mechanism-002.toml": "7" * 64,
         "src/adaptive_jump/balanced_model.py": "8" * 64,
         "src/adaptive_jump/balanced_verifier.py": "9" * 64,
     }
@@ -378,7 +399,7 @@ def synthetic_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     )
     monkeypatch.setattr(
         "adaptive_jump.balanced_verifier._canonical_context",
-        lambda: (config, spec),
+        lambda _config_name: (config, spec),
     )
     monkeypatch.setattr("adaptive_jump.balanced_verifier.load_config", lambda _: config)
     monkeypatch.setattr(
@@ -391,7 +412,7 @@ def synthetic_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     )
     monkeypatch.setattr(
         "adaptive_jump.balanced_verifier.implementation_lock",
-        lambda _root, _spec: implementation,
+        lambda _root, _spec, _config_path: implementation,
     )
     monkeypatch.setattr(
         "adaptive_jump.balanced_verifier.run_independent_smoke",
@@ -488,6 +509,9 @@ def synthetic_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
                 "finished_at_utc": "2026-01-01T00:02:00+00:00",
                 "spec_sha256": spec.sha256,
                 "config_sha256": config.sha256,
+                "config_path": config.path.name,
+                "fixed_experiment_id": spec.fixed.experiment_id,
+                "parent_experiment_id": spec.parent.experiment_id,
                 "fixed_inventory_sha256": spec.fixed_inventory_sha256,
                 "parent_inventory_sha256": spec.parent_inventory_sha256,
                 "parent_spec_sha256": spec.parent_spec_sha256,
@@ -576,7 +600,8 @@ def test_independent_penalty_formula_and_pair_balance() -> None:
 def test_independent_matched_response_detects_entry_then_reversal() -> None:
     spec = SimpleNamespace(
         decision_beta=math.log(4.0),
-        event_lambdas=(5.0,),
+        event_lambdas={"us": (5.0,)},
+        event_lambdas_for=lambda market: (5.0,),
         matched_entry_search=2,
         matched_followup=2,
         matched_anchor_censor=4,
@@ -589,7 +614,9 @@ def test_independent_matched_response_detects_entry_then_reversal() -> None:
     states = pd.DataFrame({5.0: [0, 1, 0, 0, 0, 0]}, index=dates)
     fixed = pd.DataFrame({5.0: [0, 0, 0, 0, 0, 0]}, index=dates)
     refits = pd.DataFrame({"fit_date": [dates[0]], "lambda0": [5.0]})
-    result, audit = matched_response(event, states, fixed, refits, spec)
+    result, audit = matched_response(
+        "us", event, states, fixed, refits, spec
+    )
     assert result.loc[0, "matched_category"] == "enters_then_whipsaw"
     assert bool(result.loc[0, "matched_whipsaw_20"])
     assert result.loc[0, "matched_follow_end_h"] == 2
@@ -603,7 +630,8 @@ def test_independent_matched_response_detects_entry_then_reversal() -> None:
 def test_late_h20_response_uses_full_followup_and_late_confirmation() -> None:
     spec = SimpleNamespace(
         decision_beta=math.log(4.0),
-        event_lambdas=(5.0,),
+        event_lambdas={"us": (5.0,)},
+        event_lambdas_for=lambda market: (5.0,),
         matched_entry_search=20,
         matched_followup=20,
         matched_anchor_censor=40,
@@ -620,7 +648,9 @@ def test_late_h20_response_uses_full_followup_and_late_confirmation() -> None:
     persistent.iloc[position + 20 :, 0] = 1
     refits = pd.DataFrame({"fit_date": [dates[0]], "lambda0": [5.0]})
 
-    retained, _ = matched_response(event, persistent, fixed, refits, spec)
+    retained, _ = matched_response(
+        "us", event, persistent, fixed, refits, spec
+    )
     row = retained.iloc[0]
     assert row["first_destination_h"] == 20
     assert row["matched_follow_end_h"] == 40
@@ -629,7 +659,9 @@ def test_late_h20_response_uses_full_followup_and_late_confirmation() -> None:
 
     reversed_path = persistent.copy()
     reversed_path.iloc[position + 21, 0] = 0
-    reversed_result, _ = matched_response(event, reversed_path, fixed, refits, spec)
+    reversed_result, _ = matched_response(
+        "us", event, reversed_path, fixed, refits, spec
+    )
     reversed_row = reversed_result.iloc[0]
     assert reversed_row["matched_category"] == "enters_then_whipsaw"
     assert bool(reversed_row["matched_whipsaw_20"])
@@ -638,7 +670,8 @@ def test_late_h20_response_uses_full_followup_and_late_confirmation() -> None:
 def test_matched_censor_precedes_balanced_response_access() -> None:
     spec = SimpleNamespace(
         decision_beta=math.log(4.0),
-        event_lambdas=(5.0,),
+        event_lambdas={"us": (5.0,)},
+        event_lambdas_for=lambda market: (5.0,),
         matched_entry_search=20,
         matched_followup=20,
         matched_anchor_censor=40,
@@ -652,7 +685,9 @@ def test_matched_censor_precedes_balanced_response_access() -> None:
         {5.0: np.zeros(len(short_dates), dtype=int)}, index=short_dates
     )
     refits = pd.DataFrame({"fit_date": [short_dates[0]], "lambda0": [5.0]})
-    result, audit = matched_response(event, pd.DataFrame(), fixed, refits, spec)
+    result, audit = matched_response(
+        "us", event, pd.DataFrame(), fixed, refits, spec
+    )
     assert result.empty
     assert audit["matched_anchor_censored"] == 1
     assert audit["eligible_matched_anchors"] == 0
@@ -661,7 +696,9 @@ def test_matched_censor_precedes_balanced_response_access() -> None:
     event.loc[0, "signal_date"] = dates[2]
     fixed = pd.DataFrame({5.0: np.zeros(len(dates), dtype=int)}, index=dates)
     refits = pd.DataFrame({"fit_date": [dates[0], dates[30]], "lambda0": [5.0, 5.0]})
-    result, audit = matched_response(event, pd.DataFrame(), fixed, refits, spec)
+    result, audit = matched_response(
+        "us", event, pd.DataFrame(), fixed, refits, spec
+    )
     assert result.empty
     assert audit["matched_anchor_censored"] == 1
     assert audit["eligible_matched_anchors"] == 0
@@ -685,19 +722,19 @@ def test_smoke_coverage_requires_full_grid_and_every_stale_lambda() -> None:
         "refit_convention_min_stale_distance": 1.0,
         "refit_convention_max_stale_distance": 2.0,
     }
-    assert _smoke_coverage_exact(smoke, spec)
+    assert _smoke_coverage_exact(smoke, spec, "us")
 
     smoke["parent_lagged_state_cells_checked"] -= 1
-    assert not _smoke_coverage_exact(smoke, spec)
+    assert not _smoke_coverage_exact(smoke, spec, "us")
     smoke["parent_lagged_state_cells_checked"] += 1
     smoke["actual_formula_lambda_values_checked"] -= 1
-    assert not _smoke_coverage_exact(smoke, spec)
+    assert not _smoke_coverage_exact(smoke, spec, "us")
     smoke["actual_formula_lambda_values_checked"] += 1
     smoke["refit_convention_distinct_lambdas"] = 0
-    assert not _smoke_coverage_exact(smoke, spec)
+    assert not _smoke_coverage_exact(smoke, spec, "us")
     smoke["refit_convention_distinct_lambdas"] = 1
     smoke["refit_convention_informative_lambdas"] = 0
-    assert not _smoke_coverage_exact(smoke, spec)
+    assert not _smoke_coverage_exact(smoke, spec, "us")
     smoke["refit_convention_informative_lambdas"] = 1
 
 
@@ -716,7 +753,7 @@ def test_valid_artifact_accepts_later_live_head(
     current = {**stored, "git_head": "b" * 40}
     monkeypatch.setattr(
         "adaptive_jump.balanced_verifier.implementation_lock",
-        lambda _root, _spec: current,
+        lambda _root, _spec, _config_path: current,
     )
     assert verify_balanced_run(run_dir)["status"] == "verified"
 

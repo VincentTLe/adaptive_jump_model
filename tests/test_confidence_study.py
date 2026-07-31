@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
+from conftest import calibrated_config, calibrated_spec_text
 
 from adaptive_jump.confidence_evaluation import (
     _add_deltas,
@@ -16,6 +16,7 @@ from adaptive_jump.confidence_model import StateEvidence, _assert_beta_zero_stat
 from adaptive_jump.confidence_runner import _conclusion
 from adaptive_jump.confidence_spec import (
     BETAS,
+    EXPERIMENT_ID,
     ConfidenceStudyError,
     load_confidence_spec,
 )
@@ -23,37 +24,64 @@ from adaptive_jump.config import load_config
 from adaptive_jump.walkforward import SelectionResult
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = ROOT / "research/adaptive-confidence-001.toml"
-REGISTRY = ROOT / "research/experiment_registry.jsonl"
+SOURCE = "adaptive-confidence-001.toml"
 
 
-def test_confidence_spec_is_bound_to_v7_and_registry() -> None:
-    config = load_config(ROOT / "research.toml")
-    spec = load_confidence_spec(SPEC, config)
-    records = [
-        json.loads(line)
-        for line in REGISTRY.read_text(encoding="utf-8").splitlines()
-        if json.loads(line)["experiment_id"] == spec.experiment_id
-    ]
+def _spec_path(tmp_path: Path) -> Path:
+    path = tmp_path / "adaptive-confidence-002.toml"
+    path.write_text(
+        calibrated_spec_text(SOURCE, calibrated_config()),
+        encoding="utf-8",
+    )
+    return path
 
-    assert records[-1]["frozen_spec_hash"] == spec.sha256
-    assert records[-1]["status"] in {"FROZEN", "EXPERIMENT_COMPLETE"}
+
+def test_confidence_spec_binds_the_calibrated_contract_and_its_parent(
+    tmp_path: Path,
+) -> None:
+    config = calibrated_config()
+    spec = load_confidence_spec(_spec_path(tmp_path), config)
+
+    assert spec.experiment_id == EXPERIMENT_ID
     assert spec.betas == (0.0, np.log(2.0), np.log(4.0))
-    assert spec.lambdas == config.jm_protocol.lambda_grid
+    # One grid per market, taken from the contract, not a global tuple.
+    for market in spec.markets:
+        assert (
+            spec.lambdas_for(market)
+            == config.jm_protocol_for(market).lambda_grid
+        )
+    assert len({spec.lambdas_for(m) for m in spec.markets}) == 3
+    # The sealed parent is named by the spec, never by a literal.
+    assert spec.parent.experiment_id
+    assert str(spec.parent.artifact_subdir) == "fixed-baselines"
     assert spec.data_cutoff.isoformat() == "2023-12-31"
 
 
 def test_confidence_spec_rejects_post_2023_access(tmp_path: Path) -> None:
     changed = tmp_path / "study.toml"
     changed.write_text(
-        SPEC.read_text(encoding="utf-8").replace(
+        calibrated_spec_text(SOURCE, calibrated_config()).replace(
             "post_2023_access = false", "post_2023_access = true"
         ),
         encoding="utf-8",
     )
 
     with pytest.raises(ConfidenceStudyError, match="evidence lane"):
-        load_confidence_spec(changed, load_config(ROOT / "research.toml"))
+        load_confidence_spec(changed, calibrated_config())
+
+
+def test_confidence_spec_rejects_a_grid_that_is_not_the_contract(
+    tmp_path: Path,
+) -> None:
+    changed = tmp_path / "study.toml"
+    text = calibrated_spec_text(SOURCE, calibrated_config())
+    changed.write_text(
+        text.replace("de = [150.0, 500.0]", "de = [150.0, 501.0]"),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfidenceStudyError, match="controls changed"):
+        load_confidence_spec(changed, calibrated_config())
 
 
 def test_beta_zero_state_oracle_is_exact() -> None:

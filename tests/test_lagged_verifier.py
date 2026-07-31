@@ -114,7 +114,11 @@ def _market_fixture(tmp_path):
         events=events,
         audit={"lagged": {"admitted_events": 1}},
     )
-    spec = SimpleNamespace(betas=BETAS, lambdas=LAMBDAS)
+    spec = SimpleNamespace(
+        betas=BETAS,
+        lambdas={"us": LAMBDAS},
+        lambdas_for=lambda market: LAMBDAS,
+    )
 
     for beta, frame in states.items():
         label = "0" if beta == 0 else "log2" if beta == math.log(2.0) else "log4"
@@ -172,7 +176,8 @@ def _root_fixture(tmp_path):
     spec = SimpleNamespace(
         markets=("us",),
         event_betas=(beta,),
-        event_lambdas=(5.0,),
+        event_lambdas={"us": (5.0,)},
+        event_lambdas_for=lambda market: (5.0,),
         rules=("arrival", "lagged"),
     )
     behavior = pd.DataFrame(

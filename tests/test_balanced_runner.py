@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 import pytest
+from conftest import calibrated_config, calibrated_spec_text
 
 from adaptive_jump.artifacts import read_json
 from adaptive_jump.balanced_model import BalancedStudyError, load_balanced_spec
@@ -35,11 +36,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture(scope="module")
-def spec():
-    config = load_config(ROOT / "research.toml")
-    return load_balanced_spec(
-        ROOT / "research/balanced-lagged-mechanism-001.toml", config
+def spec(tmp_path_factory):
+    config = calibrated_config()
+    path = tmp_path_factory.mktemp("spec") / "study.toml"
+    path.write_text(
+        calibrated_spec_text("balanced-lagged-mechanism-001.toml", config),
+        encoding="utf-8",
     )
+    return load_balanced_spec(path, config)
 
 
 def test_namespaced_inventory_entries_records_every_hashed_file():
@@ -219,8 +223,8 @@ def test_actual_formula_rebuild_uses_current_fit_at_second_refit(spec):
     mini = replace(
         spec,
         markets=("us",),
-        lambdas=(0.0, 5.0, 15.0),
-        event_lambdas=(5.0, 15.0),
+        lambdas={"us": (0.0, 5.0, 15.0)},
+        event_lambdas={"us": (5.0, 15.0)},
         fit_window=3,
     )
     dates = pd.date_range("2020-01-01", periods=6, name="date")
@@ -242,14 +246,16 @@ def test_actual_formula_rebuild_uses_current_fit_at_second_refit(spec):
             "centers": [[0.0, 0.0, 0.0], [second_center, 0.0, 0.0]],
         }
         for fit_date, second_center in ((dates[2], 2.0), (dates[4], 4.0))
-        for lambda0 in mini.lambdas
+        for lambda0 in mini.lambdas_for("us")
     )
-    states = pd.DataFrame(math.nan, index=dates, columns=mini.lambdas)
+    states = pd.DataFrame(
+        math.nan, index=dates, columns=mini.lambdas_for("us")
+    )
     states.loc[dates[2] : dates[4], :] = 0.0
     c01 = states.copy()
     c10 = states.copy()
     for current in dates[2:5]:
-        for lambda0 in mini.lambdas:
+        for lambda0 in mini.lambdas_for("us"):
             fit = refits.loc[
                 (refits["lambda0"] == lambda0) & (refits["fit_date"] <= current)
             ].iloc[-1]
@@ -309,13 +315,15 @@ def test_us_smoke_uses_full_generated_horizon_and_strict_stale_gate(spec, monkey
     mini = replace(
         spec,
         markets=("us",),
-        lambdas=(0.0, 5.0),
-        event_lambdas=(5.0,),
+        lambdas={"us": (0.0, 5.0)},
+        event_lambdas={"us": (5.0,)},
         fit_window=3,
     )
     dates = pd.date_range("2020-01-01", periods=30, name="date")
     features = pd.DataFrame(0.0, index=dates, columns=FEATURE_COLUMNS)
-    fixed = pd.DataFrame(math.nan, index=dates, columns=mini.lambdas)
+    fixed = pd.DataFrame(
+        math.nan, index=dates, columns=mini.lambdas_for("us")
+    )
     fixed.iloc[mini.fit_window - 1 :] = 0.0
     second_refit = dates[26]
     inputs = MarketInputs(
@@ -343,7 +351,9 @@ def test_us_smoke_uses_full_generated_horizon_and_strict_stale_gate(spec, monkey
         final_terminal = mini.fit_window - 1 + terminal_limit
         states = fixed.copy()
         states.iloc[final_terminal:] = math.nan
-        losses = pd.DataFrame(math.nan, index=dates, columns=mini.lambdas)
+        losses = pd.DataFrame(
+            math.nan, index=dates, columns=mini.lambdas_for("us")
+        )
         losses.iloc[mini.fit_window - 1 : final_terminal] = 0.0
         if features is not None:
             losses.iloc[mini.fit_window + 20 - 1 : final_terminal] = 1.0

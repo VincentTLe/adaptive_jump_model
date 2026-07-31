@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from conftest import calibrated_config, calibrated_spec_text
 
 from adaptive_jump.artifacts import sha256_file, write_json
 from adaptive_jump.balanced_mechanics import (
@@ -15,7 +16,7 @@ from adaptive_jump.balanced_mechanics import (
 )
 from adaptive_jump.balanced_model import (
     BUILDERS,
-    SPEC_SHA256,
+    EXPERIMENT_ID,
     BalancedStudyError,
     balanced_lagged_penalty_seq,
     beta_label,
@@ -28,23 +29,54 @@ from adaptive_jump.balanced_sources import (
     implementation_lock,
     verify_source_inputs,
 )
-from adaptive_jump.config import load_config
 from adaptive_jump.separation_analysis import MarketInputs
 from adaptive_jump.tv_jump import lam_to_penalty_seq
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG = load_config(ROOT / "research.toml")
-SPEC_PATH = ROOT / "research/balanced-lagged-mechanism-001.toml"
+CONFIG = calibrated_config()
+SOURCE = "balanced-lagged-mechanism-001.toml"
+_SPEC_TEXT = calibrated_spec_text(SOURCE, CONFIG)
 
 
-def _spec():
-    return load_balanced_spec(SPEC_PATH, CONFIG)
+def _spec_path(tmp_path: Path) -> Path:
+    path = tmp_path / "balanced-lagged-mechanism-002.toml"
+    path.write_text(_SPEC_TEXT, encoding="utf-8")
+    return path
 
 
-def test_frozen_spec_hash_scope_and_toys_are_exact() -> None:
-    spec = _spec()
-    assert sha256_file(SPEC_PATH) == SPEC_SHA256 == spec.sha256
-    _registry_lock(ROOT, spec)
+def _spec(tmp_path: Path):
+    return load_balanced_spec(_spec_path(tmp_path), CONFIG)
+
+
+def _frozen_registry(tmp_path: Path, spec) -> Path:
+    """The registry row is what pins the spec bytes now."""
+    research = tmp_path / "registry" / "research"
+    research.mkdir(parents=True, exist_ok=True)
+    (research / "experiment_registry.jsonl").write_text(
+        json.dumps(
+            {
+                "experiment_id": spec.experiment_id,
+                "frozen_spec_hash": spec.sha256,
+                "status": "FROZEN",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return research.parent
+
+
+def test_frozen_spec_scope_and_toys_are_exact(tmp_path: Path) -> None:
+    spec = _spec(tmp_path)
+    assert spec.experiment_id == EXPERIMENT_ID
+    # The registry row, not a module constant, pins the spec bytes.
+    _registry_lock(_frozen_registry(tmp_path, spec), spec)
+    for market in spec.markets:
+        grid = CONFIG.jm_protocol_for(market).lambda_grid
+        assert spec.lambdas_for(market) == grid
+        assert spec.event_lambdas_for(market) == tuple(
+            value for value in grid if value > 0.0
+        )
     assert spec.betas == (0.0, math.log(4.0))
     assert spec.decision_beta == math.log(4.0)
     assert spec.rules == ("lagged", "balanced")
@@ -54,13 +86,18 @@ def test_frozen_spec_hash_scope_and_toys_are_exact() -> None:
     assert set(spec.toy_losses) == {"isolated", "alternating", "persistent", "reversal"}
 
 
-def test_frozen_spec_rejects_any_byte_change(tmp_path: Path) -> None:
+def test_registry_lock_rejects_any_byte_change(tmp_path: Path) -> None:
+    spec = _spec(tmp_path)
+    root = _frozen_registry(tmp_path, spec)
     changed = tmp_path / "changed.toml"
-    changed.write_bytes(
-        SPEC_PATH.read_bytes().replace(b"pair-balanced", b"pair_changed", 1)
+    changed.write_text(
+        _SPEC_TEXT.replace("pair-balanced", "pair_changed", 1),
+        encoding="utf-8",
     )
-    with pytest.raises(BalancedStudyError, match="frozen hash"):
-        load_balanced_spec(changed, CONFIG)
+    altered = load_balanced_spec(changed, CONFIG)
+    assert altered.sha256 != spec.sha256
+    with pytest.raises(BalancedStudyError, match="registry lock"):
+        _registry_lock(root, altered)
 
 
 @pytest.mark.parametrize(
@@ -82,16 +119,14 @@ def test_frozen_spec_rejects_any_byte_change(tmp_path: Path) -> None:
 )
 def test_matched_controls_require_exact_integer_values(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
     original: str,
     replacement: str,
 ) -> None:
-    import adaptive_jump.balanced_model as model
-
     changed = tmp_path / "changed.toml"
-    payload = SPEC_PATH.read_text(encoding="utf-8").replace(original, replacement, 1)
-    changed.write_text(payload, encoding="utf-8")
-    monkeypatch.setattr(model, "SPEC_SHA256", sha256_file(changed))
+    changed.write_text(
+        _SPEC_TEXT.replace(original, replacement, 1),
+        encoding="utf-8",
+    )
     with pytest.raises(BalancedStudyError, match="controls changed"):
         load_balanced_spec(changed, CONFIG)
 
@@ -145,12 +180,13 @@ def test_balanced_formula_rejects_invalid_inputs(
         balanced_lagged_penalty_seq(loss, lambda0, beta, q_train)
 
 
-def test_mechanical_oracles_and_all_locked_toys_pass() -> None:
-    result = mechanical_prerequisites(_spec())
+def test_mechanical_oracles_and_all_locked_toys_pass(tmp_path: Path) -> None:
+    spec = _spec(tmp_path)
+    result = mechanical_prerequisites(spec)
     assert result["passed"] is True
     assert result["checks"]["binary_hysteresis_width"] is True
     assert all(result["checks"].values())
-    assert result["toy_paths"] == _spec().toy_paths
+    assert result["toy_paths"] == spec.toy_paths
     assert result["max_pair_sum_abs_error"] <= 1e-12
     assert result["max_objective_bound_excess"] <= 1e-12
 
@@ -172,7 +208,7 @@ def test_inventory_schema_rejects_non_string_hashes(tmp_path: Path) -> None:
 
 
 def test_registry_lock_requires_latest_frozen_hash(tmp_path: Path) -> None:
-    spec = _spec()
+    spec = _spec(tmp_path)
     research = tmp_path / "research"
     research.mkdir()
     registry = research / "experiment_registry.jsonl"
@@ -192,8 +228,10 @@ def test_registry_lock_requires_latest_frozen_hash(tmp_path: Path) -> None:
         _registry_lock(tmp_path, spec)
 
 
-def test_implementation_lock_covers_lagged_semantic_dependencies() -> None:
-    files = implementation_lock(ROOT, _spec())["files"]
+def test_implementation_lock_covers_lagged_semantic_dependencies(
+    tmp_path: Path,
+) -> None:
+    files = implementation_lock(ROOT, _spec(tmp_path), CONFIG.path)["files"]
     assert {
         "src/adaptive_jump/lagged_mechanics.py",
         "src/adaptive_jump/lagged_study.py",
@@ -201,11 +239,12 @@ def test_implementation_lock_covers_lagged_semantic_dependencies() -> None:
 
 
 def test_source_lineage_requires_supported_log4(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import adaptive_jump.balanced_sources as sources
 
-    spec = _spec()
+    spec = _spec(tmp_path)
     monkeypatch.setattr(sources, "_registry_lock", lambda *_: None)
     inventory = {
         f"{market}/{name}": "hash"
@@ -226,25 +265,43 @@ def test_source_lineage_requires_supported_log4(
         ),
     )
     metadata = {
-        "experiment_id": "lagged-evidence-mechanism-001",
+        "experiment_id": spec.parent.experiment_id,
         "run_id": spec.parent_run_id,
         "status": "complete",
+        "config_sha256": CONFIG.sha256,
         "spec_sha256": spec.parent_spec_sha256,
         "result": "supported",
         "selected_beta_label": "log4",
     }
-    monkeypatch.setattr(sources, "read_json", lambda _: metadata)
+    fixed_metadata = {
+        "experiment_id": spec.fixed.experiment_id,
+        "run_id": spec.fixed_run_id,
+        "status": "complete",
+        "config_sha256": CONFIG.sha256,
+    }
+
+    def fake_read_json(path):
+        if "fixed-baselines" in str(path):
+            return fixed_metadata
+        return metadata
+
+    monkeypatch.setattr(sources, "read_json", fake_read_json)
+    monkeypatch.setattr(
+        "adaptive_jump.study_sources.read_json", fake_read_json
+    )
+    monkeypatch.setattr(
+        "adaptive_jump.study_sources.Path.is_file", lambda self: True
+    )
     verified = verify_source_inputs(ROOT, CONFIG, spec)
     assert verified.source_lock["performance_files_accessed"] is False
 
-    monkeypatch.setattr(
-        sources, "read_json", lambda _: {**metadata, "selected_beta_label": "log2"}
-    )
+    metadata["selected_beta_label"] = "log2"
     with pytest.raises(BalancedStudyError, match="metadata"):
         verify_source_inputs(ROOT, CONFIG, spec)
 
 
 def test_generic_generator_adapter_passes_only_frozen_builders(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import adaptive_jump.balanced_model as model
@@ -269,7 +326,8 @@ def test_generic_generator_adapter_passes_only_frozen_builders(
         return {"sentinel": True}
 
     monkeypatch.setattr(model, "generate_locked_candidates", fake)
-    result = generate_candidates(inputs, fixed, CONFIG, _spec(), terminal_limit=1)
+    spec = _spec(tmp_path)
+    result = generate_candidates(inputs, fixed, CONFIG, spec, terminal_limit=1)
     assert result == {"sentinel": True}
     assert captured["kwargs"]["penalty_builders"] == BUILDERS
     assert set(captured["kwargs"]["penalty_builders"]) == {"lagged", "balanced"}
@@ -277,4 +335,4 @@ def test_generic_generator_adapter_passes_only_frozen_builders(
     shifted = features.copy()
     shifted.index = pd.DatetimeIndex(["2020-01-02"], name="date")
     with pytest.raises(BalancedStudyError, match="source dates"):
-        generate_candidates(inputs, fixed, CONFIG, _spec(), features=shifted)
+        generate_candidates(inputs, fixed, CONFIG, spec, features=shifted)

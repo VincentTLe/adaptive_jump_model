@@ -1,36 +1,50 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pandas as pd
 import pytest
+from conftest import calibrated_config, calibrated_spec_text
 
 from adaptive_jump import lagged_performance as performance
 from adaptive_jump.config import load_config
 from adaptive_jump.walkforward import SelectionResult
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = ROOT / "research/lagged-evidence-performance-001.toml"
-REGISTRY = ROOT / "research/experiment_registry.jsonl"
+SOURCE = "lagged-evidence-performance-001.toml"
 
 
-def test_frozen_lagged_performance_spec_matches_registry() -> None:
-    config = load_config(ROOT / "research.toml")
-    spec = performance.load_lagged_performance_spec(SPEC, config)
-    rows = [
-        json.loads(line)
-        for line in REGISTRY.read_text(encoding="utf-8").splitlines()
-        if json.loads(line).get("experiment_id") == spec.experiment_id
-    ]
+def _spec(tmp_path: Path):
+    path = tmp_path / "lagged-evidence-performance-002.toml"
+    path.write_text(
+        calibrated_spec_text(SOURCE, calibrated_config()),
+        encoding="utf-8",
+    )
+    return performance.load_lagged_performance_spec(
+        path, calibrated_config()
+    )
 
-    assert rows[-1]["status"] == "EXPERIMENT_COMPLETE"
-    assert rows[-1]["frozen_spec_hash"] == spec.sha256
+
+def test_frozen_lagged_performance_spec_binds_sources_and_grids(
+    tmp_path: Path,
+) -> None:
+    config = calibrated_config()
+    spec = _spec(tmp_path)
+
     assert spec.cutoff.isoformat() == "2023-12-31"
     assert spec.markets == performance.MARKETS
-    assert spec.lambdas == performance.LAMBDAS
+    for market in spec.markets:
+        assert (
+            spec.lambdas_for(market)
+            == config.jm_protocol_for(market).lambda_grid
+        )
+    assert len({spec.lambdas_for(m) for m in spec.markets}) == 3
     assert spec.beta == pytest.approx(performance.BETA)
-    assert spec.artifact_subdir == Path("lagged-evidence-performance-001")
+    assert spec.artifact_subdir == Path(performance.EXPERIMENT_ID)
+    # all three sealed sources are named by the spec
+    assert str(spec.fixed.artifact_subdir) == "fixed-baselines"
+    assert spec.arrival.experiment_id.startswith("adaptive-confidence-")
+    assert spec.lagged.experiment_id.startswith("lagged-evidence-mechanism-")
 
 
 def test_metric_rows_use_explicit_half_turnover_and_deltas() -> None:
@@ -107,10 +121,9 @@ def test_primary_decision_uses_mean_and_two_positive_markets(
 def test_candidate_states_reject_schema_or_post_2023_rows(
     tmp_path: Path, failure: str
 ) -> None:
-    spec = performance.load_lagged_performance_spec(
-        SPEC, load_config(ROOT / "research.toml")
-    )
-    columns = spec.lambdas if failure == "cutoff" else spec.lambdas[:-1]
+    spec = _spec(tmp_path)
+    grid = spec.lambdas_for("us")
+    columns = grid if failure == "cutoff" else grid[:-1]
     when = "2024-01-02" if failure == "cutoff" else "2023-12-29"
     path = tmp_path / "states.csv"
     pd.DataFrame({"date": [when], **{str(value): [0.0] for value in columns}}).to_csv(
@@ -121,7 +134,7 @@ def test_candidate_states_reject_schema_or_post_2023_rows(
         "candidate-state values changed" if failure == "cutoff" else "schema changed"
     )
     with pytest.raises(performance.LaggedPerformanceError, match=message):
-        performance._read_states(path, spec)
+        performance._read_states(path, spec, "us")
 
 
 def test_change_trace_links_signal_to_t_plus_2_position_and_trade() -> None:
@@ -210,9 +223,10 @@ def test_frame_replay_comparison_rejects_resealed_value_change() -> None:
         performance._assert_frame_close(changed, expected, "toy")
 
 
-def test_verifier_artifact_allowlist_has_exact_three_by_three_trade_coverage() -> None:
-    config = load_config(ROOT / "research.toml")
-    spec = performance.load_lagged_performance_spec(SPEC, config)
+def test_verifier_artifact_allowlist_has_exact_three_by_three_trade_coverage(
+    tmp_path: Path,
+) -> None:
+    spec = _spec(tmp_path)
     files = performance._expected_artifact_files(spec)
 
     assert len(files) == 31

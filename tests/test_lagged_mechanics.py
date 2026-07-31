@@ -103,12 +103,14 @@ def _synthetic_smoke_case():
     refits = pd.DataFrame(refit_rows)
     config = SimpleNamespace(
         model_protocol=SimpleNamespace(n_states=2, fit_window=fit_window),
-        jm_protocol=SimpleNamespace(lambda_grid=lambdas),
+        jm_protocol_for=lambda market: SimpleNamespace(lambda_grid=lambdas),
     )
     spec = SimpleNamespace(
         markets=("us",),
-        lambdas=lambdas,
-        event_lambdas=(5.0, 600.0),
+        lambdas={"us": lambdas},
+        lambdas_for=lambda market: lambdas,
+        event_lambdas={"us": (5.0, 600.0)},
+        event_lambdas_for=lambda market: (5.0, 600.0),
         betas=betas,
         event_betas=betas[1:],
         rules=("arrival", "lagged"),

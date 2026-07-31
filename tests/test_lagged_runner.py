@@ -55,8 +55,10 @@ def test_locked_input_loader_requests_no_return_or_refit_file(monkeypatch) -> No
     inputs = SimpleNamespace(features=features, candidates={0.0: fixed})
     spec = SimpleNamespace(
         markets=("us",),
-        lambdas=(0.0, 5.0),
-        event_lambdas=(5.0,),
+        lambdas={"us": (0.0, 5.0)},
+        lambdas_for=lambda market: (0.0, 5.0),
+        event_lambdas={"us": (5.0,)},
+        event_lambdas_for=lambda market: (5.0,),
         data_cutoff=date(2020, 1, 31),
         fit_window=2,
     )
@@ -68,7 +70,7 @@ def test_locked_input_loader_requests_no_return_or_refit_file(monkeypatch) -> No
         seen["feature_path"] = Path(feature_path)
         seen["arrival_dir"] = Path(arrival_dir)
         assert market == "us"
-        assert loader_spec.lambdas == (5.0,)
+        assert loader_spec.lambdas == (0.0, 5.0)
         assert include_fixed_objective is False
         return inputs
 
@@ -134,7 +136,8 @@ def test_shared_loader_excludes_fixed_objective_when_requested(monkeypatch) -> N
     monkeypatch.setattr(separation_analysis.pd, "read_csv", fake_read)
     spec = SimpleNamespace(
         markets=("us",),
-        lambdas=(5.0,),
+        # load_market_inputs takes the resolved per-market grid, not the table.
+        lambdas=(0.0, 5.0),
         data_cutoff=date(2020, 1, 31),
         fit_window=2,
     )
