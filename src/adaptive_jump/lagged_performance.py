@@ -1,4 +1,10 @@
-"""Frozen development-sample P&L readout for lagged-evidence JM."""
+"""Frozen development-sample P&L readout for lagged-evidence JM.
+
+-002 reruns the -001 question against the calibrated-v10 baseline. The models,
+beta, delay/cost conventions, decision rule and output schemas are unchanged;
+the candidate grid is one grid per market and the three sealed sources are
+named by the spec.
+"""
 
 from __future__ import annotations
 
@@ -37,20 +43,34 @@ from adaptive_jump.confidence_evaluation import (
 )
 from adaptive_jump.confidence_model import _load_parent_frame, _parent_states
 from adaptive_jump.config import ResearchConfig, load_config
+from adaptive_jump.study_grids import (
+    MarketGrids,
+    grid_for,
+    grids_equal,
+    market_grids,
+    parse_grid_table,
+)
+from adaptive_jump.study_sources import (
+    SourceReference,
+    read_source_reference,
+    verify_source_identity,
+)
 from adaptive_jump.walkforward import (
     SelectionResult,
     boundary_diagnostic,
     select_monthly_candidate,
 )
 
+# The rerun of lagged-evidence-performance-001 against the calibrated-v10
+# baseline. Verifying the archived -001 run requires the pre-restoration commit.
+EXPERIMENT_ID = "lagged-evidence-performance-002"
 MODELS = ("fixed", "arrival_log4", "lagged_log4")
 MARKETS = ("us", "de", "jp")
-LAMBDAS = (0.0, 5.0, 15.0, 35.0, 70.0, 150.0, 300.0, 600.0, 1200.0)
 BETA = math.log(4.0)
 TURNOVER_SCALE = 0.5
-REFIT_BOUNDARY_CONVENTION = (
+REFIT_BOUNDARY_CONVENTION_TEMPLATE = (
     "on Jan/Jul refit dates, L_(t-1) is recomputed under the scaler and centers "
-    "fitted through t, exactly as sealed by lagged-evidence-mechanism-001; the "
+    "fitted through t, exactly as sealed by {mechanism}; the "
     "rule is causal at t but is not strictly F_(t-1)-predictable on those refit dates"
 )
 
@@ -64,20 +84,45 @@ class LaggedPerformanceSpec:
     path: Path
     sha256: str
     experiment_id: str
-    fixed_run_id: str
-    fixed_inventory_sha256: str
+    fixed: SourceReference
+    arrival: SourceReference
+    lagged: SourceReference
     data_manifest_sha256: str
-    arrival_run_id: str
-    arrival_inventory_sha256: str
     arrival_spec_sha256: str
-    lagged_run_id: str
-    lagged_inventory_sha256: str
     lagged_spec_sha256: str
     cutoff: date
     markets: tuple[str, ...]
-    lambdas: tuple[float, ...]
+    lambdas: MarketGrids
     beta: float
     artifact_subdir: Path
+
+    @property
+    def fixed_run_id(self) -> str:
+        return self.fixed.run_id
+
+    @property
+    def fixed_inventory_sha256(self) -> str:
+        return self.fixed.inventory_sha256
+
+    @property
+    def arrival_run_id(self) -> str:
+        return self.arrival.run_id
+
+    @property
+    def arrival_inventory_sha256(self) -> str:
+        return self.arrival.inventory_sha256
+
+    @property
+    def lagged_run_id(self) -> str:
+        return self.lagged.run_id
+
+    @property
+    def lagged_inventory_sha256(self) -> str:
+        return self.lagged.inventory_sha256
+
+    def lambdas_for(self, market: str) -> tuple[float, ...]:
+        """The candidate lambda grid governing one market."""
+        return grid_for(self.lambdas, market)
 
 
 @dataclass(frozen=True)
@@ -108,9 +153,23 @@ def load_lagged_performance_spec(
     )
     verification = doc.get("verification", {})
     storage_doc = doc.get("storage", {})
+    fixed_reference = read_source_reference(
+        fixed, error=LaggedPerformanceError, label="fixed"
+    )
+    arrival_reference = read_source_reference(
+        arrival, error=LaggedPerformanceError, label="arrival"
+    )
+    lagged_reference = read_source_reference(
+        lagged, error=LaggedPerformanceError, label="lagged"
+    )
+    manifest = fixed.get("data_manifest_sha256")
+    arrival_spec_sha256 = arrival.get("spec_sha256")
+    lagged_spec_sha256 = lagged.get("spec_sha256")
+    markets = tuple(protocol.get("markets", ()))
+    lambdas = parse_grid_table(model.get("raw_lambda_grid"), markets or MARKETS)
     required = (
         doc.get("schema_version") == 1,
-        doc.get("experiment_id") == "lagged-evidence-performance-001",
+        doc.get("experiment_id") == EXPERIMENT_ID,
         doc.get("claim_class") == "EXPLORATORY",
         doc.get("performance_claim_allowed") is False,
         doc.get("paper_replication_claim_allowed") is False,
@@ -124,11 +183,17 @@ def load_lagged_performance_spec(
         ),
         lagged.get("required_result") == "supported",
         lagged.get("required_selected_beta_label") == "log4",
-        tuple(float(x) for x in model.get("raw_lambda_grid", ())) == LAMBDAS,
+        isinstance(manifest, str) and bool(manifest),
+        isinstance(arrival_spec_sha256, str) and bool(arrival_spec_sha256),
+        isinstance(lagged_spec_sha256, str) and bool(lagged_spec_sha256),
+        markets == MARKETS,
+        grids_equal(lambdas, market_grids(config, markets or MARKETS)),
         float(model.get("beta", math.nan)) == BETA,
-        model.get("refit_boundary_convention") == REFIT_BOUNDARY_CONVENTION,
+        model.get("refit_boundary_convention")
+        == REFIT_BOUNDARY_CONVENTION_TEMPLATE.format(
+            mechanism=lagged_reference.experiment_id
+        ),
         model.get("refit_or_state_regeneration") is False,
-        tuple(protocol.get("markets", ())) == MARKETS,
         protocol.get("primary_delay_trading_days")
         == config.backtest_protocol.primary_delay,
         protocol.get("signal_to_return_offset")
@@ -150,22 +215,20 @@ def load_lagged_performance_spec(
     storage = Path(str(storage_doc.get("artifact_subdir", "")))
     if not storage.parts or storage.is_absolute() or ".." in storage.parts:
         raise LaggedPerformanceError("invalid lagged performance artifact path")
+    assert lambdas is not None
     return LaggedPerformanceSpec(
         path=spec_path,
         sha256=hashlib.sha256(payload).hexdigest(),
         experiment_id=doc["experiment_id"],
-        fixed_run_id=str(fixed["run_id"]),
-        fixed_inventory_sha256=str(fixed["run_inventory_sha256"]),
-        data_manifest_sha256=str(fixed["data_manifest_sha256"]),
-        arrival_run_id=str(arrival["run_id"]),
-        arrival_inventory_sha256=str(arrival["run_inventory_sha256"]),
-        arrival_spec_sha256=str(arrival["spec_sha256"]),
-        lagged_run_id=str(lagged["run_id"]),
-        lagged_inventory_sha256=str(lagged["run_inventory_sha256"]),
-        lagged_spec_sha256=str(lagged["spec_sha256"]),
+        fixed=fixed_reference,
+        arrival=arrival_reference,
+        lagged=lagged_reference,
+        data_manifest_sha256=str(manifest),
+        arrival_spec_sha256=str(arrival_spec_sha256),
+        lagged_spec_sha256=str(lagged_spec_sha256),
         cutoff=date.fromisoformat(fixed["data_cutoff"]),
-        markets=tuple(protocol["markets"]),
-        lambdas=tuple(float(x) for x in model["raw_lambda_grid"]),
+        markets=markets,
+        lambdas=lambdas,
         beta=float(model["beta"]),
         artifact_subdir=storage,
     )
@@ -192,16 +255,22 @@ def _verify_sources(
 ) -> SourcePaths:
     _registry_lock(root, spec)
     paths = SourcePaths(
-        fixed=root / config.artifact_root / "fixed-baselines" / spec.fixed_run_id,
-        arrival=root
-        / config.artifact_root
-        / "adaptive-confidence-001"
-        / spec.arrival_run_id,
-        lagged=root
-        / config.artifact_root
-        / "lagged-evidence-mechanism-001"
-        / spec.lagged_run_id,
+        fixed=spec.fixed.directory(root, config.artifact_root),
+        arrival=spec.arrival.directory(root, config.artifact_root),
+        lagged=spec.lagged.directory(root, config.artifact_root),
     )
+    for run_dir, reference, label in (
+        (paths.fixed, spec.fixed, "fixed"),
+        (paths.arrival, spec.arrival, "arrival"),
+        (paths.lagged, spec.lagged, "lagged"),
+    ):
+        verify_source_identity(
+            run_dir,
+            reference,
+            error=LaggedPerformanceError,
+            label=label,
+            config_sha256=config.sha256,
+        )
     expected = {
         paths.fixed: spec.fixed_inventory_sha256,
         paths.arrival: spec.arrival_inventory_sha256,
@@ -236,17 +305,17 @@ def _verify_sources(
     return paths
 
 
-def _read_states(path: Path, spec: LaggedPerformanceSpec) -> pd.DataFrame:
+def _read_states(
+    path: Path, spec: LaggedPerformanceSpec, market: str
+) -> pd.DataFrame:
+    lambdas = spec.lambdas_for(market)
     frame = pd.read_csv(path)
-    if (
-        "date" not in frame
-        or tuple(float(c) for c in frame.columns[1:]) != spec.lambdas
-    ):
+    if "date" not in frame or tuple(float(c) for c in frame.columns[1:]) != lambdas:
         raise LaggedPerformanceError(f"candidate-state schema changed: {path}")
     frame["date"] = pd.to_datetime(frame["date"], errors="raise")
     dates = pd.DatetimeIndex(frame.pop("date"))
     frame.index = dates
-    frame.columns = spec.lambdas
+    frame.columns = lambdas
     if (
         dates.has_duplicates
         or not dates.is_monotonic_increasing
@@ -264,16 +333,18 @@ def _load_market(
     spec: LaggedPerformanceSpec,
 ) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
     frame = _load_parent_frame(paths.fixed, market, spec.cutoff)
-    fixed = _parent_states(paths.fixed, market, spec.lambdas)
+    fixed = _parent_states(paths.fixed, market, spec.lambdas_for(market))
     arrival0 = _read_states(
-        paths.arrival / market / "candidate-states-beta-0.csv", spec
+        paths.arrival / market / "candidate-states-beta-0.csv", spec, market
     )
-    lagged0 = _read_states(paths.lagged / market / "candidate-states-beta-0.csv", spec)
+    lagged0 = _read_states(
+        paths.lagged / market / "candidate-states-beta-0.csv", spec, market
+    )
     arrival4 = _read_states(
-        paths.arrival / market / "candidate-states-beta-log4.csv", spec
+        paths.arrival / market / "candidate-states-beta-log4.csv", spec, market
     )
     lagged4 = _read_states(
-        paths.lagged / market / "candidate-states-beta-log4.csv", spec
+        paths.lagged / market / "candidate-states-beta-log4.csv", spec, market
     )
     for candidate in (arrival0, lagged0, arrival4, lagged4):
         if not candidate.index.equals(fixed.index):
@@ -365,7 +436,7 @@ def _decision(summary: pd.DataFrame) -> dict[str, Any]:
     arrival = summary.loc[summary["model"] == "arrival_log4"]
     return {
         "schema_version": 1,
-        "experiment_id": "lagged-evidence-performance-001",
+        "experiment_id": EXPERIMENT_ID,
         "claim_class": "EXPLORATORY",
         "primary_contrast": "lagged_log4_minus_fixed",
         "primary_mean_delta_sharpe": mean_delta,
@@ -517,7 +588,7 @@ def _boundary_rows(market, selections, aligned, config, spec) -> pd.DataFrame:
     for model in MODELS:
         diagnostic = boundary_diagnostic(
             selections[model].choices,
-            spec.lambdas,
+            spec.lambdas_for(market),
             oos_start=oos_start,
             fraction_limit=config.selection_protocol.boundary_fraction_limit,
         )
@@ -636,10 +707,16 @@ def _git_head(root: Path) -> str:
     ).stdout.strip()
 
 
-def _implementation_sha(root: Path, spec: LaggedPerformanceSpec) -> str:
+def _lock_key(path: Path, root: Path) -> str:
+    """Label a locked file by its repository path, or its name if outside."""
+    return str(path.relative_to(root)) if path.is_relative_to(root) else path.name
+
+def _implementation_sha(
+    root: Path, spec: LaggedPerformanceSpec, config_path: Path
+) -> str:
     files = (
         spec.path,
-        root / "research.toml",
+        config_path,
         root / "uv.lock",
         root / "src/adaptive_jump/lagged_performance.py",
         root / "src/adaptive_jump/artifacts.py",
@@ -649,7 +726,7 @@ def _implementation_sha(root: Path, spec: LaggedPerformanceSpec) -> str:
         root / "src/adaptive_jump/confidence_model.py",
         root / "src/adaptive_jump/walkforward.py",
     )
-    payload = {str(path.relative_to(root)): sha256_file(path) for path in files}
+    payload = {_lock_key(path, root): sha256_file(path) for path in files}
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
@@ -752,7 +829,7 @@ def _verify_run_identity(
         or sha256_file(path / "config.lock.toml") != config.sha256
     ):
         raise LaggedPerformanceError("run locks differ from the frozen study")
-    implementation = _implementation_sha(root, spec)
+    implementation = _implementation_sha(root, spec, config.path)
     run_id = (
         f"lagged-pnl-{spec.sha256[:12]}-"
         f"{spec.lagged_inventory_sha256[:12]}-{implementation[:12]}"
@@ -802,7 +879,7 @@ def verify_lagged_performance_run(
         raise LaggedPerformanceError("run directory may not be a symlink")
     path = raw_path.resolve()
     spec = spec or load_lagged_performance_spec(
-        config.path.parent / "research/lagged-evidence-performance-001.toml",
+        config.path.parent / f"research/{EXPERIMENT_ID}.toml",
         config,
     )
     metadata, paths = _verify_run_identity(path, config, spec)
@@ -925,7 +1002,7 @@ def run_lagged_performance_study(
     root = config.path.parent
     paths = _verify_sources(root, config, spec)
     smoke = run_us_smoke(config, spec, paths)
-    implementation = _implementation_sha(root, spec)
+    implementation = _implementation_sha(root, spec, config.path)
     run_id = (
         f"lagged-pnl-{spec.sha256[:12]}-"
         f"{spec.lagged_inventory_sha256[:12]}-{implementation[:12]}"
@@ -952,6 +1029,10 @@ def run_lagged_performance_study(
             "metrics_opened": False,
             "spec_sha256": spec.sha256,
             "config_sha256": config.sha256,
+            "config_path": config.path.name,
+            "fixed_experiment_id": spec.fixed.experiment_id,
+            "arrival_experiment_id": spec.arrival.experiment_id,
+            "lagged_experiment_id": spec.lagged.experiment_id,
             "implementation_sha256": implementation,
             "git_sha": _git_head(root),
             "git_worktree_clean": False,
@@ -1017,7 +1098,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="lagged-evidence-performance")
     parser.add_argument("--config", default="research.toml")
     parser.add_argument(
-        "--spec", default="research/lagged-evidence-performance-001.toml"
+        "--spec", default=f"research/{EXPERIMENT_ID}.toml"
     )
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--verify")

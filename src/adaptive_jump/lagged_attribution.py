@@ -1,4 +1,9 @@
-"""Post-result 2x2 attribution of lagged state paths and lambda choices."""
+"""Post-result 2x2 attribution of lagged state paths and lambda choices.
+
+-002 reruns the -001 diagnostic against the calibrated-v10 baseline. The
+2x2 cells, the Shapley identity and the output schemas are unchanged; the
+lambda grid is read per market and the parent study is named by the spec.
+"""
 
 from __future__ import annotations
 
@@ -28,7 +33,9 @@ from adaptive_jump.artifacts import (
 from adaptive_jump.confidence_evaluation import _active_lambda, _align_parent_sample
 from adaptive_jump.config import ResearchConfig, load_config
 from adaptive_jump.lagged_performance import (
-    LAMBDAS,
+    EXPERIMENT_ID as PARENT_EXPERIMENT_ID,
+)
+from adaptive_jump.lagged_performance import (
     MARKETS,
     TURNOVER_SCALE,
     LaggedPerformanceSpec,
@@ -41,7 +48,19 @@ from adaptive_jump.lagged_performance import (
     _verify_sources,
     load_lagged_performance_spec,
 )
+from adaptive_jump.study_grids import (
+    MarketGrids,
+    grid_for,
+    grids_equal,
+    market_grids,
+    parse_grid_table,
+)
 from adaptive_jump.walkforward import SelectionResult, _compose_selected_signal
+
+# The rerun of lagged-selection-attribution-001 against the calibrated-v10
+# baseline. Verifying the archived -001 run requires the pre-restoration
+# commit.
+EXPERIMENT_ID = "lagged-selection-attribution-002"
 
 CELLS = ("FF", "FL", "LF", "LL")
 METRICS = (
@@ -77,10 +96,14 @@ class AttributionSpec:
     lagged_inventory_sha256: str
     cutoff: date
     markets: tuple[str, ...]
-    lambdas: tuple[float, ...]
+    lambdas: MarketGrids
     cells: tuple[str, ...]
     artifact_subdir: Path
     identity_tolerance: float
+
+    def lambdas_for(self, market: str) -> tuple[float, ...]:
+        """The candidate lambda grid governing one market."""
+        return grid_for(self.lambdas, market)
 
 
 @dataclass(frozen=True)
@@ -106,9 +129,13 @@ def load_attribution_spec(path: str | Path, config: ResearchConfig) -> Attributi
     decision = doc.get("decision", {})
     verification = doc.get("verification", {})
     storage_doc = doc.get("storage", {})
+    markets = tuple(protocol.get("markets", ()))
+    lambdas = parse_grid_table(
+        sources.get("raw_lambda_grid"), markets or MARKETS
+    )
     required = (
         doc.get("schema_version") == 1,
-        doc.get("experiment_id") == "lagged-selection-attribution-001",
+        doc.get("experiment_id") == EXPERIMENT_ID,
         doc.get("claim_class") == "EXPLORATORY",
         doc.get("stage") == "POST_RESULT_MECHANICAL_ATTRIBUTION",
         doc.get("performance_claim_allowed") is False,
@@ -117,11 +144,11 @@ def load_attribution_spec(path: str | Path, config: ResearchConfig) -> Attributi
         doc.get("post_2023_access") is False,
         parent.get("config_sha256") == config.sha256,
         parent.get("data_cutoff") == "2023-12-31",
-        tuple(float(value) for value in sources.get("raw_lambda_grid", ())) == LAMBDAS,
+        grids_equal(lambdas, market_grids(config, markets or MARKETS)),
         tuple(key for key in cells if key in CELL_SOURCES) == CELLS,
         cells.get("first_letter") == "candidate-state family: F=fixed, L=lagged-log4",
         cells.get("second_letter") == "monthly-choice schedule: F=fixed, L=lagged-log4",
-        tuple(protocol.get("markets", ())) == MARKETS,
+        markets == MARKETS,
         protocol.get("primary_delay_trading_days")
         == config.backtest_protocol.primary_delay,
         protocol.get("signal_to_return_offset")
@@ -135,7 +162,7 @@ def load_attribution_spec(path: str | Path, config: ResearchConfig) -> Attributi
         decision.get("supported_or_not_supported_forbidden") is True,
         decision.get("cell_winner_selection_forbidden") is True,
         verification.get("independent_source_replay") is True,
-        storage_doc.get("artifact_subdir") == "lagged-selection-attribution-001",
+        storage_doc.get("artifact_subdir") == EXPERIMENT_ID,
     )
     if not all(required):
         raise AttributionError("attribution controls changed")
@@ -152,8 +179,8 @@ def load_attribution_spec(path: str | Path, config: ResearchConfig) -> Attributi
         fixed_inventory_sha256=str(sources["fixed_inventory_sha256"]),
         lagged_inventory_sha256=str(sources["lagged_inventory_sha256"]),
         cutoff=date.fromisoformat(parent["data_cutoff"]),
-        markets=tuple(protocol["markets"]),
-        lambdas=tuple(float(value) for value in sources["raw_lambda_grid"]),
+        markets=markets,
+        lambdas=lambdas,
         cells=tuple(key for key in cells if key in CELL_SOURCES),
         artifact_subdir=artifact_subdir,
         identity_tolerance=float(verification["shapley_identity_absolute_tolerance"]),
@@ -181,7 +208,7 @@ def _load_inputs(
 ) -> AttributionInputs:
     _registry_lock(root, spec)
     parent_spec = load_lagged_performance_spec(
-        root / "research/lagged-evidence-performance-001.toml", config
+        root / f"research/{PARENT_EXPERIMENT_ID}.toml", config
     )
     if (
         parent_spec.sha256 != spec.parent_spec_sha256
@@ -200,7 +227,7 @@ def _load_inputs(
     metadata = read_json(parent / "run.json")
     if (
         metadata.get("study_kind") != "lagged_evidence_performance"
-        or metadata.get("experiment_id") != "lagged-evidence-performance-001"
+        or metadata.get("experiment_id") != PARENT_EXPERIMENT_ID
         or metadata.get("run_id") != spec.parent_run_id
         or metadata.get("implementation_sha256") != spec.parent_implementation_sha256
         or metadata.get("spec_sha256") != spec.parent_spec_sha256
@@ -241,7 +268,7 @@ def _schedule(inputs: AttributionInputs, market: str, model: str) -> pd.DataFram
         rows.empty
         or rows["decision_date"].duplicated().any()
         or not rows["decision_date"].is_monotonic_increasing
-        or not rows["selected"].isin(LAMBDAS).all()
+        or not rows["selected"].isin(inputs.parent_spec.lambdas_for(market)).all()
     ):
         raise AttributionError(f"{market}/{model}: invalid frozen choice schedule")
     return rows
@@ -552,7 +579,7 @@ def _decision(attribution: pd.DataFrame) -> dict[str, Any]:
     row = sharpe.iloc[0]
     return {
         "schema_version": 1,
-        "experiment_id": "lagged-selection-attribution-001",
+        "experiment_id": EXPERIMENT_ID,
         "claim_class": "EXPLORATORY",
         "result": "diagnostic_complete",
         "equal_market_mean_sharpe_total": float(row["total"]),
@@ -567,10 +594,16 @@ def _decision(attribution: pd.DataFrame) -> dict[str, Any]:
     }
 
 
-def _implementation_sha(root: Path, spec: AttributionSpec) -> str:
+def _lock_key(path: Path, root: Path) -> str:
+    """Label a locked file by its repository path, or its name if outside."""
+    return str(path.relative_to(root)) if path.is_relative_to(root) else path.name
+
+def _implementation_sha(
+    root: Path, spec: AttributionSpec, config_path: Path
+) -> str:
     files = (
         spec.path,
-        root / "research.toml",
+        config_path,
         root / "uv.lock",
         root / "src/adaptive_jump/lagged_attribution.py",
         root / "src/adaptive_jump/lagged_performance.py",
@@ -581,7 +614,7 @@ def _implementation_sha(root: Path, spec: AttributionSpec) -> str:
         root / "src/adaptive_jump/confidence_model.py",
         root / "src/adaptive_jump/walkforward.py",
     )
-    payload = {str(file.relative_to(root)): sha256_file(file) for file in files}
+    payload = {_lock_key(file, root): sha256_file(file) for file in files}
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
@@ -631,7 +664,7 @@ def verify_attribution_run(
         or sha256_file(path / "config.lock.toml") != config.sha256
     ):
         raise AttributionError("attribution run locks changed")
-    implementation = _implementation_sha(root, spec)
+    implementation = _implementation_sha(root, spec, config.path)
     run_id = (
         f"lagged-attribution-{spec.sha256[:12]}-"
         f"{spec.parent_inventory_sha256[:12]}-{implementation[:12]}"
@@ -732,7 +765,7 @@ def run_attribution_study(config: ResearchConfig, spec: AttributionSpec) -> Path
     root = config.path.parent
     inputs = _load_inputs(root, config, spec)
     smoke = run_us_smoke(config, spec, inputs)
-    implementation = _implementation_sha(root, spec)
+    implementation = _implementation_sha(root, spec, config.path)
     run_id = (
         f"lagged-attribution-{spec.sha256[:12]}-"
         f"{spec.parent_inventory_sha256[:12]}-{implementation[:12]}"
@@ -758,6 +791,7 @@ def run_attribution_study(config: ResearchConfig, spec: AttributionSpec) -> Path
             "claim_class": "EXPLORATORY",
             "spec_sha256": spec.sha256,
             "config_sha256": config.sha256,
+            "config_path": config.path.name,
             "implementation_sha256": implementation,
             "git_sha": _git_head(root),
             "git_worktree_clean": False,
@@ -819,7 +853,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="lagged-selection-attribution")
     parser.add_argument("--config", default="research.toml")
     parser.add_argument(
-        "--spec", default="research/lagged-selection-attribution-001.toml"
+        "--spec", default=f"research/{EXPERIMENT_ID}.toml"
     )
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--verify")
