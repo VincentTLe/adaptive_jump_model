@@ -1,4 +1,4 @@
-"""Execute and verify lagged-evidence-mechanism-001 without opening P&L."""
+"""Execute and verify the lagged-evidence mechanism study without opening P&L."""
 
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ from adaptive_jump.lagged_mechanics import run_locked_smoke
 from adaptive_jump.lagged_model import generate_locked_candidates
 from adaptive_jump.lagged_sources import implementation_lock, verify_source_inputs
 from adaptive_jump.lagged_study import (
+    EXPERIMENT_ID,
     LaggedMechanismSpec,
     LaggedStudyError,
     beta_label,
@@ -46,16 +47,17 @@ def _load_inputs(
         market,
         fixed_dir / "features.csv",
         arrival_dir,
-        _input_spec(spec),
+        _input_spec(spec, market),
         include_fixed_objective=False,
     )
-    names = ["date", *(str(value) for value in spec.lambdas)]
+    lambdas = spec.lambdas_for(market)
+    names = ["date", *(str(value) for value in lambdas)]
     fixed = pd.read_csv(fixed_dir / "jm-states.csv", usecols=names)
     fixed["date"] = pd.to_datetime(fixed["date"], errors="raise")
     fixed = fixed.set_index("date")
     fixed.columns = tuple(float(column) for column in fixed.columns)
-    fixed = fixed.reindex(columns=spec.lambdas)
-    sealed_fixed = inputs.candidates[0.0].reindex(columns=spec.lambdas)
+    fixed = fixed.reindex(columns=lambdas)
+    sealed_fixed = inputs.candidates[0.0].reindex(columns=lambdas)
     if not fixed.index.equals(inputs.features.index) or not np.array_equal(
         fixed, sealed_fixed, equal_nan=True
     ):
@@ -135,11 +137,12 @@ def _run_market(
             for rule in spec.rules
         )
         terminal_rows = int(fixed.notna().all(axis=1).sum())
+        lambda_count = len(spec.lambdas_for(market))
         replay = {
             "sealed_arrival_exact": arrival_cells
-            == terminal_rows * len(spec.lambdas) * len(spec.betas),
+            == terminal_rows * lambda_count * len(spec.betas),
             "beta_zero_exact": beta_cells
-            == terminal_rows * len(spec.lambdas) * len(spec.rules),
+            == terminal_rows * lambda_count * len(spec.rules),
             "sealed_arrival_state_cells_checked": arrival_cells,
             "beta_zero_state_cells_checked": beta_cells,
             "return_columns_accessed": False,
@@ -208,7 +211,7 @@ def run_lagged_study(
     root = config.path.parent
     sources = verify_source_inputs(root, config, spec)
     smoke = run_us_smoke(config, spec)
-    implementation = implementation_lock(root, spec)
+    implementation = implementation_lock(root, spec, config.path)
     run_id = (
         f"lagged-evidence-{spec.sha256[:12]}-"
         f"{spec.arrival_inventory_sha256[:12]}-"
@@ -248,6 +251,11 @@ def run_lagged_study(
             "created_at_utc": datetime.now(UTC).isoformat(),
             "spec_sha256": spec.sha256,
             "config_sha256": config.sha256,
+            # Which contract this run was produced under: the verifier reloads
+            # it from the repository instead of assuming "research.toml".
+            "config_path": config.path.name,
+            "fixed_experiment_id": spec.fixed.experiment_id,
+            "arrival_experiment_id": spec.arrival.experiment_id,
             "fixed_inventory_sha256": spec.fixed_inventory_sha256,
             "arrival_inventory_sha256": spec.arrival_inventory_sha256,
             "data_manifest_sha256": spec.data_manifest_sha256,
@@ -328,7 +336,7 @@ def run_lagged_study(
 def main() -> int:
     parser = argparse.ArgumentParser(prog="lagged-evidence-mechanism")
     parser.add_argument("--config", required=True)
-    parser.add_argument("--spec", default="research/lagged-evidence-mechanism-001.toml")
+    parser.add_argument("--spec", default=f"research/{EXPERIMENT_ID}.toml")
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--verify")
     arguments = parser.parse_args()

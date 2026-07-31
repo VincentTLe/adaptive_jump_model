@@ -18,6 +18,7 @@ from adaptive_jump.lagged_mechanics import mechanical_prerequisites, run_locked_
 from adaptive_jump.lagged_model import LockedStateEvidence, generate_locked_candidates
 from adaptive_jump.lagged_sources import implementation_lock, verify_source_inputs
 from adaptive_jump.lagged_study import (
+    EXPERIMENT_ID,
     LaggedMechanismSpec,
     LaggedStudyError,
     beta_label,
@@ -33,8 +34,7 @@ BUILDERS = {
     "lagged": lagged_evidence_penalty_seq,
 }
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-CANONICAL_CONFIG = Path("research.toml")
-CANONICAL_SPEC = Path("research/lagged-evidence-mechanism-001.toml")
+CANONICAL_SPEC = Path(f"research/{EXPERIMENT_ID}.toml")
 EVENT_DATE_COLUMNS = ("signal_date", "evidence_date", "fit_date")
 REFIT_DATE_COLUMNS = ("fit_date", "training_start", "training_end")
 
@@ -85,13 +85,15 @@ def _read_csv(
 def _read_state_table(
     path: Path,
     spec: LaggedMechanismSpec,
+    market: str,
 ) -> pd.DataFrame:
-    columns = ("date", *(str(value) for value in spec.lambdas))
+    lambdas = spec.lambdas_for(market)
+    columns = ("date", *(str(value) for value in lambdas))
     frame = _read_csv(path, expected_columns=columns)
     frame["date"] = pd.to_datetime(frame["date"], errors="raise")
     frame = frame.set_index("date")
     frame.index = pd.DatetimeIndex(frame.index, name="date")
-    frame.columns = spec.lambdas
+    frame.columns = lambdas
     return frame
 
 
@@ -137,6 +139,7 @@ def _verify_market_artifacts(
         stored = _read_state_table(
             market_dir / f"candidate-states-beta-{beta_label(beta)}.csv",
             spec,
+            analysis.market,
         )
         _assert_frame_exact(
             stored,
@@ -334,7 +337,10 @@ def verify_lagged_run(run: str | Path) -> dict[str, Any]:
     verify_inventory(run_dir)
     metadata = read_json(run_dir / "run.json")
 
-    canonical_config = load_config(REPOSITORY_ROOT / CANONICAL_CONFIG)
+    config_name = metadata.get("config_path")
+    if not isinstance(config_name, str) or Path(config_name).name != config_name:
+        raise LaggedStudyError("run metadata does not name its contract file")
+    canonical_config = load_config(REPOSITORY_ROOT / config_name)
     locked_config = load_config(run_dir / "config.lock.toml")
     if canonical_config.sha256 != locked_config.sha256:
         raise LaggedStudyError("locked config differs from the canonical config")
@@ -353,7 +359,9 @@ def verify_lagged_run(run: str | Path) -> dict[str, Any]:
         sources.source_lock,
         label="source lock",
     )
-    implementation = implementation_lock(REPOSITORY_ROOT, spec)
+    implementation = implementation_lock(
+        REPOSITORY_ROOT, spec, canonical_config.path
+    )
     _assert_json_exact(
         read_json(run_dir / "implementation-lock.json"),
         implementation,
@@ -375,12 +383,13 @@ def verify_lagged_run(run: str | Path) -> dict[str, Any]:
                 market,
                 sources.fixed_markets[market] / "features.csv",
                 sources.arrival_markets[market],
-                _input_spec(spec),
+                _input_spec(spec, market),
                 include_fixed_objective=False,
             )
             fixed = _read_state_table(
                 sources.fixed_markets[market] / "jm-states.csv",
                 spec,
+                market,
             )
             if market == "us":
                 smoke = run_locked_smoke(
@@ -418,11 +427,12 @@ def verify_lagged_run(run: str | Path) -> dict[str, Any]:
                 for rule in spec.rules
             )
             terminal_rows = int(fixed.notna().all(axis=1).sum())
+            lambda_count = len(spec.lambdas_for(market))
             market_replays[market] = {
                 "sealed_arrival_exact": arrival_cells
-                == terminal_rows * len(spec.lambdas) * len(spec.betas),
+                == terminal_rows * lambda_count * len(spec.betas),
                 "beta_zero_exact": beta_cells
-                == terminal_rows * len(spec.lambdas) * len(spec.rules),
+                == terminal_rows * lambda_count * len(spec.rules),
                 "sealed_arrival_state_cells_checked": arrival_cells,
                 "beta_zero_state_cells_checked": beta_cells,
                 "return_columns_accessed": False,

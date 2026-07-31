@@ -1,4 +1,11 @@
-"""Frozen contract and decision logic for lagged-evidence-mechanism-001."""
+"""Frozen contract and decision logic for the lagged-evidence mechanism study.
+
+-002 reruns the -001 question against the calibrated-v10 baseline. The betas,
+the arrival/lagged rules, the 20-day horizon, the whipsaw definitions and the
+continuation gate are unchanged. What moved: the candidate grid is one grid per
+market read from the loaded contract, and the sealed sources (fixed baseline and
+arrival run) are named by the spec instead of by literals in this file.
+"""
 
 from __future__ import annotations
 
@@ -14,13 +21,32 @@ import pandas as pd
 
 from adaptive_jump.config import ResearchConfig
 from adaptive_jump.models import FEATURE_COLUMNS
+from adaptive_jump.study_grids import (
+    MarketGrids,
+    grid_for,
+    grids_equal,
+    market_grids,
+    parse_grid_table,
+    positive_grids,
+)
+from adaptive_jump.study_sources import SourceReference, read_source_reference
 
+# The rerun of lagged-evidence-mechanism-001 against the calibrated-v10
+# baseline. Verifying the archived -001 run requires the pre-restoration commit.
+EXPERIMENT_ID = "lagged-evidence-mechanism-002"
 MARKETS = ("us", "de", "jp")
 BETAS = (0.0, math.log(2.0), math.log(4.0))
 POSITIVE_BETAS = BETAS[1:]
-LAMBDAS = (0.0, 5.0, 15.0, 35.0, 70.0, 150.0, 300.0, 600.0, 1200.0)
-POSITIVE_LAMBDAS = LAMBDAS[1:]
 RULES = ("arrival", "lagged")
+# The per-market first out-of-sample decision date. It is fixed by the sample
+# and the 3000-observation fit window, not by the candidate grid, so it is
+# unchanged by the move to per-market calibrated grids. Pinned here so a rerun
+# cannot quietly move the window that the whipsaw counts are measured over.
+EVALUATION_STARTS = {
+    "us": date(2007, 12, 4),
+    "de": date(2008, 1, 3),
+    "jp": date(2009, 5, 7),
+}
 FIXED_FILES = ("features.csv", "jm-states.csv")
 ARRIVAL_FILES = (
     "candidate-states-beta-0.csv",
@@ -76,10 +102,8 @@ class LaggedMechanismSpec:
     path: Path
     sha256: str
     experiment_id: str
-    fixed_run_id: str
-    fixed_inventory_sha256: str
-    arrival_run_id: str
-    arrival_inventory_sha256: str
+    fixed: SourceReference
+    arrival: SourceReference
     arrival_spec_sha256: str
     data_manifest_sha256: str
     data_cutoff: date
@@ -87,8 +111,8 @@ class LaggedMechanismSpec:
     markets: tuple[str, ...]
     betas: tuple[float, ...]
     event_betas: tuple[float, ...]
-    lambdas: tuple[float, ...]
-    event_lambdas: tuple[float, ...]
+    lambdas: MarketGrids
+    event_lambdas: MarketGrids
     rules: tuple[str, ...]
     fit_window: int
     horizon: int
@@ -97,6 +121,30 @@ class LaggedMechanismSpec:
     arrival_allowed_files: tuple[str, ...]
     performance_files_forbidden: tuple[str, ...]
     artifact_subdir: Path
+
+    @property
+    def fixed_run_id(self) -> str:
+        return self.fixed.run_id
+
+    @property
+    def fixed_inventory_sha256(self) -> str:
+        return self.fixed.inventory_sha256
+
+    @property
+    def arrival_run_id(self) -> str:
+        return self.arrival.run_id
+
+    @property
+    def arrival_inventory_sha256(self) -> str:
+        return self.arrival.inventory_sha256
+
+    def lambdas_for(self, market: str) -> tuple[float, ...]:
+        """The full candidate lambda grid governing one market."""
+        return grid_for(self.lambdas, market)
+
+    def event_lambdas_for(self, market: str) -> tuple[float, ...]:
+        """The market's positive lambdas -- the only ones that admit events."""
+        return grid_for(self.event_lambdas, market)
 
 
 def _dates(scope: dict[str, Any]) -> dict[str, date]:
@@ -120,7 +168,7 @@ def load_lagged_spec(path: str | Path, config: ResearchConfig) -> LaggedMechanis
 
     if (
         document.get("schema_version") != 1
-        or document.get("experiment_id") != "lagged-evidence-mechanism-001"
+        or document.get("experiment_id") != EXPERIMENT_ID
         or document.get("claim_class") != "EXPLORATORY"
         or document.get("stage")
         != "DEVELOPMENT_SAMPLE_PERFORMANCE_FREE_MECHANISM_STUDY"
@@ -151,39 +199,39 @@ def load_lagged_spec(path: str | Path, config: ResearchConfig) -> LaggedMechanis
     except (KeyError, TypeError, ValueError) as exc:
         raise LaggedStudyError("lagged source or storage fields are missing") from exc
 
+    fixed_reference = read_source_reference(
+        fixed, error=LaggedStudyError, label="fixed"
+    )
+    arrival_reference = read_source_reference(
+        arrival, error=LaggedStudyError, label="arrival"
+    )
+    manifest = fixed.get("data_manifest_sha256")
+    arrival_spec_sha256 = arrival.get("spec_sha256")
+
     betas = tuple(float(value) for value in penalty.get("beta", ()))
     event_betas = tuple(float(value) for value in events.get("betas", ()))
-    lambdas = tuple(float(value) for value in candidates.get("raw_lambda_grid", ()))
-    event_lambdas = tuple(
-        float(value) for value in candidates.get("event_lambda_grid", ())
-    )
+    contract_grids = market_grids(config, MARKETS)
+    lambdas = parse_grid_table(candidates.get("raw_lambda_grid"), MARKETS)
+    event_lambdas = parse_grid_table(candidates.get("event_lambda_grid"), MARKETS)
     rules = tuple(events.get("rules", ()))
     fixed_files = tuple(fixed.get("allowed_market_files", ()))
     arrival_files = tuple(arrival.get("allowed_market_files", ()))
     forbidden = tuple(arrival.get("performance_files_forbidden", ()))
 
     if (
-        fixed.get("experiment_id") != "fixed-baselines-001-v7"
-        or fixed.get("config_sha256") != config.sha256
-        or fixed.get("data_manifest_sha256")
-        != "3636939b525d604c5c4180d7e3abb6192b53b81a068f009ad6ca83a945e53a84"
-        or arrival.get("experiment_id") != "adaptive-confidence-001"
-        or arrival.get("spec_sha256")
-        != "1b0c327b2db44f39be183b153e6feaae6c53e2cad1e56e782f1ef7eda3849cc3"
+        fixed.get("config_sha256") != config.sha256
+        or not isinstance(manifest, str)
+        or not manifest
+        or not isinstance(arrival_spec_sha256, str)
+        or not arrival_spec_sha256
         or cutoff != date(2023, 12, 31)
-        or starts
-        != {
-            "us": date(2007, 12, 4),
-            "de": date(2008, 1, 3),
-            "jp": date(2009, 5, 7),
-        }
+        or starts != EVALUATION_STARTS
         or tuple(scope.get("markets", ())) != MARKETS
         or scope.get("performance_files_accessed") is not False
         or betas != BETAS
         or event_betas != POSITIVE_BETAS
-        or lambdas != LAMBDAS
-        or lambdas != config.jm_protocol.lambda_grid
-        or event_lambdas != POSITIVE_LAMBDAS
+        or not grids_equal(lambdas, contract_grids)
+        or not grids_equal(event_lambdas, positive_grids(contract_grids))
         or rules != RULES
         or fixed_files != FIXED_FILES
         or arrival_files != ARRIVAL_FILES
@@ -194,7 +242,10 @@ def load_lagged_spec(path: str | Path, config: ResearchConfig) -> LaggedMechanis
         or candidates.get("center_refit") is not False
         or tuple(controls.get("features", ())) != FEATURE_COLUMNS
         or candidates.get("fitted_parameter_source")
-        != "sealed adaptive-confidence-001 refits-and-scales.csv; no model refit"
+        != (
+            f"sealed {arrival_reference.experiment_id} refits-and-scales.csv; "
+            "no model refit"
+        )
         or controls.get("fit_window_observations") != config.model_protocol.fit_window
         or tuple(controls.get("jm_refit_months", ())) != config.jm_protocol.refit_months
         or controls.get("provider_access") is not False
@@ -230,12 +281,10 @@ def load_lagged_spec(path: str | Path, config: ResearchConfig) -> LaggedMechanis
         path=spec_path,
         sha256=hashlib.sha256(payload).hexdigest(),
         experiment_id=str(document["experiment_id"]),
-        fixed_run_id=str(fixed["run_id"]),
-        fixed_inventory_sha256=str(fixed["run_inventory_sha256"]),
-        arrival_run_id=str(arrival["run_id"]),
-        arrival_inventory_sha256=str(arrival["run_inventory_sha256"]),
-        arrival_spec_sha256=str(arrival["spec_sha256"]),
-        data_manifest_sha256=str(fixed["data_manifest_sha256"]),
+        fixed=fixed_reference,
+        arrival=arrival_reference,
+        arrival_spec_sha256=str(arrival_spec_sha256),
+        data_manifest_sha256=str(manifest),
         data_cutoff=cutoff,
         evaluation_starts=starts,
         markets=MARKETS,
@@ -294,7 +343,7 @@ def summarize_mechanism(
         for market in spec.markets
         for rule in spec.rules
         for beta in spec.event_betas
-        for lambda0 in spec.event_lambdas
+        for lambda0 in spec.event_lambdas_for(market)
     }
     observed_coverage = {
         (market, rule, label, float(lambda0))

@@ -15,6 +15,7 @@ from adaptive_jump.lagged_study import (
     LaggedMechanismSpec,
     LaggedStudyError,
 )
+from adaptive_jump.study_sources import verify_source_identity
 
 
 @dataclass(frozen=True)
@@ -71,9 +72,23 @@ def verify_source_inputs(
 ) -> SourcePaths:
     """Verify metadata and allowlisted state inputs without opening performance."""
     _registry_lock(root, spec)
-    fixed_dir = root / config.artifact_root / "fixed-baselines" / spec.fixed_run_id
-    arrival_dir = (
-        root / config.artifact_root / "adaptive-confidence-001" / spec.arrival_run_id
+    # Both source directories come from the spec: the artifact subdirectory and
+    # the run id are declared, and run.json must carry the declared experiment.
+    fixed_dir = spec.fixed.directory(root, config.artifact_root)
+    arrival_dir = spec.arrival.directory(root, config.artifact_root)
+    verify_source_identity(
+        fixed_dir,
+        spec.fixed,
+        error=LaggedStudyError,
+        label="fixed",
+        config_sha256=config.sha256,
+    )
+    verify_source_identity(
+        arrival_dir,
+        spec.arrival,
+        error=LaggedStudyError,
+        label="arrival",
+        config_sha256=config.sha256,
     )
     if sha256_file(fixed_dir / "data-manifest.json") != spec.data_manifest_sha256:
         raise LaggedStudyError("lagged source identity changed")
@@ -104,22 +119,26 @@ def verify_source_inputs(
         arrival_markets=arrival_markets,
         source_lock={
             "schema_version": 1,
+            "fixed_experiment_id": spec.fixed.experiment_id,
             "fixed_run_id": spec.fixed_run_id,
             "fixed_inventory_sha256": spec.fixed_inventory_sha256,
+            "arrival_experiment_id": spec.arrival.experiment_id,
             "arrival_run_id": spec.arrival_run_id,
             "arrival_inventory_sha256": spec.arrival_inventory_sha256,
             "data_manifest_sha256": spec.data_manifest_sha256,
             "allowed_file_hashes": allowed_hashes,
             "columns_read": {
                 "fixed/features.csv": ["date", "dd_10", "sortino_20", "sortino_60"],
-                "fixed/jm-states.csv": [
-                    "date",
-                    *[str(value) for value in spec.lambdas],
-                ],
-                "arrival/candidate-states": [
-                    "date",
-                    *[str(value) for value in spec.lambdas],
-                ],
+                # One column set per market: each sealed run stores that
+                # market's own calibrated grid.
+                "fixed/jm-states.csv": {
+                    market: ["date", *[str(v) for v in spec.lambdas_for(market)]]
+                    for market in spec.markets
+                },
+                "arrival/candidate-states": {
+                    market: ["date", *[str(v) for v in spec.lambdas_for(market)]]
+                    for market in spec.markets
+                },
                 "arrival/refits-and-scales.csv": [
                     "market",
                     "fit_date",
@@ -138,10 +157,18 @@ def verify_source_inputs(
     )
 
 
-def implementation_lock(root: Path, spec: LaggedMechanismSpec) -> dict[str, Any]:
+def _lock_key(path: Path, root: Path) -> str:
+    """Label a locked file by its repository path, or its name if outside."""
+    return str(path.relative_to(root)) if path.is_relative_to(root) else path.name
+
+def implementation_lock(
+    root: Path, spec: LaggedMechanismSpec, config_path: Path
+) -> dict[str, Any]:
+    # The contract file is whichever one the run loaded, not a literal
+    # "research.toml": a calibrated rerun uses a different contract.
     paths = (
         spec.path,
-        root / "research.toml",
+        config_path,
         root / "pyproject.toml",
         root / "uv.lock",
         root / "src/adaptive_jump/artifacts.py",
@@ -157,8 +184,10 @@ def implementation_lock(root: Path, spec: LaggedMechanismSpec) -> dict[str, Any]
         root / "src/adaptive_jump/lagged_verifier.py",
         root / "src/adaptive_jump/separation_analysis.py",
         root / "src/adaptive_jump/separation_study.py",
+        root / "src/adaptive_jump/study_grids.py",
+        root / "src/adaptive_jump/study_sources.py",
     )
-    files = {str(path.relative_to(root)): sha256_file(path) for path in paths}
+    files = {_lock_key(path, root): sha256_file(path) for path in paths}
     digest = hashlib.sha256(
         json.dumps(files, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()

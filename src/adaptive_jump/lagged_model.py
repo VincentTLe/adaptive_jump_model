@@ -229,15 +229,16 @@ def generate_locked_candidates(
     terminal_limit: int | None = None,
 ) -> dict[str, LockedStateEvidence]:
     """Generate candidate states using only features and sealed fit parameters."""
-    lambdas = tuple(float(value) for value in spec.lambdas)
+    if market not in spec.markets:
+        raise LockedModelError("locked model controls changed")
+    lambdas = tuple(float(value) for value in spec.lambdas_for(market))
     betas = tuple(float(value) for value in spec.betas)
     rules = tuple(spec.rules)
     fit_window = int(spec.fit_window)
     if (
-        market not in spec.markets
-        or config.model_protocol.n_states != 2
+        config.model_protocol.n_states != 2
         or config.model_protocol.fit_window != fit_window
-        or tuple(config.jm_protocol.lambda_grid) != lambdas
+        or tuple(config.jm_protocol_for(market).lambda_grid) != lambdas
         or set(penalty_builders) != set(rules)
         or len(set(betas)) != len(betas)
         or 0.0 not in betas

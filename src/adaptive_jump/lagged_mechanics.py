@@ -80,7 +80,7 @@ def _mutated_fixed_states(
         dates = inputs.model_dates[terminal - spec.fit_window + 1 : terminal + 1]
         current_date = pd.Timestamp(dates[-1])
         raw = features.loc[dates, list(FEATURE_COLUMNS)].to_numpy(dtype=float)
-        for lambda0 in spec.lambdas:
+        for lambda0 in spec.lambdas_for(inputs.market):
             rows = by_lambda.get(lambda0)
             if rows is None:
                 raise LaggedStudyError("US smoke refit lambda coverage changed")
@@ -114,7 +114,7 @@ def _refit_convention_errors(
     current_errors: list[float] = []
     stale_distances: list[float] = []
 
-    for lambda0 in spec.event_lambdas:
+    for lambda0 in spec.event_lambdas_for(inputs.market):
         rows = lagged.refits.loc[lagged.refits["lambda0"] == lambda0].set_index(
             "fit_date"
         )
@@ -188,7 +188,8 @@ def run_locked_smoke(
     penalty_builders: Mapping[str, PenaltyBuilder],
 ) -> dict[str, Any]:
     """Recompute the nonvacuous US prefix and second-refit smoke checks."""
-    sealed_fixed = inputs.candidates[0.0].reindex(columns=spec.lambdas)
+    lambdas = spec.lambdas_for(inputs.market)
+    sealed_fixed = inputs.candidates[0.0].reindex(columns=lambdas)
     if not fixed.index.equals(inputs.features.index) or not np.array_equal(
         fixed, sealed_fixed, equal_nan=True
     ):
@@ -214,7 +215,7 @@ def run_locked_smoke(
             inputs.refits,
             config,
             spec,
-            market="us",
+            market=inputs.market,
             penalty_builders=penalty_builders,
             terminal_limit=generation_limit,
         )
@@ -282,12 +283,12 @@ def run_locked_smoke(
         int((evidence["lagged"].c01[beta][lambda0].dropna() < lambda0).sum())
         + int((evidence["lagged"].c10[beta][lambda0].dropna() < lambda0).sum())
         for beta in spec.event_betas
-        for lambda0 in spec.event_lambdas
+        for lambda0 in spec.event_lambdas_for(inputs.market)
     )
     refit_error, stale_distance, refit_date = _refit_convention_errors(
         inputs, evidence["lagged"], spec
     )
-    candidate_cells = prefix_terminal_limit * len(spec.lambdas)
+    candidate_cells = prefix_terminal_limit * len(lambdas)
     checks = {
         "sealed_arrival_exact": arrival_cells == candidate_cells * len(spec.betas),
         "beta_zero_exact": beta_cells == candidate_cells * len(spec.rules),

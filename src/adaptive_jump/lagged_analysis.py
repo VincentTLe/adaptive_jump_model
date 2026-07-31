@@ -47,10 +47,13 @@ class MechanismAnalysis:
     audit: dict[str, Any]
 
 
-def _input_spec(spec: LaggedMechanismSpec) -> _InputSpec:
+def _input_spec(spec: LaggedMechanismSpec, market: str) -> _InputSpec:
+    # The sealed reader needs this market's FULL ordered grid: those are the
+    # candidate-state columns and the sealed lambda0 set. The event grid (the
+    # positive lambdas) is applied later, where events are extracted.
     return _InputSpec(
         markets=spec.markets,
-        lambdas=spec.event_lambdas,
+        lambdas=spec.lambdas_for(market),
         data_cutoff=spec.data_cutoff,
         fit_window=spec.fit_window,
     )
@@ -63,14 +66,15 @@ def _validate_lagged_states(
 ) -> dict[float, pd.DataFrame]:
     if set(states) != set(spec.betas):
         raise LaggedStudyError(f"{inputs.market}: lagged beta set changed")
+    lambdas = spec.lambdas_for(inputs.market)
     validated: dict[float, pd.DataFrame] = {}
     for beta in spec.betas:
         frame = states[beta].copy()
         if not frame.index.equals(inputs.features.index):
             raise LaggedStudyError(f"{inputs.market}/{beta:g}: lagged dates changed")
-        if tuple(float(column) for column in frame.columns) != spec.lambdas:
+        if tuple(float(column) for column in frame.columns) != lambdas:
             raise LaggedStudyError(f"{inputs.market}/{beta:g}: lagged grid changed")
-        frame.columns = spec.lambdas
+        frame.columns = lambdas
         values = frame.to_numpy(dtype=float)
         present = np.isfinite(values)
         if not np.array_equal(present.any(axis=1), present.all(axis=1)):
@@ -84,7 +88,7 @@ def _validate_lagged_states(
             )
         validated[beta] = frame
 
-    fixed = inputs.candidates[0.0].reindex(columns=spec.lambdas)
+    fixed = inputs.candidates[0.0].reindex(columns=lambdas)
     if not np.array_equal(
         validated[0.0].to_numpy(),
         fixed.to_numpy(),
@@ -104,7 +108,7 @@ def _path_behavior(
     start = pd.Timestamp(spec.evaluation_starts[inputs.market])
     records: list[dict[str, Any]] = []
     for beta in spec.event_betas:
-        for lambda0 in spec.event_lambdas:
+        for lambda0 in spec.event_lambdas_for(inputs.market):
             complete = candidates[beta][lambda0].dropna().astype(int)
             first = int(complete.index.searchsorted(start, side="left"))
             model = complete.iloc[first:]
@@ -150,10 +154,11 @@ def _extract_events(
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     positions = {current: index for index, current in enumerate(inputs.model_dates)}
     refit_source = inputs.refits.set_index(["fit_date", "lambda0"], drop=False)
+    event_lambdas = spec.event_lambdas_for(inputs.market)
     refits_by_lambda = {
         value: rows.sort_values("fit_date").reset_index(drop=True)
         for value, rows in inputs.refits.groupby("lambda0")
-        if value in spec.event_lambdas
+        if value in event_lambdas
     }
     builder = _penalty_builder(rule)
     counters: dict[str, Any] = {
@@ -172,7 +177,7 @@ def _extract_events(
 
     for beta in spec.event_betas:
         model_frame = candidates[beta]
-        for lambda0 in spec.event_lambdas:
+        for lambda0 in event_lambdas:
             model = model_frame[lambda0].dropna().astype(int)
             fixed = fixed_frame[lambda0].reindex(model.index).astype(int)
             refit_rows = refits_by_lambda[lambda0]
@@ -380,7 +385,7 @@ def analyze_market_mechanism(
             market,
             fixed_feature_path,
             arrival_market_dir,
-            _input_spec(spec),
+            _input_spec(spec, market),
             include_fixed_objective=False,
         )
     except Exception as exc:
