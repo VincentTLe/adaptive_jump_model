@@ -19,7 +19,9 @@ sys.path.insert(0, str(ROOT / "src")); sys.path.insert(0, str(ROOT / "scripts"))
 from _shu_table4 import TABLE4
 from probe_jm_grid_exhaustive2 import TABLE5_JM, UNION_DIR
 
-V10 = ROOT / "artifacts/fixed-baselines/fixed-baselines-36ca1ace131c-ed7abd7daea3-1393395197d9"
+V10 = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else (
+    ROOT / "artifacts/fixed-baselines/fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736"
+)
 GRIDS = {"us": [0.0, 21.544346900318832, 70.0], "de": [150.0, 500.0], "jp": [10.0, 220.0]}
 BLOCKED = {"us": None, "de": "turnover", "jp": "leverage"}
 failures = []
