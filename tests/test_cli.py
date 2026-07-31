@@ -113,13 +113,13 @@ def test_figures_cli_uses_shared_artifact_error_handling(
     [
         (
             "simple-jm-suite",
-            "simple-jm-suite-001.toml",
+            "simple-jm-suite-002.toml",
             "load_simple_jm_spec",
             "run_simple_jm_study",
         ),
         (
             "dd-loss-scale",
-            "dd-loss-scale-001.toml",
+            "dd-loss-scale-002.toml",
             "load_dd_loss_scale_spec",
             "run_dd_loss_scale_study",
         ),
@@ -180,8 +180,8 @@ def test_simple_jm_cli_uses_shared_runner(
 @pytest.mark.parametrize(
     ("study_kind", "verifier_name"),
     [
-        ("simple-jm-suite-001", "verify_simple_jm_run"),
-        ("dd-loss-scale-001", "verify_dd_loss_scale_run"),
+        ("simple-jm-suite-002", "verify_simple_jm_run"),
+        ("dd-loss-scale-002", "verify_dd_loss_scale_run"),
     ],
 )
 def test_verify_run_dispatches_simple_jm_suite(

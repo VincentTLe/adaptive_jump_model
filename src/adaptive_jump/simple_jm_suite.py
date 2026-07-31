@@ -57,8 +57,11 @@ from adaptive_jump.walkforward import (
     select_monthly_candidate,
 )
 
-EXPERIMENT_ID = "simple-jm-suite-001"
-LOSS_SCALE_EXPERIMENT_ID = "dd-loss-scale-001"
+# -002: the same frozen questions rerun against the calibrated-v10 baseline
+# (per-market lambda grids). Verifying the archived -001 run requires the
+# pre-bump commit; recorded in docs/audit and the -002 registry rows.
+EXPERIMENT_ID = "simple-jm-suite-002"
+LOSS_SCALE_EXPERIMENT_ID = "dd-loss-scale-002"
 MARKETS = ("us", "de", "jp")
 CONTROLS = ("buy_and_hold", "hmm", "fixed_jm")
 CHALLENGERS = (
@@ -528,13 +531,23 @@ def run_dd_loss_scale_study(config: ResearchConfig, spec: LossScaleSpec) -> Path
     return run_dir
 
 
+def _grids_match(config: ResearchConfig, pinned: Any) -> bool:
+    """The spec pins one lambda grid per market; each must equal the config's."""
+    if not isinstance(pinned, dict) or set(pinned) != set(MARKETS):
+        return False
+    return all(
+        config.jm_protocol_for(market).lambda_grid == tuple(values)
+        for market, values in pinned.items()
+    )
+
+
 def _validate_protocol(config: ResearchConfig, spec: SuiteSpec) -> None:
     common = spec.document["common_protocol"]
     checks = (
         config.replication_cutoff == date(2023, 12, 31),
         config.model_protocol.fit_window == 3000,
         config.model_protocol.n_states == 2,
-        config.jm_protocol.lambda_grid == tuple(common["lambda_grid"]),
+        _grids_match(config, common["lambda_grid"]),
         config.jm_protocol.refit_months == (1, 7),
         common["primary_delay_trading_days"] == 1,
         common["signal_to_return_offset"] == 2,
@@ -550,7 +563,7 @@ def validate_loss_scale_protocol(config: ResearchConfig, spec: LossScaleSpec) ->
         config.replication_cutoff == date(2023, 12, 31),
         config.model_protocol.n_states == model["states"] == 2,
         config.model_protocol.fit_window == model["fit_window_observations"] == 3000,
-        config.jm_protocol.lambda_grid == tuple(model["lambda_grid"]),
+        _grids_match(config, model["lambda_grid"]),
         config.jm_protocol.refit_months == tuple(model["refit_months"]) == (1, 7),
         config.jm_protocol.n_init == model["n_init"] == 10,
         config.jm_protocol.random_state == model["random_state"] == 0,
@@ -844,7 +857,7 @@ def _load_sources(
         state_path = spec.canonical_root / state_relative
         state_columns = [
             "date",
-            *[str(value) for value in config.jm_protocol.lambda_grid],
+            *[str(value) for value in config.jm_protocol_for(market).lambda_grid],
         ]
         _record_access(
             explicit,
@@ -1068,7 +1081,7 @@ def _fit_market_task(
             fitted = dd_only_states(
                 frame,
                 config.model_protocol,
-                config.jm_protocol,
+                config.jm_protocol_for(market),
                 observation_loss_scale=(
                     DD_OBSERVATION_LOSS_SCALE if variant == SCALED_DD_VARIANT else 1.0
                 ),
@@ -1077,7 +1090,7 @@ def _fit_market_task(
             fitted = custom_variant_states(
                 frame,
                 config.model_protocol,
-                config.jm_protocol,
+                config.jm_protocol_for(market),
                 variant=variant,
             )
         else:

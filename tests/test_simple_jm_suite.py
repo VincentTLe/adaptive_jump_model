@@ -332,10 +332,10 @@ def _write_suite_contract(repo: Path, *, registered_hash: str | None = None) -> 
     research.mkdir()
     (repo / "canonical").mkdir()
     (repo / "lambda50").mkdir()
-    spec = research / "simple-jm-suite-001.toml"
+    spec = research / f"{suite.EXPERIMENT_ID}.toml"
     spec.write_text(
-        """schema_version = 1
-experiment_id = "simple-jm-suite-001"
+        f"""schema_version = 1
+experiment_id = "{suite.EXPERIMENT_ID}"
 status = "FROZEN_BEFORE_RESULTS"
 claim_class = "EXPLORATORY"
 
@@ -394,8 +394,14 @@ def test_load_simple_jm_spec_rejects_registry_hash_mismatch(tmp_path: Path) -> N
 def test_load_dd_loss_scale_spec_accepts_frozen_contract(tmp_path: Path) -> None:
     research = tmp_path / "research"
     research.mkdir()
-    spec_path = research / "dd-loss-scale-001.toml"
-    spec_path.write_bytes((ROOT / "research/dd-loss-scale-001.toml").read_bytes())
+    spec_path = research / f"{suite.LOSS_SCALE_EXPERIMENT_ID}.toml"
+    spec_path.write_text(
+        (ROOT / "research/dd-loss-scale-001.toml")
+        .read_text(encoding="utf-8")
+        .replace("dd-loss-scale-001", suite.LOSS_SCALE_EXPERIMENT_ID)
+        .replace("simple-jm-suite-001", suite.EXPERIMENT_ID),
+        encoding="utf-8",
+    )
     document = tomllib.loads(spec_path.read_text(encoding="utf-8"))
     for field in ("canonical_run_root", "dd_parent_run_root"):
         (tmp_path / document["sources"][field]).mkdir(parents=True)
@@ -572,13 +578,9 @@ def test_load_simple_jm_spec_rejects_non_table_sections(tmp_path: Path) -> None:
         load_config(ROOT / "research.toml"), path=tmp_path / "research.toml"
     )
     spec_path.write_text(
-        """schema_version = 1
-experiment_id = "simple-jm-suite-001"
-status = "FROZEN_BEFORE_RESULTS"
-claim_class = "EXPLORATORY"
-sources = "invalid"
-variants = {}
-""",
+        f'schema_version = 1\nexperiment_id = "{suite.EXPERIMENT_ID}"\n'
+        'status = "FROZEN_BEFORE_RESULTS"\nclaim_class = "EXPLORATORY"\n'
+        'sources = "invalid"\nvariants = {}\n',
         encoding="utf-8",
     )
 

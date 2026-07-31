@@ -144,7 +144,7 @@ def _replay_scaled_selector(
         states.columns = [float(column) for column in states.columns]
     except (TypeError, ValueError) as exc:
         raise SimpleJMSuiteError(f"{market}: invalid scaled candidate grid") from exc
-    if tuple(states.columns) != config.jm_protocol.lambda_grid:
+    if tuple(states.columns) != config.jm_protocol_for(market).lambda_grid:
         raise SimpleJMSuiteError(f"{market}: scaled candidate grid changed")
     returns = source.features.loc[:, ["date", "equity_simple", "cash_return"]]
     selection = select_monthly_candidate(
