@@ -72,6 +72,14 @@ METRICS = (
 )
 
 
+SPARSE_MENU = (
+    0.0, 0.1, 1.0, 1.9307, 3.7275937203149416, 4.641588833612778, 5.0,
+    7.196856730011519, 10.0, 13.895, 15.0, 20.0, 21.544346900318832, 22.0,
+    25.0, 26.827, 30.0, 35.0, 40.0, 50.0, 51.7947, 60.0, 70.0, 80.0, 100.0,
+    150.0, 220.0, 500.0, 1000.0,
+)
+
+
 def dense_menu() -> tuple[float, ...]:
     """Zero plus 47 log-spaced values from 0.5 to 1000, the menu's own range."""
     return (0.0, *tuple(float(v) for v in np.logspace(np.log10(0.5), 3.0, 47)))
@@ -126,17 +134,29 @@ def main() -> int:
     markets = sys.argv[2].split(",") if len(sys.argv) > 2 else ["de", "jp"]
     OUT.mkdir(parents=True, exist_ok=True)
     config = load_config(ROOT / "research-calibrated-v10.toml")
-    menu = dense_menu()
+    which = sys.argv[3] if len(sys.argv) > 3 else "dense"
+    menu = dense_menu() if which == "dense" else SPARSE_MENU
+    print(f"menu = {which} ({len(menu)} values)", flush=True)
     reported = pd.read_csv(BASE / "metrics.csv", parse_dates=["start", "end"])
 
     rows = []
     for market in markets:
         frame = pd.read_csv(BASE / market / "features.csv", parse_dates=["date"])
-        cache = OUT / f"states-{market}.csv"
+        cache = OUT / f"states-{market}.csv" if which == "dense" else (
+            ROOT / "artifacts/jm-residual/01-grid-identification"
+            / market / "union-states.csv"
+        )
         if cache.exists():
             states = pd.read_csv(cache, index_col=0, parse_dates=[0])
             states.columns = [float(c) for c in states.columns]
-            print(f"{market}: reusing cached states", flush=True)
+            if which != "dense":
+                # take the menu from the artifact so the float values match
+                # exactly; hardcoding them does not survive round-tripping
+                menu = tuple(sorted(states.columns))
+            print(
+                f"{market}: reusing cached states ({len(menu)} penalties)",
+                flush=True,
+            )
         else:
             print(f"{market}: fitting {len(menu)} penalties ...", flush=True)
             fitted = fixed_jm_states(
@@ -209,8 +229,8 @@ def main() -> int:
             }
         )
         print(f"{market}: FINAL worst {best_score:.4f} with {final}\n", flush=True)
-    pd.DataFrame(rows).to_csv(OUT / "dense-grids.csv", index=False)
-    print("wrote", OUT / "dense-grids.csv")
+    pd.DataFrame(rows).to_csv(OUT / f"{which}-grids.csv", index=False)
+    print("wrote", OUT / f"{which}-grids.csv")
     return 0
 
 
