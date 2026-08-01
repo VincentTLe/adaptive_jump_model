@@ -11,6 +11,7 @@ occupied, so no region is privileged by having been seen to work. This remains
 a calibration search against the published table and carries the same label.
 """
 
+import itertools
 import sys
 from dataclasses import replace
 from pathlib import Path
@@ -23,6 +24,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _shu_table4 import TABLE4  # noqa: E402
+
 from adaptive_jump.backtest import apply_signal, performance_metrics  # noqa: E402
 from adaptive_jump.config import load_config  # noqa: E402
 from adaptive_jump.models import fixed_jm_states  # noqa: E402
@@ -122,10 +124,26 @@ def main() -> int:
         window = (row["start"], row["end"])
         target = TABLE4[market]["fixed_jm"]
 
-        # greedy forward selection on the worst-cell objective
+        # Seed with the best PAIR, exhaustively. Greedy cannot bootstrap from
+        # an empty set here because a one-element grid gives the monthly
+        # selection nothing to choose between, so the first move has to be a
+        # pair and there are few enough of them to enumerate.
         chosen: list[float] = []
         best_score = np.inf
-        for step in range(8):
+        for left, right in itertools.combinations(menu, 2):
+            score = worst_relative(
+                score_grid(config, market, frame, states, (left, right), window),
+                target,
+            )
+            if score < best_score - 1e-12:
+                best_score, chosen = score, [left, right]
+        if not chosen:
+            raise SystemExit(f"{market}: no admissible pair in the dense menu")
+        print(
+            f"  {market} seed: {sorted(chosen)} -> worst {best_score:.4f}",
+            flush=True,
+        )
+        for step in range(6):
             candidate, candidate_score = None, best_score
             for value in menu:
                 if value in chosen:
