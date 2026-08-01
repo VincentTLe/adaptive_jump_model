@@ -148,7 +148,9 @@ def _batch(task):
         vol = np.nanstd(ret, axis=0, ddof=1) * np.sqrt(252)
         with np.errstate(invalid="ignore", divide="ignore"):
             sharpe = np.nanmean(ex, axis=0) * 252 / vol
-            wealth = np.vstack([np.ones((1, ret.shape[1])), np.nancumprod(1 + ret, axis=0)])
+            wealth = np.vstack(
+                [np.ones((1, ret.shape[1])), np.nancumprod(1 + ret, axis=0)]
+            )
             mdd = (wealth / np.maximum.accumulate(wealth, axis=0) - 1).min(axis=0)
             cagr = np.nanprod(1 + ret, axis=0) ** (252 / n) - 1
             calmar = np.nanmean(ex, axis=0) * 252 / np.abs(mdd)
