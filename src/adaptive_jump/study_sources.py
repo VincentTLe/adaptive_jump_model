@@ -126,9 +126,17 @@ def registry_lock(
             raise error(f"invalid experiment registry line: {exc}") from exc
         if record.get("experiment_id") == experiment_id:
             records.append(record)
+    # Corrections and process notes are appended after a study completes and
+    # carry no spec hash, so the LAST row is not in general the one that froze
+    # the bytes. Take the last row that does carry a hash, and refuse outright
+    # if the study has since been retired -- an invalidated study must not be
+    # runnable however good its hash is.
+    if any(record.get("status") == "INVALIDATED" for record in records):
+        raise error(f"{experiment_id} has been invalidated and must not be run")
+    hashed = [record for record in records if record.get("frozen_spec_hash")]
     if (
-        not records
-        or records[-1].get("frozen_spec_hash") != spec_sha256
-        or records[-1].get("status") not in {"FROZEN", "EXPERIMENT_COMPLETE"}
+        not hashed
+        or hashed[-1].get("frozen_spec_hash") != spec_sha256
+        or hashed[-1].get("status") not in {"FROZEN", "EXPERIMENT_COMPLETE"}
     ):
         raise error(f"{experiment_id} spec is not the latest registry lock")

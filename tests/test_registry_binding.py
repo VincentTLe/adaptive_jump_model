@@ -48,8 +48,15 @@ def test_runnable_spec_matches_its_latest_registry_row(experiment_id: str) -> No
     assert spec.is_file(), f"{experiment_id}: spec file is missing"
     rows = _rows(experiment_id)
     assert rows, f"{experiment_id}: no registry row"
-    latest = rows[-1]
+    # Corrections and notes are appended later and carry no hash; the row that
+    # froze the bytes is the last one that does.
+    hashed = [row for row in rows if row.get("frozen_spec_hash")]
+    assert hashed, f"{experiment_id}: no row carries a spec hash"
+    latest = hashed[-1]
     assert latest["status"] in {"FROZEN", "EXPERIMENT_COMPLETE"}
+    assert not any(row.get("status") == "INVALIDATED" for row in rows), (
+        f"{experiment_id}: study is invalidated and must not remain runnable"
+    )
 
     import hashlib
 
@@ -129,6 +136,39 @@ def test_registry_lock_rejects_a_non_frozen_status(tmp_path: Path) -> None:
     root = _registry(tmp_path, "some-study-002", "a" * 64, "NOTE")
 
     with pytest.raises(ValueError, match="latest registry lock"):
+        registry_lock(root, "some-study-002", "a" * 64, error=ValueError)
+
+
+def test_registry_lock_ignores_a_later_hashless_correction(tmp_path: Path) -> None:
+    """A correction appended after completion must not un-run the study."""
+    root = _registry(tmp_path, "some-study-002", "a" * 64, "FROZEN")
+    with (root / "research/experiment_registry.jsonl").open(
+        "a", encoding="utf-8"
+    ) as handle:
+        handle.write(
+            json.dumps(
+                {"experiment_id": "some-study-002", "status": "CORRECTION"}
+            )
+            + "\n"
+        )
+
+    registry_lock(root, "some-study-002", "a" * 64, error=ValueError)
+
+
+def test_registry_lock_refuses_an_invalidated_study(tmp_path: Path) -> None:
+    """The negative case that matters: retired studies must not be runnable."""
+    root = _registry(tmp_path, "some-study-002", "a" * 64, "FROZEN")
+    with (root / "research/experiment_registry.jsonl").open(
+        "a", encoding="utf-8"
+    ) as handle:
+        handle.write(
+            json.dumps(
+                {"experiment_id": "some-study-002", "status": "INVALIDATED"}
+            )
+            + "\n"
+        )
+
+    with pytest.raises(ValueError, match="invalidated"):
         registry_lock(root, "some-study-002", "a" * 64, error=ValueError)
 
 

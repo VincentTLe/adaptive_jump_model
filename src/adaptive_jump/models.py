@@ -634,6 +634,22 @@ class _IdentityScaler:
         return np.asarray(features, dtype=float)
 
 
+def window_scaler(model_protocol: ModelProtocol, features: pd.DataFrame):
+    """The scaler a fit window must use under this protocol.
+
+    Every model fitted on a window has to make the same choice here, or two
+    variants of the same study end up seeing differently transformed features.
+    That is not hypothetical: until 2026-08-01 the custom variants applied
+    StandardScaler unconditionally while the baseline honoured the expanding
+    protocol, so return_aware and robust_l1 were fitted on doubly standardised
+    features. The branch lives here, once, and both call sites use it.
+    """
+    if model_protocol.standardizer == "expanding_full_history_ddof1":
+        # features were causally standardized upstream; keep them untouched
+        return _IdentityScaler().fit(features)
+    return StandardScaler().fit(features)
+
+
 def fit_fixed_jm_window(
     window: pd.DataFrame,
     model_protocol: ModelProtocol,
@@ -648,11 +664,7 @@ def fit_fixed_jm_window(
     observation_loss_scale = _validated_observation_loss_scale(observation_loss_scale)
     features = window.loc[:, feature_columns]
     returns = window.loc[:, "excess_return"]
-    if model_protocol.standardizer == "expanding_full_history_ddof1":
-        # features were causally standardized upstream; keep them untouched
-        scaler = _IdentityScaler().fit(features)
-    else:
-        scaler = StandardScaler().fit(features)
+    scaler = window_scaler(model_protocol, features)
     scaled_values = scaler.transform(features)
     if observation_loss_scale != 1.0:
         scaled_values = scaled_values * math.sqrt(observation_loss_scale)

@@ -20,6 +20,7 @@ from adaptive_jump.models import (
     fit_fixed_jm_window,
     fixed_jm_states,
     terminal_online_state,
+    window_scaler,
 )
 from adaptive_jump.simple_jm_l1 import L1JumpModel
 from adaptive_jump.simple_jm_return import (
@@ -391,7 +392,9 @@ def _fit_custom_window(
     if len(window) != model_protocol.fit_window:
         raise SimpleJMFitError("custom JM fit window violates the frozen length")
     features = window.loc[:, FEATURE_COLUMNS]
-    scaler = StandardScaler().fit(features)
+    # The same choice the baseline makes; see models.window_scaler for why this
+    # must not be decided independently here.
+    scaler = window_scaler(model_protocol, features)
     scaled = pd.DataFrame(
         scaler.transform(features), index=features.index, columns=features.columns
     )
