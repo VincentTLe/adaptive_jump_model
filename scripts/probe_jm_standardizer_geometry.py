@@ -9,13 +9,11 @@ Variants (lambda grid fixed at the sealed [0, 5, 15, 35, 70, 150] throughout):
   V1 window scaler      — raw features, per-refit StandardScaler fitted on
                           each 3000-day training window (the supported
                           "sklearn_standard_scaler_ddof0" src path).
-  V2 author recipe      — raw features, per refit clip at 3 window-sigmas THEN
                           StandardScaler, both frozen between refits
                           (example-code provenance, not paper text).
 
 Gate (spec probe_loop_gate): V1 is computed twice — through src
-fixed_jm_states and through the probe-local loop that V2 needs — and both
-must agree exactly before any V2 number is read.
+fixed_jm_states and through the probe-local loop — and both
 
 Raw features are masked to the sealed features' availability so every variant
 shares the sealed calendar (same first complete row, same refit schedule).
@@ -30,6 +28,12 @@ from math import ceil
 from multiprocessing import get_context
 from pathlib import Path
 
+# The clip-at-three-sigma variant that used to live here is DELETED, not
+# disabled. It comes from the authors' example notebook for a different data
+# set, it appears nowhere in the paper, and the owner forbade testing it. The
+# registry withdrew it on 2026-07-31 but the code kept running it and kept
+# writing its rows into the artifacts; removing the code is the only form of
+# withdrawal that holds.
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -37,7 +41,6 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from _shu_table4 import METRICS, TABLE4  # noqa: E402
-from sklearn.preprocessing import StandardScaler  # noqa: E402
 
 from adaptive_jump.backtest import apply_signal, performance_metrics  # noqa: E402
 from adaptive_jump.config import load_config  # noqa: E402
@@ -72,23 +75,7 @@ class ProbeFit:
         self.models = models
 
 
-class ClipStdScaler:
-    """The author-code recipe: clip at mean +/- 3 window-sigmas, then scale."""
 
-    def fit(self, features: pd.DataFrame) -> ClipStdScaler:
-        values = np.asarray(features, dtype=float)
-        mean = values.mean(axis=0)
-        std = values.std(axis=0, ddof=0)
-        self.lb = mean - 3.0 * std
-        self.ub = mean + 3.0 * std
-        self.scaler = StandardScaler().fit(np.clip(values, self.lb, self.ub))
-        self.mean_ = self.scaler.mean_
-        self.scale_ = self.scaler.scale_
-        return self
-
-    def transform(self, features: pd.DataFrame) -> np.ndarray:
-        values = np.asarray(features, dtype=float)
-        return self.scaler.transform(np.clip(values, self.lb, self.ub))
 
 
 def raw_feature_frame(frame: pd.DataFrame, cfg) -> pd.DataFrame:
@@ -309,7 +296,6 @@ def main() -> None:
         parity_lines.append(line)
         print(line, flush=True)
         variants["V1_window_scaler"] = v1_src
-        variants["V2_author_recipe"] = probe_loop(raw_frame, cfg, ClipStdScaler)
 
         for name, states in variants.items():
             states.to_csv(out_dir / f"{name}-states.csv", lineterminator="\n")
@@ -347,18 +333,17 @@ def main() -> None:
              " không nhận nuôi biến thể nào)", ""]
     lines.append("I1. Đường cong Table 3 (US, 1982-2023, shifts/năm):")
     header = f"   {'λ':>6}{'Shu':>7}"
-    for name in ("V0_expanding_sealed", "V1_window_scaler", "V2_author_recipe"):
+    for name in ("V0_expanding_sealed", "V1_window_scaler"):
         header += f"{name.split('_')[0]:>9}"
     lines.append(header)
     for lam, pub in zip(TABLE3_LAMBDAS, TABLE3_SHIFTS, strict=True):
         line = f"   {lam:>6g}{pub:>7.1f}"
-        for name in ("V0_expanding_sealed", "V1_window_scaler",
-                     "V2_author_recipe"):
+        for name in ("V0_expanding_sealed", "V1_window_scaler"):
             sub = curve_frame[(curve_frame["variant"] == name)
                               & (curve_frame["lambda"] == lam)]
             line += f"{sub.iloc[0].per_year_calendar:>9.2f}"
         lines.append(line)
-    for name in ("V0_expanding_sealed", "V1_window_scaler", "V2_author_recipe"):
+    for name in ("V0_expanding_sealed", "V1_window_scaler"):
         sub = curve_frame[curve_frame["variant"] == name]
         dev = (sub.per_year_calendar - sub.published).abs()
         spec_pass = int((dev <= SPEC_I1_TOL).sum())
@@ -368,14 +353,14 @@ def main() -> None:
                      f" ({HALF_UNIT}); I1 {'ĐẠT' if spec_pass >= 5 else 'KHÔNG ĐẠT'}")
     lines.append("")
     lines.append("I2. Anchor path CV-chọn (US; slide: 30 shifts, bear 19.7%):")
-    for name in ("V0_expanding_sealed", "V1_window_scaler", "V2_author_recipe"):
+    for name in ("V0_expanding_sealed", "V1_window_scaler"):
         r = anchor_frame[(anchor_frame.market == "us")
                          & (anchor_frame.variant == name)].iloc[0]
         lines.append(f"   {name}: {int(r.shifts)} shifts,"
                      f" bear {r.bear_share:.1%}")
     lines.append("")
     lines.append("I3. Ô Table 4 (JM) trong ngưỡng 0.05, mỗi thị trường:")
-    for name in ("V0_expanding_sealed", "V1_window_scaler", "V2_author_recipe"):
+    for name in ("V0_expanding_sealed", "V1_window_scaler"):
         row_cells = []
         for market in ("us", "de", "jp"):
             r = cell_frame[(cell_frame.market == market)
