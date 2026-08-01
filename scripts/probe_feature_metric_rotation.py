@@ -14,7 +14,7 @@ Four arms, all frozen a priori:
   identity  M = I                       -- gate: must reproduce the sealed states
   raw       M = R^-1                    -- rotation AND rescaling, confounded
   gapnorm   M = c R^-1, c = g'g / g'R^-1 g  -- rotation only; the arm that can support
-  diagonal  M = diag(R)^-1              -- sanity: must be a near no-op
+  prefix    M = R^-1 on a truncated window -- causality gate; see below
 
 R is the correlation matrix of the standardised features on the same trailing
 3000-observation window that fits the centres, so it is past-only.
@@ -50,7 +50,7 @@ BASELINE = (
 )
 OUT = ROOT / "artifacts/feature-metric-rotation/01-probe"
 MARKETS = ("us", "de", "jp")
-ARMS = ("identity", "raw", "gapnorm", "diagonal")
+ARMS = ("identity", "raw", "gapnorm")
 COST_BPS, DELAY = 10.0, 1
 
 
@@ -89,6 +89,17 @@ def transform_matrix(train_features: np.ndarray, arm: str, gap: np.ndarray):
 
 
 def _window_task(task):
+    """One refit window, one arm, with the metric normalised PER CANDIDATE.
+
+    The centre gap depends on lambda, so a normalisation computed from one
+    candidate does not hold for the others. The first version took the gap from
+    jm_protocol.lambda_grid[0] and applied the resulting metric to every
+    candidate - and since that first element is 0.0 in us but 150.0 in de and
+    10.0 in jp, the reference was not even consistent across markets. Each
+    candidate now gets its own gap, its own normalisation constant and its own
+    transform, so the gap-normalised arm really does hold the gap scale fixed
+    wherever the monthly selection lands.
+    """
     (
         block,
         fit_window,
@@ -99,30 +110,96 @@ def _window_task(task):
     ) = task
     with threadpool_limits(limits=1):
         columns = [*FEATURE_COLUMNS, "excess_return"]
+        width = len(FEATURE_COLUMNS)
         train = pd.DataFrame(block[:fit_window], columns=columns)
         baseline_fit = fit_fixed_jm_window(train, model_protocol, jm_protocol)
-        reference = baseline_fit.models[jm_protocol.lambda_grid[0]]
-        gap = np.asarray(reference.centers_)[1] - np.asarray(reference.centers_)[0]
-        features = block[:fit_window, : len(FEATURE_COLUMNS)]
-        factor, diagnostics = transform_matrix(features, arm, gap)
-
-        transformed = block.copy()
-        transformed[:, : len(FEATURE_COLUMNS)] = (
-            block[:, : len(FEATURE_COLUMNS)] @ factor.T
-        )
-        train_t = pd.DataFrame(transformed[:fit_window], columns=columns)
-        fitted = fit_fixed_jm_window(train_t, model_protocol, jm_protocol)
-        scaled = fitted.scaler.transform(
-            pd.DataFrame(
-                transformed[:, : len(FEATURE_COLUMNS)], columns=list(FEATURE_COLUMNS)
-            )
-        )
+        features = block[:fit_window, :width]
         states = np.empty((len(members), len(jm_protocol.lambda_grid)), dtype=float)
-        for i in range(len(members)):
-            window = scaled[i : i + fit_window]
-            for j, penalty in enumerate(jm_protocol.lambda_grid):
-                states[i, j] = terminal_online_state(fitted.models[penalty], window)
-        return states, diagnostics
+        per_candidate = []
+        for j, penalty in enumerate(jm_protocol.lambda_grid):
+            reference = baseline_fit.models[penalty]
+            centers = np.asarray(reference.centers_)
+            gap = centers[1] - centers[0]
+            factor, diagnostics = transform_matrix(features, arm, gap)
+            transformed = block.copy()
+            transformed[:, :width] = block[:, :width] @ factor.T
+            train_t = pd.DataFrame(transformed[:fit_window], columns=columns)
+            fitted = fit_fixed_jm_window(
+                train_t, model_protocol, replace(jm_protocol, lambda_grid=(penalty,))
+            )
+            scaled = fitted.scaler.transform(
+                pd.DataFrame(transformed[:, :width], columns=list(FEATURE_COLUMNS))
+            )
+            for i in range(len(members)):
+                states[i, j] = terminal_online_state(
+                    fitted.models[penalty], scaled[i : i + fit_window]
+                )
+            per_candidate.append(diagnostics)
+        # report the median across candidates; the spread is what the old
+        # single-candidate normalisation was hiding
+        summary = {
+            "c": float(np.median([d["c"] for d in per_candidate])),
+            "c_min": float(np.min([d["c"] for d in per_candidate])),
+            "c_max": float(np.max([d["c"] for d in per_candidate])),
+            "angle_deg": float(np.median([d["angle_deg"] for d in per_candidate])),
+        }
+        return states, summary
+
+
+def causal_prefix_gate(config, market: str, n_rows: int = 60) -> None:
+    """Appending future rows must not change the metric or the states before them.
+
+    This replaces a sanity arm that could never fail. That arm used
+    M = diag(R)^-1, and because a correlation matrix carries ones on its
+    diagonal the metric was the IDENTITY for any input whatsoever - it returned
+    a difference of exactly 0.0000 whether or not the causal cadence was right,
+    so the spec's falsifier_causality was unfireable and my report that it
+    "passed" carried no information.
+
+    The property actually worth checking is leakage: build the transform and
+    decode a window from data ending at date t, then repeat with future rows
+    appended, and demand both agree. If the correlation matrix were ever fitted
+    on the full series - the natural way to get this wrong - the two would
+    differ and this stops the run.
+    """
+    frame = pd.read_csv(BASELINE / market / "features.csv", parse_dates=["date"])
+    columns = [*FEATURE_COLUMNS, "excess_return"]
+    complete = frame.loc[frame.loc[:, columns].notna().all(axis=1)].reset_index(
+        drop=True
+    )
+    model_protocol = config.model_protocol
+    jm_protocol = config.jm_protocol_for(market)
+    fit_window = model_protocol.fit_window
+    members = list(range(n_rows))
+
+    short = complete.iloc[: fit_window + n_rows - 1].loc[:, columns].to_numpy(float)
+    long = complete.iloc[: fit_window + n_rows - 1 + 500].loc[:, columns].to_numpy(
+        float
+    )
+    for arm in ("raw", "gapnorm"):
+        a_states, a_diag = _window_task(
+            (short, fit_window, members, model_protocol, jm_protocol, arm)
+        )
+        b_states, b_diag = _window_task(
+            (long, fit_window, members, model_protocol, jm_protocol, arm)
+        )
+        if not np.array_equal(a_states, b_states):
+            raise SystemExit(
+                f"CAUSALITY GATE FAILED ({market}, {arm}): appending 500 future "
+                "rows changed the decoded states of earlier days"
+            )
+        if abs(a_diag["angle_deg"] - b_diag["angle_deg"]) > 1e-9 or abs(
+            a_diag["c"] - b_diag["c"]
+        ) > 1e-9:
+            raise SystemExit(
+                f"CAUSALITY GATE FAILED ({market}, {arm}): the metric itself "
+                "changed when future rows were appended"
+            )
+    print(
+        f"causality gate {market}: metric and {n_rows} decoded days unchanged "
+        "by 500 appended future rows",
+        flush=True,
+    )
 
 
 def run_arm(config, market, arm, n_jobs):
@@ -142,7 +219,8 @@ def run_arm(config, market, arm, n_jobs):
     for terminal in range(fit_window - 1, len(complete)):
         current = dates[terminal]
         key = (current.year, current.month)
-        if not have_fit or (current.month in jm_protocol.refit_months and key != anchor):
+        scheduled = current.month in jm_protocol.refit_months
+        if not have_fit or (scheduled and key != anchor):
             refits.append(terminal)
             anchor, have_fit = key, True
         governing.append(refits[-1])
@@ -242,6 +320,8 @@ def main() -> int:
     }
     print("strict three-way bar max(B&H, HMM, calibrated fixed_jm):",
           {k: round(v, 4) for k, v in bar.items()}, flush=True)
+    for market in MARKETS:
+        causal_prefix_gate(config, market)
 
     rows = []
     for arm in ARMS:
@@ -281,9 +361,12 @@ def main() -> int:
             )
             print(
                 f"{arm:<9}{market} sharpe={scored['sharpe']:.4f} "
-                f"(bar {bar[market]:.4f} -> {'WIN' if scored['sharpe'] > bar[market] else 'no'})"
-                f" mdd={scored['maximum_drawdown']:.4f} turn={scored['turnover']:.4f} "
-                f"sw={scored['switch_count']} angle={diagnostics['angle_deg'].median():.1f}deg "
+                f"(bar {bar[market]:.4f} -> "
+                f"{'WIN' if scored['sharpe'] > bar[market] else 'no'})"
+                f" mdd={scored['maximum_drawdown']:.4f} "
+                f"turn={scored['turnover']:.4f} "
+                f"sw={scored['switch_count']} "
+                f"angle={diagnostics['angle_deg'].median():.1f}deg "
                 f"c={diagnostics['c'].median():.3f}",
                 flush=True,
             )
@@ -292,11 +375,6 @@ def main() -> int:
 
     print("\n=== DECISION RULE (declared before running) ===")
     wins = frame[(frame.arm == "gapnorm") & frame.beats_bar]["market"].tolist()
-    diagonal = frame[frame.arm == "diagonal"].merge(
-        frame[frame.arm == "identity"], on="market", suffixes=("_d", "_i")
-    )
-    drift = (diagonal["sharpe_d"] - diagonal["sharpe_i"]).abs().max()
-    print(f"diagonal sanity arm: largest |Sharpe - identity| = {drift:.4f}")
     print(f"gap-normalised arm wins the strict three-way bar in: {wins or 'no market'}")
     if len(wins) == 3:
         print("SUPPORTED under the frozen rule.")
