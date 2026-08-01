@@ -34,6 +34,18 @@ CELLS = (
 )
 COST, DELAY = 10.0, 1
 
+# Table 5 publishes the same strategy at delays 5 and 10, and no grid search has
+# ever seen those columns. score() therefore takes the delay as an argument.
+# The hazard this reopens is the one an audit already caught once: DELAY used to
+# key BOTH the computed path and the sealed row it was checked against, so a
+# wrong delay moved the answer and its own known answer together and passed.
+# The rules that keep it shut, enforced in self_test():
+#   - the Table-4 known answer is checked at delay 1 and only at delay 1;
+#   - every delay is checked against the sealed row for THAT delay; and
+#   - the delays are asserted to disagree with each other, so a delay argument
+#     that silently fails to propagate cannot pass as a match.
+DELAYS = (1, 5, 10)
+
 
 def resolve_columns(states: pd.DataFrame, penalties, source_name: str) -> list:
     """Exact column match for each penalty, or refuse and name the file.
@@ -56,8 +68,21 @@ def resolve_columns(states: pd.DataFrame, penalties, source_name: str) -> list:
     return columns
 
 
-def score(market: str, penalties, states_csv: Path | None = None) -> dict:
-    """The eight cells for one grid, through the sealed pipeline."""
+def score(
+    market: str,
+    penalties,
+    states_csv: Path | None = None,
+    delay: int = DELAY,
+) -> dict:
+    """The eight cells for one grid at one trading delay, sealed pipeline.
+
+    The delay enters BOTH the cross-validation that picks the penalty each month
+    and the execution of the resulting signal, which is what the Table 5 caption
+    requires at line 979: "A corresponding trading delay is also applied in the
+    cross-validation when selecting the optimal smoothing hyperparameter."
+    """
+    if delay not in DELAYS:
+        raise SystemExit(f"delay {delay!r} is not published; Table 5 has {DELAYS}")
     config = load_config(ROOT / "research-calibrated-v10.toml")
     frame = pd.read_csv(BASE / market / "features.csv", parse_dates=["date"])
     source = states_csv or (BASE / market / "jm-states.csv")
@@ -68,7 +93,7 @@ def score(market: str, penalties, states_csv: Path | None = None) -> dict:
         frame[["date", "equity_simple", "cash_return"]],
         states.loc[:, columns],
         config.selection_protocol,
-        delay_trading_days=DELAY,
+        delay_trading_days=delay,
         one_way_cost_bps=COST,
         periods_per_year=config.metrics_protocol.periods_per_year,
         volatility_ddof=config.metrics_protocol.volatility_ddof,
@@ -79,14 +104,14 @@ def score(market: str, penalties, states_csv: Path | None = None) -> dict:
     path = apply_signal(
         merged[["date", "equity_simple", "cash_return"]],
         merged["s"],
-        delay_trading_days=DELAY,
+        delay_trading_days=delay,
         one_way_cost_bps=COST,
     )
     reported = pd.read_csv(BASE / "metrics.csv", parse_dates=["start", "end"])
     row = reported[
         (reported.market == market)
         & (reported.model == "fixed_jm")
-        & (reported.delay == DELAY)
+        & (reported.delay == delay)
     ].iloc[0]
     kept = path[
         (path["date"] >= row["start"]) & (path["date"] <= row["end"])
@@ -124,24 +149,40 @@ def self_test() -> None:
     worst = 0.0
     for market in ("us", "de", "jp"):
         grid = config.jm_protocol_for(market).lambda_grid
-        got = score(market, grid)
-        row = reported[
-            (reported.market == market)
-            & (reported.model == "fixed_jm")
-            & (reported.delay == DELAY)
-        ].iloc[0]
-        for cell in CELLS:
-            gap = abs(float(got[cell]) - float(row[cell]))
-            # `gap > tol` is False when gap is NaN, and max(0.0, nan) is 0.0,
-            # so an all-NaN score used to print "SELF TEST PASSED (0.00e+00)".
-            # Both comparisons are now written so NaN fails.
-            if not (gap <= 1e-9):
+        by_delay = {}
+        for delay in DELAYS:
+            got = score(market, grid, delay=delay)
+            by_delay[delay] = got
+            row = reported[
+                (reported.market == market)
+                & (reported.model == "fixed_jm")
+                & (reported.delay == delay)
+            ].iloc[0]
+            for cell in CELLS:
+                gap = abs(float(got[cell]) - float(row[cell]))
+                # `gap > tol` is False when gap is NaN, and max(0.0, nan) is
+                # 0.0, so an all-NaN score used to print "SELF TEST PASSED
+                # (0.00e+00)". Both comparisons are written so NaN fails.
+                if not (gap <= 1e-9):
+                    raise SystemExit(
+                        f"SELF TEST FAILED: {market} delay {delay} {cell} "
+                        f"{got[cell]!r} vs sealed {row[cell]!r}"
+                    )
+                worst = max(worst, gap)
+        # A delay argument that never reaches the pipeline would agree with the
+        # sealed rows only if those rows were themselves identical. They are
+        # not, so requiring the delays to disagree turns "the argument is
+        # ignored" from a passing test into a failing one.
+        for a, b in ((1, 5), (5, 10), (1, 10)):
+            if abs(by_delay[a]["sharpe"] - by_delay[b]["sharpe"]) <= 1e-9:
                 raise SystemExit(
-                    f"SELF TEST FAILED: {market} {cell} {got[cell]!r} vs sealed "
-                    f"{row[cell]!r}"
+                    f"SELF TEST FAILED: {market} delays {a} and {b} give the "
+                    f"same sharpe; the delay argument is not reaching the run"
                 )
-            worst = max(worst, gap)
-        print(f"  self test {market}: 8 cells reproduce the sealed run", flush=True)
+        print(
+            f"  self test {market}: 8 cells x 3 delays reproduce the sealed run",
+            flush=True,
+        )
 
     # The reported numbers all come through the states_csv path with grids the
     # sealed run never used, and the check above never touched that path: a
@@ -179,21 +220,43 @@ def self_test() -> None:
     print(f"SELF TEST PASSED (worst absolute difference {worst:.2e})", flush=True)
 
 
+def targets(market: str, delay: int) -> dict:
+    """The published cells for this market and delay, and where they came from.
+
+    Delay 1 is Table 4, eight cells, and it is the table every grid search in
+    this project optimised against. Delays 5 and 10 are Table 5, three cells,
+    and no search has ever seen them: they are the held-out set that decides
+    whether a selected grid is a measurement or an artefact of the search.
+    """
+    sys.path.insert(0, str(ROOT / "scripts"))
+    if delay == 1:
+        from _shu_table4 import TABLE4  # noqa: PLC0415
+
+        return TABLE4[market]["fixed_jm"]
+    from _shu_table5 import TABLE5_JM  # noqa: PLC0415
+
+    return TABLE5_JM[market][delay]
+
+
 def main() -> int:
-    if len(sys.argv) < 2 or sys.argv[1] == "--self-test":
+    flags = [a for a in sys.argv[1:] if a.startswith("--delay")]
+    positional = [a for a in sys.argv[1:] if not a.startswith("--")]
+    delay = int(flags[0].split("=")[1]) if flags else DELAY
+    if not positional or "--self-test" in sys.argv[1:]:
         self_test()
         return 0
-    from _shu_table4 import TABLE4  # noqa: PLC0415
-
     sys.path.insert(0, str(ROOT / "scripts"))
-    market = sys.argv[1]
-    penalties = [float(v) for v in sys.argv[2].split(",")]
-    states = Path(sys.argv[3]) if len(sys.argv) > 3 else None
-    got = score(market, penalties, states)
-    target = TABLE4[market]["fixed_jm"]
+    from _shu_table5 import grade  # noqa: PLC0415
+
+    market = positional[0]
+    penalties = [float(v) for v in positional[1].split(",")]
+    states = Path(positional[2]) if len(positional) > 2 else None
+    got = score(market, penalties, states, delay=delay)
+    target = targets(market, delay)
+    source = "Table 4" if delay == 1 else "Table 5 (HELD OUT)"
     worst = 0.0
-    print(f"{market.upper()}  grid {sys.argv[2]}")
-    for cell in CELLS:
+    print(f"{market.upper()}  delay {delay}  {source}  grid {positional[1]}")
+    for cell in target:
         rel = abs(got[cell] - target[cell]) / max(abs(target[cell]), 1e-9)
         # NaN must propagate into the headline. `max(0.0, nan)` is 0.0, so the
         # obvious accumulation reported an uncomputable cell as a perfect match.
@@ -201,9 +264,13 @@ def main() -> int:
         if not np.isfinite(rel):
             worst = float("nan")
         print(
-            f"   {cell:<24}{got[cell]:>9.3f}  Shu {target[cell]:>7.3f}  ({rel:>5.1%})"
+            f"   {cell:<24}{got[cell]:>9.3f}  Shu {target[cell]:>7.3f}  "
+            f"({rel:>5.1%})  {grade(rel)}"
         )
-    print(f"   switches {got['switches']}   worst relative deviation {worst:.1%}")
+    print(
+        f"   switches {got['switches']}   worst relative deviation {worst:.1%}"
+        f"   GRADE {grade(worst)}"
+    )
     if not np.isfinite(worst):
         print("   REFUSING: at least one cell is not finite", flush=True)
         return 1

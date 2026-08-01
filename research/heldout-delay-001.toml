@@ -1,0 +1,119 @@
+schema_version = 1
+experiment_id = "heldout-delay-001"
+parent_id = "dense-menu-exhaustive-001"
+claim_class = "CONFIRMATORY"
+frozen_at_utc = "2026-08-01T21:52:12Z"
+status = "FROZEN_BEFORE_RESULTS"
+
+[question]
+text = "Do the lambda grids selected by minimising deviation on Shu's Table 4, which is a delay-1 table, also reproduce Table 5 at trading delays of 5 and 10 days, which no search in this project has ever seen?"
+rationale = """
+Every grid this project has reported was the argmin of a search whose objective
+function WAS the number reported. Under AGENTS.md section 7.3 that is a
+selection statistic, not a measurement, and it may not be quoted as a
+reproduction result. The same section names the remedy: evaluate the selected
+setting on published cells the search never saw.
+
+Table 5 is exactly that. It publishes the JM strategy's return, Sharpe and
+Calmar at trading delays of 1, 5 and 10 for all three markets. Delay 1
+duplicates Table 4 and is IN sample. Delays 5 and 10 are eighteen published
+cells that entered no objective function, and the paper fixes the protocol that
+makes the comparison fair at line 979: "A corresponding trading delay is also
+applied in the cross-validation when selecting the optimal smoothing
+hyperparameter." The grid is held fixed; only the delay changes, in both the
+monthly cross-validation and the execution.
+
+This is a prediction, not a fit. If the searched grids are picking up the
+authors' actual candidate set, their advantage over the pre-specified default
+should survive the change of delay. If they are picking up delay-1 noise, it
+should not.
+"""
+
+[sources]
+canonical_config = "research-calibrated-v10.toml"
+canonical_run_id = "fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736"
+canonical_run_root = "artifacts/fixed-baselines/fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736"
+published_target = "scripts/_shu_table5.py, transcribed from data/external/inputs/shu_paper.txt lines 961-975"
+scorer = "scripts/score_grid.py, the shared scorer, known-answer self-test over 3 markets x 3 delays x 8 cells against the sealed run"
+markets = ["us", "de", "jp"]
+
+[protocol]
+held_out_delays = [5, 10]
+in_sample_delay = 1
+cells = ["cagr", "sharpe", "calmar"]
+delay_enters = "both the monthly lambda cross-validation and the signal execution, per the Table 5 caption at line 979"
+states_reused = "yes - the fitted state matrices do not depend on the trading delay, only the selection and execution do"
+one_way_cost_bps = 10
+evaluation_window = "the sealed run's own start/end for that market and delay"
+
+# The two arms are declared here so neither can be chosen after the numbers are
+# seen. Arm A is the pre-specified default that AGENTS.md 7.3 requires to be
+# reported alongside any search winner.
+[arms.A_sealed_default]
+label = "v10 calibrated baseline grid"
+provenance = "adopted by owner decision, registry baseline-reseal-v10; a calibration artifact, never claimed to be the authors' grid"
+us = [0.0, 21.544346900318832, 70.0]
+de = [150.0, 500.0]
+jp = [10.0, 220.0]
+
+[arms.B_minimax_search]
+label = "minimax-relative-deviation grid from the exhaustive dense-menu search"
+provenance = "argmin over 14,196,820 subsets of a 48-value log-spaced menu, objective = worst relative deviation across the eight Table-4 cells; registry dense-menu-exhaustive-001"
+us = [15.0, 70.0, 100.0, 220.0]
+de = [0.0, 1.8752629683227295, 2.609667762943081, 847.6927686223468]
+jp = [1.589646857512456, 36.708747537563134, 137.67710974140059, 162.41392499448904, 1000.0]
+
+# AGENTS.md section 7.1. Frozen before any held-out number exists.
+[grading]
+scale = "relative deviation |ours - theirs| / |theirs| per cell, headline = worst cell"
+A = "<= 2 percent, reproduced"
+B = "2 to 20 percent, reproduced with deviation, name the driver"
+C = "20 to 40 percent, partial"
+D = "40 to 60 percent, not reproduced"
+F = "> 60 percent or not finite, not reproduced"
+
+[decision_rule]
+text = """
+Declared before running, and binding whichever way it falls.
+
+1. HELD-OUT GRADE. For each arm and market, the reported result is the worst
+   cell over the six held-out cells (2 delays x 3 metrics). This is the only
+   number either arm may quote as a reproduction result.
+
+2. DOES THE SEARCH GENERALISE? Arm B beats arm A on Table 4 by construction, so
+   that comparison carries no information. The informative comparison is on the
+   held-out cells. If B's held-out worst cell is not better than A's, then the
+   Table-4 advantage of the searched grids did not generalise, the searches
+   measured delay-1 noise, and no searched grid may be described as closer to
+   the authors' than the pre-specified default.
+
+3. NO RESCUE. If neither arm reaches at least a B, that is the answer. It may
+   not be followed by a search over the delay-5 or delay-10 cells; doing so
+   would consume the only held-out set the paper provides and there is no
+   second one.
+
+4. WHAT A B MEANS. A B-grade gap is the expected outcome of an independent
+   reimplementation of a paper whose feature standardisation, candidate set and
+   data vendor are all unstated (AGENTS.md 7.5). It is reported as the result,
+   with the sign and driver of the gap named, and not treated as a defect.
+"""
+
+[preregistered_expectations]
+text = """
+Recorded so that the outcome cannot be narrated as having been expected.
+
+- Arm A at delay 5, from the sealed run's already-committed rows, is visibly
+  close to Table 5 for the US and Germany, so an A or B for those is likely and
+  is NOT evidence about the searches either way.
+- Whether arm B generalises is genuinely unknown to me at freeze time. The DE
+  and JP arm-B grids contain values (847.69, 1000.0) whose selection was driven
+  by one or two Table-4 cells, and a penalty that large has a mechanical effect
+  on persistence that longer delays are precisely designed to expose. I expect
+  B to hold up in the US and I do not know for DE and JP.
+- Japan's delay-10 Calmar target is 0.07, the smallest number in the table, so
+  its relative deviation is the most fragile cell in the held-out set and
+  should be read with that in mind rather than treated as decisive.
+"""
+
+[audit]
+requirement = "The result is not reportable until a separate agent, which did not write the scorer or this spec and does not share its context, has recomputed the held-out cells independently and checked this spec against what was actually run."
