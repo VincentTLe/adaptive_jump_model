@@ -23,12 +23,43 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from concurrent.futures import ProcessPoolExecutor  # noqa: E402
+from multiprocessing import get_context  # noqa: E402
+
 from _shu_table4 import TABLE4  # noqa: E402
+from threadpoolctl import threadpool_limits  # noqa: E402
 
 from adaptive_jump.backtest import apply_signal, performance_metrics  # noqa: E402
 from adaptive_jump.config import load_config  # noqa: E402
 from adaptive_jump.models import fixed_jm_states  # noqa: E402
 from adaptive_jump.walkforward import select_monthly_candidate  # noqa: E402
+
+_WORKER: dict = {}
+
+
+def _init_worker(market, config, frame, states, window, target) -> None:
+    """Load the shared inputs once per process instead of once per task."""
+    _WORKER.update(
+        market=market,
+        config=config,
+        frame=frame,
+        states=states,
+        window=window,
+        target=target,
+    )
+
+
+def _score_task(grid):
+    with threadpool_limits(limits=1):
+        scored = score_grid(
+            _WORKER["config"],
+            _WORKER["market"],
+            _WORKER["frame"],
+            _WORKER["states"],
+            grid,
+            _WORKER["window"],
+        )
+        return grid, worst_relative(scored, _WORKER["target"])
 
 BASE = (
     ROOT / "artifacts/fixed-baselines/"
@@ -128,43 +159,44 @@ def main() -> int:
         # an empty set here because a one-element grid gives the monthly
         # selection nothing to choose between, so the first move has to be a
         # pair and there are few enough of them to enumerate.
-        chosen: list[float] = []
-        best_score = np.inf
-        for left, right in itertools.combinations(menu, 2):
-            score = worst_relative(
-                score_grid(config, market, frame, states, (left, right), window),
-                target,
-            )
-            if score < best_score - 1e-12:
-                best_score, chosen = score, [left, right]
-        if not chosen:
-            raise SystemExit(f"{market}: no admissible pair in the dense menu")
-        print(
-            f"  {market} seed: {sorted(chosen)} -> worst {best_score:.4f}",
-            flush=True,
+        # Every grid is scored independently, so the search fans out. The state
+        # matrix is loaded once per worker rather than pickled per task.
+        executor = ProcessPoolExecutor(
+            max_workers=n_jobs,
+            mp_context=get_context("forkserver"),
+            initializer=_init_worker,
+            initargs=(market, config, frame, states, window, target),
         )
-        for step in range(6):
-            candidate, candidate_score = None, best_score
-            for value in menu:
-                if value in chosen:
-                    continue
-                trial = tuple(sorted([*chosen, value]))
-                if len(trial) < 2:
-                    continue
-                score = worst_relative(
-                    score_grid(config, market, frame, states, trial, window), target
-                )
-                if score < candidate_score - 1e-12:
-                    candidate, candidate_score = value, score
-            if candidate is None:
-                break
-            chosen.append(candidate)
-            best_score = candidate_score
+        try:
+            pairs = list(itertools.combinations(menu, 2))
+            print(f"  {market}: scoring {len(pairs)} seed pairs ...", flush=True)
+            seeded = list(executor.map(_score_task, pairs, chunksize=8))
+            best_pair, best_score = min(seeded, key=lambda row: row[1])
+            chosen = list(best_pair)
             print(
-                f"  {market} step {step + 1}: added {candidate:g} -> worst "
-                f"{best_score:.4f}  grid {sorted(chosen)}",
+                f"  {market} seed: {sorted(chosen)} -> worst {best_score:.4f}",
                 flush=True,
             )
+            for step in range(6):
+                trials = [
+                    tuple(sorted([*chosen, value]))
+                    for value in menu
+                    if value not in chosen
+                ]
+                scored = list(executor.map(_score_task, trials, chunksize=4))
+                trial, score = min(scored, key=lambda row: row[1])
+                if score >= best_score - 1e-12:
+                    print(f"  {market}: no further improvement", flush=True)
+                    break
+                added = next(v for v in trial if v not in chosen)
+                chosen, best_score = list(trial), score
+                print(
+                    f"  {market} step {step + 1}: added {added:g} -> worst "
+                    f"{best_score:.4f}  grid {sorted(chosen)}",
+                    flush=True,
+                )
+        finally:
+            executor.shutdown()
         final = tuple(sorted(chosen))
         scored = score_grid(config, market, frame, states, final, window)
         rows.append(
