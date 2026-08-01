@@ -62,7 +62,11 @@ def _sweep(task):
     governing = primary["governing"]
 
     combos = np.array(
-        list(itertools.islice(itertools.combinations(range(len(lambdas)), size), lo, hi)),
+        list(
+            itertools.islice(
+                itertools.combinations(range(len(lambdas)), size), lo, hi
+            )
+        ),
         dtype=np.int64,
     )
     if not len(combos):
@@ -144,7 +148,10 @@ def main() -> int:
 
         collected.sort(key=lambda row: (-row[0], len(row[1]), max(row[1]), row[1]))
         frame = pd.DataFrame(
-            [{"agreement": s, "grid": "|".join(f"{v:g}" for v in g)} for s, g in collected]
+            [
+                {"agreement": s, "grid": "|".join(f"{v:g}" for v in g)}
+                for s, g in collected
+            ]
         )
         frame.to_csv(OUT / f"ranking-{market}.csv", index=False)
         adopted_key = "|".join(f"{v:g}" for v in ADOPTED[market])
@@ -152,7 +159,9 @@ def main() -> int:
         winner_score, winner_grid = collected[0]
         ties = sum(1 for s, _ in collected if s == winner_score)
         adopted_score = (
-            float(adopted_row["agreement"].iloc[0]) if len(adopted_row) else float("nan")
+            float(adopted_row["agreement"].iloc[0])
+            if len(adopted_row)
+            else float("nan")
         )
         print(
             f"  winner  {'|'.join(f'{v:g}' for v in winner_grid):<28} "
