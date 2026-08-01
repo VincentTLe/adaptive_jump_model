@@ -75,9 +75,20 @@ def verify_source_identity(
     if not metadata_path.is_file():
         raise error(f"{label} source run is missing: {run_dir}")
     metadata = read_json(metadata_path)
-    if metadata.get("experiment_id") != reference.experiment_id:
+    if "experiment_id" in metadata:
+        if metadata["experiment_id"] != reference.experiment_id:
+            raise error(
+                f"{label} source experiment_id is not "
+                f"{reference.experiment_id}: {run_dir}"
+            )
+    elif config_sha256 is None:
+        # Replication runs identify themselves by run id and contract hash, not
+        # by an experiment id -- that field is a study-run convention. Accepting
+        # such a run without a contract hash to check would leave only the run
+        # id, so refuse instead.
         raise error(
-            f"{label} source experiment_id is not {reference.experiment_id}: {run_dir}"
+            f"{label} source has no experiment_id and no contract hash to "
+            f"check against: {run_dir}"
         )
     if metadata.get("run_id") != reference.run_id:
         raise error(f"{label} source run_id changed: {run_dir}")
