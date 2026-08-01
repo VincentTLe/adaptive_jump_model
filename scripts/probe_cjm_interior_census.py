@@ -63,26 +63,48 @@ def refit_schedule(complete: pd.DataFrame, fit_window: int, refit_months) -> tup
 
 
 def _window_task(task):
-    """One refit window: fit both models, then walk its online days."""
-    values, penalties, fit_window, terminals, model_kwargs = task
+    """One refit window: fit both models, then walk its online days.
+
+    The discrete side goes through the sealed fitter itself, so parity with
+    the sealed run is by construction rather than by re-derivation; the
+    continuous model is then fitted on the identical scaled matrix and the
+    identical return series, so the only difference between the two is
+    ``cont``.
+    """
+    values, penalties, fit_window, terminals, model_protocol, jm_protocol = task
     with threadpool_limits(limits=1):
-        train = values[:fit_window]
+        columns = [*FEATURE_COLUMNS, "excess_return"]
+        train = pd.DataFrame(values[:fit_window], columns=columns)
+        sealed = fit_fixed_jm_window(train, model_protocol, jm_protocol)
+        scaled_all = sealed.scaler.transform(
+            pd.DataFrame(
+                values[:, : len(FEATURE_COLUMNS)], columns=list(FEATURE_COLUMNS)
+            )
+        )
+        scaled_train = pd.DataFrame(
+            scaled_all[:fit_window], columns=list(FEATURE_COLUMNS)
+        )
+        returns = train.loc[:, "excess_return"]
         out = {}
         for penalty in penalties:
-            discrete = JumpModel(jump_penalty=penalty, cont=False, **model_kwargs)
-            discrete.fit(pd.DataFrame(train), sort_by="cumret")
             continuous = JumpModel(
+                n_components=model_protocol.n_states,
                 jump_penalty=penalty,
                 cont=True,
                 grid_size=GRID_SIZE,
-                **model_kwargs,
-            )
-            continuous.fit(pd.DataFrame(train), sort_by="cumret")
+                mode_loss=True,
+                random_state=jm_protocol.random_state,
+                max_iter=jm_protocol.max_iter,
+                tol=jm_protocol.tol,
+                n_init=jm_protocol.n_init,
+            ).fit(scaled_train, ret_ser=returns, sort_by="cumret")
             states = np.empty(len(terminals), dtype=float)
             maxima = np.empty(len(terminals), dtype=float)
             for i in range(len(terminals)):
-                window = pd.DataFrame(values[i : i + fit_window])
-                states[i] = float(discrete.predict_online(window).iloc[-1])
+                window = scaled_all[i : i + fit_window]
+                states[i] = float(
+                    terminal_online_state(sealed.models[penalty], window)
+                )
                 proba = continuous.predict_proba_online(window)
                 maxima[i] = float(np.asarray(proba)[-1].max())
             out[penalty] = (states, maxima)
