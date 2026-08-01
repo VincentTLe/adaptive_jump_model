@@ -14,6 +14,7 @@ published Table-4 cells. Still a calibration search, still labelled as one.
 """
 
 import itertools
+import math
 import sys
 import time
 from pathlib import Path
@@ -149,15 +150,29 @@ def _exhaustive(task):
     return best
 
 
+# Grids already known to be good, from the sparse and dense searches. Local
+# search that starts from random points would spend its budget rediscovering
+# what is already known; seeding it means it starts ABOVE the current best and
+# every reported improvement is a real improvement on the record.
+KNOWN_GOOD = {
+    "de": ([0, 2, 3, 848], [0, 4, 5, 10, 15, 40]),
+    "jp": ([2, 37, 138, 162, 1000], [2, 15, 27, 35, 52, 220]),
+}
+
+
 def _local(task):
-    """Iterated local search from a random restart; returns the best found."""
-    seed, n, sizes, seconds = task
+    """Iterated local search; the first restarts use the known-good grids."""
+    seed, n, sizes, seconds, seeds_for_market = task
     rng = np.random.default_rng(seed)
     best = (np.inf, ())
     deadline = time.time() + seconds
+    queue = list(seeds_for_market) if seed < len(seeds_for_market) else []
     while time.time() < deadline:
-        size = int(rng.choice(sizes))
-        current = tuple(sorted(rng.choice(n, size=size, replace=False).tolist()))
+        if queue:
+            current = queue.pop(0)
+        else:
+            size = int(rng.choice(sizes))
+            current = tuple(sorted(rng.choice(n, size=size, replace=False).tolist()))
         score = float(_worst(np.array([current]))[0])
         improved = True
         while improved and time.time() < deadline:
@@ -202,11 +217,12 @@ def main() -> int:
         lambdas = cache["lambdas"]
         n = len(lambdas)
         print(f"\n=== {market.upper()}: {n} duong trang thai phan biet ===", flush=True)
-        exhaustive_sizes = [
-            k for k in range(2, 9)
-            if len(list(itertools.combinations(range(min(n, 30)), k))) or True
-            and __import__("math").comb(n, k) <= BUDGET
-        ]
+        # `X or True and Y` parses as `X or Y` with X always truthy, so an
+        # earlier version of this line silently ignored the budget and tried to
+        # enumerate 5.7e12 subsets. Keep it a single comparison.
+        exhaustive_sizes = [k for k in range(2, 9) if math.comb(n, k) <= BUDGET]
+        if not exhaustive_sizes:
+            raise SystemExit(f"{market}: even pairs exceed the budget")
         print(f"  quet can duoc cho co: {exhaustive_sizes}", flush=True)
         executor = ProcessPoolExecutor(
             max_workers=n_jobs, mp_context=get_context("forkserver"),
@@ -229,7 +245,18 @@ def main() -> int:
             if remaining:
                 print(f"  tim cuc bo cho co {remaining}, {minutes:g} phut ...",
                       flush=True)
-                tasks = [(s, n, remaining, minutes * 60) for s in range(n_jobs)]
+                lookup = {float(v): i for i, v in enumerate(lambdas)}
+                seeds = []
+                for grid in KNOWN_GOOD.get(market, ()):
+                    members = tuple(sorted(
+                        lookup[float(v)] for v in grid if float(v) in lookup
+                    ))
+                    if len(members) >= 2:
+                        seeds.append(members)
+                print(f"  gieo mam tu {len(seeds)} luoi da biet la tot", flush=True)
+                tasks = [
+                    (s, n, remaining, minutes * 60, seeds) for s in range(n_jobs)
+                ]
                 found = min(executor.map(_local, tasks), key=lambda r: r[0])
                 print(f"  tim cuc bo -> worst {found[0]:.4f}", flush=True)
                 if found[0] < best[0]:
