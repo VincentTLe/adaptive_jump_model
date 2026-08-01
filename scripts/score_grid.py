@@ -35,6 +35,27 @@ CELLS = (
 COST, DELAY = 10.0, 1
 
 
+def resolve_columns(states: pd.DataFrame, penalties, source_name: str) -> list:
+    """Exact column match for each penalty, or refuse and name the file.
+
+    Kept separate from score() so the refusal can be tested without going
+    through the scorer - an audit found the check unreachable when score() is
+    stubbed, which is exactly how the reported numbers get produced.
+    """
+    columns = []
+    for value in penalties:
+        matches = [
+            c for c in states.columns
+            if np.isclose(c, float(value), rtol=1e-9, atol=1e-9)
+        ]
+        if len(matches) != 1:
+            raise SystemExit(
+                f"penalty {value!r} is not a column of {source_name}"
+            )
+        columns.append(matches[0])
+    return columns
+
+
 def score(market: str, penalties, states_csv: Path | None = None) -> dict:
     """The eight cells for one grid, through the sealed pipeline."""
     config = load_config(ROOT / "research-calibrated-v10.toml")
@@ -42,15 +63,7 @@ def score(market: str, penalties, states_csv: Path | None = None) -> dict:
     source = states_csv or (BASE / market / "jm-states.csv")
     states = pd.read_csv(source, index_col=0, parse_dates=[0])
     states.columns = [float(c) for c in states.columns]
-    columns = []
-    for value in penalties:
-        matches = [c for c in states.columns if np.isclose(c, float(value),
-                                                           rtol=1e-9, atol=1e-9)]
-        if len(matches) != 1:
-            raise SystemExit(
-                f"{market}: penalty {value!r} is not a column of {source.name}"
-            )
-        columns.append(matches[0])
+    columns = resolve_columns(states, penalties, f"{market}: {source.name}")
     selection = select_monthly_candidate(
         frame[["date", "equity_simple", "cash_return"]],
         states.loc[:, columns],
@@ -95,7 +108,17 @@ def score(market: str, penalties, states_csv: Path | None = None) -> dict:
 
 
 def self_test() -> None:
-    """Score the grid the sealed run used; it must reproduce that run's metrics."""
+    """Score the grid the sealed run used; it must reproduce that run's metrics.
+
+    DELAY keys both the path and the row it is compared against, so changing it
+    used to move the answer and its own known answer together and the test
+    passed at a six-day holding delay. It is now pinned: the module must be at
+    delay 1, asserted here, because Table 4 is a delay-1 table.
+    """
+    if DELAY != 1:
+        raise SystemExit(
+            f"SELF TEST FAILED: DELAY is {DELAY}, but Table 4 is a delay-1 table"
+        )
     config = load_config(ROOT / "research-calibrated-v10.toml")
     reported = pd.read_csv(BASE / "metrics.csv")
     worst = 0.0
@@ -109,13 +132,50 @@ def self_test() -> None:
         ].iloc[0]
         for cell in CELLS:
             gap = abs(float(got[cell]) - float(row[cell]))
-            worst = max(worst, gap)
-            if gap > 1e-9:
+            # `gap > tol` is False when gap is NaN, and max(0.0, nan) is 0.0,
+            # so an all-NaN score used to print "SELF TEST PASSED (0.00e+00)".
+            # Both comparisons are now written so NaN fails.
+            if not (gap <= 1e-9):
                 raise SystemExit(
                     f"SELF TEST FAILED: {market} {cell} {got[cell]!r} vs sealed "
                     f"{row[cell]!r}"
                 )
+            worst = max(worst, gap)
         print(f"  self test {market}: 8 cells reproduce the sealed run", flush=True)
+
+    # The reported numbers all come through the states_csv path with grids the
+    # sealed run never used, and the check above never touched that path: a
+    # matcher that snapped to the nearest column, or a tolerance of 0.5, both
+    # passed it. Exercise the path here, on a file whose answer is known
+    # because it is bit-identical to the sealed states on the shared penalties.
+    union = ROOT / "artifacts/jm-residual/01-grid-identification/us/union-states.csv"
+    if union.exists():
+        sealed_grid = config.jm_protocol_for("us").lambda_grid
+        through_file = score("us", sealed_grid, union)
+        direct = score("us", sealed_grid)
+        for cell in CELLS:
+            gap = abs(float(through_file[cell]) - float(direct[cell]))
+            if not (gap <= 1e-9):
+                raise SystemExit(
+                    f"SELF TEST FAILED: the states_csv path disagrees with the "
+                    f"sealed path on {cell}: {through_file[cell]!r} vs {direct[cell]!r}"
+                )
+        # and the matcher must REFUSE a penalty that is not in the file, rather
+        # than snapping to a neighbour
+        loaded = pd.read_csv(union, index_col=0, parse_dates=[0], nrows=1)
+        loaded.columns = [float(c) for c in loaded.columns]
+        missing = float(max(sealed_grid)) + 0.5
+        try:
+            resolve_columns(loaded, [*sealed_grid, missing], union.name)
+        except SystemExit:
+            pass
+        else:
+            raise SystemExit(
+                "SELF TEST FAILED: the matcher accepted a penalty that is not a "
+                "column; it is snapping instead of matching"
+            )
+        print("  self test us: states_csv path agrees and the matcher refuses "
+              "an absent penalty", flush=True)
     print(f"SELF TEST PASSED (worst absolute difference {worst:.2e})", flush=True)
 
 
@@ -135,11 +195,18 @@ def main() -> int:
     print(f"{market.upper()}  grid {sys.argv[2]}")
     for cell in CELLS:
         rel = abs(got[cell] - target[cell]) / max(abs(target[cell]), 1e-9)
-        worst = max(worst, rel)
+        # NaN must propagate into the headline. `max(0.0, nan)` is 0.0, so the
+        # obvious accumulation reported an uncomputable cell as a perfect match.
+        worst = rel if not np.isfinite(worst) or rel > worst else worst
+        if not np.isfinite(rel):
+            worst = float("nan")
         print(
             f"   {cell:<24}{got[cell]:>9.3f}  Shu {target[cell]:>7.3f}  ({rel:>5.1%})"
         )
     print(f"   switches {got['switches']}   worst relative deviation {worst:.1%}")
+    if not np.isfinite(worst):
+        print("   REFUSING: at least one cell is not finite", flush=True)
+        return 1
     return 0
 
 
