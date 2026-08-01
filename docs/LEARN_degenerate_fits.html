@@ -310,11 +310,11 @@ còn λ chỉ có ý nghĩa khi đi kèm thang đo của nó.</div>
 <table>
 <tr><th>Thị trường</th><th class="num">λ chọn (trung vị)</th><th class="num">q (trung vị)</th>
 <th class="num">κ = λ/q</th><th class="num">số lần đổi</th></tr>
-<tr><td>US</td><td class="num">21.5</td><td class="num">1.48</td><td class="num ok">14.6</td><td class="num">30</td></tr>
-<tr><td>DE</td><td class="num">150</td><td class="num">1.18</td><td class="num no">127.7</td><td class="num">20</td></tr>
-<tr><td>JP</td><td class="num">10</td><td class="num">0.86</td><td class="num ok">11.7</td><td class="num">46</td></tr>
+<tr><td>US</td><td class="num">21.5</td><td class="num">1.48</td><td class="num ok">28.8</td><td class="num">30</td></tr>
+<tr><td>DE</td><td class="num">150</td><td class="num">1.18</td><td class="num no">130.9</td><td class="num">20</td></tr>
+<tr><td>JP</td><td class="num">10</td><td class="num">0.86</td><td class="num ok">16.6</td><td class="num">46</td></tr>
 </table>
-<p>Đức đang chạy ở độ cứng <b>gấp khoảng 9 lần</b> Mỹ và Nhật. Và đúng như bất đẳng thức
+<p>Đức đang chạy ở độ cứng <b>gấp khoảng 8 lần</b> Nhật và <b>4,5 lần</b> Mỹ. Và đúng như bất đẳng thức
 ở chương 3 dự đoán: nó chỉ đổi trạng thái 20 lần trong hơn ba thập kỷ.</p>
 
 <h3 class="steph"><span class="stepnum">2</span>Tệ hơn: κ không ổn định ngay trong một thị trường</h3>
@@ -346,7 +346,7 @@ Bất đẳng thức ΔL &lt; m·λ dự đoán đúng thứ tự này mà khôn
 
 <div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
 <ul>
-<li>κ: US 14.6 · JP 11.7 · DE 127.7 — lệch nhau tới 9 lần.</li>
+<li>κ: US 28.8 · JP 16.6 · DE 130.9 — lệch nhau tới ~8 lần.</li>
 <li>κ trôi 67–90 lần theo thời gian; DE thập kỷ 2020 ở mức 1323.</li>
 <li>Suy biến xuất hiện đúng nơi κ cao: DE tới 46.6% số tháng được chọn.</li>
 </ul>
@@ -381,7 +381,7 @@ với các tháng nó chỉ là quy tắc &ldquo;luôn nắm giữ&rdquo;. Gọi
 
 <h3 class="steph"><span class="stepnum">3</span>Làm hỏng mọi so sánh &ldquo;cơ chế X có tốt hơn không&rdquo;</h3>
 <p>Một chiết khấu β nhân lên λ (như họ cơ chế adaptive của chúng ta) <b>không thể</b>
-mang cùng ý nghĩa ở hai thị trường lệch nhau 9 lần về κ. Giảm 50% của κ = 127.7 vẫn còn 63.8 —
+mang cùng ý nghĩa ở hai thị trường lệch nhau nhiều lần về κ. Giảm 50% của κ = 127.7 vẫn còn 63.8 —
 vẫn cứng hơn nhiều so với US khi <i>không</i> chiết khấu gì. Đây là lý do <b>cơ học</b>,
 độc lập với kinh tế học, khiến mọi cơ chế adaptive đến nay chỉ giúp được Mỹ.</p>
 
@@ -393,7 +393,7 @@ paper quy định một lưới λ cố định theo đơn vị loss thô. Chún
 <ul>
 <li>Chỉ số tổng hợp trộn tháng có chế độ với tháng một-chế-độ.</li>
 <li>Suy biến giải thích turnover 0.26 của Đức mà không cần giả thuyết nào khác.</li>
-<li>Chiết khấu nhân tính không thể mang cùng ý nghĩa khi κ lệch 9 lần.</li>
+<li>Chiết khấu nhân tính không thể mang cùng ý nghĩa khi κ lệch nhiều lần.</li>
 </ul>
 <p class="next"><b>Tiếp theo →</b> tra nhanh các thuật ngữ.</p></div>
 </section>
@@ -419,7 +419,7 @@ Nguồn số liệu: run niêm phong <code>fixed-baselines-36ca1ace…f9f3e0a937
 <code>simple-jm-suite-002</code> (<code>fit-degeneracy.csv</code>),
 <code>adaptive-confidence-002</code> (<code>selected-timeline.csv</code>, cột <code>q_train</code>).
 Hàm mục tiêu lấy từ <code>src/adaptive_jump/models.py</code>.
-Mọi phát biểu về suy biến đếm từ fit, không suy ra từ đường trạng thái.
+Mọi phát biểu về suy biến đếm từ fit, không suy ra từ đường trạng thái.<br><b>Đính chính 2026-08-01:</b> ba giá trị κ tiêu đề ban đầu (14.6 / 127.7 / 11.7) được tính bằng tỉ số của hai trung vị thay vì trung vị của tỉ số; con số đúng là 28.8 / 130.9 / 16.6 và độ lệch giữa các thị trường là ~8 lần chứ không phải 9. Bảng theo thập kỷ và các con số 67-90 lần vốn đã tính đúng và không đổi. Kết luận định tính không đổi.
 </footer>
 </main>
 <script>
