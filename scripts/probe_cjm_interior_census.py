@@ -44,8 +44,20 @@ BASELINE = (
 )
 OUT = ROOT / "artifacts/cjm-interior-census/01-census"
 MARKETS = ("us", "de", "jp")
-INTERIOR = 0.99
 GRID_SIZE = 0.01
+# A weight is INTERIOR when it is not at a corner. With a lattice of step
+# GRID_SIZE the largest non-corner weight is exactly 1 - GRID_SIZE, so the
+# test must be "< 1.0", not "< 1 - GRID_SIZE". The frozen spec of
+# cjm-interior-census-001 set the threshold to 0.99 with GRID_SIZE 0.01, which
+# discarded the entire first non-corner ring: recounting from the committed
+# weight files moved us lambda=70 from 0.0057 to 0.0441 and jp lambda=220 from
+# 0.0009 to 0.0207, and under the corrected count every leg of that spec's own
+# falsifier fires. Deriving the threshold from the lattice instead of naming a
+# number is what stops the two from disagreeing again.
+INTERIOR = 1.0
+assert INTERIOR > 1.0 - GRID_SIZE, (
+    "the interior threshold must admit the largest non-corner lattice weight"
+)
 
 
 def refit_schedule(complete: pd.DataFrame, fit_window: int, refit_months) -> tuple:
