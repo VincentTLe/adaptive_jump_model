@@ -128,10 +128,13 @@ def test_searched_menus_are_far_wider_apart_than_the_matching_tolerance():
 
 
 def test_self_test_rejects_a_result_that_is_all_nan(scorer, monkeypatch):
+    # The stubs below take ``delay`` because score() gained that parameter for
+    # heldout-delay-001. Without it these three regressions died of TypeError
+    # instead of testing anything, which is how a guard rail stops guarding.
     monkeypatch.setattr(
         scorer,
         "score",
-        lambda market, penalties, states_csv=None: dict.fromkeys(
+        lambda market, penalties, states_csv=None, delay=1: dict.fromkeys(
             scorer.CELLS, math.nan
         ),
     )
@@ -142,9 +145,9 @@ def test_self_test_rejects_a_result_that_is_all_nan(scorer, monkeypatch):
 def test_self_test_exercises_the_states_csv_argument(scorer, monkeypatch):
     seen: list[object] = []
 
-    def recorder(market, penalties, states_csv=None):
+    def recorder(market, penalties, states_csv=None, delay=1):
         seen.append(states_csv)
-        return _sealed_cells(scorer, market, 1)
+        return _sealed_cells(scorer, market, delay)
 
     monkeypatch.setattr(scorer, "score", recorder)
     scorer.self_test()
@@ -207,8 +210,8 @@ def test_reported_worst_deviation_is_not_blind_to_nan(scorer, monkeypatch, capsy
     monkeypatch.setattr(
         scorer,
         "score",
-        lambda market, penalties, states_csv=None: dict.fromkeys(
-            (*scorer.CELLS, "switches"), math.nan
+        lambda market, penalties, states_csv=None, delay=1: dict.fromkeys(
+            (*scorer.CELLS, "cagr", "sharpe", "calmar", "switches"), math.nan
         ),
     )
     monkeypatch.setattr(sys, "argv", ["score_grid.py", "us", "15,70"])
