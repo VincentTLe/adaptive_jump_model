@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suy biến một trạng thái — toán học đằng sau Jump Model</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1117; --bg2:#161922; --bg3:#1f2330; --fg:#e7ecef; --fg-dim:#9aa5b1;
+  --accent:#7bdcb5; --cyan:#7bf0ff; --magenta:#ff8aff; --tool:#7bff7b;
+  --result:#ffd966; --red:#ff7b7b; --border:#2a3040; --shadow:0 4px 24px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 Inter,system-ui,sans-serif}
+code,pre{font-family:"JetBrains Mono",monospace;font-size:.86em}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:250px;background:var(--bg2);
+  border-right:1px solid var(--border);padding:22px 14px;overflow-y:auto}
+.sidebar h2{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-dim);margin:0 0 12px}
+#toc a{display:block;padding:7px 10px;border-radius:8px;color:var(--fg-dim);font-size:.88rem;margin-bottom:2px}
+#toc a:hover{background:var(--bg3);color:var(--fg);text-decoration:none}
+#toc a.active{background:var(--bg3);color:var(--accent);font-weight:600}
+.progress{position:fixed;top:0;left:0;right:0;height:3px;z-index:50;background:transparent}
+#pbar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--cyan))}
+main{margin-left:250px;padding:34px 44px 90px;max-width:980px}
+.hero{padding:36px 0 8px}
+.hero h1{font-size:2rem;font-weight:800;margin:0 0 8px}
+.hero p.tag{color:var(--fg-dim);font-size:1.05rem;margin:0 0 14px}
+.hero .meta{font-size:.82rem;color:var(--fg-dim);border-top:1px solid var(--border);padding-top:10px}
+.section{margin-top:52px;padding-top:12px}
+.chapter-tag{display:inline-flex;align-items:center;gap:8px;font-size:.75rem;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--fg-dim)}
+.diff{padding:2px 8px;border-radius:999px;font-weight:600;font-size:.68rem;letter-spacing:.06em}
+.d1{background:#12351f;color:var(--tool)} .d2{background:#33301a;color:var(--result)}
+.d3{background:#3a1f26;color:var(--red)} .d4{background:#33203a;color:var(--magenta)}
+.section h2{font-size:1.5rem;margin:8px 0 6px}
+.section h2 .n{color:var(--accent);margin-right:10px;font-family:"JetBrains Mono",monospace}
+p.lead{color:var(--fg-dim);font-size:1.02rem;margin-top:0}
+h3.steph{display:flex;align-items:center;gap:10px;font-size:1.05rem;margin:26px 0 8px}
+.stepnum{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;
+  border-radius:50%;background:var(--bg3);color:var(--accent);font:600 .8rem "JetBrains Mono",monospace;flex:none}
+.diagram{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;background:var(--bg2);
+  border:1px solid var(--border);border-radius:14px;padding:16px;margin:14px 0;box-shadow:var(--shadow)}
+.dcol{display:flex;flex-direction:column;gap:10px;flex:1;min-width:130px}
+.dbox{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:9px 12px;
+  font-size:.84rem;line-height:1.4;flex:1;min-width:120px;display:flex;flex-direction:column;justify-content:center}
+.dbox .s{display:block;color:var(--fg-dim);font-size:.74rem;margin-top:3px}
+.dbox.hl{border-color:var(--accent)} .dbox.act{border-color:var(--tool)}
+.dbox.obs{border-color:var(--result)} .dbox.bad{border-color:var(--red)}
+.darrow{align-self:center;color:var(--fg-dim);font-size:1.1rem;flex:none}
+.callout{border-left:3px solid var(--accent);background:var(--bg2);border-radius:0 10px 10px 0;
+  padding:10px 14px;margin:14px 0;font-size:.95rem}
+.callout .lbl{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--accent);font-weight:600;margin-bottom:3px}
+.callout.warn{border-color:var(--result)} .callout.warn .lbl{color:var(--result)}
+.callout.key{border-color:var(--magenta)} .callout.key .lbl{color:var(--magenta)}
+details.more{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:14px 0}
+details.more summary{cursor:pointer;padding:10px 14px;font-weight:600;font-size:.92rem;color:var(--cyan)}
+details.more .inner{padding:2px 16px 12px;border-top:1px solid var(--border)}
+.recap{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--tool);
+  border-radius:0 10px 10px 0;padding:12px 16px;margin:22px 0 0;font-size:.93rem}
+.recap .lbl{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--tool);font-weight:600;margin-bottom:5px}
+.recap ul{margin:4px 0 8px;padding-left:20px}
+.recap .next{color:var(--fg-dim);margin:6px 0 0}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.87rem}
+th,td{border:1px solid var(--border);padding:6px 10px;text-align:left}
+th{background:var(--bg3);font-weight:600}
+td.num,th.num{text-align:right;font-family:"JetBrains Mono",monospace;font-size:.82rem}
+.ok{color:var(--tool)} .no{color:var(--red)} .dim{color:var(--fg-dim)}
+pre[class*=language-]{border-radius:10px;border:1px solid var(--border);margin:12px 0;font-size:.8rem}
+.reveal{animation:rise .5s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+footer{margin-top:70px;color:var(--fg-dim);font-size:.8rem;border-top:1px solid var(--border);padding-top:14px}
+@media (max-width:900px){.sidebar{display:none}main{margin-left:0;padding:20px}}
+</style>
+</head>
+<body>
+<div class="progress"><div id="pbar"></div></div>
+<nav class="sidebar"><h2>Mục lục</h2><div id="toc">
+<a href="#top">Mở đầu</a>
+<a href="#ch1">01 · Mô hình làm gì</a>
+<a href="#ch2">02 · Suy biến là gì</a>
+<a href="#ch3">03 · Vì sao xảy ra: ΔL vs λ</a>
+<a href="#ch4">04 · λ không có đơn vị cố định</a>
+<a href="#ch5">05 · Số đo thật của chúng ta</a>
+<a href="#ch6">06 · Vì sao nó bóp méo kết luận</a>
+<a href="#appendix">Phụ lục · Thuật ngữ</a>
+</div></nav>
+<main>
+
+<div class="hero" id="top">
+<h1>Suy biến một trạng thái</h1>
+<p class="tag">Khi một &ldquo;mô hình hai chế độ&rdquo; lặng lẽ trở thành mô hình một chế độ —
+và vì sao điều đó là hệ quả toán học tất yếu của một tham số phạt cố định.</p>
+<div class="meta">2026-08-01 · nhánh <code>cleanup/research-protocol</code> ·
+mọi con số lấy từ artifact niêm phong <code>v10 = 36ca1ace…</code>,
+<code>simple-jm-suite-002</code> và probe <code>scale-free-penalty-001</code>.
+Cách đọc: chương xếp từ dễ đến khó; khối <b>Đi sâu</b> gập lại được, bỏ qua vẫn hiểu mạch chính.</div>
+</div>
+
+<!-- ============ CH1 ============ -->
+<section id="ch1" class="section reveal">
+<span class="chapter-tag">Chương 1 · Nền tảng <span class="diff d1">DỄ</span></span>
+<h2><span class="n">01</span>Mô hình thật ra đang giải bài toán gì</h2>
+<p class="lead">Trước khi hiểu &ldquo;suy biến&rdquo;, phải thấy rõ mô hình đang tối ưu cái gì.
+Nó đơn giản hơn tên gọi rất nhiều.</p>
+
+<h3 class="steph"><span class="stepnum">1</span>Mỗi ngày là một điểm trong không gian ba chiều</h3>
+<p>Từ lợi suất vượt trội hằng ngày, ta tính ba đặc trưng: độ lệch xuống (downside deviation)
+với nửa đời 10 ngày, và hai tỷ số Sortino nửa đời 20 và 60 ngày. Vậy ngày <code>t</code>
+trở thành một điểm <code>x<sub>t</sub></code> trong ℝ³.</p>
+
+<div class="diagram">
+  <div class="dbox">Lợi suất ngày<span class="s">r<sub>t</sub> − cash<sub>t</sub></span></div>
+  <div class="darrow">→</div>
+  <div class="dbox">3 đặc trưng<span class="s">dd(10), sortino(20), sortino(60)</span></div>
+  <div class="darrow">→</div>
+  <div class="dbox hl"><b>x<sub>t</sub> ∈ ℝ³</b><span class="s">một điểm cho mỗi ngày</span></div>
+</div>
+
+<h3 class="steph"><span class="stepnum">2</span>Hai &ldquo;chế độ&rdquo; chỉ là hai điểm tâm</h3>
+<p>Mô hình đặt hai tâm <code>θ<sub>0</sub></code> (bull) và <code>θ<sub>1</sub></code> (bear)
+trong cùng không gian ấy, rồi gán cho mỗi ngày một nhãn
+<code>s<sub>t</sub> ∈ {0, 1}</code>. Không có xác suất, không có ma trận chuyển —
+chỉ có tâm và nhãn. Đây là lý do nó được gọi là <i>k-means theo thời gian</i>.</p>
+
+<h3 class="steph"><span class="stepnum">3</span>Hàm mục tiêu: hai khoản chi phí đánh nhau</h3>
+<p>Toàn bộ mô hình nằm gọn trong một dòng. Chọn tâm và nhãn để tổng sau nhỏ nhất:</p>
+
+<div class="diagram">
+  <div class="dbox obs" style="flex:2"><b>½ Σ<sub>t</sub> ‖x<sub>t</sub> − θ<sub>s<sub>t</sub></sub>‖²</b>
+  <span class="s">chi phí KHỚP — ngày đó lệch bao xa khỏi tâm nó được gán</span></div>
+  <div class="darrow">+</div>
+  <div class="dbox act" style="flex:2"><b>λ · #{t : s<sub>t</sub> ≠ s<sub>t−1</sub>}</b>
+  <span class="s">chi phí ĐỔI — trả λ mỗi lần nhãn thay đổi</span></div>
+</div>
+
+<p>Khoản đầu muốn mỗi ngày được gán về tâm gần nhất. Khoản sau muốn chuỗi nhãn
+càng ít đổi càng tốt. λ là trọng tài giữa hai mong muốn đó: λ = 0 thì đây thuần
+là k-means (nhãn nhảy loạn theo nhiễu); λ rất lớn thì chuỗi nhãn gần như đứng yên.</p>
+
+<div class="callout"><span class="lbl">Ý chính</span>
+λ không phải &ldquo;độ nhạy&rdquo; theo nghĩa mơ hồ. Nó là <b>giá của một lần đổi trạng thái</b>,
+đo bằng cùng đơn vị với chi phí khớp. Nhớ điều này thì phần còn lại tự suy ra được.</div>
+
+<div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+<ul>
+<li>Mỗi ngày là một điểm ℝ³; mỗi &ldquo;chế độ&rdquo; là một điểm tâm.</li>
+<li>Mục tiêu = chi phí khớp + λ × số lần đổi nhãn.</li>
+<li>λ là <i>giá</i> của một lần đổi, cùng đơn vị với chi phí khớp.</li>
+</ul>
+<p class="next"><b>Tiếp theo →</b> chuyện gì xảy ra khi cái giá đó quá đắt.</p></div>
+</section>
+
+<!-- ============ CH2 ============ -->
+<section id="ch2" class="section reveal">
+<span class="chapter-tag">Chương 2 · Định nghĩa <span class="diff d1">DỄ</span></span>
+<h2><span class="n">02</span>Suy biến: khi tâm thứ hai không bao giờ được dùng</h2>
+<p class="lead">Định nghĩa gọn: bộ tối ưu gán <b>toàn bộ</b> 3000 ngày huấn luyện vào
+cùng một nhãn. Cụm kia rỗng.</p>
+
+<div class="diagram">
+  <div class="dcol">
+    <div class="dbox"><b>Fit bình thường</b><span class="s">3000 ngày chia về hai tâm</span></div>
+    <div class="dbox ok" style="border-color:var(--tool)">θ₀ ← 2340 ngày<span class="s">bull</span></div>
+    <div class="dbox" style="border-color:var(--tool)">θ₁ ← 660 ngày<span class="s">bear</span></div>
+  </div>
+  <div class="darrow">⟷</div>
+  <div class="dcol">
+    <div class="dbox bad"><b>Fit SUY BIẾN</b><span class="s">3000 ngày về đúng một tâm</span></div>
+    <div class="dbox bad">θ₀ ← 3000 ngày<span class="s">tất cả</span></div>
+    <div class="dbox bad">θ₁ ← 0 ngày<span class="s">cụm rỗng — tâm không xác định</span></div>
+  </div>
+</div>
+
+<p>Hệ quả không hề nhẹ. Khi giải mã trực tuyến, trạng thái rỗng có chi phí
+<code>+∞</code> nên <b>không bao giờ tới được</b>. Mô hình mất khả năng nói &ldquo;bear&rdquo;
+theo đúng nghĩa đen. Chiến lược 0/1 khi đó thoái hoá thành <i>luôn luôn nắm giữ</i> —
+tức là buy &amp; hold, chỉ khoác tên jump model.</p>
+
+<div class="callout warn"><span class="lbl">Nhầm lẫn thường gặp</span>
+Fit suy biến <b>không</b> phải dữ liệu đang nói &ldquo;giai đoạn này không có chế độ nào cả&rdquo;.
+Nó nói &ldquo;với mức phạt λ đang đặt, việc tách hai chế độ không đáng tiền&rdquo;. Hai câu đó khác nhau hoàn toàn.</div>
+
+<div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+<ul>
+<li>Suy biến = mọi ngày huấn luyện về một nhãn, cụm còn lại rỗng.</li>
+<li>Trạng thái rỗng không tới được khi giải mã ⇒ mô hình không bao giờ vào tiền mặt.</li>
+<li>Đó là phát biểu về λ, không phải phát biểu về thị trường.</li>
+</ul>
+<p class="next"><b>Tiếp theo →</b> bất đẳng thức quyết định chính xác khi nào điều này xảy ra.</p></div>
+</section>
+
+<!-- ============ CH3 ============ -->
+<section id="ch3" class="section reveal">
+<span class="chapter-tag">Chương 3 · Cơ chế <span class="diff d2">VỪA</span></span>
+<h2><span class="n">03</span>Vì sao nó xảy ra: cuộc so găng ΔL với λ</h2>
+<p class="lead">Chỉ cần so hai con số là biết fit sẽ suy biến hay không.</p>
+
+<h3 class="steph"><span class="stepnum">1</span>Lợi ích của việc tách làm hai</h3>
+<p>Gọi <code>L₁</code> là chi phí khớp nếu chỉ dùng <b>một</b> tâm — đó chính là tổng
+bình phương khoảng cách quanh trung bình toàn cục. Gọi <code>L₂</code> là chi phí khớp
+khi dùng <b>hai</b> tâm. Tách bao giờ cũng khớp tốt hơn, nên</p>
+
+<div class="diagram">
+  <div class="dbox hl" style="flex:3"><b>ΔL = L₁ − L₂ &gt; 0</b>
+  <span class="s">phần chi phí khớp tiết kiệm được nhờ có hai tâm —
+  chính là &ldquo;phương sai giữa hai cụm&rdquo;, tức hai chế độ cách nhau bao xa trong không gian đặc trưng</span></div>
+</div>
+
+<h3 class="steph"><span class="stepnum">2</span>Cái giá phải trả</h3>
+<p>Nhưng muốn dùng cụm thứ hai trên một chuỗi thời gian thì nhãn phải đổi.
+Nếu các giai đoạn bear nằm ở giữa mẫu (vào rồi ra), mỗi giai đoạn tốn <b>2λ</b>.
+Gọi <code>m</code> là số lần đổi cần thiết, tổng phạt là <code>m·λ</code>.</p>
+
+<h3 class="steph"><span class="stepnum">3</span>Điều kiện suy biến</h3>
+<div class="diagram">
+  <div class="dbox bad" style="flex:3"><b>Suy biến ⟺ ΔL &lt; m · λ</b>
+  <span class="s">lợi ích khớp không bù nổi tiền phạt ⇒ bộ tối ưu chọn một trạng thái</span></div>
+</div>
+
+<p>Đọc bằng lời: <b>mô hình sập về một chế độ khi λ đắt hơn giá trị của việc phân biệt hai chế độ.</b>
+Không có gì huyền bí. Và chú ý vế trái phụ thuộc dữ liệu (hai chế độ cách nhau bao xa),
+còn vế phải là con số ta tự đặt.</p>
+
+<details class="more"><summary>Đi sâu: vì sao phải là <i>m</i> chứ không phải 1</summary>
+<div class="inner">
+<p>Nếu giai đoạn bear nằm sát mép mẫu, chỉ cần một lần đổi (1λ). Nếu nó nằm giữa,
+cần vào và ra: 2λ. Với <code>k</code> giai đoạn bear rời rạc nằm giữa, tổng là 2<code>k</code>λ.
+Vì vậy khi λ tăng, thứ biến mất trước tiên là các giai đoạn bear <b>ngắn và rời rạc</b> —
+mỗi cái phải tự trả 2λ bằng phần ΔL mà riêng nó đóng góp. Đây cũng là lý do
+λ lớn cho chuỗi trạng thái &ldquo;lì&rdquo;: nó không làm mượt, nó <i>xoá</i> các đoạn không đủ tiền trả phí.</p>
+<p>Quy hoạch động giải bài toán này chính xác trong O(TK²), nên &ldquo;bộ tối ưu chọn một trạng thái&rdquo;
+là nghiệm tối ưu thật sự, không phải lỗi hội tụ.</p>
+</div>
+</details>
+
+<div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+<ul>
+<li>ΔL = lợi ích khớp khi tách hai cụm = độ tách biệt của hai chế độ.</li>
+<li>Chi phí = m·λ với m là số lần đổi nhãn bắt buộc.</li>
+<li>Suy biến ⟺ ΔL &lt; m·λ. Đoạn bear ngắn chết trước.</li>
+</ul>
+<p class="next"><b>Tiếp theo →</b> vấn đề chí mạng: λ và ΔL không cùng thang đo cố định.</p></div>
+</section>
+
+<!-- ============ CH4 ============ -->
+<section id="ch4" class="section reveal">
+<span class="chapter-tag">Chương 4 · Cao trào <span class="diff d4">KHÓ · CAO TRÀO</span></span>
+<h2><span class="n">04</span>λ = 150 nghĩa là gì? Câu hỏi này không có câu trả lời</h2>
+<p class="lead">ΔL có đơn vị. λ cũng phải có cùng đơn vị. Nhưng đơn vị đó
+<b>tự trôi</b> theo thời gian và theo thị trường — đó là gốc rễ của mọi chuyện.</p>
+
+<h3 class="steph"><span class="stepnum">1</span>Bài toán đơn vị</h3>
+<p>ΔL đo bằng bình phương khoảng cách trong không gian đặc trưng. Nếu vì lý do nào đó
+các đặc trưng giãn ra gấp đôi (chẳng hạn thị trường bước vào thời kỳ biến động mạnh,
+độ lệch xuống tăng vọt), thì mọi khoảng cách bình phương giãn gấp bốn — <b>ΔL giãn theo</b>.
+Nhưng λ = 150 vẫn là 150. Cùng một con số λ, bỗng nhiên rẻ đi bốn lần so với dữ liệu.</p>
+
+<div class="diagram">
+  <div class="dcol">
+    <div class="dbox">Thời kỳ yên ả<span class="s">đặc trưng co lại · ΔL nhỏ</span></div>
+    <div class="dbox bad">λ cố định ⇒ <b>đắt tương đối</b><span class="s">⟶ có xu hướng suy biến</span></div>
+  </div>
+  <div class="darrow">↔</div>
+  <div class="dcol">
+    <div class="dbox">Thời kỳ biến động<span class="s">đặc trưng giãn ra · ΔL lớn</span></div>
+    <div class="dbox" style="border-color:var(--tool)">λ cố định ⇒ <b>rẻ tương đối</b><span class="s">⟶ đổi trạng thái nhiều</span></div>
+  </div>
+</div>
+
+<h3 class="steph"><span class="stepnum">2</span>Cách đo đúng: độ cứng vô thứ nguyên</h3>
+<p>Muốn so sánh được, phải chia λ cho một thước đo thang của chính chi phí khớp.
+Ta dùng <code>q</code> = trung vị độ lệch tuyệt đối (MAD) của các giá trị chi phí khớp
+trên cửa sổ huấn luyện. Khi đó</p>
+
+<div class="diagram">
+  <div class="dbox hl" style="flex:3"><b>độ cứng κ = λ / q</b>
+  <span class="s">vô thứ nguyên — cùng một κ nghĩa là cùng một mức &ldquo;lì&rdquo; ở mọi thị trường, mọi thời kỳ</span></div>
+</div>
+
+<div class="callout key"><span class="lbl">Bất biến</span>
+Nếu nhân toàn bộ chi phí khớp với hằng số c, thì phải nhân λ với c mới giữ nguyên nghiệm.
+q cũng nhân với c. Vậy κ = λ/q <b>không đổi</b> — đó là lý do κ mới là đại lượng có ý nghĩa,
+còn λ chỉ có ý nghĩa khi đi kèm thang đo của nó.</div>
+
+<div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+<ul>
+<li>ΔL và λ phải cùng đơn vị; đơn vị đó là thang của chi phí khớp.</li>
+<li>Thang ấy trôi theo chế độ biến động ⇒ λ cố định là mục tiêu di động.</li>
+<li>κ = λ/q là độ cứng vô thứ nguyên, đại lượng so sánh được.</li>
+</ul>
+<p class="next"><b>Tiếp theo →</b> κ thực tế của chúng ta bằng bao nhiêu. Con số gây sốc.</p></div>
+</section>
+
+<!-- ============ CH5 ============ -->
+<section id="ch5" class="section reveal">
+<span class="chapter-tag">Chương 5 · Số đo thật <span class="diff d3">KHÓ</span></span>
+<h2><span class="n">05</span>Đo trên chính artifact niêm phong của chúng ta</h2>
+<p class="lead">Mọi con số dưới đây đọc từ run đã niêm phong, không phải mô phỏng.</p>
+
+<h3 class="steph"><span class="stepnum">1</span>Ba thị trường chạy ở ba chế độ khác hẳn nhau</h3>
+<table>
+<tr><th>Thị trường</th><th class="num">λ chọn (trung vị)</th><th class="num">q (trung vị)</th>
+<th class="num">κ = λ/q</th><th class="num">số lần đổi</th></tr>
+<tr><td>US</td><td class="num">21.5</td><td class="num">1.48</td><td class="num ok">14.6</td><td class="num">30</td></tr>
+<tr><td>DE</td><td class="num">150</td><td class="num">1.18</td><td class="num no">127.7</td><td class="num">20</td></tr>
+<tr><td>JP</td><td class="num">10</td><td class="num">0.86</td><td class="num ok">11.7</td><td class="num">46</td></tr>
+</table>
+<p>Đức đang chạy ở độ cứng <b>gấp khoảng 9 lần</b> Mỹ và Nhật. Và đúng như bất đẳng thức
+ở chương 3 dự đoán: nó chỉ đổi trạng thái 20 lần trong hơn ba thập kỷ.</p>
+
+<h3 class="steph"><span class="stepnum">2</span>Tệ hơn: κ không ổn định ngay trong một thị trường</h3>
+<table>
+<tr><th>Thập kỷ (κ trung vị)</th><th class="num">US</th><th class="num">DE</th><th class="num">JP</th></tr>
+<tr><td>1990s</td><td class="num">4.4</td><td class="num">25.7</td><td class="num">127.4</td></tr>
+<tr><td>2000s</td><td class="num">29.5</td><td class="num">136.6</td><td class="num">14.0</td></tr>
+<tr><td>2010s</td><td class="num">28.8</td><td class="num">136.3</td><td class="num">37.3</td></tr>
+<tr><td>2020s</td><td class="num">19.4</td><td class="num no">1322.9</td><td class="num no">620.9</td></tr>
+</table>
+<p>Trong mỗi thị trường, κ dao động 67–90 lần giữa các cửa sổ. Đến thập kỷ 2020,
+Đức và Nhật vận hành ở mức κ hàng trăm đến hơn nghìn — tức là ở vùng mà theo
+bất đẳng thức chương 3, hầu như không ΔL nào đủ lớn để trả nổi một lần đổi.</p>
+
+<h3 class="steph"><span class="stepnum">3</span>Và đúng là suy biến xuất hiện đúng chỗ dự đoán</h3>
+<p>Tỷ lệ tháng <i>được bộ chọn thực sự dùng</i> mà lại đứng trên một fit suy biến
+(đo trong <code>simple-jm-suite-002</code>, cột <code>selected_collapsed_fraction</code>):</p>
+<table>
+<tr><th>Biến thể</th><th class="num">US</th><th class="num">DE</th><th class="num">JP</th></tr>
+<tr><td>DD-only</td><td class="num ok">0.0%</td><td class="num no">26.5%</td><td class="num no">28.9%</td></tr>
+<tr><td>Return-aware</td><td class="num ok">0.0%</td><td class="num no">12.4%</td><td class="num ok">0.0%</td></tr>
+<tr><td>Robust L1</td><td class="num ok">0.0%</td><td class="num no">46.6%</td><td class="num">4.4%</td></tr>
+</table>
+
+<div class="callout"><span class="lbl">Khớp lý thuyết</span>
+Mỹ — κ thấp nhất — không có một tháng suy biến nào. Đức — κ cao gấp 9 lần —
+có tới gần một nửa số tháng của biến thể L1 đứng trên fit một trạng thái.
+Bất đẳng thức ΔL &lt; m·λ dự đoán đúng thứ tự này mà không cần biết gì về kinh tế học.</div>
+
+<div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+<ul>
+<li>κ: US 14.6 · JP 11.7 · DE 127.7 — lệch nhau tới 9 lần.</li>
+<li>κ trôi 67–90 lần theo thời gian; DE thập kỷ 2020 ở mức 1323.</li>
+<li>Suy biến xuất hiện đúng nơi κ cao: DE tới 46.6% số tháng được chọn.</li>
+</ul>
+<p class="next"><b>Tiếp theo →</b> vì sao điều này làm hỏng cả cách đọc kết quả.</p></div>
+</section>
+
+<!-- ============ CH6 ============ -->
+<section id="ch6" class="section reveal">
+<span class="chapter-tag">Chương 6 · Hệ quả khoa học <span class="diff d3">KHÓ</span></span>
+<h2><span class="n">06</span>Vì sao suy biến bóp méo mọi kết luận phía sau</h2>
+<p class="lead">Ba hệ quả, mỗi cái đủ để làm sai một câu kết luận.</p>
+
+<h3 class="steph"><span class="stepnum">1</span>Trộn hai loại tháng khác bản chất</h3>
+<p>Chỉ số tổng hợp của một thị trường trộn lẫn các tháng mà mô hình thật sự có hai chế độ
+với các tháng nó chỉ là quy tắc &ldquo;luôn nắm giữ&rdquo;. Gọi trung bình đó là
+&ldquo;tín hiệu chế độ của jump model&rdquo; là sai — gần một nửa số tháng Đức không hề có tín hiệu chế độ nào.</p>
+
+<h3 class="steph"><span class="stepnum">2</span>Giải thích được con số turnover kỳ lạ của Đức</h3>
+<p>Turnover Đức của chúng ta là 0.26 so với 1.70 của Shu. Một mô hình mà 1/4 đến 1/2 số tháng
+<i>không thể</i> đổi trạng thái thì hiển nhiên giao dịch rất ít. Đây không phải lỗi kế toán phí —
+đây là mô hình bị khoá cứng.</p>
+
+<div class="diagram">
+  <div class="dbox">κ cao<span class="s">λ đắt so với ΔL</span></div>
+  <div class="darrow">→</div>
+  <div class="dbox bad">fit suy biến<span class="s">cụm bear rỗng</span></div>
+  <div class="darrow">→</div>
+  <div class="dbox bad">không thể đổi trạng thái<span class="s">luôn nắm giữ</span></div>
+  <div class="darrow">→</div>
+  <div class="dbox obs">turnover ≈ 0<span class="s">0.26 vs 1.70</span></div>
+</div>
+
+<h3 class="steph"><span class="stepnum">3</span>Làm hỏng mọi so sánh &ldquo;cơ chế X có tốt hơn không&rdquo;</h3>
+<p>Một chiết khấu β nhân lên λ (như họ cơ chế adaptive của chúng ta) <b>không thể</b>
+mang cùng ý nghĩa ở hai thị trường lệch nhau 9 lần về κ. Giảm 50% của κ = 127.7 vẫn còn 63.8 —
+vẫn cứng hơn nhiều so với US khi <i>không</i> chiết khấu gì. Đây là lý do <b>cơ học</b>,
+độc lập với kinh tế học, khiến mọi cơ chế adaptive đến nay chỉ giúp được Mỹ.</p>
+
+<div class="callout key"><span class="lbl">Điều phải nói rõ</span>
+Tính chất này thuộc về <b>giao thức trong chính paper</b>, không phải lỗi cài đặt của chúng ta:
+paper quy định một lưới λ cố định theo đơn vị loss thô. Chúng ta chỉ là người đầu tiên đo nó ra.</div>
+
+<div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+<ul>
+<li>Chỉ số tổng hợp trộn tháng có chế độ với tháng một-chế-độ.</li>
+<li>Suy biến giải thích turnover 0.26 của Đức mà không cần giả thuyết nào khác.</li>
+<li>Chiết khấu nhân tính không thể mang cùng ý nghĩa khi κ lệch 9 lần.</li>
+</ul>
+<p class="next"><b>Tiếp theo →</b> tra nhanh các thuật ngữ.</p></div>
+</section>
+
+<!-- ============ APPENDIX ============ -->
+<section id="appendix" class="section reveal">
+<span class="chapter-tag">Phụ lục <span class="diff d1">DỄ</span></span>
+<h2><span class="n">07</span>Thuật ngữ</h2>
+<table>
+<tr><th>Thuật ngữ</th><th>Nghĩa trong dự án này</th></tr>
+<tr><td><b>Fit</b></td><td>Một lần ước lượng tâm θ₀, θ₁ trên cửa sổ 3000 quan sát quá khứ. Thực hiện vào tháng 1 và tháng 7.</td></tr>
+<tr><td><b>Suy biến / collapsed</b></td><td>Fit gán toàn bộ ngày huấn luyện vào một nhãn; cụm còn lại rỗng, tâm không xác định.</td></tr>
+<tr><td><b>ΔL</b></td><td>Chi phí khớp tiết kiệm được nhờ dùng hai tâm thay vì một; bằng phương sai giữa hai cụm.</td></tr>
+<tr><td><b>λ (lambda)</b></td><td>Giá của một lần đổi trạng thái, cùng đơn vị với chi phí khớp.</td></tr>
+<tr><td><b>q</b></td><td>MAD của các giá trị chi phí khớp trên cửa sổ huấn luyện — thước đo thang của loss.</td></tr>
+<tr><td><b>κ = λ/q</b></td><td>Độ cứng vô thứ nguyên. Đại lượng duy nhất so sánh được giữa các thị trường và thời kỳ.</td></tr>
+<tr><td><b>selected_collapsed_fraction</b></td><td>Tỷ lệ tháng mà bộ chọn hằng tháng thực sự dùng, nhưng fit chi phối lại suy biến.</td></tr>
+</table>
+</section>
+
+<footer>
+Nguồn số liệu: run niêm phong <code>fixed-baselines-36ca1ace…f9f3e0a93736</code>,
+<code>simple-jm-suite-002</code> (<code>fit-degeneracy.csv</code>),
+<code>adaptive-confidence-002</code> (<code>selected-timeline.csv</code>, cột <code>q_train</code>).
+Hàm mục tiêu lấy từ <code>src/adaptive_jump/models.py</code>.
+Mọi phát biểu về suy biến đếm từ fit, không suy ra từ đường trạng thái.
+</footer>
+</main>
+<script>
+(function () {
+  var sections = Array.prototype.slice.call(document.querySelectorAll('main .section'));
+  var links = {};
+  document.querySelectorAll('#toc a').forEach(function (a) {
+    links[a.getAttribute('href').slice(1)] = a;
+  });
+  var activeObs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      var a = links[e.target.id];
+      if (!a) return;
+      if (e.isIntersecting) {
+        Object.keys(links).forEach(function (k) { links[k].classList.remove('active'); });
+        a.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-45% 0px -50% 0px' });
+  sections.forEach(function (s) { activeObs.observe(s); });
+  var bar = document.getElementById('pbar');
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  document.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>
