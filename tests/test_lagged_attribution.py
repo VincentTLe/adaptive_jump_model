@@ -259,3 +259,25 @@ def test_choice_schedule_rejects_candidate_outside_frozen_grid(
             "us",
             "fixed",
         )
+
+
+def test_attribution_registry_lock_accepts_and_rejects(tmp_path: Path) -> None:
+    """Restored 2026-08-01: the unit-level guard on this lock had been lost."""
+    from conftest import registered_config
+
+    path = tmp_path / "lagged-selection-attribution-002.toml"
+    path.write_text(
+        calibrated_spec_text(SOURCE, calibrated_config()), encoding="utf-8"
+    )
+    config = registered_config(tmp_path, path, "lagged-selection-attribution-002")
+    spec = attribution.load_attribution_spec(path, config)
+    attribution._registry_lock(tmp_path, spec)
+
+    altered = tmp_path / "altered.toml"
+    altered.write_text(
+        path.read_text(encoding="utf-8") + "\n# one byte more\n", encoding="utf-8"
+    )
+    changed = attribution.load_attribution_spec(altered, config)
+    assert changed.sha256 != spec.sha256
+    with pytest.raises(attribution.AttributionError, match="registry lock"):
+        attribution._registry_lock(tmp_path, changed)

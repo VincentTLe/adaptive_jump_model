@@ -236,3 +236,25 @@ def test_verifier_artifact_allowlist_has_exact_three_by_three_trade_coverage(
         for model in performance.MODELS
     }.issubset(files)
     assert {"summary.csv", "boundaries.csv", "study.lock.toml"}.issubset(files)
+
+
+def test_performance_registry_lock_accepts_and_rejects(tmp_path: Path) -> None:
+    """Restored 2026-08-01: the unit-level guard on this lock had been lost."""
+    from conftest import registered_config
+
+    path = tmp_path / "lagged-evidence-performance-002.toml"
+    path.write_text(
+        calibrated_spec_text(SOURCE, calibrated_config()), encoding="utf-8"
+    )
+    config = registered_config(tmp_path, path, "lagged-evidence-performance-002")
+    spec = performance.load_lagged_performance_spec(path, config)
+    performance._registry_lock(tmp_path, spec)
+
+    altered = tmp_path / "altered.toml"
+    altered.write_text(
+        path.read_text(encoding="utf-8") + "\n# one byte more\n", encoding="utf-8"
+    )
+    changed = performance.load_lagged_performance_spec(altered, config)
+    assert changed.sha256 != spec.sha256
+    with pytest.raises(performance.LaggedPerformanceError, match="registry lock"):
+        performance._registry_lock(tmp_path, changed)

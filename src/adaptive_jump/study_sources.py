@@ -13,6 +13,7 @@ run does not carry is rejected before any evidence is read.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -97,3 +98,37 @@ def verify_source_identity(
     if config_sha256 is not None and metadata.get("config_sha256") != config_sha256:
         raise error(f"{label} source was produced under another contract: {run_dir}")
     return metadata
+
+
+def registry_lock(
+    root: Path,
+    experiment_id: str,
+    spec_sha256: str,
+    *,
+    error: type[Exception],
+) -> None:
+    """The spec on disk must be the one the registry froze.
+
+    A frozen spec is only evidence of preregistration if the bytes being run
+    are the bytes that were registered. Three families already enforced this;
+    the arrival family never did, and its only check lived in a test that was
+    lost when the harnesses were deleted and restored (found by adversarial
+    verification, 2026-08-01).
+    """
+    path = root / "research/experiment_registry.jsonl"
+    records = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise error(f"invalid experiment registry line: {exc}") from exc
+        if record.get("experiment_id") == experiment_id:
+            records.append(record)
+    if (
+        not records
+        or records[-1].get("frozen_spec_hash") != spec_sha256
+        or records[-1].get("status") not in {"FROZEN", "EXPERIMENT_COMPLETE"}
+    ):
+        raise error(f"{experiment_id} spec is not the latest registry lock")

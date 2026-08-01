@@ -419,3 +419,32 @@ def test_summary_counts_events_and_complete_path_rows(tmp_path: Path) -> None:
 
     with pytest.raises(LaggedStudyError, match="path coverage changed"):
         summarize_mechanism(events, behavior.iloc[:-1], spec)
+
+
+def test_mechanism_registry_lock_accepts_and_rejects(tmp_path: Path) -> None:
+    """Restored 2026-08-01: the unit-level guard on this lock had been lost."""
+    from conftest import registered_config
+
+    from adaptive_jump.lagged_sources import _registry_lock
+
+    path = tmp_path / "lagged-evidence-mechanism-002.toml"
+    path.write_text(
+        calibrated_spec_text(
+            "lagged-evidence-mechanism-001.toml", calibrated_config()
+        ),
+        encoding="utf-8",
+    )
+    config = registered_config(tmp_path, path, "lagged-evidence-mechanism-002")
+    spec = load_lagged_spec(path, config)
+    _registry_lock(tmp_path, spec)
+
+    altered = tmp_path / "altered.toml"
+    # A byte change that leaves every validated field intact: the loader must
+    # still refuse it, because the registry froze different bytes.
+    altered.write_text(
+        path.read_text(encoding="utf-8") + "\n# one byte more\n", encoding="utf-8"
+    )
+    changed = load_lagged_spec(altered, config)
+    assert changed.sha256 != spec.sha256
+    with pytest.raises(LaggedStudyError, match="registry lock"):
+        _registry_lock(tmp_path, changed)

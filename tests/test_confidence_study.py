@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
-from conftest import calibrated_config, calibrated_spec_text
+from conftest import calibrated_config, calibrated_spec_text, registered_config
 
 from adaptive_jump.confidence_evaluation import (
     _add_deltas,
@@ -39,8 +39,9 @@ def _spec_path(tmp_path: Path) -> Path:
 def test_confidence_spec_binds_the_calibrated_contract_and_its_parent(
     tmp_path: Path,
 ) -> None:
-    config = calibrated_config()
-    spec = load_confidence_spec(_spec_path(tmp_path), config)
+    spec_path = _spec_path(tmp_path)
+    config = registered_config(tmp_path, spec_path, EXPERIMENT_ID)
+    spec = load_confidence_spec(spec_path, config)
 
     assert spec.experiment_id == EXPERIMENT_ID
     assert spec.betas == (0.0, np.log(2.0), np.log(4.0))
@@ -200,3 +201,28 @@ def test_study_conclusion_requires_one_beta_across_all_markets() -> None:
     assert conclusion["markets_reduced_by_beta"] == {"log2": 3, "log4": 0}
     assert conclusion["mechanism_operational"] is True
     assert conclusion["performance_claim_allowed"] is False
+
+
+def test_confidence_spec_requires_its_registry_lock(tmp_path: Path) -> None:
+    """The arrival family had no such check anywhere; restored 2026-08-01."""
+    spec_path = _spec_path(tmp_path)
+    config = registered_config(tmp_path, spec_path, EXPERIMENT_ID)
+    load_confidence_spec(spec_path, config)
+
+    altered = tmp_path / "altered.toml"
+    altered.write_text(
+        spec_path.read_text(encoding="utf-8").replace(
+            "market_workers = 3", "market_workers = 2", 1
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ConfidenceStudyError, match="latest registry lock"):
+        load_confidence_spec(altered, config)
+
+
+def test_confidence_spec_rejects_an_unregistered_study(tmp_path: Path) -> None:
+    spec_path = _spec_path(tmp_path)
+    config = registered_config(tmp_path, spec_path, "some-other-study-002")
+
+    with pytest.raises(ConfidenceStudyError, match="latest registry lock"):
+        load_confidence_spec(spec_path, config)

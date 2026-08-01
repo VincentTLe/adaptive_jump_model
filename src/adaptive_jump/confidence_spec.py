@@ -24,7 +24,11 @@ from adaptive_jump.study_grids import (
     market_grids,
     parse_grid_table,
 )
-from adaptive_jump.study_sources import SourceReference, read_source_reference
+from adaptive_jump.study_sources import (
+    SourceReference,
+    read_source_reference,
+    registry_lock,
+)
 
 # The rerun of adaptive-confidence-001 against the calibrated-v10 baseline.
 # Verifying the archived -001 run requires the pre-restoration commit.
@@ -145,9 +149,16 @@ def load_confidence_spec(path: str | Path, config: ResearchConfig) -> Confidence
     ):
         raise ConfidenceStudyError("invalid confidence artifact subdirectory")
     assert lambdas is not None
+    digest = hashlib.sha256(payload).hexdigest()
+    registry_lock(
+        config.path.parent,
+        str(document["experiment_id"]),
+        digest,
+        error=ConfidenceStudyError,
+    )
     return ConfidenceSpec(
         path=spec_path,
-        sha256=hashlib.sha256(payload).hexdigest(),
+        sha256=digest,
         experiment_id=document["experiment_id"],
         parent=parent,
         data_manifest_sha256=str(manifest),

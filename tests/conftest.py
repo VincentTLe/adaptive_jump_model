@@ -14,7 +14,10 @@ That rewrite is also the checklist a real -002 spec has to satisfy.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -125,3 +128,31 @@ def write_calibrated_spec(
 @pytest.fixture
 def config_v10() -> ResearchConfig:
     return calibrated_config()
+
+
+def registered_config(
+    tmp_path: Path, spec_path: Path, experiment_id: str
+) -> ResearchConfig:
+    """A contract rooted at ``tmp_path`` whose registry froze exactly this spec.
+
+    Loaders check that the spec bytes they are handed are the bytes the
+    registry froze. A synthetic spec therefore needs a synthetic registry, or
+    the check would only ever be satisfiable by the committed contracts.
+    """
+    research = tmp_path / "research"
+    research.mkdir(exist_ok=True)
+    (research / "experiment_registry.jsonl").write_text(
+        json.dumps(
+            {
+                "experiment_id": experiment_id,
+                "status": "FROZEN",
+                "frozen_spec_hash": hashlib.sha256(
+                    spec_path.read_bytes()
+                ).hexdigest(),
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    config = calibrated_config()
+    return replace(config, path=tmp_path / config.path.name)
