@@ -31,7 +31,11 @@ from multiprocessing import get_context  # noqa: E402
 from jumpmodels.jump import JumpModel  # noqa: E402
 
 from adaptive_jump.config import load_config  # noqa: E402
-from adaptive_jump.models import FEATURE_COLUMNS  # noqa: E402
+from adaptive_jump.models import (  # noqa: E402
+    FEATURE_COLUMNS,
+    fit_fixed_jm_window,
+    terminal_online_state,
+)
 
 CONFIG = ROOT / "research-calibrated-v10.toml"
 BASELINE = (
@@ -116,14 +120,6 @@ def main() -> int:
     config = load_config(CONFIG)
     OUT.mkdir(parents=True, exist_ok=True)
     fit_window = config.model_protocol.fit_window
-    model_kwargs = dict(
-        n_components=config.model_protocol.n_states,
-        random_state=config.jm_protocol.random_state,
-        max_iter=config.jm_protocol.max_iter,
-        tol=config.jm_protocol.tol,
-        n_init=config.jm_protocol.n_init,
-        mode_loss=True,
-    )
 
     rows = []
     runs = []
@@ -151,7 +147,16 @@ def main() -> int:
                 continue
             first = members[0] + fit_window - 1
             block = values[first - fit_window + 1 : members[-1] + fit_window]
-            tasks.append((block, penalties, fit_window, members, model_kwargs))
+            tasks.append(
+                (
+                    block,
+                    penalties,
+                    fit_window,
+                    members,
+                    config.model_protocol,
+                    config.jm_protocol_for(market),
+                )
+            )
             blocks.append(members)
         runs.append((market, penalties, terminal_dates, tasks, blocks))
 
@@ -216,7 +221,10 @@ def main() -> int:
                     flush=True,
                 )
             pd.DataFrame(
-                {"date": terminal_dates, **{f"max_w_{p:g}": maxima[p] for p in penalties}}
+                {
+                    "date": terminal_dates,
+                    **{f"max_w_{p:g}": maxima[p] for p in penalties},
+                }
             ).to_csv(OUT / f"weights-{market}.csv", index=False)
     finally:
         executor.shutdown()
