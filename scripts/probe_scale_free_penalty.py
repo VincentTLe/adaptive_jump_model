@@ -19,7 +19,6 @@ the same t+2 execution and 10 bp one-way cost.
 Run from a file (never a heredoc): the fit fan-out uses forkserver.
 """
 
-import json
 import math
 import sys
 from dataclasses import replace
@@ -42,7 +41,12 @@ from adaptive_jump.models import (  # noqa: E402
     fit_fixed_jm_window,
     terminal_online_state,
 )
-from adaptive_jump.tv_jump import loss_matrix, robust_loss_scale  # noqa: E402
+from adaptive_jump.tv_jump import (  # noqa: E402
+    TVJumpModel,
+    evidence_penalty_seq,
+    loss_matrix,
+    robust_loss_scale,
+)
 from adaptive_jump.walkforward import select_monthly_candidate  # noqa: E402
 
 CONFIG = ROOT / "research-calibrated-v10.toml"
@@ -81,8 +85,21 @@ def kappa_menus(config) -> tuple[dict[str, tuple[float, ...]], tuple[float, ...]
 
 
 def _fit_task(task):
-    """One refit window: the lambda=0 reference fit, then every kappa."""
-    window, model_protocol, jm_protocol, kappas, beta = task
+    """One refit window: the lambda=0 reference fit, then every kappa.
+
+    beta does NOT scale the penalty here. It parameterises the ARRIVAL RULE,
+    a directed, per-day transition cost
+
+        C_t(i, j) = lambda_w * exp(-beta * tanh(max(L_t(i) - L_t(j), 0) / q))
+
+    built at inference time by ``evidence_penalty_seq`` and decoded by
+    ``predict_online_tv``. The first version of this probe applied a constant
+    ``exp(-beta)`` factor to lambda instead, which is the rule's open floor and
+    the one value it never attains, so the experiment measured a halved fixed
+    penalty rather than the mechanism its own hypothesis named. That run is
+    INVALIDATED in the registry; this is the repaired implementation.
+    """
+    window, model_protocol, jm_protocol, kappas, _beta = task
     with threadpool_limits(limits=1):
         reference = fit_fixed_jm_window(
             window, model_protocol, replace(jm_protocol, lambda_grid=(0.0,))
@@ -91,30 +108,120 @@ def _fit_task(task):
         scaled = reference.scaler.transform(window.loc[:, FEATURE_COLUMNS])
         q_w = robust_loss_scale(loss_matrix(scaled, model.centers_))
         penalties = tuple(float(kappa) * q_w for kappa in kappas)
-        # A beta discount is applied to the already-normalised penalty, so the
-        # same beta means the same discount in every market and every window.
-        if beta > 0.0:
-            penalties = tuple(value * math.exp(-beta) for value in penalties)
         fitted = fit_fixed_jm_window(
             window, model_protocol, replace(jm_protocol, lambda_grid=penalties)
         )
         occupancy = {
-            float(penalty): int(len(np.unique(model.labels_)))
-            for penalty, model in fitted.models.items()
+            float(penalty): int(len(np.unique(fitted_model.labels_)))
+            for penalty, fitted_model in fitted.models.items()
         }
-        return fitted, q_w, penalties, occupancy
+        # One time-varying decoder per candidate, carrying that candidate's own
+        # centres and its own training loss scale, mirroring confidence_model.
+        tv_models: dict[float, TVJumpModel] = {}
+        scales: dict[float, float] = {}
+        training_scaled = fitted.scaler.transform(window.loc[:, FEATURE_COLUMNS])
+        for penalty, fitted_model in fitted.models.items():
+            tv = TVJumpModel(
+                n_components=model_protocol.n_states,
+                random_state=jm_protocol.random_state,
+                max_iter=jm_protocol.max_iter,
+                tol=jm_protocol.tol,
+                n_init=jm_protocol.n_init,
+            )
+            tv.centers_ = np.asarray(fitted_model.centers_, dtype=float).copy()
+            tv.feat_weights = None
+            tv_models[penalty] = tv
+            scales[penalty] = robust_loss_scale(
+                loss_matrix(training_scaled, fitted_model.centers_)
+            )
+        return fitted, q_w, penalties, occupancy, tv_models, scales
 
 
 def _infer_task(task):
-    models, block, fit_window = task
+    """Decode each online day, with the arrival rule when beta > 0.
+
+    At beta = 0 the rule collapses to the fixed penalty exactly, so this path
+    must reproduce the plain decoder; that identity is asserted as a gate.
+    """
+    models, block, fit_window, beta, tv_models, scales, penalties = task
     days = len(block) - fit_window + 1
     out = np.empty((days, len(models)), dtype=float)
     with threadpool_limits(limits=1):
         for i in range(days):
             window = block[i : i + fit_window]
-            for j, model in enumerate(models):
-                out[i, j] = terminal_online_state(model, window)
+            for j, (model, penalty) in enumerate(zip(models, penalties, strict=True)):
+                if beta == 0.0:
+                    out[i, j] = terminal_online_state(model, window)
+                    continue
+                tv = tv_models[penalty]
+                losses = loss_matrix(window, tv.centers_)
+                penalty_seq = evidence_penalty_seq(
+                    losses,
+                    lambda0=penalty,
+                    beta=beta,
+                    q_train=scales[penalty],
+                )
+                labels = np.asarray(
+                    tv.predict_online_tv(window, penalty_seq=penalty_seq)
+                )
+                out[i, j] = int(labels[-1])
     return out
+
+
+def arrival_identity_gate(config, market: str) -> None:
+    """At beta = 0 the arrival rule must reproduce the plain decoder exactly.
+
+    The spec required a parity gate and the first implementation contained no
+    assertion of any kind, which is why nobody noticed that beta had been wired
+    as a constant discount. This gate exercises the SAME code path the beta > 0
+    arms use - evidence_penalty_seq plus predict_online_tv - at beta = 0, where
+    exp(-0 * tanh(.)) = 1 makes every transition cost equal lambda, and demands
+    the labels match the fixed decoder day for day. It fails if the penalty
+    sequence is built wrongly, if the decoder is fed the wrong matrix, or if the
+    centres and the loss scale come from different fits.
+    """
+    frame = pd.read_csv(BASELINE / market / "features.csv", parse_dates=["date"])
+    columns = (*FEATURE_COLUMNS, "excess_return")
+    complete = frame.loc[frame.loc[:, columns].notna().all(axis=1)].reset_index(
+        drop=True
+    )
+    model_protocol = config.model_protocol
+    jm_protocol = config.jm_protocol_for(market)
+    fit_window = model_protocol.fit_window
+    window = complete.iloc[:fit_window]
+    fitted, _, penalties, _, tv_models, scales = _fit_task(
+        (window, model_protocol, jm_protocol, (1.0, 20.0), 0.0)
+    )
+    scaled = fitted.scaler.transform(
+        complete.iloc[: fit_window + 40].loc[:, list(FEATURE_COLUMNS)]
+    )
+    checked = 0
+    for i in range(40):
+        block = scaled[i : i + fit_window]
+        for penalty in penalties:
+            plain = terminal_online_state(fitted.models[penalty], block)
+            tv = tv_models[penalty]
+            losses = loss_matrix(block, tv.centers_)
+            seq = evidence_penalty_seq(
+                losses, lambda0=penalty, beta=0.0, q_train=scales[penalty]
+            )
+            if not np.allclose(seq[:, 0, 1], penalty) or not np.allclose(
+                seq[:, 1, 0], penalty
+            ):
+                raise SystemExit(
+                    f"PARITY GATE FAILED ({market}): at beta=0 the arrival rule "
+                    "must charge exactly lambda in both directions"
+                )
+            adaptive = int(
+                np.asarray(tv.predict_online_tv(block, penalty_seq=seq))[-1]
+            )
+            if plain != adaptive:
+                raise SystemExit(
+                    f"PARITY GATE FAILED ({market}): beta=0 arrival decode "
+                    f"differs from the fixed decoder at day {i}, lambda={penalty:g}"
+                )
+            checked += 1
+    print(f"parity gate {market}: {checked} beta=0 decodes identical", flush=True)
 
 
 def run_arm(config, market, kappas, beta, n_jobs):
@@ -181,10 +288,12 @@ def run_arm(config, market, kappas, beta, n_jobs):
             block = complete.iloc[
                 first_terminal - fit_window + 1 : last_terminal + 1
             ].loc[:, columns_index]
-            fitted, _, penalties, _ = fits[refit]
+            fitted, _, penalties, _, tv_models, scales = fits[refit]
             scaled_block = fitted.scaler.transform(block)
             models = [fitted.models[p] for p in penalties]
-            infer_tasks.append((models, scaled_block, fit_window))
+            infer_tasks.append(
+                (models, scaled_block, fit_window, beta, tv_models, scales, penalties)
+            )
             slots.append(members)
         for members, out in zip(
             slots, executor.map(_infer_task, infer_tasks), strict=True
@@ -270,13 +379,14 @@ def main() -> int:
     config = load_config(CONFIG)
     like, union = kappa_menus(config)
     OUT.mkdir(parents=True, exist_ok=True)
+    for market in MARKETS:
+        arrival_identity_gate(config, market)
     print("kappa menus (dimensionless stiffness):")
     for market in MARKETS:
         print(f"  like-for-like {market}: {[round(k, 3) for k in like[market]]}")
     print(f"  union (all markets): {[round(k, 3) for k in union]}")
 
     summary = []
-    degeneracy = []
     for menu_name in ("like_for_like", "union"):
         for market in MARKETS:
             kappas = like[market] if menu_name == "like_for_like" else union
@@ -285,27 +395,32 @@ def main() -> int:
                     config, market, kappas, beta, n_jobs
                 )
                 scored, selection = score(config, complete, states, market)
+                # The state-matrix columns ARE the kappas, so the monthly
+                # selection returns a kappa. Match it against kappa directly.
+                # The first version compared it against lambda_kappa_* columns,
+                # which hold the RAW lambda_w = kappa * q_w -- a units mismatch
+                # that mismapped up to 68 percent of (refit, kappa) pairs.
                 chosen = selection.choices["selected"].astype(float)
-                occ = {
-                    float(c.split("_")[-1]): None for c in refits.columns if False
-                }  # placeholder, occupancy read below
-                # share of selected months whose governing fit is one-state
                 choice_dates = pd.to_datetime(selection.choices["decision_date"])
                 fit_dates = pd.to_datetime(refits["fit_date"])
                 collapsed = 0
-                for date, kappa_penalty in zip(choice_dates, chosen, strict=True):
+                for date, selected_kappa in zip(choice_dates, chosen, strict=True):
                     earlier = fit_dates[fit_dates <= date]
                     if earlier.empty:
                         continue
                     idx = int(earlier.index[-1])
-                    kappa = min(
-                        kappas,
-                        key=lambda k: abs(
-                            float(refits.loc[idx, f"lambda_kappa_{k:g}"])
-                            - float(kappa_penalty)
-                        ),
-                    )
-                    if int(refits.loc[idx, f"states_kappa_{kappa:g}"]) < 2:
+                    exact = [
+                        k
+                        for k in kappas
+                        if np.isclose(k, selected_kappa, rtol=1e-12, atol=0.0)
+                    ]
+                    if len(exact) != 1:
+                        raise SystemExit(
+                            f"{market}: selected value {selected_kappa!r} is not a "
+                            "kappa in this arm's menu; the state columns and the "
+                            "selection disagree"
+                        )
+                    if int(refits.loc[idx, f"states_kappa_{exact[0]:g}"]) < 2:
                         collapsed += 1
                 share = collapsed / max(1, len(choice_dates))
                 summary.append(
@@ -341,7 +456,8 @@ def main() -> int:
                 )
                 print(
                     f"{menu_name:<14}{market} beta={label:<5} "
-                    f"sharpe={scored['sharpe']:.4f} mdd={scored['maximum_drawdown']:.4f} "
+                    f"sharpe={scored['sharpe']:.4f} "
+                    f"mdd={scored['maximum_drawdown']:.4f} "
                     f"turn={scored['turnover']:.4f} sw={scored['switch_count']} "
                     f"collapsed={share:.3f}",
                     flush=True,
