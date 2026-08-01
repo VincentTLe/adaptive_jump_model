@@ -31,6 +31,7 @@ from probe_jm_grid_exhaustive2 import (  # noqa: E402
 )
 
 IN = ROOT / "artifacts/jm-residual/08-exhaustive-nine-arms"
+BEST = ROOT / "artifacts/jm-residual/09-per-market-grids"
 FIG = ROOT / "artifacts/hmm-residual/04-figure6-path"
 OUT = ROOT / "artifacts/grid-selection-rule/01-rule"
 MARKETS = ("us", "de", "jp")
@@ -55,7 +56,16 @@ def _sweep(task):
     market, size, lo, hi, target_values, target_positions = task
     keys = [arm_key(market, delay) for delay in DELAYS]
     caches = {key: _arm_cache(key) for key in keys}
-    passes = {key: np.load(IN / f"{key}-pass-digests.npy") for key in keys}
+    # The admissible set is exactly the one -009 defined: us reaches 14 of 14,
+    # so its delay-1 set is the full-pass digests; de and jp reach only 13 of
+    # 14, so their delay-1 set is the best-7-of-8 digests. Delays 5 and 10 are
+    # full-pass in every market.
+    passes = {}
+    for key in keys:
+        if key.endswith("-d1") and market in ("de", "jp"):
+            passes[key] = np.load(BEST / f"{market}-d1-7of8-digests.npy")
+        else:
+            passes[key] = np.load(IN / f"{key}-pass-digests.npy")
     primary = caches[keys[0]]
     lambdas = primary["lambdas"]
     states = primary["states"]
@@ -146,6 +156,11 @@ def main() -> int:
         finally:
             executor.shutdown()
 
+        if not collected:
+            raise SystemExit(
+                f"{market}: no admissible grid was found; the digest sets do not "
+                "describe the set -009 reported and the rule cannot be applied"
+            )
         collected.sort(key=lambda row: (-row[0], len(row[1]), max(row[1]), row[1]))
         frame = pd.DataFrame(
             [
