@@ -26,6 +26,10 @@ artifacts/jm-residual/*/*/*-states.csv
 artifacts/jm-residual/*/*/union-refits.csv
 artifacts/jm-residual/*/*.npz
 artifacts/jm-residual/*/*.npy
+# Audit evidence: small tables and the scripts that produced them stay
+# investigable; the refitted state matrices are regenerable and stay out.
+!artifacts/audit/
+artifacts/audit/*/states-*.csv
 reports/
 *.log
 *.pid
