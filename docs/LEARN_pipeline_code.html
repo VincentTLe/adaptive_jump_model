@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Giải phẫu code pipeline — adaptive_jump_model</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1117; --bg2:#161922; --bg3:#1f2330; --fg:#e7ecef; --fg-dim:#9aa5b1;
+  --accent:#7bdcb5; --cyan:#7bf0ff; --magenta:#ff8aff; --tool:#7bff7b;
+  --result:#ffd966; --red:#ff7b7b; --border:#2a3040; --shadow:0 4px 24px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 Inter,system-ui,sans-serif}
+code,pre{font-family:"JetBrains Mono",monospace;font-size:.86em}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:250px;background:var(--bg2);
+  border-right:1px solid var(--border);padding:22px 14px;overflow-y:auto}
+.sidebar h2{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-dim);margin:0 0 12px}
+#toc a{display:block;padding:7px 10px;border-radius:8px;color:var(--fg-dim);font-size:.88rem;margin-bottom:2px}
+#toc a:hover{background:var(--bg3);color:var(--fg);text-decoration:none}
+#toc a.active{background:var(--bg3);color:var(--accent);font-weight:600}
+.progress{position:fixed;top:0;left:0;right:0;height:3px;z-index:50;background:transparent}
+#pbar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--cyan))}
+main{margin-left:250px;padding:34px 44px 90px;max-width:980px}
+.hero{padding:36px 0 8px}
+.hero h1{font-size:2rem;font-weight:800;margin:0 0 8px}
+.hero p.tag{color:var(--fg-dim);font-size:1.05rem;margin:0 0 14px}
+.hero .meta{font-size:.82rem;color:var(--fg-dim);border-top:1px solid var(--border);padding-top:10px}
+.section{margin-top:52px;padding-top:12px}
+.chapter-tag{display:inline-flex;align-items:center;gap:8px;font-size:.75rem;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--fg-dim)}
+.diff{padding:2px 8px;border-radius:999px;font-weight:600;font-size:.68rem;letter-spacing:.06em}
+.d1{background:#12351f;color:var(--tool)} .d2{background:#33301a;color:var(--result)}
+.d3{background:#3a1f26;color:var(--red)} .d4{background:#33203a;color:var(--magenta)}
+.section h2{font-size:1.5rem;margin:8px 0 6px}
+.section h2 .n{color:var(--accent);margin-right:10px;font-family:"JetBrains Mono",monospace}
+p.lead{color:var(--fg-dim);font-size:1.02rem;margin-top:0}
+h3.steph{display:flex;align-items:center;gap:10px;font-size:1.05rem;margin:26px 0 8px}
+.stepnum{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;
+  border-radius:50%;background:var(--bg3);color:var(--accent);font:600 .8rem "JetBrains Mono",monospace;flex:none}
+.diagram{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;background:var(--bg2);
+  border:1px solid var(--border);border-radius:14px;padding:16px;margin:14px 0;box-shadow:var(--shadow)}
+.dcol{display:flex;flex-direction:column;gap:10px;flex:1;min-width:130px}
+.dbox{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:9px 12px;
+  font-size:.84rem;line-height:1.4;flex:1;min-width:120px;display:flex;flex-direction:column;justify-content:center}
+.dbox .s{display:block;color:var(--fg-dim);font-size:.74rem;margin-top:3px}
+.dbox.hl{border-color:var(--accent)} .dbox.act{border-color:var(--tool)}
+.dbox.obs{border-color:var(--result)} .dbox.bad{border-color:var(--red)}
+.darrow{align-self:center;color:var(--fg-dim);font-size:1.1rem;flex:none}
+.callout{border-left:3px solid var(--accent);background:var(--bg2);border-radius:0 10px 10px 0;
+  padding:10px 14px;margin:14px 0;font-size:.95rem}
+.callout .lbl{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--accent);font-weight:600;margin-bottom:3px}
+.callout.warn{border-color:var(--result)} .callout.warn .lbl{color:var(--result)}
+.callout.key{border-color:var(--magenta)} .callout.key .lbl{color:var(--magenta)}
+details.more{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:14px 0}
+details.more summary{cursor:pointer;padding:10px 14px;font-weight:600;font-size:.92rem;color:var(--cyan)}
+details.more .inner{padding:2px 16px 12px;border-top:1px solid var(--border)}
+.recap{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--tool);
+  border-radius:0 10px 10px 0;padding:12px 16px;margin:22px 0 0;font-size:.93rem}
+.recap .lbl{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--tool);font-weight:600;margin-bottom:5px}
+.recap ul{margin:4px 0 8px;padding-left:20px}
+.recap .next{color:var(--fg-dim);margin:6px 0 0}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.87rem}
+th,td{border:1px solid var(--border);padding:6px 10px;text-align:left}
+th{background:var(--bg3);font-weight:600}
+td.num,th.num{text-align:right;font-family:"JetBrains Mono",monospace;font-size:.82rem}
+.ok{color:var(--tool)} .no{color:var(--red)} .dim{color:var(--fg-dim)}
+pre[class*=language-]{border-radius:10px;border:1px solid var(--border);margin:12px 0;font-size:.8rem}
+.reveal{animation:rise .5s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+footer{margin-top:70px;color:var(--fg-dim);font-size:.8rem;border-top:1px solid var(--border);padding-top:14px}
+.nbar{display:flex;height:16px;border-radius:8px;overflow:hidden;margin:10px 0 4px;border:1px solid var(--border)}
+.nbar div{height:100%}
+.nb-math{background:var(--accent)} .nb-plumb{background:#4d7fd1} .nb-armor{background:var(--result)} .nb-q{background:var(--red)}
+.nleg{display:flex;flex-wrap:wrap;gap:14px;font-size:.78rem;color:var(--fg-dim);margin-bottom:6px}
+.nleg span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.nleg .lm::before{background:var(--accent)} .nleg .lp::before{background:#4d7fd1}
+.nleg .la::before{background:var(--result)} .nleg .lq::before{background:var(--red)}
+@media (max-width:900px){.sidebar{display:none}main{margin-left:0;padding:20px}}
+</style>
+</head>
+<body>
+<div class="progress"><div id="pbar"></div></div>
+<aside class="sidebar">
+  <h2>Giải phẫu code</h2>
+  <nav id="toc">
+    <a href="#ch1">01 · Bản đồ &amp; cách đọc</a>
+    <a href="#ch2">02 · config.py — hợp đồng</a>
+    <a href="#ch3">03 · data.py — dữ liệu</a>
+    <a href="#ch4">04 · features.py — đặc trưng</a>
+    <a href="#ch5">05 · models.py — fit JM/HMM</a>
+    <a href="#ch6">06 · tv_jump.py — challenger</a>
+    <a href="#ch7">07 · walkforward.py — chọn λ</a>
+    <a href="#ch8">08 · backtest.py — tiền</a>
+    <a href="#ch9">09 · artifacts.py — niêm phong</a>
+    <a href="#ch10">10 · Phán quyết cuối</a>
+    <a href="#appendix">Phụ lục · Bảo tàng sẹo</a>
+  </nav>
+</aside>
+<main>
+
+<div class="hero" id="top">
+  <h1>Giải phẫu code — từng file của pipeline</h1>
+  <p class="tag">8 file, 3.717 dòng, đọc từng dòng một. Mỗi mảnh được dán một trong bốn nhãn:
+  <b>toán lõi</b>, <b>ống nước</b>, <b>giáp bảo hộ</b>, hay <b>đáng ngờ</b> — và mỗi tấm giáp
+  phải trình ra vết sẹo sự cố đã sinh ra nó, nếu không có sẹo thì bị gọi tên là thừa.</p>
+  <div class="meta">adaptive_jump_model · nhánh cleanup/research-protocol · số dòng đo sau đợt dọn 2026-08-05 ·
+  sinh từ 8 lượt đọc độc lập, đối chiếu docs/audit/*, SCIENTIFIC_LEDGER, git log</div>
+</div>
+
+<!-- ============================ CH 1 ============================ -->
+<section id="ch1" class="section reveal">
+  <span class="chapter-tag">Chương 1 · Bản đồ <span class="diff d1">DỄ</span></span>
+  <h2><span class="n">01</span>Bản đồ &amp; cách đọc tài liệu này</h2>
+  <p class="lead">Toàn bộ hệ thống là một dây chuyền 8 trạm. Mỗi chương sau mổ một trạm.</p>
+
+  <div class="diagram">
+    <div class="dbox hl"><b>config.py</b><span class="s">đọc hợp đồng TOML, từ chối chạy nếu sai</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox"><b>data.py</b><span class="s">tải giá + lãi suất, hash từng byte</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox"><b>features.py</b><span class="s">3 đặc trưng downside của paper</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox"><b>models.py</b><span class="s">fit JM (mỗi λ) + HMM, có gate</span></div>
+  </div>
+  <div class="diagram">
+    <div class="dbox act"><b>tv_jump.py</b><span class="s">λ đổi theo ngày — mô hình CỦA MÌNH</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox"><b>walkforward.py</b><span class="s">mỗi tháng chọn λ/k theo Sharpe 8 năm</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox"><b>backtest.py</b><span class="s">tín hiệu → vị thế t+2 → phí → metrics</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox obs"><b>artifacts.py</b><span class="s">niêm phong run, verify lại từ số 0</span></div>
+  </div>
+
+  <h3 class="steph"><span class="stepnum">1</span>Bốn nhãn</h3>
+  <table>
+    <tr><th>Nhãn</th><th>Nghĩa</th><th>Ví dụ</th></tr>
+    <tr><td><b style="color:var(--accent)">Toán lõi</b></td><td>công thức mà kết quả khoa học phụ thuộc trực tiếp</td><td>3 đặc trưng EWM, DP của jump model, Sharpe, drawdown</td></tr>
+    <tr><td><b style="color:#4d7fd1">Ống nước</b></td><td>chuyển dữ liệu đi, không đổi con số nào</td><td>dataclass, checkpoint/resume, chạy song song 32 lõi</td></tr>
+    <tr><td><b style="color:var(--result)">Giáp bảo hộ</b></td><td>chặn một lớp lỗi <i>đã từng xảy ra thật</i> hoặc chặn gian lận vô thức</td><td>hash pin, gate objective, khóa lookahead</td></tr>
+    <tr><td><b style="color:var(--red)">Đáng ngờ</b></td><td>xóa mai cũng không mất gì</td><td>hàm chết, field không ai đọc, nhánh không config nào chọn</td></tr>
+  </table>
+
+  <h3 class="steph"><span class="stepnum">2</span>Kết luận trước, chứng minh sau</h3>
+  <div class="nleg"><span class="lm">toán lõi ~21%</span><span class="lp">ống nước ~37%</span><span class="la">giáp ~39%</span><span class="lq">đáng ngờ ~3%</span></div>
+  <div class="nbar"><div class="nb-math" style="width:21%"></div><div class="nb-plumb" style="width:37%"></div><div class="nb-armor" style="width:39%"></div><div class="nb-q" style="width:3%"></div></div>
+  <p>Trung bình toàn pipeline. Con số gây sốc là <b>giáp chiếm ~39%</b> — nhưng chương 10 sẽ cho thấy:
+  phần thực sự xóa được chỉ ~3% (~100 dòng), còn hầu hết tấm giáp có một <b>sự cố tên tuổi</b> đứng sau
+  (phụ lục liệt kê 12 vết sẹo). Nói cách khác: repo này không phình vì thừa tính năng — nó phình vì
+  <i>đã bị cắn nhiều lần và mỗi lần đều vá bằng code</i>.</p>
+
+  <div class="callout key"><span class="lbl">Quy tắc đọc</span>
+  Gặp đoạn code trông "hoang tưởng"? Đừng hỏi "có cần không" — hỏi "sẹo nào sinh ra nó". Có sẹo → giữ. Không sẹo → ứng viên xóa.</div>
+
+  <div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul><li>8 trạm nối tiếp: hợp đồng → dữ liệu → đặc trưng → fit → (challenger) → chọn → tiền → niêm phong.</li>
+    <li>Mỗi dòng code mang 1 trong 4 nhãn; giáp chỉ hợp lệ khi có sự cố đứng sau.</li></ul>
+    <p class="next"><b>Tiếp theo →</b> trạm đầu tiên: file "config" mà thực chất là một bản hợp đồng có răng.</p>
+  </div>
+</section>
+
+<!-- ============================ CH 2 ============================ -->
+<section id="ch2" class="section reveal">
+  <span class="chapter-tag">Chương 2 · config.py · 681 dòng <span class="diff d1">DỄ</span></span>
+  <h2><span class="n">02</span>config.py — không phải config, là hợp đồng</h2>
+  <p class="lead">File này KHÔNG cho bạn cấu hình gì cả. Nó làm điều ngược lại: gần như mọi giá trị chỉ được phép bằng đúng MỘT con số đã đóng băng, và <code>load_config</code> từ chối chạy nếu file TOML nói dối.</p>
+
+  <div class="nleg"><span class="lm">5%</span><span class="lp">35%</span><span class="la">55%</span><span class="lq">5%</span></div>
+  <div class="nbar"><div class="nb-math" style="width:5%"></div><div class="nb-plumb" style="width:35%"></div><div class="nb-armor" style="width:55%"></div><div class="nb-q" style="width:5%"></div></div>
+
+  <h3 class="steph"><span class="stepnum">1</span>Cơ chế 2 dòng mà cả file dựa lên</h3>
+  <p>Cuối file (dòng 675–681) là toàn bộ "động cơ": <code>_fixed(field, value)</code> — trường này phải
+  bằng đúng giá trị đóng băng; <code>_require(cond, msg)</code> — không thỏa thì ném <code>ConfigError</code>.
+  679 dòng còn lại chỉ là <i>áp</i> hai hàm đó lên từng trường của hợp đồng.</p>
+
+  <h3 class="steph"><span class="stepnum">2</span>Các bức tường đáng chú ý</h3>
+  <table>
+    <tr><th>Tường</th><th>Dòng</th><th>Sẹo đứng sau</th></tr>
+    <tr><td>Allowlist grid λ (chỉ 2 grid có nguồn công bố; grid calibrated buộc dán nhãn "calibrated", cấm chữ "replication")</td><td class="num">26–45, 484–504</td><td>Chuỗi dò-grid-cho-khớp; run v10 đầu tiên mang nhãn sai và bị hủy trước khi nhận</td></tr>
+    <tr><td>data_policy: cấm backfill/impute/xóa outlier; splice phải kèm lý do ≥40 ký tự</td><td class="num">211–231</td><td>Splice S&amp;P đã <b>xóa mất phiên 1988-01-04</b>, hỏng mọi cửa sổ 3000 ngày đến 1999</td></tr>
+    <tr><td>Cutoff 2023-12-31; muốn quá phải bật cờ holdout riêng, trần 2026-06-30</td><td class="num">233–249</td><td>Giữ dữ liệu holdout niêm phong đến khi có câu hỏi đông lạnh</td></tr>
+    <tr><td>Grid HMM: allowlist, không phải validation — "một trường mở ở đây cho phép chỉnh grid đến khi số khớp Table 4"</td><td class="num">507–556</td><td>Chính grid Table-3 từng thiếu k=6 — giá trị duy nhất paper nêu tên</td></tr>
+    <tr><td>Luật dừng 5% khi selector đóng đô kịch trần grid</td><td class="num">559–584</td><td>Đã seal 2 run hỏng (8/9 và 16/18 hàng fail) — xem chương 7</td></tr>
+  </table>
+
+  <div class="callout"><span class="lbl">Ý chính</span>
+  Đây là nơi bài học đắt nhất của dự án được đúc thành code: <b>ba mệnh đề không được trộn lẫn</b> —
+  "paper nói X, mình làm X" (replication) / "paper nói X, mình làm Y" (lỗi) / "paper im lặng, mình tự chọn"
+  (kết quả có điều kiện). Nhãn claim + allowlist grid là máy móc ngăn mệnh đề 3 giả dạng mệnh đề 1.</div>
+
+  <details class="more"><summary>Đi sâu: phần đáng ngờ của file này (~30 dòng)</summary>
+  <div class="inner"><p>(1) Hai chỗ kiểm tra <i>trùng lặp</i>: sau khi validate từng trường, code còn so cả
+  protocol với literal đóng băng một lần nữa (dòng 501–503, 538–555) — dây đeo + nịt quần.
+  (2) <code>kmeans_n_init</code> là hằng số 10 đội lốt field cấu hình (dòng 120).
+  (3) Nhánh cho phép grid lịch sử trong slot per-market mà không config nào dùng (dòng 340).
+  Xóa cả ba không mất gì.</p></div></details>
+
+  <div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul><li>config.py = hợp đồng có răng: sai một trường là không chạy, sửa hợp đồng là đổi hash.</li>
+    <li>55% giáp — tỷ lệ cao nhất pipeline cùng artifacts.py — vì đây là 2 cửa ngõ chống tự lừa.</li></ul>
+    <p class="next"><b>Tiếp theo →</b> dữ liệu: tải một lần, đóng băng, mọi thay đổi phải kêu to.</p>
+  </div>
+</section>
+
+<!-- ============================ CH 3 ============================ -->
+<section id="ch3" class="section reveal">
+  <span class="chapter-tag">Chương 3 · data.py · 466 dòng <span class="diff d2">VỪA</span></span>
+  <h2><span class="n">03</span>data.py — tải, đóng băng, và làm mọi trò tráo đổi kêu to</h2>
+  <p class="lead">File này không tính toán gì (0% toán). Việc của nó: lấy từng chuỗi giá/lãi suất từ 4 nguồn (Yahoo, FRED, Bank of Japan, file local có hash), ép về một khuôn <code>date,value</code> duy nhất, validate gắt, rồi ghi kèm manifest ghi hash + trạng thái git + version thư viện.</p>
+
+  <div class="nleg"><span class="lm">0%</span><span class="lp">55%</span><span class="la">40%</span><span class="lq">5%</span></div>
+  <div class="nbar"><div class="nb-plumb" style="width:55%"></div><div class="nb-armor" style="width:40%"></div><div class="nb-q" style="width:5%"></div></div>
+
+  <h3 class="steph"><span class="stepnum">1</span>Cái phễu <code>_canonical</code> (dòng 341–371)</h3>
+  <p>Mọi adapter đều đổ qua một phễu validate duy nhất: ngày phải parse được, không trùng,
+  không ngoài cửa sổ [sample_start, cutoff], giá trị phải hữu hạn. Điều khoản "không ngoài cửa sổ"
+  có sự cố đo được: script cache từng đọc thẳng <code>data/external/</code> <i>bỏ qua phễu này</i> —
+  mô hình Đức được fit trên <b>thừa 4 năm lịch sử</b>, số tháng quyết định nhảy 416 → 468
+  (codex verdict #12, 2026-07-29).</p>
+
+  <h3 class="steph"><span class="stepnum">2</span>Hash pin file local (dòng 235–280)</h3>
+  <p>File local chỉ được nhận khi SHA-256 khớp pin trong hợp đồng. Đây là tấm giáp sinh ra từ
+  vụ splice S&amp;P: builder ghép 2 nguồn đã lặng lẽ xóa phiên 1988-01-04. Có pin, một bản rebuild
+  lệch <i>một dòng</i> sẽ từ chối load thay vì âm thầm đổi kết quả.</p>
+
+  <h3 class="steph"><span class="stepnum">3</span>Gate cây-git-sạch (dòng 420–456)</h3>
+  <p><code>research_git_sha</code> chỉ trả về SHA khi không có file kết-quả-ảnh-hưởng nào đang dirty.
+  Sinh từ commit sửa lỗi 18f3a94, rồi được vá lần hai khi audit phát hiện phạm vi bỏ sót config
+  thí nghiệm. Không có nó, manifest có thể ghi một SHA mô tả code <i>không phải</i> code đã tạo dữ liệu.</p>
+
+  <div class="callout warn"><span class="lbl">Gotcha thật</span>
+  Adapter Yahoo phải cộng 1 ngày vào <code>end</code> (yfinance coi end là exclusive) và đổi timezone
+  về giờ sàn <i>trước khi</i> lấy ngày — lấy ngày theo UTC cho phiên Tokyo là lệch nhãn ngày. Hai bẫy
+  off-by-one có thật, được xử đúng từ đầu.</div>
+
+  <div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul><li>data.py = 55% ống nước (4 adapter) + 40% giáp, và các tấm giáp lớn đều có sẹo: splice xóa phiên, cache né phễu, manifest-git.</li>
+    <li>Đầu ra: <code>data/raw/</code> (nguyên trạng) + <code>data/processed/</code> (sạch) + manifest hash.</li></ul>
+    <p class="next"><b>Tiếp theo →</b> biến 2 chuỗi giá/lãi thành 3 con số mỗi ngày.</p>
+  </div>
+</section>
+
+<!-- ============================ CH 4 ============================ -->
+<section id="ch4" class="section reveal">
+  <span class="chapter-tag">Chương 4 · features.py · 211 dòng <span class="diff d2">VỪA</span></span>
+  <h2><span class="n">04</span>features.py — 3 đặc trưng của paper + 1 lựa chọn của mình</h2>
+  <p class="lead">File gọn nhất pipeline, và là file "sạch" nhất: 30% toán lõi, không một abstraction thừa. Nhưng nó chứa <b>đòn bẩy lớn nhất toàn dự án</b> — công thức chuẩn hóa mà paper không công bố.</p>
+
+  <div class="nleg"><span class="lm">30%</span><span class="lp">40%</span><span class="la">25%</span><span class="lq">5%</span></div>
+  <div class="nbar"><div class="nb-math" style="width:30%"></div><div class="nb-plumb" style="width:40%"></div><div class="nb-armor" style="width:25%"></div><div class="nb-q" style="width:5%"></div></div>
+
+  <h3 class="steph"><span class="stepnum">1</span>Toán của paper: 3 đặc trưng EWM (dòng 87–121)</h3>
+  <p>Downside deviation = căn của trung bình EWM (halflife 10) của bình phương phần lợi suất âm.
+  Sortino = trung bình EWM lợi suất chia downside deviation cùng halflife (20 và 60). Đúng mục 3.4.1:</p>
+<pre><code class="language-python">negative_squared = excess.clip(upper=0).pow(2)
+
+def downside(halflife: int) -&gt; pd.Series:
+    return np.sqrt(
+        negative_squared.ewm(halflife=halflife, adjust=adjust,
+                             ignore_na=ignore_na, min_periods=0).mean()
+    )
+
+features[f"dd_{downside_halflife}"] = downside(downside_halflife)
+for halflife in sortino_halflives:
+    mean = excess.ewm(halflife=halflife, ...).mean()
+    denominator = downside(halflife)
+    features[f"sortino_{halflife}"] = mean.div(denominator.where(denominator &gt; 0))</code></pre>
+
+  <h3 class="steph"><span class="stepnum">2</span>Lựa chọn của MÌNH: chuẩn hóa expanding (dòng 124–138)</h3>
+  <p>Paper chỉ viết một chữ "standardized" [line 397]. Công thức dưới đây là phát minh của dự án —
+  z-score trên toàn lịch sử tính đến ngày t (không nhìn tương lai), warm-up tối thiểu 63 ngày:</p>
+<pre><code class="language-python">def standardize_expanding(features, min_observations):
+    if min_observations &lt; 63:
+        raise FeatureError("expanding standardizer needs &gt;= 63 warm-up rows")
+    mean = features.expanding(min_periods=min_observations).mean()
+    std  = features.expanding(min_periods=min_observations).std(ddof=1)
+    scaled = (features - mean) / std.where(std &gt; 0)
+    return scaled.replace([np.inf, -np.inf], np.nan)</code></pre>
+  <div class="callout key"><span class="lbl">Đòn bẩy lớn nhất</span>
+  Đổi công thức chuẩn hóa làm JP JM Sharpe chạy <b>0.157 → 0.310</b> (paper in 0.31). Mọi kết quả của
+  dự án đều <i>có điều kiện</i> trên lựa chọn này — vì thế nó bị khóa thành một cái tên duy nhất trong
+  hợp đồng, và sàn 63 ngày chặn config lén chạy warm-up gần 0.</div>
+
+  <h3 class="steph"><span class="stepnum">3</span>Khóa lookahead ở chân lãi suất (dòng 36–84)</h3>
+  <p><code>align_cash_returns</code>: một con số lãi suất công bố ngày d chỉ được "biết" từ d + lag
+  (1 ngày cho Mỹ, 2 mốc đầu-tháng cho Đức/Nhật); số quá cũ (&gt;10/120 ngày) bị NaN thay vì âm thầm
+  giao dịch trên lãi suất năm ngoái. Điều khoản staleness đã nuốt gọn <b>7 lỗ hổng thật</b> trong
+  chuỗi lãi suất Nhật (1985–2020) mà không bịa số nào.</p>
+
+  <div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul><li>3 đặc trưng là toán paper; công thức chuẩn hóa là của mình và là knob nhạy nhất toàn dự án.</li>
+    <li>Chân cash có khóa thời gian-biết-tin (lag + staleness) — lookahead chặn từ tầng dữ liệu.</li></ul>
+    <p class="next"><b>Tiếp theo →</b> file lớn nhất: nơi mô hình thật sự được fit, 792 dòng.</p>
+  </div>
+</section>
+
+<!-- ============================ CH 5 ============================ -->
+<section id="ch5" class="section reveal">
+  <span class="chapter-tag">Chương 5 · models.py · 792 dòng <span class="diff d3">KHÓ</span></span>
+  <h2><span class="n">05</span>models.py — fit JM &amp; HMM, không cho tương lai rò vào</h2>
+  <p class="lead">File lớn nhất. Việc thật: mỗi cửa sổ 3.000 ngày, fit một JumpModel cho <i>từng λ trong menu</i> (thư viện của chính nhóm tác giả, 10 khởi tạo giữ bản tốt nhất) và một HMM 2 trạng thái (refit <i>mỗi ngày</i>, best-of-seeds). Vì sao 792 dòng? Vì 43% là ống nước cho tốc độ (chạy song song, checkpoint) và 29% là giáp — toàn giáp có sẹo.</p>
+
+  <div class="nleg"><span class="lm">25%</span><span class="lp">43%</span><span class="la">29%</span><span class="lq">3%</span></div>
+  <div class="nbar"><div class="nb-math" style="width:25%"></div><div class="nb-plumb" style="width:43%"></div><div class="nb-armor" style="width:29%"></div><div class="nb-q" style="width:3%"></div></div>
+
+  <h3 class="steph"><span class="stepnum">1</span>Vòng fit lõi (dòng 693–712)</h3>
+<pre><code class="language-python">for penalty in jm_protocol.lambda_grid:
+    fitted = JumpModel(
+        n_components=model_protocol.n_states, jump_penalty=penalty,
+        random_state=jm_protocol.random_state, max_iter=jm_protocol.max_iter,
+        tol=jm_protocol.tol * observation_loss_scale, n_init=jm_protocol.n_init,
+    ).fit(scaled, ret_ser=returns, sort_by="cumret")
+    if not math.isfinite(float(fitted.val_)):
+        raise ModelError(f"JM lambda {penalty:g} produced a non-finite objective")
+    labels = np.asarray(fitted.labels_)
+    if not np.isin(labels, [0, 1]).all():
+        raise ModelError(f"JM lambda {penalty:g} produced invalid states")
+    models[penalty] = fitted</code></pre>
+  <p><code>sort_by="cumret"</code> là quy ước nhận diện "cụm nào là bull" (cụm có lợi suất tích lũy cao hơn = trạng thái 0).</p>
+
+  <h3 class="steph"><span class="stepnum">2</span>Ba tấm giáp có sẹo tên tuổi</h3>
+  <table>
+    <tr><th>Giáp</th><th>Sẹo</th></tr>
+    <tr><td><code>_SymmetricConvergenceMonitor</code> — hội tụ = |ΔLL| &lt; tol</td><td>hmmlearn gốc tuyên bố "converged" cả khi log-likelihood <b>giảm</b>; vá 7d69d13, rồi bản vá tự có bug từ chối fit tốt, vá tiếp 870f4ee</td></tr>
+    <tr><td><code>window_scaler</code> — MỘT chỗ duy nhất quyết định scaler nào</td><td>hai variant từng bị fit trên đặc trưng <b>chuẩn hóa kép</b> (041749d, 2026-08-01) — trên đúng cái trục đã chứng minh xê dịch Sharpe 2×</td></tr>
+    <tr><td><code>_require_nondecreasing_jm_objectives</code> — objective không được giảm khi λ tăng (so với max tích lũy)</td><td>JP 1989-07-03: objective giảm thật (bất khả thi ở nghiệm tối ưu → optimizer kẹt), làm bẩn menu frequency-ladder; gate vá 2026-08-05, fault-inject 8 ca bởi agent riêng: CERTIFY</td></tr>
+  </table>
+
+  <h3 class="steph"><span class="stepnum">3</span>Gate objective — toán 1 dòng, giáp 20 dòng (dòng 653–675)</h3>
+  <p>Toán: objective tối ưu <code>min_s[loss(s) + λ·jumps(s)]</code> là min của các hàm affine
+  có hệ số góc không âm theo λ → <b>không giảm theo λ</b>. Fit trả về giá trị <i>giảm</i> nghĩa là
+  fit ở λ nhỏ đang kẹt nghiệm cục bộ — dừng run ngay thay vì âm thầm dùng fit hỏng:</p>
+<pre><code class="language-python">best_penalty, best_model = ordered[0]
+best_value = float(best_model.val_)
+for penalty, model in ordered[1:]:
+    value = float(model.val_)
+    scale = max(1.0, abs(best_value), abs(value))
+    slack = max(absolute_tolerance, 32 * math.ulp(scale))
+    if value &lt; best_value - slack:
+        raise ModelError("JM objective decreased from "
+            f"lambda {best_penalty:g} ({best_value:g}) to "
+            f"lambda {penalty:g} ({value:g}); "
+            "the fit window contains a local optimum")
+    if value &gt; best_value:
+        best_penalty, best_value = penalty, value</code></pre>
+  <div class="callout warn"><span class="lbl">Vì sao "max tích lũy" chứ không "cặp kề nhau"</span>
+  Bản đầu so từng cặp λ kề nhau: mỗi bậc tụt 0.75×tol vẫn lọt, grid 9 bậc trôi xuống 8×tol không ai hay.
+  Verifier độc lập bắt được đúng ca này; bản chữa so mọi giá trị với max của các λ nhỏ hơn — tolerance
+  chỉ được tiêu <i>một lần</i>.</div>
+
+  <details class="more"><summary>Đi sâu: 128 dòng chạy song song có đáng không?</summary>
+  <div class="inner"><p><code>_fixed_jm_states_parallel</code> nhân bản y hệt lịch refit của vòng serial rồi
+  fan-out ra process pool (BLAS ghim 1 thread/worker cho hộp 32 lõi). Trông như over-engineering
+  kinh điển — nhưng nó được <b>golden-verify bit-identical</b> với output serial đã seal
+  (0/190.404 ô lệch) và đưa 19 phút/thị trường xuống 1.4 phút. Xóa được không? Được, không mất
+  đúng-sai. Có nên? Không — mất 13× tốc độ đổi lấy 0.</p></div></details>
+
+  <div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul><li>Toán lõi là vòng fit per-λ + HMM best-of-seeds; phần "phình" là tốc độ (song song, checkpoint) và giáp có sẹo.</li>
+    <li>Gate objective: phát hiện optimizer kẹt bằng một bất đẳng thức, và đã bắn thật 5 lần trên grid dày trong dữ liệu đã seal.</li></ul>
+    <p class="next"><b>Tiếp theo →</b> phần toán MỚI của dự án — λ thay đổi theo ngày.</p>
+  </div>
+</section>
+
+<!-- ============================ CH 6 ============================ -->
+<section id="ch6" class="section reveal">
+  <span class="chapter-tag">Chương 6 · tv_jump.py · 316 dòng <span class="diff d3">KHÓ</span></span>
+  <h2><span class="n">06</span>tv_jump.py — mô hình của mình: phạt chuyển trạng thái biết lắng nghe</h2>
+  <p class="lead">Đây là đóng góp toán học của dự án. JM gốc: một λ cố định cho mọi ngày. Mở rộng: chi phí chuyển trạng thái ngày t là một ma trận C_t(i,j) riêng — và công thức "lagged evidence" đặt C_t theo <b>bằng chứng của ngày hôm qua</b>.</p>
+
+  <div class="nleg"><span class="lm">25%</span><span class="lp">50%</span><span class="la">23%</span><span class="lq">2%</span></div>
+  <div class="nbar"><div class="nb-math" style="width:25%"></div><div class="nb-plumb" style="width:50%"></div><div class="nb-armor" style="width:23%"></div><div class="nb-q" style="width:2%"></div></div>
+
+  <h3 class="steph"><span class="stepnum">1</span>Công thức (dòng 119–133 + 163–165)</h3>
+  <p>Nếu hôm qua dữ liệu đã "hợp" trạng thái đích hơn trạng thái hiện tại (loss gap dương),
+  giảm phí chuyển — cho phép mô hình đổi trạng thái nhanh hơn khi có bằng chứng, lì hơn khi không:</p>
+<pre><code class="language-python"># C_t(i,j) = lambda0 * exp(-beta * tanh( max(L(i)-L(j),0) / q_train ))
+evidence = np.maximum(previous_loss - destination_loss, 0.0) / q_train
+evidence = np.where(np.isposinf(destination_loss), 0.0, evidence)
+penalty  = lambda0 * np.exp(-beta * np.tanh(evidence))
+penalty[:, states, states] = 0.0
+
+# ban "lagged": dung loss cua NGAY HOM QUA
+lagged_loss = np.zeros_like(loss)
+lagged_loss[1:] = loss[:-1]
+return evidence_penalty_seq(lagged_loss, lambda0, beta, q_train)</code></pre>
+  <p><code>q_train</code> = MAD của loss trên prefix huấn luyện — làm "bằng chứng" không thứ nguyên.
+  β=ln 4 nghĩa là bằng chứng bão hòa giảm phí tối đa 4 lần. Vì sao <i>lagged</i>? Bản dùng loss
+  hôm nay đếm bằng chứng <b>hai lần</b> (một lần trong loss, một lần trong phí) → nhảy loạn theo cú
+  sốc đơn lẻ; trễ 1 ngày cắt whipsaw 17 → 6 trên dữ liệu thật — đó chính là kết quả SUPPORTED
+  của lagged-evidence-mechanism-001.</p>
+
+  <h3 class="steph"><span class="stepnum">2</span>Hai bảo chứng cấu trúc</h3>
+  <div class="diagram">
+    <div class="dbox hl"><b>β = 0 ⇒ trùng từng bit JM gốc</b><span class="s">nhánh code riêng, oracle-test — baseline được "nest" cấu trúc, không phải trùng số may mắn</span></div>
+    <div class="dbox hl"><b>Prefix-invariant</b><span class="s">thêm dữ liệu tương lai không đổi nhãn hôm nay — test khóa lookahead của chính decoder</span></div>
+  </div>
+  <div class="callout"><span class="lbl">Vì sao hai test này quý</span>
+  Nhờ chúng, mọi khác biệt kết quả adaptive-vs-fixed chắc chắn đến từ Ý TƯỞNG, không từ bug cài đặt
+  hay rò rỉ tương lai. Đây là điều kiện <code>beta_zero_nests_fixed</code> và <code>prefix_invariance</code>
+  trong health gates của hợp đồng AJM-EXT-001 — 55 test, đều xanh.</div>
+
+  <details class="more"><summary>Đi sâu: phần chết &amp; phần tranh cãi</summary>
+  <div class="inner"><p><b>Chết thật:</b> <code>predict_tv</code> (7 dòng, decode offline cả cửa sổ) — 0 nơi gọi,
+  chỉ các study P1/P2 đã khai tử từng dùng. Xóa được ngay. <b>Tranh cãi:</b> <code>fit_tv</code> (45 dòng,
+  coordinate descent đầy đủ) — không run sản xuất nào gọi, nhưng là oracle chứng minh mệnh đề nesting
+  ở mức estimator; xóa nó là mồ côi bài test nền móng. Giữ, dán nhãn "oracle-only".</p></div></details>
+
+  <div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul><li>Toán mới: C_t(i,j) = λ₀·exp(−β·tanh(gap/q)), gap tính bằng loss <i>hôm qua</i>; DP giải chính xác O(T·K²).</li>
+    <li>β=0 nest bit-exact + prefix-invariance = hai lá chắn khiến so sánh với baseline là so sánh ý tưởng.</li></ul>
+    <p class="next"><b>Tiếp theo →</b> vòng lặp "cuối tháng chọn λ" — thủ tục của paper, và bằng chứng nó bất ổn.</p>
+  </div>
+</section>
+
+<!-- ============================ CH 7 ============================ -->
+<section id="ch7" class="section reveal">
+  <span class="chapter-tag">Chương 7 · walkforward.py · 564 dòng <span class="diff d3">KHÓ</span></span>
+  <h2><span class="n">07</span>walkforward.py — mỗi cuối tháng, chọn một ứng viên</h2>
+  <p class="lead">Thủ tục CV của chính paper [line 704–711]: cuối mỗi tháng, nhìn lùi đúng 8 năm, chấm Sharpe-sau-phí của từng ứng viên λ (hay k), chọn quán quân cho tháng tới, nối các lát thành một tín hiệu dài. File này KHÔNG fit mô hình và KHÔNG tự tính tiền — chấm điểm mượn từ backtest.py để "một trọng tài duy nhất".</p>
+
+  <div class="nleg"><span class="lm">25%</span><span class="lp">30%</span><span class="la">40%</span><span class="lq">5%</span></div>
+  <div class="nbar"><div class="nb-math" style="width:25%"></div><div class="nb-plumb" style="width:30%"></div><div class="nb-armor" style="width:40%"></div><div class="nb-q" style="width:5%"></div></div>
+
+  <h3 class="steph"><span class="stepnum">1</span>Trái tim: chấm điểm một ngày quyết định (dòng 489–513)</h3>
+<pre><code class="language-python">is_eligible = (count &gt;= protocol.minimum_valid_returns   # &gt;=252 ngay hop le
+               and math.isfinite(score)
+               and pd.notna(current_state))              # phai co trang thai de trade
+...
+best = max(score for _, score in eligible)
+tied = [c for c, score in eligible
+        if best - score &lt;= protocol.tie_tolerance]       # 1e-12
+choose = min if protocol.tie_rule == "lower_smoothing" else max
+return choose(tied)</code></pre>
+  <p>Cái đuôi "tie" trông màu mè cho tới khi biết: audit đếm được <b>7.995 ca hòa điểm tuyệt đối</b>,
+  và đổi chiều phá-hòa làm đổi hẳn một đường chọn của Mỹ. Luật hòa vì thế phải nằm trong hợp đồng,
+  không được để cho thứ tự dict quyết định.</p>
+
+  <h3 class="steph"><span class="stepnum">2</span>Cái gate nhốt metrics (dòng 163–198, 428–456)</h3>
+  <p><code>open_baseline_metrics</code> <b>từ chối trả bảng kết quả</b> nếu selector đóng đô ở kịch trần
+  grid quá 5% số tháng — vì "selector muốn giá trị ngoài menu" nghĩa là menu sai, và số đọc ra từ menu
+  sai là số rác. Gate này đã bắn thật hai lần: run cửa-sổ-4000 (fail 8/9 hàng, metrics bị seal) và
+  run grid-hành-vi (fail 16/18). Ledger tự thú thật thà: luật 5% là <i>của nhà</i>, paper không có —
+  nên nó chỉ chặn việc <i>đọc</i> số, không bao giờ đụng vào trades hay returns.</p>
+
+  <h3 class="steph"><span class="stepnum">3</span>Và phát hiện khoa học nằm ngay ở đây</h3>
+  <div class="callout key"><span class="lbl">Luật chọn của paper tự nó bất ổn</span>
+  Chia đôi cửa sổ validation 8 năm, hỏi hai nửa cùng chọn ai: đồng ý <b>17.1% / 15.1% / 17.4%</b>
+  (US/DE/JP) — đúng mức ngẫu nhiên 16.7%. Một control có lợi thế cố định 0.1 Sharpe thì đồng ý 100%,
+  tức bài test đủ nhạy. Kết luận: các ứng viên không có lợi thế ổn định nào để "chọn đúng" — thủ tục
+  của paper không tái lập được kết quả của paper <i>về nguyên tắc</i>. Đây là một phần cốt lõi của
+  báo cáo replication.</div>
+
+  <div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul><li>Vòng chọn hằng tháng là thủ tục của paper, chấm bằng trọng tài chung từ backtest.py.</li>
+    <li>40% giáp: gate 5% (đã seal 2 run hỏng), luật hòa (7.995 ca hòa thật), validate checkpoint chống ghép lịch sử lệch config.</li></ul>
+    <p class="next"><b>Tiếp theo →</b> nơi tín hiệu 0/1 biến thành tiền — và hai quy ước từng gây lệch số.</p>
+  </div>
+</section>
+
+<!-- ============================ CH 8 ============================ -->
+<section id="ch8" class="section reveal">
+  <span class="chapter-tag">Chương 8 · backtest.py · 222 dòng <span class="diff d2">VỪA</span></span>
+  <h2><span class="n">08</span>backtest.py — trọng tài duy nhất của mọi con số</h2>
+  <p class="lead">Mọi Sharpe/drawdown/turnover trong repo — bảng chính, mọi probe, cả phần recompute của agent kiểm định — đều đi qua đúng 4 hàm ở đây. Một trọng tài, không thể có phiên bản chấm điểm thứ hai lệch nhau.</p>
+
+  <div class="nleg"><span class="lm">30%</span><span class="lp">25%</span><span class="la">40%</span><span class="lq">5%</span></div>
+  <div class="nbar"><div class="nb-math" style="width:30%"></div><div class="nb-plumb" style="width:25%"></div><div class="nb-armor" style="width:40%"></div><div class="nb-q" style="width:5%"></div></div>
+
+  <h3 class="steph"><span class="stepnum">1</span>Nhịp thời gian t → t+1 → t+2</h3>
+  <div class="diagram">
+    <div class="dbox"><b>ngày t</b><span class="s">tín hiệu chốt sau giờ đóng cửa</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox"><b>ngày t+1</b><span class="s">khớp lệnh ở giá đóng cửa</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox obs"><b>ngày t+2</b><span class="s">hưởng return đầu tiên, chịu phí 10bps</span></div>
+  </div>
+<pre><code class="language-python">result["position"] = signal_values.shift(delay_trading_days + 1)   # t+2
+result["gross_return"] = (result["position"] * result["equity_simple"]
+    + (1.0 - result["position"]) * result["cash_return"])
+turnover = (result["position"] - previous_valid).abs()
+result["transaction_cost"] = turnover * (one_way_cost_bps / 10_000.0)
+result["strategy_return"] = result["gross_return"] - result["transaction_cost"]</code></pre>
+
+  <h3 class="steph"><span class="stepnum">2</span>Hai sẹo nằm trong file này</h3>
+  <table>
+    <tr><th>Sẹo</th><th>Giáp sinh ra</th></tr>
+    <tr><td>Signal mang sẵn index bị pandas <b>reindex theo nhãn</b> thay vì theo vị trí — lệch hàng âm thầm = bug lookahead câm (audit 2026-07, vá a474a6d)</td><td>Ép <code>np.asarray</code> tước index trước khi gắn lại theo vị trí + bắt buộc mọi giá trị đúng 0.0/1.0</td></tr>
+    <tr><td>Ô drawdown Mỹ lệch ~0.057 với Table 4 — thay cả chuỗi vị thế của <i>chính Shu</i> (đọc từ Figure 6) vẫn lệch 0.059 ⇒ lệch nằm ở <b>định nghĩa drawdown</b>, không phải mô hình (commit 8a28919)</td><td>Hai "drawdown basis" đặt tên trong hợp đồng; chuyển sang basis của paper hạ sai số drawdown trung bình 0.0330 → 0.0072</td></tr>
+  </table>
+  <div class="callout"><span class="lbl">Ý chính</span>
+  Bài học chương này: hai lần "mô hình sai" hóa ra là "quy ước đo khác nhau". Vì vậy mọi quy ước đo
+  (kể cả turnover ×0.5 — đã được chốt bằng chính câu chữ paper "44% one way, 88% combined") phải có
+  tên trong hợp đồng và chỉ một chỗ cài đặt.</div>
+
+  <div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul><li>Toán: shift(delay+1), gross = w·equity + (1−w)·cash, phí = |Δw|·10bps, rồi bộ metrics Table-4.</li>
+    <li>40% giáp vì hàm này bị hàng chục script gọi thẳng — nó phải tự vệ ở biên, không tin caller.</li></ul>
+    <p class="next"><b>Tiếp theo →</b> trạm cuối: file không tính gì cho tương lai nhưng quyết định dự án có đáng tin không.</p>
+  </div>
+</section>
+
+<!-- ============================ CH 9 ============================ -->
+<section id="ch9" class="section reveal">
+  <span class="chapter-tag">Chương 9 · artifacts.py · 465 dòng <span class="diff d4">KHÓ · CAO TRÀO</span></span>
+  <h2><span class="n">09</span>artifacts.py — niêm phong, rồi nghi ngờ chính mình</h2>
+  <p class="lead">File này không tạo ra con số nào để trade. Nó làm hai việc: <b>niêm phong</b> một run thành thư mục bất biến (hash từng file), và <b>verify</b> — tính lại mọi thứ từ dòng trade thô, không tin bất cứ gì run-writer đã ghi. Xóa cả file: 0 con số backtest đổi. Nhưng thứ mất đi là <i>bằng chứng</i>.</p>
+
+  <div class="nleg"><span class="lm">25%</span><span class="lp">17%</span><span class="la">55%</span><span class="lq">3%</span></div>
+  <div class="nbar"><div class="nb-math" style="width:25%"></div><div class="nb-plumb" style="width:17%"></div><div class="nb-armor" style="width:55%"></div><div class="nb-q" style="width:3%"></div></div>
+
+  <h3 class="steph"><span class="stepnum">1</span>Vòng đời một run</h3>
+  <div class="diagram">
+    <div class="dbox"><b>run xong</b><span class="s">trades, metrics, config.lock, boundaries</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox act"><b>seal</b><span class="s">inventory.json = hash MỌI file</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox hl"><b>verify</b><span class="s">tính lại metrics từ trades bằng trọng tài chung; đòi khớp ≤1e-12 (thực tế ≤4e-14)</span></div>
+    <div class="darrow">→</div>
+    <div class="dbox obs"><b>claim</b><span class="s">so claim.json với kết quả tính lại — lệch chữ nào cũng fail</span></div>
+  </div>
+
+  <h3 class="steph"><span class="stepnum">2</span>Luật trễ — chứng minh không-lookahead từ chính dữ liệu (dòng 450–457)</h3>
+<pre><code class="language-python">offset = delay + 1
+if (not frame["position"].iloc[offset:].reset_index(drop=True)
+        .equals(frame["signal"].iloc[:-offset].reset_index(drop=True))):
+    raise ArtifactError(f"trade delay mismatch: {path}")</code></pre>
+  <p>Đọc thẳng từ file trade đã seal: vị thế ngày t phải đúng bằng tín hiệu ngày t−(delay+1).
+  Gian lận dễ nhất trong văn học backtest — hành động sớm hơn cho phép — bị bắt bằng một phép so
+  chuỗi, không cần tin ai.</p>
+
+  <h3 class="steph"><span class="stepnum">3</span>Ba sẹo lớn nằm ở đây</h3>
+  <table>
+    <tr><th>Sẹo</th><th>Giáp</th></tr>
+    <tr><td>Frozen spec từng chứa hash <b>65 ký tự hex</b> (typo chép tay) — 3 lần freeze phải rút lại</td><td><code>_require_hex</code> + run_id <i>suy ra từ</i> hash thay vì chép tay</td></tr>
+    <tr><td>Run v10 đầu tiên qua mọi gate số nhưng claim.json ghi "proxy replication" trên grid đã <b>calibrate theo đáp án</b> — bị hủy trước khi nhận</td><td>So khớp claim với nhãn hợp đồng + với kết quả tính lại (f9f3e0a)</td></tr>
+    <tr><td>Thời v7, MỌI run fixed-baselines chết ở boundary gate — điều duy nhất khiến verdict "non-replication" đáng tin là metrics đã bị seal thật</td><td>Máy trạng thái: status "boundary_failed" thì <b>không được tồn tại</b> metrics.csv/claim.json/trades nào</td></tr>
+  </table>
+
+  <div class="callout key"><span class="lbl">Triết lý</span>
+  Sản phẩm thật của dự án không phải chiến lược — là <b>các claim đã được kiểm chứng</b>. Nên file
+  "hoang tưởng" nhất repo chính là chỗ tỷ lệ giáp cao nhất (55%) một cách chính đáng: nó là "người
+  kiểm khác người làm" đúc thành code, chạy được, không cần thiện chí của ai.</div>
+
+  <div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+    <ul><li>seal = hash mọi file; verify = tính lại tất cả từ trade thô + luật trễ + đối chiếu claim.</li>
+    <li>Ba lớp sự cố thật (hash typo, nhãn claim sai, boundary-failed) đều có gate mang tên nó.</li></ul>
+    <p class="next"><b>Tiếp theo →</b> tổng kết: rốt cuộc cái gì LÀ over-engineering, cái gì không?</p>
+  </div>
+</section>
+
+<!-- ============================ CH 10 ============================ -->
+<section id="ch10" class="section reveal">
+  <span class="chapter-tag">Chương 10 · Tổng kết <span class="diff d1">DỄ</span></span>
+  <h2><span class="n">10</span>Phán quyết cuối: cái gì thừa, cái gì là sẹo</h2>
+  <p class="lead">Câu bạn hỏi: "cái gì cần thiết, cái gì là over-engineer?" Đây là câu trả lời gọn nhất trung thực được.</p>
+
+  <h3 class="steph"><span class="stepnum">1</span>Danh sách xóa-được-ngày-mai (toàn bộ, ~100/3.717 dòng ≈ 3%)</h3>
+  <table>
+    <tr><th>File</th><th>Món</th><th class="num">~dòng</th></tr>
+    <tr><td>config.py</td><td>2 chỗ validate trùng lặp; field <code>kmeans_n_init</code> giả-cấu-hình; nhánh grid không ai dùng</td><td class="num">30</td></tr>
+    <tr><td>data.py</td><td>2 field quality luôn-bằng-0; <code>HttpResult.status</code> luôn 200</td><td class="num">10</td></tr>
+    <tr><td>features.py</td><td>cột <code>gap_calendar_days</code> không ai đọc</td><td class="num">5</td></tr>
+    <tr><td>models.py</td><td><code>_IdentityScaler.var_</code> chết; vài check bool không sẹo</td><td class="num">8</td></tr>
+    <tr><td>tv_jump.py</td><td><code>predict_tv</code> chết hẳn; validate lặp trong bản lagged</td><td class="num">17</td></tr>
+    <tr><td>walkforward.py</td><td>nhánh LEGACY_COMPARISON_SAMPLE (chỉ còn phục vụ replay run cũ); knob <code>checkpoint_every</code> không ai vặn</td><td class="num">16</td></tr>
+    <tr><td>backtest.py</td><td>nhánh <code>charge_initial_allocation=True</code> chưa run seal nào bật</td><td class="num">10</td></tr>
+    <tr><td>artifacts.py</td><td><code>schema_version</code> chỉ có version 1; default claim-label là foot-gun</td><td class="num">10</td></tr>
+  </table>
+  <p>Đó là <b>toàn bộ</b> phần "over-engineering" thật theo nghĩa xóa-không-mất-gì. Không món nào ảnh
+  hưởng đúng-sai; một nửa còn là "nợ chính sách" (giữ replay cho run đã seal) chứ không phải nợ code.</p>
+
+  <h3 class="steph"><span class="stepnum">2</span>Phần trông-như-thừa nhưng có sẹo — đừng đụng</h3>
+  <p>39% giáp nghe khủng khiếp, nhưng phụ lục dưới liệt kê 12 sự cố tên tuổi, mỗi cái chỉ đích danh
+  tấm giáp nó sinh ra. Quy luật thấy rõ khi xếp cạnh nhau: <b>mọi lớp lỗi ở đây đều thuộc họ "sai âm
+  thầm"</b> — splice nuốt một phiên, reindex lệch nhãn, hội tụ giả, chuẩn hóa kép, claim dán nhầm chữ.
+  Backtest tài chính chết vì sai-âm-thầm, không chết vì crash. Giáp của repo này gần như toàn bộ làm
+  đúng một việc: biến sai-âm-thầm thành vỡ-ngay-tại-chỗ.</p>
+
+  <h3 class="steph"><span class="stepnum">3</span>Còn sự phình to thật sự nằm ở đâu?</h3>
+  <div class="callout warn"><span class="lbl">Câu trả lời thật</span>
+  Không nằm trong 8 file này. Nó nằm ở <b>các nhánh nghiên cứu đã chết</b> — 26 module + 13 file test
+  của balanced/confidence/separation/holdout — và đã bị xóa ngày 2026-08-05 với bằng chứng parity
+  (3 run seal replay đúng từng bit trước/sau, suite 416 xanh). Trước đợt dọn: 52 file. Sau: 26 file
+  mà tài liệu này mô tả đủ 8 file lõi. Phần "loạn xì ngầu" bạn cảm thấy là <i>lịch sử</i> của một dự
+  án đã thử và giết nhiều nhánh — không phải kiến trúc hiện tại.</div>
+
+  <div class="recap"><span class="lbl">✓ Toàn bộ tài liệu trong 3 câu</span>
+    <ul><li>Pipeline thật chỉ là 6 bước toán khá đơn giản; 21% code là toán đó.</li>
+    <li>39% là giáp chống sai-âm-thầm, hầu hết có sự cố thật đứng sau; 3% xóa được và đã có danh sách.</li>
+    <li>Sự bừa bộn từng có thật nhưng nằm ở các study đã chết — và đã được dọn kèm bằng chứng.</li></ul>
+    <p class="next"><b>Phụ lục →</b> bảo tàng 12 vết sẹo, để tra nhanh "guard này sinh từ vụ gì".</p>
+  </div>
+</section>
+
+<!-- ============================ APPENDIX ============================ -->
+<section id="appendix" class="section reveal">
+  <span class="chapter-tag">Phụ lục <span class="diff d2">TRA CỨU</span></span>
+  <h2><span class="n">A</span>Bảo tàng sẹo — 12 sự cố thật và tấm giáp chúng sinh ra</h2>
+  <table>
+    <tr><th>#</th><th>Sự cố (có hồ sơ)</th><th>Giáp sinh ra</th><th>Ở đâu</th></tr>
+    <tr><td class="num">1</td><td>Splice S&amp;P xóa mất phiên 1988-01-04, hỏng mọi cửa sổ 3000 ngày tới 1999</td><td>hash-pin file local, cấm splice thiếu lý do, test hồi quy</td><td>data.py, config.py</td></tr>
+    <tr><td class="num">2</td><td>Script cache né phễu trim — Đức fit thừa 4 năm, 416→468 tháng quyết định</td><td>phễu <code>_canonical</code> chặn ngoài-cửa-sổ</td><td>data.py</td></tr>
+    <tr><td class="num">3</td><td>hmmlearn báo "hội tụ" cả khi likelihood giảm</td><td>monitor đối xứng + re-check hậu-fit</td><td>models.py</td></tr>
+    <tr><td class="num">4</td><td>Hai variant fit trên đặc trưng chuẩn hóa KÉP (trục nhạy nhất dự án)</td><td>quyết định scaler dồn về một hàm <code>window_scaler</code>, test đọc cả 2 call-site</td><td>models.py</td></tr>
+    <tr><td class="num">5</td><td>Objective giảm khi λ tăng (JP 1989-07-03) — optimizer kẹt, bẩn menu frequency-ladder</td><td>gate running-max, fault-inject bởi agent riêng (CERTIFY)</td><td>models.py</td></tr>
+    <tr><td class="num">6</td><td>Smoke lộ empty-state center → loss +inf → nguy cơ NaN penalty decode rác</td><td>ngữ nghĩa ∞ trong evidence + cấm fallback q_train=0</td><td>tv_jump.py</td></tr>
+    <tr><td class="num">7</td><td>7.995 ca hòa điểm tuyệt đối; đổi chiều phá-hòa đổi cả đường chọn của Mỹ</td><td>tie_tolerance 1e-12 + luật hòa đóng băng trong hợp đồng</td><td>walkforward.py</td></tr>
+    <tr><td class="num">8</td><td>Selector đóng đô kịch trần grid (JP 30–39% tháng) — menu sai thì số là rác</td><td>boundary gate 5%, đã seal 2 run (8/9 và 16/18 hàng fail)</td><td>walkforward.py</td></tr>
+    <tr><td class="num">9</td><td>JP B&amp;H Sharpe 0.189 vs 0.193 — hai quy ước căn mẫu khác nhau bị trộn trong ledger</td><td>quy ước căn mẫu thành enum có tên, không nhận chuỗi lạ</td><td>walkforward.py, config.py</td></tr>
+    <tr><td class="num">10</td><td>Signal mang index bị reindex theo nhãn — lệch hàng âm thầm (họ lookahead)</td><td>ép positional + bắt buộc 0/1</td><td>backtest.py</td></tr>
+    <tr><td class="num">11</td><td>Lệch drawdown Mỹ hóa ra là ĐỊNH NGHĨA drawdown (thay vị thế của chính Shu vẫn lệch)</td><td>hai drawdown-basis có tên; basis paper hạ sai số 0.033→0.007</td><td>backtest.py, config.py</td></tr>
+    <tr><td class="num">12</td><td>Hash 65-hex chép tay trong frozen spec; claim "replication" dán lên grid calibrated</td><td><code>_require_hex</code>, run-id suy từ hash, đối chiếu claim với hợp đồng + số tính lại</td><td>artifacts.py, config.py</td></tr>
+  </table>
+
+  <h3 class="steph"><span class="stepnum">G</span>Từ điển mini</h3>
+  <table>
+    <tr><td><b>JM (Jump Model)</b></td><td>k-means 2 cụm + phí λ mỗi lần đổi cụm theo thời gian; giải chính xác bằng DP</td></tr>
+    <tr><td><b>λ (jump penalty)</b></td><td>độ "lì" của mô hình; λ to = ít đổi trạng thái</td></tr>
+    <tr><td><b>Walk-forward</b></td><td>mọi quyết định ngày t chỉ dùng dữ liệu ≤ t; không có nhìn lại</td></tr>
+    <tr><td><b>Lookahead</b></td><td>rò dữ liệu tương lai vào quyết định quá khứ — tội nặng nhất của backtest</td></tr>
+    <tr><td><b>Seal / verify</b></td><td>đóng băng run bằng hash; kiểm lại bằng cách tính lại từ dữ liệu thô</td></tr>
+    <tr><td><b>Boundary gate</b></td><td>tripwire: selector thích kịch trần menu quá 5% tháng → khóa metrics</td></tr>
+    <tr><td><b>q_train</b></td><td>MAD của loss trên prefix huấn luyện — thước đo để "bằng chứng" không có thứ nguyên</td></tr>
+    <tr><td><b>Nesting (β=0)</b></td><td>đặt tham số mở rộng về 0 phải trả lại đúng mô hình gốc từng bit</td></tr>
+  </table>
+</section>
+
+<footer>
+  Nguồn: đọc trọn 8 file src/adaptive_jump/*.py (bản sau dọn dẹp 2026-08-05) · docs/audit/*.md ·
+  docs/unspecified-choices.md · research/SCIENTIFIC_LEDGER.md · git log.
+  Mọi số dòng tham chiếu bản hiện tại; tỷ lệ nhãn là ước lượng theo dòng của từng lượt đọc độc lập.
+</footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<script>
+(function () {
+  var sections = Array.prototype.slice.call(document.querySelectorAll('main .section'));
+  var links = {};
+  document.querySelectorAll('#toc a').forEach(function (a) {
+    links[a.getAttribute('href').slice(1)] = a;
+  });
+  var activeObs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      var a = links[e.target.id];
+      if (!a) return;
+      if (e.isIntersecting) {
+        Object.keys(links).forEach(function (k) { links[k].classList.remove('active'); });
+        a.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-45% 0px -50% 0px' });
+  sections.forEach(function (s) { activeObs.observe(s); });
+  var bar = document.getElementById('pbar');
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  document.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>
