@@ -47,12 +47,16 @@ Completed:
   `e331b96d662ca703a3fa5140d4ba9d92544c9eed553eb36df1525fafbc0b6a49`; the
   2023-12-31 cutoff was kept by owner decision, recorded in the contract.
 
+- downloaded the Fama-French regional data with owner approval (2026-08-05) and
+  froze its metadata and hashes in `research/ajm-ext-001-data.lock.toml`. The
+  three transport files were scale- and calendar-validated; the confirmation
+  zip (Asia-Pacific ex Japan) was hashed but never extracted or read — it stays
+  sealed until the transport gate passes.
+
 Still required before any new P&L is interpreted:
 
 1. The external runner must replay states -> monthly selection -> trades ->
    metrics, with an independently produced verification receipt.
-2. Official public regional data metadata and hashes must be frozen. Downloading
-   it requires owner approval.
 
 ## Data Roles
 

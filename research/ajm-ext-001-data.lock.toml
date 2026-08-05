@@ -1,0 +1,59 @@
+schema_version = 1
+experiment_id = "ajm-ext-001"
+downloaded_at_utc = "2026-08-05T23:59:00Z"
+owner_approval = "download approved by owner in-session 2026-08-05 (VN: 'được, cho phép tải dữ liệu FF')"
+provider_vintage = "This file was created using the 202606 Bloomberg database."
+storage = "data/external/fama-french/ (gitignored; raw_redistribution = false — only these hashes are committed)"
+notes = "all three transport files share an identical 9392-row calendar (1990-07-02..2026-06-30), so the contract's per-region calendar rule is trivially satisfied; rows after the 2023-12-31 evaluation_cutoff exist in the files but are outside contract scope. Missing-data marker -99.99 appears zero times in any transport file."
+
+[[source]]
+role = "transport"
+region = "Fama-French North America"
+zip = "North_America_3_Factors_Daily_CSV.zip"
+url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/North_America_3_Factors_Daily_CSV.zip"
+sha256 = "a5211c70a91b634dd7e0af8a688f083439db393e6cc75731b5c89cd452a81115"
+bytes = 64880
+csv = "North_America_3_Factors_Daily.csv"
+first_row = "19900702"
+last_row = "20260630"
+rows = 9392
+missing_markers = 0
+scale_check = "mean |Mkt-RF| 0.727, max 11.93 -> percent units confirmed"
+
+[[source]]
+role = "transport"
+region = "Fama-French Europe"
+zip = "Europe_3_Factors_Daily_CSV.zip"
+url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/Europe_3_Factors_Daily_CSV.zip"
+sha256 = "b6c3a900677aecf716aa9e0915290b25e7a07c8e8d6db134b9244c18ff0d033e"
+bytes = 64386
+csv = "Europe_3_Factors_Daily.csv"
+first_row = "19900702"
+last_row = "20260630"
+rows = 9392
+missing_markers = 0
+scale_check = "mean |Mkt-RF| 0.775, max 12.00 -> percent units confirmed"
+
+[[source]]
+role = "transport"
+region = "Fama-French Japan"
+zip = "Japan_3_Factors_Daily_CSV.zip"
+url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/Japan_3_Factors_Daily_CSV.zip"
+sha256 = "43a245affc05edf50179cc1f9b84b7f8115fbdd606519b5cf87f0c35860f8e8b"
+bytes = 65866
+csv = "Japan_3_Factors_Daily.csv"
+first_row = "19900702"
+last_row = "20260630"
+rows = 9392
+missing_markers = 0
+scale_check = "mean |Mkt-RF| 0.962, max 13.02 -> percent units confirmed"
+
+[[source]]
+role = "confirmation"
+region = "Fama-French Asia-Pacific ex Japan"
+zip = "Asia_Pacific_ex_Japan_3_Factors_Daily_CSV.zip"
+url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/Asia_Pacific_ex_Japan_3_Factors_Daily_CSV.zip"
+sha256 = "325bb8932ee6bc40b65eb488c4ba0cb634bde9e8b5fb55ffe6e1987beb661b0f"
+bytes = 64623
+content_unread = true
+seal = "downloaded and hashed only; the zip was never extracted and no row of its contents has been read. It stays sealed until the transport gate passes per the frozen contract"
