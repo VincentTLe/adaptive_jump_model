@@ -650,6 +650,31 @@ def window_scaler(model_protocol: ModelProtocol, features: pd.DataFrame):
     return StandardScaler().fit(features)
 
 
+def _require_nondecreasing_jm_objectives(
+    models: dict[float, JumpModel], *, absolute_tolerance: float
+) -> None:
+    ordered = sorted(models.items())
+    if not ordered:
+        return
+    # compare against the running maximum so sub-tolerance decreases cannot
+    # accumulate across the grid; the tolerance is spent once, not per pair
+    best_penalty, best_model = ordered[0]
+    best_value = float(best_model.val_)
+    for penalty, model in ordered[1:]:
+        value = float(model.val_)
+        scale = max(1.0, abs(best_value), abs(value))
+        slack = max(absolute_tolerance, 32 * math.ulp(scale))
+        if value < best_value - slack:
+            raise ModelError(
+                "JM objective decreased from "
+                f"lambda {best_penalty:g} ({best_value:g}) to "
+                f"lambda {penalty:g} ({value:g}); "
+                "the fit window contains a local optimum"
+            )
+        if value > best_value:
+            best_penalty, best_value = penalty, value
+
+
 def fit_fixed_jm_window(
     window: pd.DataFrame,
     model_protocol: ModelProtocol,
@@ -685,6 +710,10 @@ def fit_fixed_jm_window(
         if not np.isin(labels, [0, 1]).all():
             raise ModelError(f"JM lambda {penalty:g} produced invalid states")
         models[penalty] = fitted
+    _require_nondecreasing_jm_objectives(
+        models,
+        absolute_tolerance=jm_protocol.tol * observation_loss_scale,
+    )
     return FixedJMFit(
         scaler=scaler,
         models=models,

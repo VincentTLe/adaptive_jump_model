@@ -60,6 +60,21 @@ def _frame(periods: int = 14) -> pd.DataFrame:
     )
 
 
+def _patch_jump_objectives(
+    monkeypatch: pytest.MonkeyPatch, objectives: dict[float, float]
+) -> None:
+    class ObjectiveJumpModel:
+        def __init__(self, *, jump_penalty: float, **_: object) -> None:
+            self.jump_penalty = jump_penalty
+
+        def fit(self, features: pd.DataFrame, **_: object) -> "ObjectiveJumpModel":
+            self.val_ = objectives[self.jump_penalty]
+            self.labels_ = np.zeros(len(features), dtype=int)
+            return self
+
+    monkeypatch.setattr("adaptive_jump.models.JumpModel", ObjectiveJumpModel)
+
+
 def test_terminal_state_matches_upstream_online_dp() -> None:
     features = np.array([[-2.0], [-1.0], [1.0], [2.0]])
     returns = np.array([0.02, 0.01, -0.01, -0.02])
@@ -103,6 +118,65 @@ def test_fixed_jm_uses_cumulative_return_state_order() -> None:
 
     assert first_fit["lambda"] == 5.0
     assert np.isfinite(first_fit["objective"])
+
+
+def test_fixed_jm_rejects_decreasing_objective_across_lambda(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    objectives = {5.0: 90.0, 10.0: 80.0}
+    _patch_jump_objectives(monkeypatch, objectives)
+    model, _ = _protocols()
+    reverse_grid = JMProtocol((10.0, 5.0), 4, 0, 100, 1e-8, (1, 7))
+
+    with pytest.raises(
+        ModelError,
+        match=r"objective decreased.*lambda 5.*90.*lambda 10.*80",
+    ):
+        fit_fixed_jm_window(_frame().iloc[:6], model, reverse_grid)
+
+
+def test_fixed_jm_objective_gate_preserves_configured_grid_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    objectives = {5.0: 80.0, 10.0: 90.0, 20.0: 100.0}
+    _patch_jump_objectives(monkeypatch, objectives)
+    model, _ = _protocols()
+    reverse_grid = JMProtocol((20.0, 10.0, 5.0), 4, 0, 100, 1e-8, (1, 7))
+
+    fit = fit_fixed_jm_window(_frame().iloc[:6], model, reverse_grid)
+
+    assert tuple(fit.models) == reverse_grid.lambda_grid
+
+
+def test_fixed_jm_objective_gate_uses_optimizer_tolerance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    objectives = {5.0: 90.0, 10.0: 90.0 - 0.5e-8}
+    _patch_jump_objectives(monkeypatch, objectives)
+    model, _ = _protocols()
+    protocol = JMProtocol((5.0, 10.0), 4, 0, 100, 1e-8, (1, 7))
+
+    fit = fit_fixed_jm_window(_frame().iloc[:6], model, protocol)
+
+    assert tuple(fit.models) == protocol.lambda_grid
+
+
+def test_fixed_jm_objective_gate_does_not_accumulate_tolerance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tolerance = 1e-8
+    objectives = {
+        float(penalty): 90.0 - penalty * 0.75 * tolerance for penalty in range(10)
+    }
+    _patch_jump_objectives(monkeypatch, objectives)
+    model, _ = _protocols()
+    protocol = JMProtocol(tuple(objectives), 4, 0, 100, tolerance, (1, 7))
+
+    with pytest.raises(
+        ModelError,
+        match=r"objective decreased.*lambda 0.*lambda 2",
+    ):
+        fit_fixed_jm_window(_frame().iloc[:6], model, protocol)
 
 
 def test_fixed_jm_default_loss_scale_is_exactly_unchanged() -> None:
