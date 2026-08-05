@@ -26,9 +26,6 @@ REGISTRY = ROOT / "research/experiment_registry.jsonl"
 RUNNABLE_SPECS = (
     "simple-jm-suite-002",
     "dd-loss-scale-002",
-    "adaptive-confidence-002",
-    "holdout-2026-001",
-    "separation-turnover-001",
 )
 
 
