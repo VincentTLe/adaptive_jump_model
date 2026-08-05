@@ -1,95 +1,100 @@
 # Adaptive Jump Model
 
-Does regime-switching actually help a real trading strategy? This project
-reproduces the statistical **Jump Model** (JM) of Shu, Yu, and Mulvey and tests
-one honest question on public US, German, and Japanese equity proxies:
+This project asks one research question: can a causal adaptive Jump Model beat
+Shu-style fixed Jump Models and ordinary market-timing controls on public data
+that was not used to tune the method?
 
-> After a realistic trading delay and 10-bps costs, can a causal JM beat both
-> buy-and-hold and a Gaussian HMM on net Sharpe — in all three markets?
+## Scientific Position
 
-**Answer so far: no.** The strongest variant (downside-deviation features only)
-wins in the US alone; every candidate is `not_supported` as a cross-market rule.
-These are exploratory results, **not** an alpha, robustness, generalization, or
-profitability claim.
+An exact reconstruction of Shu, Yu, and Mulvey's final-v3 JM row is not
+identifiable from the public paper and available proxy data. The repository's
+large grid searches found settings that match published cells, but those
+settings are target-calibrated development artifacts, not reproduction
+measurements. They must not be used as evidence that the authors' method was
+recovered.
 
-## What it does
+That closes grid hunting as the main task. The active experiment is
+`AJM-EXT-001`: one frozen challenger, a bounded four-specification fixed-JM
+family, and public regional data never used during development. The transport
+regions share markets with the development sample (the contract discloses
+this); only the Asia-Pacific ex Japan confirmation region is market-disjoint.
+Existing US/Germany/Japan work is burned development evidence only.
 
-Each month, using only past data: fit two-state JM candidates and a Gaussian
-HMM, select their penalty/smoothing by the last eight years of net validation
-Sharpe, hold equity in the favorable regime and cash in the unfavorable one, and
-trade with Shu's one-day delay — decide after `t`, trade at the close of `t+1`,
-book the first return and 10-bps cost at `t+2`. Models and P&L are frozen
-through `2023-12-31`, then compared on identical dates by net Sharpe, drawdown,
-turnover, cash fraction, and switch count.
+## Active Experiment
 
-## Result
+Challenger: lagged evidence with `beta = ln(4)`. It changes the transition cost
+using only the prior day's state-loss evidence. At `beta = 0` it exactly nests
+the fixed JM.
 
-Net Sharpe on the common proxy sample (through 2023):
+Paired fixed-JM baselines:
 
-| Market | Buy & Hold | HMM | Fixed JM | DD-only JM | Scaled DD JM | DD beats both? |
-| --- | ---: | ---: | ---: | ---: | ---: | --- |
-| US | 0.51 | 0.65 | 0.57 | **0.91** | 0.88 | Yes |
-| DE | **0.29** | 0.01 | 0.17 | 0.23 | 0.20 | No |
-| JP | **0.54** | 0.40 | 0.33 | 0.42 | 0.43 | No |
+| Grid | Standardization |
+| --- | --- |
+| Shu arXiv-v1 `{10,22,50,100,220,500,1000}` | trailing-window ddof=0 |
+| Shu arXiv-v1 `{10,22,50,100,220,500,1000}` | causal expanding ddof=1 |
+| Shu-v3 Table-3 `{0,5,15,35,70,150}` | trailing-window ddof=0 |
+| Shu-v3 Table-3 `{0,5,15,35,70,150}` | causal expanding ddof=1 |
 
-DD-only (exponentially weighted **downside deviation**, not drawdown) lifts
-fixed-JM Sharpe in all three markets but beats both benchmarks only in the US —
-`1/3`. Extending the proxies through June 2026 leaves that unchanged (US `0.89`
-vs stronger control `0.63`, still `1/3`); the selection-clean 2024–2026 window
-is a short broad-bull that no cash-rotating strategy can win, so it neither
-confirms nor refutes the 18-year US edge. Full framing in
-[STATUS](research/STATUS.md).
+All arms use the same 3,000-observation fit window, January/July refits,
+eight-year past-only validation, `t+2` return timing, and 10-bps one-way cost.
+The complete data roles, transport gate, confirmation rule, and stop budget are
+in [the frozen contract](research/ajm-ext-001.toml), hash-pinned by its
+registry event (2026-08-05).
 
-## Run it
+Current status is [TASK.md](TASK.md). No external result exists yet.
+
+## What Is Verified
+
+The shared model tests cover causal fitting, exact serial/parallel parity,
+checkpoint resume, fixed-JM nesting, and future-prefix invariance. The canonical
+fitter now rejects a fit window if its objective decreases as lambda increases;
+such a decrease is impossible at the global optimum and exposes a local-fit
+failure. Passing this gate is necessary, but does not prove a global optimum.
+
+The older DD-only development result improved net Sharpe in all three local
+markets but beat both buy-and-hold and HMM only in the US. It did not establish
+a cross-market model and is not the active challenger.
+
+## Run And Verify
 
 ```bash
 uv python install 3.12.3
 uv sync --locked --extra data
-.venv/bin/python -m pytest -q                                    # tests
-
-.venv/bin/adaptive-jump fetch --config research.toml             # proxy data
-.venv/bin/adaptive-jump run --study replication --config research.toml
-.venv/bin/adaptive-jump run --study simple-jm-suite --config research.toml
-.venv/bin/adaptive-jump verify --run artifacts/<run_id>          # replay-check a frozen run
-tectonic paper/manuscript.tex --outdir artifacts/paper           # build the paper
+.venv/bin/pytest -q
+.venv/bin/adaptive-jump verify --run artifacts/<run_id>
 ```
 
-Raw data and run outputs live in the ignored `data/` and `artifacts/`. `uv.lock`
-records the locked dependency sources and versions.
+Do not run a new fetch or experiment without its frozen contract and data role.
+Raw data and runtime outputs remain ignored under `data/` and `artifacts/`.
 
-## Layout
+## Repository Map
 
+```text
+research/ajm-ext-001.toml  active scientific contract
+TASK.md                    current phase, gates, and next action
+research/experiment_registry.jsonl
+                           append-only experiment and correction history
+research/SCIENTIFIC_LEDGER.md
+                           detailed scientific evidence
+research/STATUS.md         quantitative development results (old README tables)
+paper/                     manuscript draft; figures need an archive restore
+src/adaptive_jump/         shared data -> features -> models -> selection -> P&L
+tests/                     behavioral and audit regression tests
+scripts/                   historical builders, diagnostics, and audit programs
+artifacts/                 four live replay dependencies plus compact audit evidence
+data/                      v10 local inputs and the one live processed generation
+docs/audit/                historical review findings
+.agent/                    cross-agent handoff log
 ```
-research*.toml            frozen study contracts (root: the dirty-tree gate scans here)
-src/adaptive_jump/        the pipeline: config/data/features -> models -> walkforward -> backtest
-tests/                    341 tests, incl. regression pins for every repaired data defect
-scripts/                  builders (build_*), the paper-claim checker, and the probes
-                          whose outputs the audit ledger cites
-data/external/            canonical input series, sha-pinned by the contracts
-data/raw|processed/       one generation per living contract (v7, v8-5, v9-3, v9-4);
-                          orphans archived in superseded-generations-20260730.tar.zst
-artifacts/fixed-baselines three live sealed runs (v8.5 anchor, v9.3, v9.4); older runs
-                          as verified .tar.zst
-artifacts/hmm-residual/   the numbered evidence trail 01..13 behind the audit docs
-research/                 experiment specs, registry, ledger, status
-docs/audit/               the review-verdict and self-audit ledgers
-docs/LEARN_data_flow.html the visual walkthrough of everything above
-paper/                    manuscript.tex + split-v1/ + submission/ (all paper work)
-.agent/                   session handoff log
+
+## Cold Archive
+
+The complete pre-cleanup workspace and Git history are stored at:
+
+```text
+/home/tle/research-archive/adaptive_jump_model/2026-08-05-pre-cleanup
 ```
 
-## Read next
-
-- [Working paper](paper/manuscript.tex) · [Current evidence](research/STATUS.md) · [Experiment ledger](research/SCIENTIFIC_LEDGER.md)
-- [Frozen protocol](research.toml) · [Original paper](2402.05272v3.pdf)
-
-## Code map
-
-All source lives in `src/adaptive_jump/`. The pipeline runs
-`config` / `data` / `features` (frozen protocol, proxy loading, causal features)
-→ `models` + `tv_jump` (HMM, JM, and the oracle-tested time-varying-penalty DP)
-→ `walkforward` (past-only monthly selection) → `backtest` (delayed positions,
-costs, metrics). The five simple challengers and the DD loss-scale control are
-in `simple_jm_*`, with independent replay in `simple_jm_verifier`;
-`artifacts` / `cli` / `reporting` run and verify studies, and `runtime/`
-supports long runs.
+`ARCHIVE.sha256`, a per-file manifest, `zstd -t`, and `git bundle verify` all
+passed. This archive is on the same physical machine, so it protects against
+cleanup mistakes, not disk failure.

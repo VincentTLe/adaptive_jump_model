@@ -1,0 +1,113 @@
+schema_version = 1
+experiment_id = "ajm-ext-001"
+status = "FROZEN"
+claim_class = "CONFIRMATORY_HOLDOUT"
+created_at = "2026-08-05"
+frozen_at_utc = "2026-08-05T23:20:47Z"
+amended_at = "2026-08-05"
+amendment_note = "pre-registration audit amendments: transport independence disclosed, gate requires Europe, bootstrap and control resolution parameterized, anti-retry rules moved into this contract; freezing happens only via a commit plus a registry event pinning this file's sha256"
+
+[question]
+text = "Does the frozen lagged-evidence transition penalty beat every paired Shu-style fixed-JM specification and the stronger of buy-and-hold and HMM on public regional data never used during development?"
+claim_boundary = "external transport test on public USD returns; never exact Shu-v3 reproduction. The transport regions overlap the development markets (North America ~ US, Europe contains Germany, Japan is the development JP market) over the same repeatedly inspected 1990-2023 era, so transport alone is construction/vendor robustness, not independence; only the Asia-Pacific ex Japan confirmation region is market-disjoint from development"
+
+[data_roles]
+development = "all existing US/DE/JP data and results through 2026, including every Shu table cell"
+transport = ["Fama-French North America", "Fama-French Europe", "Fama-French Japan"]
+transport_overlap_disclosure = "each transport region shares its dominant market with a development market; a transport pass is evidence of robustness to index construction, not of out-of-sample validity"
+confirmation = "Fama-French Asia-Pacific ex Japan; the only market-disjoint region; unopened until this contract is registered and every health gate passes"
+equity_return = "Mkt-RF + RF"
+cash_return = "RF"
+
+[external_data]
+provider = "Kenneth French Data Library"
+frequency = "daily"
+available_start = "1990-07-01"
+evaluation_cutoff = "2023-12-31"
+evaluation_cutoff_decision = "owner decision 2026-08-05: keep the 2023-12-31 cutoff; extending transport/confirmation into 2024-2026 was considered and declined. Any post-2023 evaluation requires a new experiment id; the separate holdout-2026-001 batch-2 contract remains the only prospective option for this challenger on development markets"
+currency = "USD, unhedged"
+input_unit = "percent; validate scale before conversion to decimal"
+equity_simple_decimal = "(Mkt-RF + RF) / 100"
+cash_simple_decimal = "RF / 100"
+strategy_metric = "annualized excess Sharpe over RF"
+calendar_rule = "apply t+2 on each region's own rows; never inner-join regional calendars"
+raw_redistribution = false
+claim_scope = "transport within the Fama-French developed-region construction, not universal superiority or exact Shu reproduction"
+north_america_url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/North_America_3_Factors_Daily_CSV.zip"
+europe_url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/Europe_3_Factors_Daily_CSV.zip"
+japan_url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/Japan_3_Factors_Daily_CSV.zip"
+confirmation_url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/Asia_Pacific_ex_Japan_3_Factors_Daily_CSV.zip"
+official_definition = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/f-f_3developed.html"
+
+[baseline_family]
+grids = ["shu_v1:10,22,50,100,220,500,1000", "shu_v3_table3:0,5,15,35,70,150"]
+grid_provenance = "shu_v1 = the arXiv-v1 published candidate set; shu_v3_table3 = the values Table 3 exercises; both have published provenance, unlike the development v7 grid"
+standardizers = ["trailing_3000_ddof0", "causal_expanding_ddof1_min63"]
+report_all_four_specifications = true
+select_best_specification = false
+hmm_grid = [0, 2, 4, 6, 8, 20]
+hmm_grid_provenance = "source-union audit grid: Table-3 values {0,2,4,8,20} plus k=6, the one value the paper names at line 390; not the bare Table-3 grid"
+hmm_specification = "the HMM control is computed under both standardizers with the same selection protocol as the fixed JM; the control value per region is the stronger (max) of the two HMM Sharpes"
+
+[challenger]
+name = "lagged_evidence_log4"
+beta = 1.3862943611198906
+features = ["dd_10", "sortino_20", "sortino_60"]
+lambda_menu = "the adaptive model selects lambda over exactly the same grid as its paired fixed specification"
+grid_discontinuity_disclosure = "all supporting development evidence for this challenger used the v7 grid {0,5,15,35,70,150,300,600,1200}, where selection concentrated at the 1200 endpoint in 8.81/45.31/30.11 percent of US/DE/JP months; the frozen grids here truncate below that endpoint. Recorded as a known discontinuity, chosen for published provenance and decided before any Fama-French row was seen"
+allowed_refinements = 0
+
+[protocol]
+fit_window_observations = 3000
+refit_months = [1, 7]
+validation_calendar_years = 8
+selection_objective = "net_sharpe"
+signal_to_return_offset = 2
+one_way_cost_bps = 10
+primary_delay = 1
+descriptive_delays = [5, 10]
+evaluation_cutoff = "2023-12-31"
+inherits = "every protocol field not listed here (selection tie rule = lower lambda, minimum valid returns, metric definitions, turnover formula, degenerate-fit handling) is inherited verbatim from research/lagged-evidence-performance-001.toml; any deviation requires an amendment before registration"
+
+[health_gates]
+beta_zero_nests_fixed = true
+prefix_invariance = true
+shared_preprocessing = true
+lambda_objective_nondecreasing = true
+independent_scorer_fault_injection = true
+ordering = "all gates must pass, with the fault-injection performed by an agent that did not write the gate, before any Fama-French P&L row is computed"
+
+[transport_gate]
+minimum_positive_regions = 2
+regions = 3
+required_passing_region = "Fama-French Europe"
+required_passing_region_rationale = "Europe has the lowest market overlap with development; North America and Japan are near-copies of development markets and must not open the confirmation on their own"
+estimand = "min_over_specs(adaptive_sharpe - paired_fixed_sharpe)"
+guardrail = "no region may have both worse MDD and higher turnover than every paired fixed specification"
+guardrail_consequence = "a guardrail breach in any region fails the transport gate regardless of the Sharpe estimand"
+
+[confirmation_rule]
+opens_only_if = "the transport gate passed, including the required Europe region and the guardrail"
+primary_estimand = "min_over_specs(adaptive_sharpe - paired_fixed_sharpe)"
+control_resolution = "requirement 2 compares min over the four paired adaptive Sharpes against max(buy_and_hold_sharpe, hmm_sharpe) with hmm_sharpe as defined in [baseline_family].hmm_specification"
+requirements = [
+  "primary_estimand > 0",
+  "min_over_specs(adaptive_sharpe) > max(buy_and_hold_sharpe, hmm_sharpe)",
+  "paired_block_bootstrap_95pct_lower_bound > 0",
+]
+
+[confirmation_rule.bootstrap]
+method = "stationary block bootstrap over the paired daily net-return differences of all four specs jointly, resampling days once per replication and recomputing the min-over-specs Sharpe delta"
+replications = 10000
+mean_block_length_days = 60
+seed = 20260805
+lower_bound = "one-sided 95 percent: the 5th percentile of the replicated min-over-specs delta"
+parameter_provenance = "replications and block length copied from holdout-2026-001.toml, where the same bootstrap was reporting-only; here it gates, so its parameters are frozen in this contract"
+
+[stopping]
+challengers = 1
+baseline_specifications = 4
+confirmation_opens = 1
+rule = "failure or inconclusive ends ajm-ext-001; no tuning and retrying on confirmation data"
+buggy_run_rule = "a failed or buggy confirmation run burns the opening and must be reported as development contact with the confirmation region"
+successor_rule = "the confirmation region is burned for successors: a new feature, beta, grid, or decision rule requires a new experiment id and cannot reuse Fama-French Asia-Pacific ex Japan as a holdout"

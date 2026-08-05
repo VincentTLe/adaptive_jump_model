@@ -1,78 +1,76 @@
-# Active Task: None in progress
+# Active Task: AJM-EXT-001
 
-## Last completed: HMM baseline closed on sealed v9.4 (2026-07-30)
+## Goal
 
-The HMM replication is as closed as public data allows: 7/8 Table-4 cells inside
-the 0.05 tolerance in all three markets at delay 1, on sealed runs that replay
-at metric difference 0.0 (`fixed-baselines-34e51cd7…` and its v9.3 twin, which
-agree to 0.00e+00 on every metric the drawdown basis cannot touch).
+Evaluate one frozen adaptive Jump Model against a bounded family of Shu-style
+fixed-JM baselines on public data that was not used to match Shu's tables.
+The goal is an external replication/extension, not an exact reconstruction of
+Shu's unpublished implementation choices.
 
-The one open cell, turnover, is closed as a question rather than as a number:
+## Frozen Question
 
-- no single smoothing-candidate set puts it inside tolerance in more than one
-  market, and the US and Germany demand opposite ends of the grid — so no grid
-  choice reproduces the row (`docs/audit/2026-07-29-codex-review-verdicts.md`
-  §15);
-- the proximate amplifier is months where the CV selects k = 0 (9.5% of days,
-  23% of US turnover), and the residual points at data we cannot obtain: the
-  candidate grids are published nowhere (primary-source sweep, 2026-07-29), and
-  the official Nikkei TR series does not exist before 1979-12-28 even for the
-  paper's own authors;
-- Shu's own Figure-6 position path on our returns reproduces their turnover to
-  0.002, so the accounting is right and the difference lives in the state
-  sequence;
-- (round 2, 2026-07-30) the authors' Wolfe Research slides print the
-  state-sequence target directly — HMM: 96 shifts, 27.8% bear; JM: 30 shifts,
-  19.7% bear — our sealed path has 122 shifts on a 27.95% bear share, and the
-  lineage itself (Nystrup 2018, Paper D) published why Sharpe-CV cannot pin
-  turnover down: Sharpe is nearly flat across filter windows while turnover is
-  not (`docs/audit/2026-07-30-deep-research-round2.md`).
+Does `lagged_evidence_log4` beat every paired fixed-JM specification and the
+stronger of buy-and-hold and HMM on independent regional data, after the same
+`t+2` execution timing and 10-bps one-way cost?
 
-Three data defects were found and fixed along the way (CRSP-for-S&P, missing
-German dividends pre-1988, a splice that deleted the 1988-01-04 session), each
-now guarded by a test or a build gate.
+Contract: `research/ajm-ext-001.toml`.
 
-## Earlier milestone kept for context: holdout-2026-001
+## Current Phase: Health Gates
 
-The 2024-2026 window returned `not_supported` (0/3) for DD-only against the
-stronger control, while the full walk-forward US edge persisted; the window is
-short, bull-only, and post-selection (see `research/SCIENTIFIC_LEDGER.md` and
-`artifacts/holdout-2026-001.tar.zst`). Its labels were demoted from
-"selection-clean" to post-selection readout on 2026-07-29.
+Completed:
 
-## JM baseline closed (2026-07-31), four frozen experiments
+- archived and hash-verified the pre-cleanup workspace and full Git history;
+- reduced live artifacts to the four replay dependencies plus small audit
+  evidence;
+- drafted the contract: one challenger, four baseline specifications, data
+  roles, pass/fail rules, and a no-retry confirmation rule;
+- confirmed existing beta-zero nesting, DP/brute-force parity, shared
+  preprocessing, and future-mutation prefix tests (`55 passed`);
+- added a canonical fail-fast gate for a decrease in the fitted JM objective as
+  lambda increases — impossible at the global optimum, so a firing certifies a
+  suboptimal local fit. The first version compared adjacent pairs only, letting
+  sub-tolerance decreases accumulate across the grid; the independent verifier
+  caught this and the gate now compares against the running maximum
+  (`35 model tests passed`);
+- a separate agent that did not write the gate fault-injected it: CERTIFIED,
+  `docs/audit/2026-08-05-objective-gate-fault-injection.md`;
+- deleted the 26 source modules and 13 test files of the closed studies
+  (balanced, confidence, separation, holdout runner, lagged study machinery),
+  keeping the challenger's dependencies. Parity proof: all three sealed runs
+  verify bit-identically before and after (max metric difference <= 3.8e-14),
+  and the remaining suite is green. Deleted files stay recoverable from git
+  history and the 2026-08-05 cold archive; `RUNNABLE_SPECS` was trimmed to the
+  two specs the code can still execute.
 
-The JM row is closed the way the HMM turnover row closed, with stronger
-evidence: given the authors' own Figure-5 state sequences, our data and
-accounting reproduce Table 4's JM row at 8/8 (us), 8/8 (de), 7/8 (jp) —
-turnover deviations 0.001/0.030/0.005; the one miss is the JP drawdown at
-0.054. What cannot be regenerated from public information is the state
-sequence itself: no published-source lambda grid works
-(`jm-grid-identification-001`), the paper's own persistence curve is
-bracketed by the exhausted standardizer-cadence family and matched by no
-member (`-002`/`-003`; clip-3sigma variant withdrawn per owner — example
-code is never an author-method candidate), and their DE/JP sequences are not
-expressible by any constant lambda under any tested geometry even though
-per-month pieces are (`-004`, effective-lambda inversion; descriptive only,
-grid candidacy forbidden). Sổ: `docs/audit/2026-07-30-jm-deep-research.md`,
-`2026-07-30-jm-grid-identification.md`, `2026-07-31-jm-standardizer-geometry.md`,
-`2026-07-31-jm-effective-lambda-inversion.md`. Reopen only on a new primary
-source (Chenyu Yu dissertation, when DataSpace posts it — optional, nothing
-blocks on it).
+- registered the freeze (2026-08-05T23:20:47Z): the contract is committed and a
+  registry event pins `frozen_spec_hash`
+  `e331b96d662ca703a3fa5140d4ba9d92544c9eed553eb36df1525fafbc0b6a49`; the
+  2023-12-31 cutoff was kept by owner decision, recorded in the contract.
 
-## Next: the extension research
+Still required before any new P&L is interpreted:
 
-The project's actual goal. Candidate extensions already named in the ledger
-(each needs its own frozen question before any code): capped gap, two-day
-confirmation, semi-Markov dwell cost, a regime-stratified or longer holdout —
-compared against OUR sealed baselines, which is now an honest yardstick. The
-k=0 concentration finding and the author-example pipeline notes
-(`docs/audit/2026-07-30-self-audit.md` §C7) are recorded inputs to that
-design, not licences to fit. Paper writing is the other open milestone
-("paper xử lý sau").
+1. The external runner must replay states -> monthly selection -> trades ->
+   metrics, with an independently produced verification receipt.
+2. Official public regional data metadata and hashes must be frozen. Downloading
+   it requires owner approval.
 
-## Standing rules
+## Data Roles
 
-Walk-forward causal everywhere; no confidence intervals; never search an
-unspecified knob for the value that best matches the paper; quote the paper
-with `[line N] "…"` and run `scripts/check_paper_claims.py`.
+- `D0 development`: every existing US/DE/JP proxy, Shu table value, grid search,
+  and artifact. Burned; useful only for diagnosis.
+- `D1 transport`: Fama-French North America, Europe, and Japan. Used once to
+  decide whether the frozen challenger is transportable.
+- `D2 confirmation`: Fama-French Asia-Pacific ex Japan. Unopened until D1 passes
+  the frozen gate; one opening, no tuning and retrying.
+
+## Stop Rule
+
+If D1 fails, stop AJM-EXT-001. If D1 passes but D2 is negative or inconclusive,
+stop AJM-EXT-001. A new feature, beta, grid, or decision rule requires a new
+experiment ID and cannot reuse D2 as a holdout.
+
+## Not Active
+
+Exact Shu-v3 grid hunting, calibrated-v10 agreement, the invalidated
+`return_aware`/`robust_l1` artifacts, and the frequency-ladder result are not
+active research paths.
