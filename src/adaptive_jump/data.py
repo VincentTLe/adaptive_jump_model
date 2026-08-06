@@ -231,7 +231,12 @@ def _fetch_fred(
         response.content,
         "provider_response",
         canonical,
-        _http_metadata(response, params),
+        {
+            "url": response.url,
+            "status": response.status,
+            "content_type": response.content_type,
+            "params": params,
+        },
     )
 
 
@@ -290,15 +295,6 @@ def _get_http(url: str, params: dict[str, str]) -> HttpResult:
     )
 
 
-def _http_metadata(response: HttpResult, params: dict[str, str]) -> dict[str, Any]:
-    return {
-        "url": response.url,
-        "status": response.status,
-        "content_type": response.content_type,
-        "params": params,
-    }
-
-
 def _setting(source: SourceConfig, key: str) -> str:
     value = source.settings.get(key)
     if not isinstance(value, str) or not value:
@@ -355,7 +351,7 @@ def research_git_sha(root: Path) -> str:
 
 def _package_versions() -> dict[str, str]:
     versions: dict[str, str] = {}
-    for package in ("adaptive-jump-model", "pandas", "requests", "yfinance"):
+    for package in ("adaptive-jump-model", "pandas", "requests"):
         try:
             versions[package] = version(package)
         except PackageNotFoundError:
