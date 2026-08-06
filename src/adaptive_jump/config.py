@@ -13,15 +13,20 @@ PAPER_TURNOVER_DEFINITION = "half_mean_one_way_turnover_times_252"
 LEGACY_TURNOVER_DEFINITION = "mean_one_way_turnover_times_252"
 PAPER_COMPARISON_SAMPLE = "per_market_all_delays_intersection_of_complete_metric_rows"
 LEGACY_COMPARISON_SAMPLE = "per_market_delay_intersection_of_complete_metric_rows"
-# Which wealth path the drawdown is measured on. The paper never states it, but
-# two published facts pin it down together: Table 4's buy-and-hold drawdowns are
-# reproduced only with the equity leg at total return, and the caption of Figure
-# 5 says the strategy curve is flat while "fully invested in the risk-free
-# asset". Total return when invested plus nothing when in cash is exactly
-# risky_leg_wealth_flat_in_cash. The regression cases are pinned in
-# tests/test_audit_hardening.py.
-PAPER_DRAWDOWN_BASIS = "risky_leg_wealth_flat_in_cash"
-LEGACY_DRAWDOWN_BASIS = "total_wealth"
+# Which wealth path the drawdown is measured on. The paper never states it, and
+# the earlier claim that two published facts pin it down was RETRACTED on
+# 2026-07-29 (docs/audit/2026-07-29-codex-review-verdicts.md section 2): Table
+# 4's buy-and-hold cells only prove the invested leg is a total-return path —
+# buy-and-hold is never in cash, so the two bases agree to every digit there —
+# and Figure 5's caption describes a cumulative EXCESS return axis, which is
+# flat in cash trivially and constrains no drawdown path. The flat-in-cash
+# basis was in fact selected by minimising error against Table 4, i.e. by
+# fitting an unspecified knob. total_wealth is the a-priori default (v9.4 and
+# v10); flat_in_cash remains legal only so sealed v9.1-v9.3 runs replay to
+# their recorded numbers. String values are pinned by sealed configs — rename
+# the Python constants, never the values.
+FLAT_IN_CASH_DRAWDOWN_BASIS = "risky_leg_wealth_flat_in_cash"
+TOTAL_WEALTH_DRAWDOWN_BASIS = "total_wealth"
 
 # The only JM candidate grids a replication contract may carry: the arXiv-v1
 # author grid and the Table-3 grid. Anything else would be a grid we chose,
@@ -148,9 +153,9 @@ class MetricsProtocol:
     expected_shortfall_quantile: float
     turnover_definition: str = PAPER_TURNOVER_DEFINITION
     comparison_sample: str = PAPER_COMPARISON_SAMPLE
-    # Defaults to the legacy basis so a config written before this field existed
-    # keeps producing the numbers its sealed run recorded.
-    drawdown_basis: str = LEGACY_DRAWDOWN_BASIS
+    # Defaults to total_wealth — both the a-priori convention and what configs
+    # written before this field existed must keep producing.
+    drawdown_basis: str = TOTAL_WEALTH_DRAWDOWN_BASIS
 
     @property
     def turnover_scale(self) -> float:
@@ -625,9 +630,9 @@ def _metrics_protocol(row: dict[str, Any]) -> MetricsProtocol:
         comparison_sample in {PAPER_COMPARISON_SAMPLE, LEGACY_COMPARISON_SAMPLE},
         "invalid metric definition",
     )
-    drawdown_basis = str(row.get("maximum_drawdown", LEGACY_DRAWDOWN_BASIS))
+    drawdown_basis = str(row.get("maximum_drawdown", TOTAL_WEALTH_DRAWDOWN_BASIS))
     _require(
-        drawdown_basis in {PAPER_DRAWDOWN_BASIS, LEGACY_DRAWDOWN_BASIS},
+        drawdown_basis in {FLAT_IN_CASH_DRAWDOWN_BASIS, TOTAL_WEALTH_DRAWDOWN_BASIS},
         "invalid metric definition",
     )
     periods = _positive_integer(row, "periods_per_year")

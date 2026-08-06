@@ -7,7 +7,10 @@ import math
 import numpy as np
 import pandas as pd
 
-from adaptive_jump.config import LEGACY_DRAWDOWN_BASIS, PAPER_DRAWDOWN_BASIS
+from adaptive_jump.config import (
+    FLAT_IN_CASH_DRAWDOWN_BASIS,
+    TOTAL_WEALTH_DRAWDOWN_BASIS,
+)
 
 
 class BacktestError(ValueError):
@@ -124,7 +127,7 @@ def performance_metrics(
     volatility_ddof: int = 1,
     expected_shortfall_quantile: float = 0.05,
     turnover_scale: float = 0.5,
-    drawdown_basis: str = LEGACY_DRAWDOWN_BASIS,
+    drawdown_basis: str = TOTAL_WEALTH_DRAWDOWN_BASIS,
 ) -> dict[str, float | int | str]:
     """Calculate metrics, reporting paper turnover unless explicitly overridden."""
     required = [
@@ -134,11 +137,11 @@ def performance_metrics(
         "one_way_turnover",
         "strategy_return",
     ]
-    if drawdown_basis == PAPER_DRAWDOWN_BASIS:
+    if drawdown_basis == FLAT_IN_CASH_DRAWDOWN_BASIS:
         # The drawdown is measured on the risky leg alone, so the equity return
         # is needed and the cash leg is deliberately not.
         required.append("equity_simple")
-    elif drawdown_basis != LEGACY_DRAWDOWN_BASIS:
+    elif drawdown_basis != TOTAL_WEALTH_DRAWDOWN_BASIS:
         raise BacktestError(f"unknown drawdown basis: {drawdown_basis}")
     missing = [column for column in required if column not in result]
     if missing:
@@ -172,14 +175,13 @@ def performance_metrics(
     wealth = np.cumprod(1.0 + values)
     cagr = float(wealth[-1] ** (periods_per_year / observations) - 1.0)
 
-    # Return and the drawdown are read off different paths on purpose. Table 4
-    # labels its return row "including the risk-free rate", and its buy-and-hold
-    # drawdowns only come out right with the equity leg at total return; the
-    # caption of Figure 5 then says the strategy curve is flat while fully
-    # invested in the risk-free asset. So the drawdown path pays nothing while
-    # in cash, which for a fully invested portfolio is the same path as above
-    # and for a 0/1 strategy is not.
-    if drawdown_basis == PAPER_DRAWDOWN_BASIS:
+    # Under the flat-in-cash basis, return and drawdown are read off different
+    # paths. The old comment here claimed the paper pins this basis; that was
+    # RETRACTED 2026-07-29 (see the constant's note in config.py) — the paper is
+    # silent, the basis was chosen by fitting Table 4, and the current contracts
+    # use total_wealth. The branch survives only so sealed v9.1-v9.3 runs replay
+    # to their recorded numbers.
+    if drawdown_basis == FLAT_IN_CASH_DRAWDOWN_BASIS:
         risky = (frame["position"] * frame["equity_simple"]).to_numpy(dtype=float)
         if not np.isfinite(risky).all() or (risky <= -1).any():
             raise BacktestError("equity returns must be finite and above -1")
