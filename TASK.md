@@ -15,66 +15,30 @@ stronger of buy-and-hold and HMM on independent regional data, after the same
 
 Contract: `research/ajm-ext-001.toml`.
 
-## Current Phase: Health Gates
+## Outcome: NOT SUPPORTED — experiment complete (2026-08-06)
 
-Completed:
+The transport gate failed 0/3 and AJM-EXT-001 ends under its frozen stopping
+rule. Run `ajm-ext-e331b96d662c-e524087d0978` was independently verified and
+CERTIFIED before the verdict was first read
+(`docs/audit/2026-08-06-ajm-ext-d1-receipt.md`): inventory, frames, trades,
+metrics, beta-zero nesting, a partial replay, and the gate arithmetic all
+reproduce exactly.
 
-- archived and hash-verified the pre-cleanup workspace and full Git history;
-- reduced live artifacts to the four replay dependencies plus small audit
-  evidence;
-- drafted the contract: one challenger, four baseline specifications, data
-  roles, pass/fail rules, and a no-retry confirmation rule;
-- confirmed existing beta-zero nesting, DP/brute-force parity, shared
-  preprocessing, and future-mutation prefix tests (`55 passed`);
-- added a canonical fail-fast gate for a decrease in the fitted JM objective as
-  lambda increases — impossible at the global optimum, so a firing certifies a
-  suboptimal local fit. The first version compared adjacent pairs only, letting
-  sub-tolerance decreases accumulate across the grid; the independent verifier
-  caught this and the gate now compares against the running maximum
-  (`35 model tests passed`);
-- a separate agent that did not write the gate fault-injected it: CERTIFIED,
-  `docs/audit/2026-08-05-objective-gate-fault-injection.md`;
-- deleted the 26 source modules and 13 test files of the closed studies
-  (balanced, confidence, separation, holdout runner, lagged study machinery),
-  keeping the challenger's dependencies. Parity proof: all three sealed runs
-  verify bit-identically before and after (max metric difference <= 3.8e-14),
-  and the remaining suite is green. Deleted files stay recoverable from git
-  history and the 2026-08-05 cold archive; `RUNNABLE_SPECS` was trimmed to the
-  two specs the code can still execute.
+Estimand (min over the four paired specs, delay 1): Europe −0.167, Japan
+−0.162, North America −0.176. The challenger beats its paired fixed JM on 7 of
+12 spec-region cells, but every region has at least one paired specification
+that degrades by ~0.17 Sharpe — always the short Table-3 grid, where
+discounting the switching penalty pushes selection toward whipsaw. Guardrail
+clean everywhere.
 
-- registered the freeze (2026-08-05T23:20:47Z): the contract is committed and a
-  registry event pins `frozen_spec_hash`
-  `e331b96d662ca703a3fa5140d4ba9d92544c9eed553eb36df1525fafbc0b6a49`; the
-  2023-12-31 cutoff was kept by owner decision, recorded in the contract.
+Consequences, per the contract: the confirmation region (Fama-French
+Asia-Pacific ex Japan) was never opened, stays sealed, and is burned for
+successor experiments. `lagged_evidence_log4` is a development-supported
+mechanism that did not transport.
 
-- downloaded the Fama-French regional data with owner approval (2026-08-05) and
-  froze its metadata and hashes in `research/ajm-ext-001-data.lock.toml`. The
-  three transport files were scale- and calendar-validated; the confirmation
-  zip (Asia-Pacific ex Japan) was hashed but never extracted or read — it stays
-  sealed until the transport gate passes.
+## Next
 
-Still required before any new P&L is interpreted:
-
-1. The external runner must replay states -> monthly selection -> trades ->
-   metrics, with an independently produced verification receipt.
-
-## Data Roles
-
-- `D0 development`: every existing US/DE/JP proxy, Shu table value, grid search,
-  and artifact. Burned; useful only for diagnosis.
-- `D1 transport`: Fama-French North America, Europe, and Japan. Used once to
-  decide whether the frozen challenger is transportable.
-- `D2 confirmation`: Fama-French Asia-Pacific ex Japan. Unopened until D1 passes
-  the frozen gate; one opening, no tuning and retrying.
-
-## Stop Rule
-
-If D1 fails, stop AJM-EXT-001. If D1 passes but D2 is negative or inconclusive,
-stop AJM-EXT-001. A new feature, beta, grid, or decision rule requires a new
-experiment ID and cannot reuse D2 as a holdout.
-
-## Not Active
-
-Exact Shu-v3 grid hunting, calibrated-v10 agreement, the invalidated
-`return_aware`/`robust_l1` artifacts, and the frequency-ladder result are not
-active research paths.
+No active task. Any new candidate (capped gap, two-day confirmation,
+semi-Markov dwell cost, or a grid-robust variant of the lagged mechanism
+motivated by the short-grid failure mode) needs its own frozen question and a
+new experiment id before any code runs.
