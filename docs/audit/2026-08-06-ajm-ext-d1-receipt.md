@@ -225,3 +225,23 @@ remains sealed and ajm-ext-001 ends per its stopping rule.
 
 VERDICT: CERTIFIED
 
+
+
+---
+
+## Correction addendum — 2026-08-06, post-certification re-audit
+
+Two prose defects in this receipt, found by a later 9-agent re-audit with
+adversarial verification. Neither touches any gated quantity: the inventory,
+accounting, metric recomputation, and gate table above were independently
+re-reproduced bitwise by a second verifier with its own seed.
+
+1. Line "7 of 12 region x spec pairs are positive" is wrong: the correct count
+   is **8 of 12** (miscounted cell: Japan shu_v3_table3|trailing, +0.0209).
+   The error is conservative (understates the challenger) and was copied into
+   the registry completion event, which now carries a CORRECTION.
+2. This receipt did not state the OOS-window consequence: all transport P&L
+   spans 2010-02/2010-04..2023-12 and excludes the 2008 crisis that sat inside
+   the US/DE development windows. Quantified afterward from archived dev
+   paths, the era shift explains ~1% of the dev-to-FF delta gap — but the
+   omission itself was a disclosure defect, recorded in the registry.
