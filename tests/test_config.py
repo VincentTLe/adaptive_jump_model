@@ -51,6 +51,34 @@ def test_load_frozen_proxy_contract() -> None:
     assert config.metrics_protocol.comparison_sample == LEGACY_COMPARISON_SAMPLE
 
 
+def test_only_the_pinned_legacy_config_may_omit_the_hmm_covariance_prior(
+    tmp_path: Path,
+) -> None:
+    """Omitting the field silently buys hmmlearn's 0.01 MAP prior.
+
+    research.toml predates the field and its bytes are pinned as config_sha256
+    by six frozen specs, so it keeps the implicit default. Any other contract
+    that copies it must declare the prior, because the paper's HMM is the plain
+    maximum-likelihood fit.
+    """
+    payload = CONFIG.read_text(encoding="utf-8")
+    assert "covars_prior" not in payload
+    assert load_config(CONFIG).hmm_protocol.covars_prior == 0.01
+
+    candidate = tmp_path / "research.toml"
+    candidate.write_text(
+        payload.replace(
+            'config_id = "shu-proxy-replication-v7"',
+            'config_id = "a-later-study"',
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="covars_prior must be declared"):
+        load_config(candidate)
+
+
 def test_paper_turnover_definition_round_trips_through_config(tmp_path: Path) -> None:
     payload = CONFIG.read_text(encoding="utf-8")
     assert f'turnover = "{LEGACY_TURNOVER_DEFINITION}"' in payload

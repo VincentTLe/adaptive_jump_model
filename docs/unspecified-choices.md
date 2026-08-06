@@ -554,3 +554,68 @@ period; the literal one does not.
 costs the US JM 0.088 Sharpe and moves its turnover from 0.636 to 1.006 against
 Shu's 0.44 — away from the paper on the row the paper treats as the jump model's
 identifying property. Reopen before the next JM freeze; do not inherit silently.
+
+---
+
+## 11. Which two calendar months anchor the semiannual JM refit — OPEN, spread unmeasured
+
+**What the paper says.** The cadence, and only the cadence:
+
+> [line 544] "In our JM implementation, the optimal model parameters Θ̂ are updated every six months by"
+
+Figure 3's caption repeats it for the illustration:
+
+> [line 612] "a 3000-day training window that moves forward every six months. Each date on the x-axis represents the"
+
+**What the paper does NOT say.** Which two months. "Every six months" fixes the
+interval, not the phase. Nothing in the paper names a refit date, and Figure 4's
+in-sample window is described only as "ending at the end of 2020".
+
+**What we chose.** `refit_months = [1, 7]` — January and July
+(`config.py:_jm_protocol`, frozen to that literal in every contract). In the
+sealed v10 run this lands on the first trading day of each January and July,
+plus one bootstrap fit at the first eligible terminal day.
+
+**Consequence.** Unmeasured. Six phases are possible ([1,7] through [6,12]);
+each shifts every refit date by up to five months, which moves the parameters
+Θ̂ that every subsequent day's online inference is conditioned on. The
+mechanism is the same one row 1 measures for standardization geometry, so a
+material spread cannot be ruled out a priori.
+
+**Not measured here on purpose.** Sweeping the phase means running the
+walk-forward six times and comparing against numbers we already know, which is
+exactly the search this file exists to forbid. If the sensitivity is wanted it
+needs its own frozen question, written before the six runs, that says what a
+large spread would mean.
+
+---
+
+## 12. Sharpe denominator — CLOSED by the paper's own caption, deviation measured and immaterial
+
+**What the paper says.** Table 4's caption defines the reported statistic:
+
+> [line 751] "Sharpe ratio (average excess return over volatility)"
+
+and the selection objective is the same statistic:
+
+> [line 710] "We then select the value λ̂ that yields the highest Sharpe ratio"
+
+**What the paper does NOT say.** Whose volatility — the strategy's, or the
+excess series'. For a 0/1 strategy that sits in cash part of the time these are
+different series, so the caption admits two readings.
+
+**What we chose.** `mean(strategy − cash) / std(strategy)`, i.e. excess return
+in the numerator and **total strategy** volatility in the denominator
+(`backtest.py:annualized_excess_sharpe`, pinned as
+`sharpe_denominator = "strategy_return_volatility"`). The textbook Sharpe uses
+`std(strategy − cash)` in both places. The caption's wording — "average excess
+return over volatility", not "over excess volatility" — reads slightly toward
+ours, but it does not settle it.
+
+**Consequence, measured.** Recomputed both conventions on all nine delay-1 rows
+of the sealed v10 baseline (`fixed-baselines-36ca1ace131c-…`): the two
+definitions differ by at most **0.000037** of Sharpe and 0.000023 on average
+(largest cell: jp fixed_jm, 0.290783 against 0.290746). That is three orders of
+magnitude below the 0.05 reporting tolerance, because daily cash returns are
+tiny and almost constant. The row is recorded for completeness, not as a live
+uncertainty.

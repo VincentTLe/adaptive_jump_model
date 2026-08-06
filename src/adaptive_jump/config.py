@@ -44,6 +44,17 @@ CALIBRATED_JM_GRIDS = (
     (10.0, 220.0),  # jp: best 13/14, leverage is the measured blocking cell
 )
 
+# hmmlearn's covars_prior default is 0.01, which turns the paper's plain
+# maximum-likelihood HMM — [line 372] "the fitting that yields the highest
+# log-likelihood" — into a MAP fit. On daily-return-scale data the prior is not
+# negligible: measured over 40 US training windows it inflates the fitted
+# conditional volatilities by a median 12% and flips the labelled terminal state
+# on 12.5% of them. Only the v7 study may leave the field implicit: it predates
+# the field, and its bytes are pinned as config_sha256 by six frozen specs and
+# appear inside sealed run IDs, so research.toml cannot be edited without
+# breaking that provenance. Every later study has to say which HMM it wants.
+LEGACY_IMPLICIT_COVARS_PRIOR_CONFIG_ID = "shu-proxy-replication-v7"
+
 
 class ConfigError(ValueError):
     """Raised when a research configuration violates a frozen contract."""
@@ -276,7 +287,7 @@ def load_config(path: str | Path) -> ResearchConfig:
     backtest = _backtest_protocol(_table(document, "backtest"))
     model = _model_protocol(_table(document, "model"))
     jm = _jm_protocol(_table(document, "jm"), calibrated)
-    hmm = _hmm_protocol(_table(document, "hmm"))
+    hmm = _hmm_protocol(_table(document, "hmm"), str(document.get("config_id", "")))
     selection = _selection_protocol(_table(document, "selection"), calibrated)
     metrics = _metrics_protocol(_table(document, "metrics"))
     oos = _table(document, "oos_start")
@@ -504,7 +515,7 @@ def _jm_protocol(row: dict[str, Any], calibrated: bool = False) -> JMProtocol:
     return protocol
 
 
-def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
+def _hmm_protocol(row: dict[str, Any], config_id: str = "") -> HMMProtocol:
     grid = row.get("smoothing_grid")
     seeds = row.get("seeds")
     # Allowlist, not validation. The candidate set is a free parameter (the
@@ -530,7 +541,15 @@ def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
     _require(
         _integer(row, "median_min_periods") == 1, "HMM median min periods must be 1"
     )
-    covars_prior = row.get("covars_prior", 0.01)
+    if "covars_prior" in row:
+        covars_prior = row["covars_prior"]
+    else:
+        _require(
+            config_id == LEGACY_IMPLICIT_COVARS_PRIOR_CONFIG_ID,
+            "hmm.covars_prior must be declared: omitting it silently applies "
+            "hmmlearn's 0.01 prior instead of the paper's maximum-likelihood fit",
+        )
+        covars_prior = 0.01
     _require(
         covars_prior in (0.0, 0.01),
         "HMM covariance prior must be 0.01 (legacy) or 0.0 (prior-free)",
