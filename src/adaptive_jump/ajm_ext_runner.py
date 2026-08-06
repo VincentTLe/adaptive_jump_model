@@ -42,10 +42,17 @@ from adaptive_jump.walkforward import select_monthly_candidate
 # Inherited from the lagged-evidence lineage (research/ajm-ext-001.toml
 # [protocol] inherits): solver constants of the sealed v10 era, prior-free HMM.
 JM_CONSTANTS = {"n_init": 10, "random_state": 0, "max_iter": 1000, "tol": 1e-8}
+# One declared deviation from the inherited constants: n_iter 1000 -> 10000.
+# On the Fama-French Japan window ending 2005-10-12 every seed still oscillates
+# at ~2.4e-6 after 1000 EM iterations — above the strict 1e-6 gate — and all
+# ten seeds converge cleanly by 2000. The cap is capacity, not acceptance: the
+# convergence tolerance is untouched, and the change was made before any
+# metric or gate file of this study was ever readable (the failed run died
+# before writing them). Registry PROCESS_NOTE 2026-08-06.
 HMM_CONSTANTS = {
     "seeds": tuple(range(10)),
     "min_covar": 1e-3,
-    "n_iter": 1000,
+    "n_iter": 10000,
     "tol": 1e-6,
     "covars_prior": 0.0,
 }
