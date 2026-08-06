@@ -251,11 +251,19 @@ class TVJumpModel(JumpModel):
     def fit_tv(
         self, X, ret_ser=None, lam_seq=None, penalty_seq=None, sort_by: str = "cumret"
     ):
-        """Coordinate-descent fit with a time-varying penalty.
+        """Coordinate-descent fit with a time-varying penalty. ORACLE ONLY.
 
         Mirrors ``JumpModel.fit`` (same inits, convergence rule, state
         sorting) with the constant penalty matrix replaced by
         ``penalty_seq[t]`` in every E-step.
+
+        No production run calls this. The frozen market studies reuse the
+        sealed fixed-JM centers and change only the online decoding, so the
+        estimator itself is never re-fitted with a varying penalty. It is kept
+        because it carries the ledger's foundational nesting claim: with a
+        constant sequence this reproduces ``JumpModel.fit`` exactly, which
+        ``test_tv_model_with_constant_lambda_equals_jump_model`` pins. Delete
+        it only together with that oracle.
         """
         X_arr = np.asarray(X, dtype=float)
         if X_arr.ndim != 2:
@@ -304,13 +312,5 @@ class TVJumpModel(JumpModel):
             X_arr, self.centers_, penalty_seq, return_value_mx=True
         )
         labels_ = value_mx.argmin(axis=1)
-        proba_ = raise_JM_labels_to_proba(labels_, self.n_components, None)
-        return reduce_proba_to_labels(raise_JM_proba_to_df(proba_, X))
-
-    def predict_tv(self, X, lam_seq=None, penalty_seq=None):
-        """Full-window (offline) decoding with a time-varying penalty."""
-        X_arr = self.check_X_predict_func(X)
-        penalty_seq = self._resolve_penalty_seq(len(X_arr), lam_seq, penalty_seq)
-        _, labels_, _ = _do_E_step_tv(X_arr, self.centers_, penalty_seq)
         proba_ = raise_JM_labels_to_proba(labels_, self.n_components, None)
         return reduce_proba_to_labels(raise_JM_proba_to_df(proba_, X))
