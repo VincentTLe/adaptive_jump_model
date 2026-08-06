@@ -38,9 +38,15 @@ about **1970-02**; all six of our series clear it by four to sixteen years.
 
 The binding constraint is **not history length. It is total return.** Free daily
 history is easy to find; free daily *total-return* history is not, and the paper
-is explicit that it uses total-return series. Two of the three markets need a
-dividend reconstruction over part of the span, and both reconstructions sit
-entirely inside the training window, never inside the reported period.
+is explicit that it uses total-return series. **All three markets** need a
+dividend reconstruction over part of the span. The US and German reconstructions
+sit entirely inside the training window and never touch the reported 1990-2023
+period. The Japanese one does: our official N225TR mirror begins only
+2011-12-19, so 1990-2011 of the *reported* period rests on a reconstruction. Its
+accuracy is evidenced rather than assumed — chained back 32 years it reaches
+6,470.24 against Nikkei's own 1979-12-28 base of 6,569.47, a drift of 0.048
+pp/yr, and the reconstructed 2001-2011 era tracks MSCI Japan as closely as the
+official era does (0.9710 against 0.9678).
 
 ## Equity
 
@@ -69,12 +75,35 @@ the paper publishes. See `docs/audit/2026-07-full-audit.md`.
 
 ### Germany — DAX performance index
 
-- Stooq `^dax` — https://stooq.com/q/d/?s=%5Edax (16,815 sessions from 1959-09-28)
+| segment | source | note |
+|---|---|---|
+| 1987-12-30 onward | Stooq `^dax` DAX performance index | used as published (base 1000.0) |
+| 1965-01-04 .. 1987-12-29 | Stooq `^dax` price path + JST Macrohistory annual German dividend yields | reconstructed, chained onto the 1987-12-30 base |
 
-The DAX is a performance index, so dividends are already inside it and no
-reconstruction is needed. Before 1988 the series carries the Stehle academic
-backcast; the file hits exactly **1000.0 on 1987-12-30**, the official DAX base
-date and base value, which is the signature of that lineage.
+- Stooq `^dax` — https://stooq.com/q/d/?s=%5Edax (16,815 sessions from 1959-09-28)
+- JST Macrohistory — https://www.macrohistory.net/database/
+- Canonical file: `data/external/de_equity_tr_dividend_adjusted.csv`
+
+> **Corrected 2026-08-06.** This section used to say "the DAX is a performance
+> index, so dividends are already inside it and no reconstruction is needed".
+> That was wrong and the repair predates this correction by more than a week.
+
+The DAX is a performance index from its **1987-12-30 base date onward**, but the
+vendor spliced the DAX *Kursindex* backcast — a price index — onto it before
+that, so the pre-1988 segment carried **no dividends at all**. Both legs are
+exactly 1000.0 on 1987-12-30, the official base date and value, which is why the
+joint left no visible trace and why the omission survived so long.
+
+The omission was worth **3.24%/yr** across eighteen years of training data. Two
+independent signatures exposed it: the unrepaired series implies a German equity
+premium of −3.96%/yr over the risk-free rate across 18 years, and the missing
+yield matches two independent sources (OECD 3.02%, JST 3.24%). Repaired on
+2026-07-28 by `scripts/build_de_total_return.py`, which writes nothing unless
+three gates pass (reconstructed dividend rate +3.24% against the official era's
++3.02%; equity premium −0.60% against JST's +0.02%; daily volatility unmoved at
+0.0042 pp). The repair is invisible to every published number being reproduced —
+Table 4's German column lies entirely inside the untouched official segment —
+and lands as `research-expanding-v9-2.toml` onward.
 
 Yahoo's `^GDAXI` starts 1987-12-30 and is therefore **not usable on its own** —
 it misses the entire training and validation history the procedure requires.

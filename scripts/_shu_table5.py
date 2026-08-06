@@ -19,16 +19,29 @@ Return          0.8%         2.5%  1.2%   0.5%     4.7%     4.0%    3.4%
 Sharpe          0.12         0.19  0.11   0.07     0.31     0.27    0.24
 Calmar          0.04         0.06  0.03   0.02     0.12     0.09    0.07
 
-WHY THIS FILE EXISTS. Every lambda grid this project has searched was selected
-to minimise deviation on Table 4, which is the delay-1 table. The delay-5 and
-delay-10 columns above were never in any objective function, so they are the
-one published quantity that can turn a selected grid back into a testable
-prediction: fix the grid, change only the delay, and the paper has already
-printed the answer.
+WHY THIS FILE EXISTS. The delay-1 column of Table 5 duplicates Table 4 and is
+therefore IN sample. HELD_OUT below contains delays 5 and 10 only, and nothing
+may add delay 1 to it.
 
-The delay-1 column of Table 5 duplicates Table 4 and is therefore IN sample.
-HELD_OUT below contains delays 5 and 10 only, and nothing may add delay 1 to
-it.
+WARNING — DELAYS 5 AND 10 ARE NO LONGER HELD OUT FOR ANYTHING DESCENDED FROM
+THE v10 RESEAL. This docstring used to claim that "the delay-5 and delay-10
+columns were never in any objective function", so that scoring a selected grid
+here turned it into a testable prediction. That is false and was retracted by
+docs/audit/heldout-delay-001-audit.md, which named this exact docstring as "the
+load-bearing false statement". The evidence:
+
+  scripts/probe_jm_grid_exhaustive2.pass_mask()  screens candidate grids
+      directly against the Table-5 JM cells at delays 5 and 10, tolerance 0.05
+  scripts/gate_v10_reseal.py:89-96               fails the reseal unless every
+      delay-5 and delay-10 cell is inside 0.05 in every market
+
+Any grid drawn from those searches is 18/18 inside this screen BY CONSTRUCTION,
+so scoring it here is a selection statistic, not a prediction. Registry event:
+heldout-delay-001 / PARTIALLY_RETRACTED_AFTER_AUDIT.
+
+An honest held-out test needs an arm that was never screened on Table 5 — a
+literature-named grid, for instance — and its own frozen question, written
+before any such number is computed.
 
 The caption states the protocol that makes the comparison fair, at line 979:
 "A corresponding trading delay is also applied in the cross-validation when

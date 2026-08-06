@@ -14,7 +14,7 @@ paper does pin it after all, row kept so nobody re-opens it.
 
 ---
 
-## 1. Feature standardisation geometry — OPEN, largest known lever
+## 1. Feature standardisation geometry — CLOSED as bracketed-but-unidentifiable; largest measured lever
 
 **What the paper says.** Only that the features arriving at the model are
 standardised:
@@ -65,11 +65,34 @@ change and stale figures were previously carried forward under the label
 | expanding, anchored 1969-05 | **v8.4 (current)** | **0.197** | us JM 0.662 vs 0.68, de JM 0.391 vs 0.44 |
 | expanding, anchored 1970 | v8.3 | 0.260 | out-of-sample window started 1990-08, not 1990-01 |
 | expanding, min_obs 250 | v8.1 / v8.2 | 0.157 / 0.169 | superseded windows |
-| per-refit clip 3 sigma + StandardScaler | v8.2 arm | 0.219 | degrades us 0.788 -> 0.460, de 0.361 -> 0.310 |
-| the same with lambda fixed at 35 | v8.2 arm | 0.310 | not a selectable spec; leverage 43% vs 75% |
+| per-refit clip 3 sigma + StandardScaler ⚠ | v8.2 arm | 0.219 | degrades us 0.788 -> 0.460, de 0.361 -> 0.310 |
+| the same with lambda fixed at 35 ⚠ | v8.2 arm | 0.310 | not a selectable spec; leverage 43% vs 75% |
 | cold start 1970 | v8.2 arm | 0.260 | |
 
-Only the first row describes the current pipeline. Quote it, or name the run.
+⚠ **The two clip-3-sigma rows are historical measurements only and are withdrawn
+from interpretation.** `DataClipperStd` / clipping at three sigma is example code
+from the authors' GitHub for a different data set, it is nowhere in the paper,
+and by standing owner instruction (2026-07-31, registry `AMENDED` on
+`jm-standardizer-geometry-002`) it must not be proposed, run, or cited as an
+author-method candidate at all. The numbers stay so nobody re-measures them.
+
+The v8.4 row is **two contract generations stale**: the current sealed baseline
+is v10 (`fixed-baselines-36ca1ace131c-…`), where the fixed JM reads us 0.683,
+de 0.398, jp 0.291. Quote the run, never the word "current".
+
+**Axis status.** This row is no longer open. `jm-standardizer-geometry-002/-003`
+exhausted the author-artifact geometry family — no cadence reproduces the
+paper's Table-3 persistence curve (V0 2/6, V1 1/6, V3 3/6 against a rule
+requiring 5/6) — and the registry closes the axis with
+`no_further_geometry_variants = true`. The honest label is
+**bracketed but unidentifiable from public information**, not "open".
+
+**And it is not an independent choice.** The registry records
+(`CORRECTION`, `expanding_full_history_ddof1`) that this geometry was identified
+partly by which recipe reproduced Table-4 economics — a published number. It is
+therefore target-conditioned in the same way the lambda grid is, must be
+disclosed wherever the grid's circularity is disclosed, and **no result may be
+described as independent of it**.
 
 Ledger conclusion, already established: no single preprocessing variant
 reproduces Table 3 and Table 4 at the same time. Treat this row as bounded
@@ -224,17 +247,40 @@ noticed only after measuring that the 9% of months selecting k = 0 drive about
 Japan is unchanged and Germany gets slightly worse. A rule that works in one
 market out of three is a fit, not a rule.
 
-**And the rule cannot choose reliably even with the set fixed.** Splitting each
-8-year validation window in half and comparing the argmax of each half gives
-agreement of 17.1% (us), 15.1% (de) and 17.4% (jp) against a chance rate of
-16.7%. A deterministic control — identical return paths, one handicapped by a
-constant 0.1 of Sharpe — agrees 100% of the time, so the test detects a
-consistent advantage an order of magnitude smaller than the spread between real
-candidates. The candidates simply do not have a consistent advantage over one
-another at this horizon. Median winning margin is 0.030-0.047 of Sharpe and
-about a third of months are decided by less than 0.02. Turnover is therefore
-unidentified twice over: the set is unpublished, and the rule that picks from it
-is not reproducible in principle.
+**And the rule chooses unstably across sub-samples, even with the set fixed.**
+Splitting each 8-year validation window in half and comparing the argmax of each
+half gives agreement of 17.1% (us), 15.1% (de) and 17.4% (jp).
+
+> **Corrected 2026-08-06.** This paragraph used to compare those rates against
+> "a chance rate of 16.7%" and to conclude that the rule "is not reproducible in
+> principle". Both were retracted by
+> `docs/audit/2026-07-29-codex-review-verdicts.md` §5 and the wording was never
+> propagated here. 16.7% is `1/k`, the agreement rate for *uniform* draws, and
+> the rule's choices are far from uniform (us: k20 33%, k8 29%, k6 21%, k0 9%,
+> k4 6%, k2 1%). Computed from the two halves' own argmax distributions, the
+> independence baseline is **20.2% (us), 20.8% (de), 22.7% (jp)** — so observed
+> agreement is *below* independence, not at chance. The audit's instruction is
+> explicit: "17.1% against chance 16.7%" must not be quoted again.
+
+The selection rule is deterministic: identical data, code and grid always select
+the same window, so nothing here makes it irreproducible. What is unstable is
+the *estimate* — which candidate wins depends on which sample it is scored on.
+
+Two limits of the instrument belong with the number. A deterministic control —
+identical return paths, one handicapped by a constant 0.1 of Sharpe — agrees
+100% of the time, but the realistic controls do not: invested-versus-cash, two
+strategies that differ enormously, agree only 77% (us), 63% (de) and 46% (jp).
+And two halves of a validation window are consecutive periods, not two draws
+from one distribution, so if the best k genuinely drifts then disagreement is
+signal rather than noise. The design cannot separate those.
+
+What survives without any baseline argument: the median winning margin is
+0.030-0.047 of Sharpe, about a third of months are decided by less than 0.02,
+and the choice flips between consecutive months 5.5%-7.2% of the time even
+though those two windows share seven eighths of their data. Turnover is
+therefore unidentified twice over: the candidate set is unpublished, and a
+Sharpe-ranked rule cannot pin down a quantity that Table 3 shows moving from 8.5
+to 2.0 shifts per year across the same candidates.
 
 **No set reproduces Table 4 in all three markets at once.** Scored on all eight
 metrics rather than turnover alone, the best any of the eight achieves is 8/8
@@ -372,7 +418,8 @@ paths, and the difference is large: on the US HMM it is 5.9 percentage points.
 Total return when invested plus nothing when in cash is a single basis, and it
 is forced by those two statements rather than chosen to fit anything.
 
-**What we do.** v9.1 onward: `[metrics] maximum_drawdown =
+**What we did, v9.1 through v9.3** (superseded; v9.4 and v10 are back on
+`total_wealth`): `[metrics] maximum_drawdown =
 "risky_leg_wealth_flat_in_cash"`. Configs written before the field existed
 default to `total_wealth`, so their sealed runs keep replaying to the numbers
 they recorded.

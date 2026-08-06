@@ -54,7 +54,7 @@ fixed. It retains a positive Sharpe improvement over fixed JM in all three
 markets but beats both controls only in the US. This favors feature removal
 over raw loss scale as the stronger explanation, although finite-grid binding
 and one-state fits prevent a clean feature-selection claim. Extending the
-proxies to 2026 and opening a selection-clean 2024-2026 window once leaves the
+proxies to 2026 and opening a model-untouched 2024-2026 window once leaves the
 US edge intact on the full walk-forward but cannot confirm it on the short
 post-selection bull. These repeatedly inspected results are development
 evidence, not a claim of robust, generalizable, or live profit.
@@ -942,11 +942,20 @@ following selection month's switching. For the refit active at decision date
 \(d\) under the selected raw \(\lambda\), the separation
 \(S_d=\lvert c_1-c_0\rvert\) is the absolute distance between the two stored
 standardized DD centers, with \(S_d=0\) for collapsed one-state fits. The
-contract was frozen and registered before any outcome window was opened. Its
-rule required a negative per-market Spearman correlation between \(S_d\) and
-the next window's switch count in all three markets, with a one-sided
-permutation \(p<0.05\) (10{,}000 draws, fixed seed) in at least two, before
-any separation gate could be considered.
+contract was registered as frozen in the append-only experiment registry at
+08:32:46Z, before the run artifact at 08:35:51Z and before completion at
+08:40:34Z. Two caveats belong with that ordering: the spec file's own
+\texttt{frozen\_at\_utc} field reads 09:05:00Z, i.e.\ after the run, and the
+spec first enters version control in the same commit as its result, so the
+chronology rests on self-reported timestamps rather than on independent
+corroboration. Its rule required a negative per-market Spearman correlation
+between \(S_d\) and the next window's switch count in all three markets, with a
+one-sided permutation \(p<0.05\) (10{,}000 draws, fixed seed) in at least two,
+before any separation gate could be considered. The permutation shuffles months
+independently and therefore ignores serial dependence in switch counts, so those
+\(p\)-values are descriptive rather than a valid time-series inference; the
+verdict does not rest on them, because the association is positive in all three
+markets and the rule fails on sign alone.
 
 \begin{table}[!htbp]
 \centering
@@ -992,7 +1001,7 @@ mid-2020 through 2023.}
 this figure.}
 }
 
-\subsection{Extending the sample to 2026 and a selection-clean window}
+\subsection{Extending the sample to 2026 and a model-untouched window}
 
 Every walk-forward result in this paper is already out-of-sample in the causal
 sense: at each date the model fits preprocessing, centers, and the penalty on
@@ -1003,7 +1012,11 @@ through-2023 performance is optimistic for the same reason any model chosen on
 a sample looks good on it. To separate these two axes we extended the public
 proxies to 30 June 2026 and, once, opened the 2024-01-02 to 2026-06-30 window
 for the pre-declared DD-only variant. That window is the only span the choice
-of DD-only could not have used. The extension is opened after a precondition: a
+of DD-only could not have used. It is model-untouched and P\&L-untouched, but it
+is \emph{not} selection-independent: a separate authorized source audit had
+already inspected public candidate series through July 2026, so the window is a
+post-selection exploratory readout rather than a confirmatory holdout. The
+extension is opened after a precondition: a
 fresh replication of the sealed 2023 sample with the current source reproduced
 the accepted baseline on all 123 scientific output files byte-for-byte, and the
 extended series overlap the sealed sample with maximum absolute difference zero
@@ -1012,7 +1025,7 @@ on every shared row.
 \begin{table}[!htbp]
 \centering
 \caption{Net Sharpe on two walk-forward windows: the full sample through 2026
-and the selection-clean 2024-2026 window alone. The stronger control per market
+and the model-untouched 2024-2026 window alone. The stronger control per market
 is bold.}
 \label{tab:holdout}
 \small
@@ -1055,7 +1068,7 @@ full sample, so its Sharpe is high-variance and the bootstrap intervals span
 zero. And it was a broad bull, with buy-and-hold Sharpe between \(0.90\) and
 \(1.27\), a regime in which a downside-protection rule has almost nothing to
 protect against and any cash rotation only forgoes return. The window therefore
-\emph{fails to confirm} the US edge on selection-independent data, but it does
+\emph{fails to confirm} the US edge on model-untouched data, but it does
 \emph{not refute} the full walk-forward result, and it is not evidence against
 the jump-model class. A stronger test would need either more post-selection
 time or a drawdown-conditional readout. The window is now spent development
@@ -1067,7 +1080,7 @@ same frozen contract.
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.9\textwidth]{\holdoutfig}
-\caption{Net Sharpe on the selection-clean 2024-2026 window alone. No
+\caption{Net Sharpe on the model-untouched 2024-2026 window alone. No
 jump-model variant clears buy-and-hold in this short bull window; on the full
 walk-forward through 2026 (Table~\ref{tab:holdout}) DD-only still beats both
 controls in the US. Germany is an all-equity tie; Japan's DD-only rotation to
@@ -1138,7 +1151,7 @@ No single tested JM beats both \BH{} and HMM in every market. The contribution
 is therefore a verified set of candidate objectives and a sharper empirical
 failure map, not a performance claim. Such a claim would require a
 prespecified model evaluated on data that have not already shaped it. We took a
-first step: after extending the proxies to 2026, we opened the selection-clean
+first step: after extending the proxies to 2026, we opened the model-untouched
 2024-2026 window once for DD-only. On the full walk-forward through 2026 its US
 edge is unchanged, but the isolated post-selection window is a short bull that
 neither confirms nor refutes that edge. A conclusive test needs a longer

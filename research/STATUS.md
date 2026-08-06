@@ -21,8 +21,11 @@ Fresh data through 2026 has been added. Every evaluation below is walk-forward
 causal: each monthly decision uses only trailing data, so the whole
 2008/2009--2026 span is already out-of-sample per decision. Two distinct axes
 matter. Walk-forward leakage: none, on any window. Selection bias: DD-only was
-chosen from several variants after inspecting the through-2023 sample, so only
-the 2024-01-02 to 2026-06-30 window is free of that choice.
+chosen from several variants after inspecting the through-2023 sample. The
+2024-01-02 to 2026-06-30 window is model-untouched and P&L-untouched, but it is
+**not** selection-independent -- a separate authorized source audit had already
+inspected public candidate series through July 2026 (`AGENTS.md`), so it is a
+post-selection exploratory readout, not a confirmatory holdout.
 
 On the **full walk-forward through 2026**, DD-only still beats both controls in
 the US (`0.89` vs the stronger control `0.63`, gap `+0.258`) and loses in
@@ -34,7 +37,7 @@ On the **isolated 2024-2026 window** the frozen binary rule returns
 `0.90` (the German JM never left equity), JP B&H `1.27` vs DD-only `1.17`.
 This window is short (~620 days), the paired bootstrap intervals include zero,
 and it was a broad bull that penalizes any cash rotation. It therefore
-**fails to confirm** the US edge on selection-independent data but **does not
+**fails to confirm** the US edge on model-untouched data but **does not
 refute** the full walk-forward result. It is weak evidence, not a clean
 negative. The sample is now spent, and the lagged-log4 batch remains available
 under the same frozen contract.
@@ -72,7 +75,7 @@ or generalization claim is authorized.
 | Simple challengers | `simple-jm-suite-001` / `simple-jm-suite-2d3d2a779b13-544237a59943-20260721T145043479851Z` | No cross-market winner; DD-only beats both controls in US and improves fixed-JM Sharpe in all three, but passes only `1/3` and is loss-scale confounded |
 | DD loss-scale control | `dd-loss-scale-001` / `dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z` | Mechanism verified; scaled DD beats both controls only in US (`1/3`), so the result is `not_supported` |
 | Separation-turnover diagnostic | `separation-turnover-001` / `separation-turnover-8674ff4d9470-20260722T083551Z` | Not supported; decision-time DD center separation associates positively (US `+0.035`, DE `+0.320`, JP `+0.155`) with next-month switches, JP flips negative once collapsed one-state months are excluded, so no separation gate is justified |
-| One-shot 2024-2026 holdout | `holdout-2026-001` / `holdout-20260722T111757Z` | Frozen rule returns `not_supported` on the isolated 2024-2026 window (`0/3`: US B&H `1.05` vs DD-only `0.78`; DE all four `0.90`; JP B&H `1.27` vs DD-only `1.17`). But the full walk-forward through 2026 still has DD-only beating both controls in the US (`1/3`, unchanged). The window is short and bull-dominated with bootstrap intervals spanning zero, so it fails to confirm the edge on selection-independent data without refuting the 18-year result |
+| One-shot 2024-2026 holdout | `holdout-2026-001` / `holdout-20260722T111757Z` | Frozen rule returns `not_supported` on the isolated 2024-2026 window (`0/3`: US B&H `1.05` vs DD-only `0.78`; DE all four `0.90`; JP B&H `1.27` vs DD-only `1.17`). But the full walk-forward through 2026 still has DD-only beating both controls in the US (`1/3`, unchanged). The window is short and bull-dominated with bootstrap intervals spanning zero, so it fails to confirm the edge on model-untouched data without refuting the 18-year result |
 
 Invalidated runs remain preserved for provenance, but they are not accepted
 evidence. In particular, the `2207...` and `d6fe...` fixed-audit runs and the

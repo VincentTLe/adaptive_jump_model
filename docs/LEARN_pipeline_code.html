@@ -190,7 +190,7 @@ footer{margin-top:70px;color:var(--fg-dim);font-size:.8rem;border-top:1px solid 
     <tr><td>data_policy: cấm backfill/impute/xóa outlier; splice phải kèm lý do ≥40 ký tự</td><td class="num">211–231</td><td>Splice S&amp;P đã <b>xóa mất phiên 1988-01-04</b>, hỏng mọi cửa sổ 3000 ngày đến 1999</td></tr>
     <tr><td>Cutoff 2023-12-31; muốn quá phải bật cờ holdout riêng, trần 2026-06-30</td><td class="num">233–249</td><td>Giữ dữ liệu holdout niêm phong đến khi có câu hỏi đông lạnh</td></tr>
     <tr><td>Grid HMM: allowlist, không phải validation — "một trường mở ở đây cho phép chỉnh grid đến khi số khớp Table 4"</td><td class="num">507–556</td><td>Chính grid Table-3 từng thiếu k=6 — giá trị duy nhất paper nêu tên</td></tr>
-    <tr><td>Luật dừng 5% khi selector đóng đô kịch trần grid</td><td class="num">559–584</td><td>Đã seal 2 run hỏng (8/9 và 16/18 hàng fail) — xem chương 7</td></tr>
+    <tr><td>Luật dừng 5% khi selector đóng đô kịch trần lưới</td><td class="num">559–584</td><td>Đã seal 2 run (8/9 và 16/18 hàng fail). <b>Ngưỡng tự đặt, không phải của paper</b>, và audit 29-07 hạ nó xuống mức mô tả — xem chương 7</td></tr>
   </table>
 
   <div class="callout"><span class="lbl">Ý chính</span>
@@ -448,18 +448,45 @@ return choose(tied)</code></pre>
 
   <h3 class="steph"><span class="stepnum">2</span>Cái gate nhốt metrics (dòng 163–198, 428–456)</h3>
   <p><code>open_baseline_metrics</code> <b>từ chối trả bảng kết quả</b> nếu selector đóng đô ở kịch trần
-  grid quá 5% số tháng — vì "selector muốn giá trị ngoài menu" nghĩa là menu sai, và số đọc ra từ menu
-  sai là số rác. Gate này đã bắn thật hai lần: run cửa-sổ-4000 (fail 8/9 hàng, metrics bị seal) và
-  run grid-hành-vi (fail 16/18). Ledger tự thú thật thà: luật 5% là <i>của nhà</i>, paper không có —
-  nên nó chỉ chặn việc <i>đọc</i> số, không bao giờ đụng vào trades hay returns.</p>
+  lưới quá 5% số tháng. Gate này đã bắn thật hai lần: run cửa-sổ-4000 (fail 8/9 hàng, metrics bị seal)
+  và run grid-hành-vi (fail 16/18).</p>
+
+  <div class="callout warn"><span class="lbl">Nhưng đừng đọc nó quá tay — audit 29-07 đã hạ cấp gate này</span>
+  Ngưỡng 5% là <b>do dự án tự đặt</b> (commit 71a46d6); paper không có bất kỳ phép kiểm nào như vậy.
+  Nên trượt gate <b>không phải</b> là "thất bại replication". Audit §13 còn chứng minh gate có thể qua
+  bằng cách <i>độn thêm một ứng viên không ai chọn</i> vào lưới: Đức từ 70/408 FAIL thành 2/408 PASS
+  trong khi turnover giống hệt tới 6 chữ số và số lần đổi chế độ không đổi. Nghĩa là nó đo <i>cái gì
+  nằm ở đỉnh lưới</i>, chứ không đo <i>nghiệm tối ưu có nằm trong lưới hay không</i>. Và §13 cũng bác
+  luôn giả thuyết đi kèm: nới lưới làm khớp <b>xấu đi</b> (DE 7/8→4/8, JP 7/8→5/8), không hề nhận diện
+  được turnover.
+  <br><br>
+  Cái còn đứng: tỉ lệ đóng đô đỉnh lưới trên các tháng OOS (us <b>22,1%</b>, de <b>5,4%</b>,
+  jp <b>39,5%</b>) là một <b>mô tả</b> có thật và đáng báo cáo về thủ tục của paper trên dữ liệu này.
+  Chỉ là mô tả, không phải tiêu chí đỗ/trượt.</div>
 
   <h3 class="steph"><span class="stepnum">3</span>Và phát hiện khoa học nằm ngay ở đây</h3>
-  <div class="callout key"><span class="lbl">Luật chọn của paper tự nó bất ổn</span>
+  <div class="callout key"><span class="lbl">Lựa chọn k không ổn định theo mẫu</span>
   Chia đôi cửa sổ validation 8 năm, hỏi hai nửa cùng chọn ai: đồng ý <b>17.1% / 15.1% / 17.4%</b>
-  (US/DE/JP) — đúng mức ngẫu nhiên 16.7%. Một control có lợi thế cố định 0.1 Sharpe thì đồng ý 100%,
-  tức bài test đủ nhạy. Kết luận: các ứng viên không có lợi thế ổn định nào để "chọn đúng" — thủ tục
-  của paper không tái lập được kết quả của paper <i>về nguyên tắc</i>. Đây là một phần cốt lõi của
-  báo cáo replication.</div>
+  (US/DE/JP). Mức so sánh đúng <b>không</b> phải 1/k = 16.7% — đó là tỉ lệ cho lựa chọn phân bố đều,
+  mà luật này lệch hẳn (Mỹ: k20 33%, k8 29%, k6 21%). Tính từ chính phân bố của hai nửa, mức độc lập
+  là <b>20.2 / 20.8 / 22.7%</b>, tức đồng ý còn <i>thấp hơn</i> mức độc lập.
+  <br><br>
+  Luật chọn là <b>tất định</b> — cùng dữ liệu, cùng code, cùng lưới thì luôn ra cùng một k. Cái bất ổn
+  là <i>ước lượng</i>: ai thắng phụ thuộc vào việc chấm trên mẫu nào. Đây là chuyện độ tin cậy theo
+  mẫu, không phải chuyện "không tái lập được".</div>
+
+  <div class="callout warn"><span class="lbl">Giới hạn của chính phép đo</span>
+  Control chênh 0.1 Sharpe thì đồng ý 100%, nhưng control <i>thực tế</i> thì không: nắm-cổ-phiếu so
+  với nắm-tiền-mặt — hai chiến lược khác nhau một trời một vực — chỉ đồng ý 77 / 63 / 46%. Và hai nửa
+  cửa sổ là hai <b>giai đoạn liên tiếp</b>, không phải hai lần rút từ cùng một phân phối: nếu k tốt
+  nhất thật sự trôi theo thời gian thì bất đồng là tín hiệu chứ không phải nhiễu. Thiết kế này không
+  tách được hai khả năng đó.</div>
+
+  <p>Thứ đứng vững mà không cần bàn về mức ngẫu nhiên: biên thắng trung vị chỉ <b>0.030–0.047</b>
+  Sharpe, một phần ba số tháng quyết định bởi chênh lệch dưới 0.02, và lựa chọn <b>đổi giữa hai tháng
+  liền nhau 5.5–7.2%</b> số lần dù hai cửa sổ dùng chung 7/8 dữ liệu. Ghép với Bảng 3 của paper (k đi
+  từ 0 lên 20 làm số lần đổi chế độ rơi từ 8.5 xuống 2.0 mỗi năm): Sharpe gần như phẳng theo k còn
+  turnover thì không, nên một luật xếp hạng theo Sharpe <i>không thể</i> ghim được turnover.</p>
 
   <div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
     <ul><li>Vòng chọn hằng tháng là thủ tục của paper, chấm bằng trọng tài chung từ backtest.py.</li>
@@ -496,12 +523,15 @@ result["strategy_return"] = result["gross_return"] - result["transaction_cost"]<
   <table>
     <tr><th>Sẹo</th><th>Giáp sinh ra</th></tr>
     <tr><td>Signal mang sẵn index bị pandas <b>reindex theo nhãn</b> thay vì theo vị trí — lệch hàng âm thầm = bug lookahead câm (audit 2026-07, vá a474a6d)</td><td>Ép <code>np.asarray</code> tước index trước khi gắn lại theo vị trí + bắt buộc mọi giá trị đúng 0.0/1.0</td></tr>
-    <tr><td>Ô drawdown Mỹ lệch ~0.057 với Table 4 — thay cả chuỗi vị thế của <i>chính Shu</i> (đọc từ Figure 6) vẫn lệch 0.059 ⇒ lệch nằm ở <b>định nghĩa drawdown</b>, không phải mô hình (commit 8a28919)</td><td>Hai "drawdown basis" đặt tên trong hợp đồng; chuyển sang basis của paper hạ sai số drawdown trung bình 0.0330 → 0.0072</td></tr>
+    <tr><td>Ô drawdown Mỹ lệch ~0.057 với Table 4 — thay cả chuỗi vị thế của <i>chính Shu</i> (đọc từ Figure 6) vẫn lệch 0.059, nên lệch <b>không</b> nằm ở chuỗi trạng thái. Từng quy cho định nghĩa drawdown và gọi <code>flat_in_cash</code> là "basis của paper" — <b>cách quy đó đã bị rút 29-07</b>: caption Figure 5 nói về trục <i>cumulative excess return</i>, chẳng ràng buộc gì đường drawdown, nên basis ấy thực chất được chọn bằng cách tối thiểu hoá sai số so với Table 4 — tức là fitting</td><td>Hai basis có tên trong hợp đồng, v9.4/v10 quay về mặc định <code>total_wealth</code>. Rút lại không tốn gì: cả ba thị trường vẫn 7/8 dưới cả hai basis</td></tr>
   </table>
   <div class="callout"><span class="lbl">Ý chính</span>
-  Bài học chương này: hai lần "mô hình sai" hóa ra là "quy ước đo khác nhau". Vì vậy mọi quy ước đo
-  (kể cả turnover ×0.5 — đã được chốt bằng chính câu chữ paper "44% one way, 88% combined") phải có
-  tên trong hợp đồng và chỉ một chỗ cài đặt.</div>
+  Bài học chương này có hai tầng. Tầng một: quy ước đo có thể giả dạng "mô hình sai" — vụ reindex theo
+  nhãn là như vậy, và turnover ×0.5 thì được chốt bằng chính câu chữ paper ("44% one way, 88%
+  combined"). Tầng hai, đắt hơn: vụ drawdown cho thấy <b>lời giải thích cũng có thể là thứ được fit</b>
+  — chọn basis nào cho sai số nhỏ nhất so với Table 4 chính là dò một knob không được công bố. Vì vậy
+  mọi quy ước đo phải có tên trong hợp đồng, chỉ một chỗ cài đặt, <i>và</i> lý do chọn nó phải viết
+  được ra trước khi biết nó cho sai số bao nhiêu.</div>
 
   <div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
     <ul><li>Toán: shift(delay+1), gross = w·equity + (1−w)·cash, phí = |Δw|·10bps, rồi bộ metrics Table-4.</li>
@@ -616,10 +646,10 @@ if (not frame["position"].iloc[offset:].reset_index(drop=True)
     <tr><td class="num">5</td><td>Objective giảm khi λ tăng (JP 1989-07-03) — optimizer kẹt, bẩn menu frequency-ladder</td><td>gate running-max, fault-inject bởi agent riêng (CERTIFY)</td><td>models.py</td></tr>
     <tr><td class="num">6</td><td>Smoke lộ empty-state center → loss +inf → nguy cơ NaN penalty decode rác</td><td>ngữ nghĩa ∞ trong evidence + cấm fallback q_train=0</td><td>tv_jump.py</td></tr>
     <tr><td class="num">7</td><td>7.995 ca hòa điểm tuyệt đối; đổi chiều phá-hòa đổi cả đường chọn của Mỹ</td><td>tie_tolerance 1e-12 + luật hòa đóng băng trong hợp đồng</td><td>walkforward.py</td></tr>
-    <tr><td class="num">8</td><td>Selector đóng đô kịch trần grid (JP 30–39% tháng) — menu sai thì số là rác</td><td>boundary gate 5%, đã seal 2 run (8/9 và 16/18 hàng fail)</td><td>walkforward.py</td></tr>
+    <tr><td class="num">8</td><td>Selector đóng đô kịch trần lưới (OOS: us 22,1% · de 5,4% · jp 39,5% số tháng) — là <b>mô tả</b> tính chất của thủ tục, <b>không</b> phải bằng chứng lưới sai</td><td>gate 5% — <b>ngưỡng do dự án tự đặt</b> (commit 71a46d6), paper không có. Audit §13 chứng minh nới lưới làm khớp <i>xấu</i> đi và gate có thể qua bằng cách độn một ứng viên không ai chọn (DE 70/408 FAIL → 2/408 PASS, turnover giống hệt tới 6 chữ số) ⇒ từ 29-07 nó chỉ chặn việc <i>đọc</i> số</td><td>walkforward.py</td></tr>
     <tr><td class="num">9</td><td>JP B&amp;H Sharpe 0.189 vs 0.193 — hai quy ước căn mẫu khác nhau bị trộn trong ledger</td><td>quy ước căn mẫu thành enum có tên, không nhận chuỗi lạ</td><td>walkforward.py, config.py</td></tr>
     <tr><td class="num">10</td><td>Signal mang index bị reindex theo nhãn — lệch hàng âm thầm (họ lookahead)</td><td>ép positional + bắt buộc 0/1</td><td>backtest.py</td></tr>
-    <tr><td class="num">11</td><td>Lệch drawdown Mỹ hóa ra là ĐỊNH NGHĨA drawdown (thay vị thế của chính Shu vẫn lệch)</td><td>hai drawdown-basis có tên; basis paper hạ sai số 0.033→0.007</td><td>backtest.py, config.py</td></tr>
+    <tr><td class="num">11</td><td>Lệch drawdown Mỹ từng được quy cho ĐỊNH NGHĨA drawdown — nhưng cách quy đó <b>đã bị rút 29-07</b>: caption Figure 5 nói về trục <i>cumulative excess return</i>, không ràng buộc gì đường drawdown, nên basis <code>flat_in_cash</code> thực chất được chọn bằng cách tối thiểu hoá sai số so với Table 4, tức là fitting</td><td>hai drawdown-basis có tên trong hợp đồng; v9.4/v10 quay lại mặc định <code>total_wealth</code>. Rút lại không tốn gì: cả ba thị trường vẫn 7/8 dưới cả hai basis</td><td>backtest.py, config.py</td></tr>
     <tr><td class="num">12</td><td>Hash 65-hex chép tay trong frozen spec; claim "replication" dán lên grid calibrated</td><td><code>_require_hex</code>, run-id suy từ hash, đối chiếu claim với hợp đồng + số tính lại</td><td>artifacts.py, config.py</td></tr>
   </table>
 

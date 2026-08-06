@@ -335,20 +335,29 @@ bất đẳng thức chương 3, hầu như không ΔL nào đủ lớn để tr
 <table>
 <tr><th>Biến thể</th><th class="num">US</th><th class="num">DE</th><th class="num">JP</th></tr>
 <tr><td>DD-only</td><td class="num ok">0.0%</td><td class="num no">26.5%</td><td class="num no">28.9%</td></tr>
-<tr><td>Return-aware</td><td class="num ok">0.0%</td><td class="num no">12.4%</td><td class="num ok">0.0%</td></tr>
-<tr><td>Robust L1</td><td class="num ok">0.0%</td><td class="num no">46.6%</td><td class="num">4.4%</td></tr>
+<tr><td>Return-aware <span style="color:var(--result)">⚠</span></td><td class="num dim">0.0%</td><td class="num dim">12.4%</td><td class="num dim">0.0%</td></tr>
+<tr><td>Robust L1 <span style="color:var(--result)">⚠</span></td><td class="num dim">0.0%</td><td class="num dim">46.6%</td><td class="num dim">4.4%</td></tr>
 </table>
+<div class="callout warn"><span class="lbl">⚠ Hai hàng dưới đã bị vô hiệu hoá một phần — 2026-08-01</span>
+Dưới hợp đồng v10, <code>return_aware</code> và <code>robust_l1</code> được fit trên đặc trưng
+<b>chuẩn hoá HAI LẦN</b>: <code>simple_jm_fitting._fit_custom_window</code> luôn gọi StandardScaler,
+trong khi baseline dùng <code>_IdentityScaler</code> vì đặc trưng đã được chuẩn hoá nhân quả từ trước.
+Nên hai hàng này không đo "loss return-aware" hay "loss L1" mà đo <i>loss đó cộng với một lần
+chuẩn hoá lại ở mỗi lần refit</i>. Registry CORRECTION 2026-08-01: phải sửa và chạy lại.
+<b>Hàng DD-only không bị ảnh hưởng</b> (đi qua <code>fixed_jm_states</code>), nên phần dưới chỉ dựa
+vào nó.</div>
 
 <div class="callout"><span class="lbl">Khớp lý thuyết</span>
-Mỹ — κ thấp nhất — không có một tháng suy biến nào. Đức — κ cao gấp 9 lần —
-có tới gần một nửa số tháng của biến thể L1 đứng trên fit một trạng thái.
-Bất đẳng thức ΔL &lt; m·λ dự đoán đúng thứ tự này mà không cần biết gì về kinh tế học.</div>
+Mỹ — κ thấp nhất — không có một tháng suy biến nào. Đức — κ cao gấp <b>4,5 lần</b> Mỹ
+(130,9 so với 28,8) — có <b>26,5%</b> số tháng DD-only được chọn đứng trên fit một trạng thái,
+và Nhật 28,9%. Bất đẳng thức ΔL &lt; m·λ dự đoán đúng thứ tự này mà không cần biết gì về kinh tế học.
+(Hai biến thể còn lại không dùng làm bằng chứng — xem cảnh báo ở trên.)</div>
 
 <div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
 <ul>
 <li>κ: US 28.8 · JP 16.6 · DE 130.9 — lệch nhau tới ~8 lần.</li>
 <li>κ trôi 67–90 lần theo thời gian; DE thập kỷ 2020 ở mức 1323.</li>
-<li>Suy biến xuất hiện đúng nơi κ cao: DE tới 46.6% số tháng được chọn.</li>
+<li>Suy biến xuất hiện đúng nơi κ cao: DD-only có DE 26,5% và JP 28,9% số tháng được chọn, Mỹ 0%.</li>
 </ul>
 <p class="next"><b>Tiếp theo →</b> vì sao điều này làm hỏng cả cách đọc kết quả.</p></div>
 </section>
@@ -381,9 +390,19 @@ với các tháng nó chỉ là quy tắc &ldquo;luôn nắm giữ&rdquo;. Gọi
 
 <h3 class="steph"><span class="stepnum">3</span>Làm hỏng mọi so sánh &ldquo;cơ chế X có tốt hơn không&rdquo;</h3>
 <p>Một chiết khấu β nhân lên λ (như họ cơ chế adaptive của chúng ta) <b>không thể</b>
-mang cùng ý nghĩa ở hai thị trường lệch nhau nhiều lần về κ. Giảm 50% của κ = 127.7 vẫn còn 63.8 —
-vẫn cứng hơn nhiều so với US khi <i>không</i> chiết khấu gì. Đây là lý do <b>cơ học</b>,
-độc lập với kinh tế học, khiến mọi cơ chế adaptive đến nay chỉ giúp được Mỹ.</p>
+mang cùng ý nghĩa ở hai thị trường lệch nhau nhiều lần về κ. Giảm 50% của κ = 130.9 vẫn còn 65.4 —
+vẫn cứng hơn nhiều so với US khi <i>không</i> chiết khấu gì.</p>
+
+<div class="callout warn"><span class="lbl">⚠ Đây là giả thuyết, KHÔNG phải kết luận đã kiểm chứng</span>
+Bản trước của đoạn này viết rằng đó là "lý do cơ học khiến <i>mọi</i> cơ chế adaptive chỉ giúp được
+Mỹ". Hai chỗ sai. <b>Một</b>: thí nghiệm duy nhất được thiết kế để kiểm đúng câu hỏi này —
+<code>scale-free-penalty-001</code> — đã bị <b>INVALIDATED</b>, vì probe chỉ áp một chiết khấu vô
+hướng cố định và <i>chưa bao giờ chạy</i> cơ chế arrival mà giả thuyết của nó nêu tên; mọi kết luận
+của nó đã bị rút. Câu hỏi hiện <b>chưa được kiểm theo bất kỳ chiều nào</b>. <b>Hai</b>: phát biểu
+"cơ chế X thất bại ở Đức/Nhật" được registry ghi là <b>UNSUPPORTED</b> — verdict của Đức đảo chiều
+theo lưới ở khoảng 40% số vector được liệt kê, trên một lưới Đức xếp <b>366/366, cuối bảng</b> trong
+tập admissible đầy đủ. Và số arm "sạch" là <b>ba</b> (dd-only, static λ50, arrival β=log2), không
+phải năm.</div>
 
 <div class="callout key"><span class="lbl">Điều phải nói rõ</span>
 Tính chất này thuộc về <b>giao thức trong chính paper</b>, không phải lỗi cài đặt của chúng ta:
