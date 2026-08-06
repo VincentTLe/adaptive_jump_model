@@ -1,4 +1,12 @@
-"""Deterministic paired uncertainty calculations for strategy comparisons."""
+"""Deterministic paired uncertainty calculations for strategy comparisons.
+
+Currently consumed only by its own test: its former caller, holdout_runner,
+was deleted with the closed studies on 2026-08-05. It stays because it is the
+designated engine for AJM-EXT-001's gating bootstrap
+(research/ajm-ext-001.toml [confirmation_rule.bootstrap]: stationary block
+bootstrap, mean block 60, 10,000 replications, one-sided 95% lower bound) —
+delete it only together with that contract.
+"""
 
 from __future__ import annotations
 
