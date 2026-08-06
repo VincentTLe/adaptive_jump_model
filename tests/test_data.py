@@ -119,28 +119,12 @@ def test_localfile_rejects_symlink_escape(tmp_path: Path) -> None:
         )
 
 
-def test_yahoo_adapter_uses_exclusive_end_and_preserves_missing() -> None:
-    source = CONFIG.markets[0].equity
+@pytest.mark.parametrize("provider", ["yahoo", "boj"])
+def test_retired_live_providers_refuse_to_acquire(provider: str) -> None:
+    source = replace(CONFIG.markets[0].equity, provider=provider)
 
-    def loader(source_arg, start, end):
-        assert source_arg is source
-        assert start == START
-        assert end == date(2024, 1, 1)
-        frame = pd.DataFrame(
-            {"Open": [100.0, 101.0], "Close": [100.5, None]},
-            index=pd.to_datetime(["1988-01-04", "2023-12-29"]),
-        )
-        return frame, {"adapter": "fake"}
-
-    payload = fetch_source(source, START, CUTOFF, yahoo_loader=loader)
-
-    assert payload.payload_type == "adapter_output"
-    assert payload.retrieval == {"adapter": "fake"}
-    assert payload.canonical["date"].tolist() == ["1988-01-04", "2023-12-29"]
-    assert payload.canonical["value"].iloc[0] == 100.5
-    assert pd.isna(payload.canonical["value"].iloc[1])
-    assert b"Open,Close" in payload.raw
-    assert quality(payload.canonical)["missing_values"] == 1
+    with pytest.raises(AcquisitionError, match="is retired"):
+        fetch_source(source, START, CUTOFF)
 
 
 def test_fred_adapter_sends_frozen_bounds_and_preserves_missing() -> None:
@@ -163,51 +147,45 @@ def test_fred_adapter_sends_frozen_bounds_and_preserves_missing() -> None:
     assert pd.isna(payload.canonical["value"].iloc[1])
 
 
-def test_boj_adapter_checks_series_and_month_bounds() -> None:
-    source = CONFIG.markets[2].cash
-    raw = (
-        b"STATUS,200\nNEXTPOSITION,\n"
-        b"SERIES_CODE,NAME_OF_TIME_SERIES,UNIT,FREQUENCY,CATEGORY,LAST_UPDATE,"
-        b"SURVEY_DATES,VALUES\n"
-        b"STRACLUC3M,Call Rate,percent per annum,MONTHLY,Call,20240101,198901,4.5\n"
-        b"STRACLUC3M,Call Rate,percent per annum,MONTHLY,Call,20240101,200001,null\n"
-        b"STRACLUC3M,Call Rate,percent per annum,MONTHLY,Call,20240101,202312,0.1\n"
-    )
-
-    def getter(url, params):
-        assert params == {"startDate": "197001", "endDate": "202312"}
-        return HttpResult(raw, url, 200, "text/csv")
-
-    payload = fetch_source(source, START, CUTOFF, http_get=getter)
-
-    assert payload.canonical["date"].tolist() == [
-        "1989-01-01",
-        "2000-01-01",
-        "2023-12-01",
-    ]
-    assert payload.canonical["value"].iloc[0] == 4.5
-    assert pd.isna(payload.canonical["value"].iloc[1])
-    assert payload.canonical["value"].iloc[2] == 0.1
-
-
 @pytest.mark.parametrize(
     ("dates", "values", "message"),
     [
-        (["2023-01-03", "2023-01-03"], [1.0, 2.0], "duplicate dates"),
-        (["2023-01-03", "2024-01-02"], [1.0, 2.0], "outside frozen interval"),
+        (["2023-01-03", "2023-01-03"], ["1.0", "2.0"], "duplicate dates"),
+        (["2023-01-03", "2024-01-02"], ["1.0", "2.0"], "outside frozen interval"),
         (["2023-01-03"], ["bad"], "non-numeric value"),
     ],
 )
-def test_yahoo_adapter_rejects_invalid_observations(dates, values, message) -> None:
-    source = CONFIG.markets[0].equity
+def test_canonical_funnel_rejects_invalid_observations(dates, values, message) -> None:
+    source = CONFIG.markets[0].cash
+    rows = "".join(f"{day},{value}\n" for day, value in zip(dates, values, strict=True))
 
-    def loader(*_args):
-        return pd.DataFrame({"Close": values}, index=pd.to_datetime(dates)), {
-            "adapter": "fake"
-        }
+    def getter(url, _params):
+        return HttpResult(
+            f"observation_date,{source.value_field}\n{rows}".encode(),
+            url,
+            200,
+            "text/csv",
+        )
 
     with pytest.raises(AcquisitionError, match=message):
-        fetch_source(source, START, CUTOFF, yahoo_loader=loader)
+        fetch_source(source, START, CUTOFF, http_get=getter)
+
+
+def test_quality_reports_the_facts_the_manifest_and_report_read() -> None:
+    frame = pd.DataFrame(
+        {
+            "date": ["2023-01-03", "2023-01-04", "2023-01-05"],
+            "value": [1.0, None, 3.0],
+        }
+    )
+
+    assert quality(frame) == {
+        "rows": 3,
+        "valid_rows": 2,
+        "missing_values": 1,
+        "first_valid_date": "2023-01-03",
+        "last_valid_date": "2023-01-05",
+    }
 
 
 def test_canonical_serialization_is_deterministic() -> None:
@@ -225,9 +203,9 @@ def test_acquire_writes_six_hashed_sources_and_manifest_last(tmp_path: Path) -> 
     assert manifest["git_sha"] == "abc123"
     assert manifest["replication_cutoff"] == "2023-12-31"
     assert len(manifest["sources"]) == 6
-    assert [row["payload_type"] for row in manifest["sources"]].count(
-        "adapter_output"
-    ) == 3
+    payload_types = [row["payload_type"] for row in manifest["sources"]]
+    assert payload_types.count("local_file") == 4
+    assert payload_types.count("provider_response") == 2
     for source in manifest["sources"]:
         for key in ("raw", "canonical"):
             record = source[key]
@@ -302,42 +280,42 @@ def test_git_provenance_rejects_result_affecting_diff(tmp_path: Path) -> None:
 
 
 def _fixture_run(root: Path) -> Path:
-    def yahoo_loader(_source, start, end):
-        assert start == START
-        assert end == date(2024, 1, 1)
-        return pd.DataFrame(
-            {"Close": [100.0, 101.0]},
-            index=pd.to_datetime(["2023-01-03", "2023-12-29"]),
-        ), {"adapter": "fixture"}
+    """Acquire through the two live providers: pinned local files plus FRED."""
+    payload = b"date,value\n2023-01-03,100.0\n2023-12-29,101.0\n"
+    local = root / "data/external/fixture.csv"
+    local.parent.mkdir(parents=True, exist_ok=True)
+    local.write_bytes(payload)
+    source = _localfile_source("data/external/fixture.csv", payload)
+    config = replace(
+        CONFIG,
+        path=root / "research.toml",
+        markets=tuple(
+            replace(
+                market,
+                equity=source,
+                cash=source if market.cash.provider == "boj" else market.cash,
+            )
+            for market in CONFIG.markets
+        ),
+    )
 
-    def http_get(url, params):
-        if "fredgraph" in url:
-            source_id = "DTB3" if "DTB3" in url else "IR3TIB01DEM156N"
-            frequency_dates = (
-                ["1970-01-02", "2023-12-29"]
-                if source_id == "DTB3"
-                else ["1970-01-01", "2023-12-01"]
-            )
-            content = (
-                f"observation_date,{source_id}\n"
-                f"{frequency_dates[0]},1.0\n{frequency_dates[1]},2.0\n"
-            ).encode()
-        else:
-            content = (
-                b"STATUS,200\nNEXTPOSITION,\n"
-                b"SERIES_CODE,NAME_OF_TIME_SERIES,UNIT,FREQUENCY,CATEGORY,"
-                b"LAST_UPDATE,SURVEY_DATES,VALUES\n"
-                b"STRACLUC3M,Call,percent,MONTHLY,Call,20240101,198901,1.0\n"
-                b"STRACLUC3M,Call,percent,MONTHLY,Call,20240101,202312,2.0\n"
-            )
+    def http_get(url, _params):
+        source_id = "DTB3" if "DTB3" in url else "IR3TIB01DEM156N"
+        dates = (
+            ["1970-01-02", "2023-12-29"]
+            if source_id == "DTB3"
+            else ["1970-01-01", "2023-12-01"]
+        )
+        content = (
+            f"observation_date,{source_id}\n{dates[0]},1.0\n{dates[1]},2.0\n"
+        ).encode()
         return HttpResult(content, url, 200, "text/csv")
 
     return acquire(
-        CONFIG,
+        config,
         repo_root=root,
         run_id="fixture-run",
         created_at=datetime(2024, 1, 2, tzinfo=UTC),
         git_sha="abc123",
-        yahoo_loader=yahoo_loader,
         http_get=http_get,
     )

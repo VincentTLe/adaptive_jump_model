@@ -1,5 +1,6 @@
 import hashlib
 import json
+import tomllib
 from pathlib import Path
 
 import pandas as pd
@@ -19,32 +20,27 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_fetch_cli_runs_complete_fixture_pipeline(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
-    config = tmp_path / "research.toml"
-    config.write_bytes((ROOT / "research.toml").read_bytes())
-
-    def yahoo_loader(_source, _start, _end):
-        return pd.DataFrame(
-            {"Close": [100.0, 101.0]},
-            index=pd.to_datetime(["2023-01-03", "2023-12-29"]),
-        ), {"adapter": "fixture"}
+    """The live acquisition path: hash-pinned local files plus one FRED series."""
+    name = "research-calibrated-v10.toml"
+    config = tmp_path / name
+    config.write_bytes((ROOT / name).read_bytes())
+    document = tomllib.loads(config.read_text())
+    pinned = [
+        source["file_path"]
+        for market in document["markets"]
+        for source in (market["equity"], market["cash"])
+        if source["provider"] == "localfile"
+    ]
+    assert len(pinned) == 5
+    for relative in pinned:
+        target = tmp_path / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((ROOT / relative).read_bytes())
 
     def http_get(url, _params):
-        if "fredgraph" in url:
-            source_id = "DTB3" if "DTB3" in url else "IR3TIB01DEM156N"
-            content = (
-                f"observation_date,{source_id}\n1970-01-02,1.0\n2023-12-01,2.0\n"
-            ).encode()
-        else:
-            content = (
-                b"STATUS,200\nNEXTPOSITION,\n"
-                b"SERIES_CODE,NAME_OF_TIME_SERIES,UNIT,FREQUENCY,CATEGORY,"
-                b"LAST_UPDATE,SURVEY_DATES,VALUES\n"
-                b"STRACLUC3M,Call,percent,MONTHLY,Call,20240101,198901,1.0\n"
-                b"STRACLUC3M,Call,percent,MONTHLY,Call,20240101,202312,2.0\n"
-            )
+        content = b"observation_date,DTB3\n1970-01-02,1.0\n2023-12-01,2.0\n"
         return HttpResult(content, url, 200, "text/csv")
 
-    monkeypatch.setattr(data, "_download_yahoo", yahoo_loader)
     monkeypatch.setattr(data, "_get_http", http_get)
     monkeypatch.setattr(data, "research_git_sha", lambda _root: "abc123")
 
@@ -53,9 +49,10 @@ def test_fetch_cli_runs_complete_fixture_pipeline(
     manifest_path = Path(capsys.readouterr().out.strip())
     manifest = json.loads(manifest_path.read_text())
     assert manifest["config_sha256"] == (
-        "8adb330565d64f8ed6edd986f0422dbba72585eda4efd34b0c1b41b95450d81b"
+        "36ca1ace131c36562d7293e1ecc01f45dc4c149a577ad5659642d88339541c9e"
     )
     assert len(manifest["sources"]) == 6
+    assert [row["payload_type"] for row in manifest["sources"]].count("local_file") == 5
     assert manifest_path.parent.parent == tmp_path / "data/raw"
 
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import hashlib
 import io
 import json
@@ -11,7 +10,7 @@ import platform
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
@@ -41,7 +40,6 @@ class SourcePayload:
     retrieval: dict[str, Any]
 
 
-YahooLoader = Callable[[SourceConfig, date, date], tuple[pd.DataFrame, dict[str, Any]]]
 HttpGetter = Callable[[str, dict[str, str]], HttpResult]
 
 
@@ -51,22 +49,22 @@ def fetch_source(
     cutoff: date,
     *,
     repo_root: str | Path | None = None,
-    yahoo_loader: YahooLoader | None = None,
     http_get: HttpGetter | None = None,
 ) -> SourcePayload:
     """Fetch one configured source without applying research transformations."""
-    if source.provider == "yahoo":
-        return _fetch_yahoo(source, start, cutoff, yahoo_loader or _download_yahoo)
     if source.provider == "localfile":
         if repo_root is None:
             raise AcquisitionError(f"{source.source_id}: localfile requires repo_root")
         return _fetch_localfile(source, start, cutoff, repo_root)
-    getter = http_get or _get_http
     if source.provider == "fred":
-        return _fetch_fred(source, start, cutoff, getter)
-    if source.provider == "boj":
-        return _fetch_boj(source, start, cutoff, getter)
-    raise AcquisitionError(f"Unsupported provider: {source.provider}")
+        return _fetch_fred(source, start, cutoff, http_get or _get_http)
+    # The yahoo and boj adapters were retired on 2026-08-06. They built the
+    # pinned files under data/external/ once; re-running them could never
+    # reproduce a sealed run anyway, because those vendors revise history.
+    raise AcquisitionError(
+        f"{source.source_id}: provider {source.provider!r} is retired; "
+        "acquire from a hash-pinned localfile instead"
+    )
 
 
 def canonical_bytes(frame: pd.DataFrame) -> bytes:
@@ -81,10 +79,6 @@ def quality(frame: pd.DataFrame) -> dict[str, Any]:
         "rows": len(frame),
         "valid_rows": len(valid),
         "missing_values": int(frame["value"].isna().sum()),
-        "duplicate_dates": int(frame["date"].duplicated().sum()),
-        "nonfinite_values": int(
-            valid["value"].map(lambda value: not math.isfinite(value)).sum()
-        ),
         "first_valid_date": valid["date"].min() if not valid.empty else None,
         "last_valid_date": valid["date"].max() if not valid.empty else None,
     }
@@ -97,7 +91,6 @@ def acquire(
     run_id: str | None = None,
     created_at: datetime | None = None,
     git_sha: str | None = None,
-    yahoo_loader: YahooLoader | None = None,
     http_get: HttpGetter | None = None,
 ) -> Path:
     """Acquire all configured sources and write a complete manifest last."""
@@ -122,7 +115,6 @@ def acquire(
                 config.sample_start,
                 config.replication_cutoff,
                 repo_root=root,
-                yahoo_loader=yahoo_loader,
                 http_get=http_get,
             )
             stem = f"{market.id}_{kind}"
@@ -173,63 +165,6 @@ def acquire(
         encoding="utf-8",
     )
     return manifest_path
-
-
-def _fetch_yahoo(
-    source: SourceConfig,
-    start: date,
-    cutoff: date,
-    loader: YahooLoader,
-) -> SourcePayload:
-    frame, retrieval = loader(source, start, cutoff + timedelta(days=1))
-    if frame.empty:
-        raise AcquisitionError(f"{source.source_id}: Yahoo returned no rows")
-    if source.value_field not in frame.columns:
-        raise AcquisitionError(
-            f"{source.source_id}: missing Yahoo field {source.value_field}"
-        )
-    raw = frame.to_csv(index=True, lineterminator="\n", na_rep="").encode()
-    index = pd.to_datetime(frame.index, errors="raise")
-    timezone = source.settings.get("timezone")
-    if index.tz is not None and isinstance(timezone, str):
-        index = index.tz_convert(timezone).tz_localize(None)
-    canonical = _canonical(
-        pd.Series(index.strftime("%Y-%m-%d")),
-        frame[source.value_field].reset_index(drop=True),
-        source,
-        start,
-        cutoff,
-    )
-    return SourcePayload(raw, "adapter_output", canonical, retrieval)
-
-
-def _download_yahoo(
-    source: SourceConfig, start: date, end_exclusive: date
-) -> tuple[pd.DataFrame, dict[str, Any]]:
-    try:
-        import yfinance as yf
-    except ImportError as exc:
-        raise AcquisitionError(
-            "Yahoo acquisition requires: uv sync --extra data"
-        ) from exc
-
-    arguments = {
-        "tickers": source.source_id,
-        "start": start.isoformat(),
-        "end": end_exclusive.isoformat(),
-        "interval": "1d",
-        "actions": False,
-        "auto_adjust": bool(source.settings.get("auto_adjust", False)),
-        "repair": False,
-        "keepna": True,
-        "progress": False,
-        "threads": False,
-        "ignore_tz": False,
-        "multi_level_index": False,
-        "timeout": 30,
-    }
-    frame = yf.download(**arguments)
-    return frame, {"adapter": "yfinance.download", "arguments": arguments}
 
 
 def _fetch_localfile(
@@ -292,44 +227,6 @@ def _fetch_fred(
     canonical = _canonical(
         rows["observation_date"], rows[source.value_field], source, start, cutoff
     )
-    return SourcePayload(
-        response.content,
-        "provider_response",
-        canonical,
-        _http_metadata(response, params),
-    )
-
-
-def _fetch_boj(
-    source: SourceConfig, start: date, cutoff: date, getter: HttpGetter
-) -> SourcePayload:
-    url = _setting(source, "retrieval_url")
-    params = {
-        "startDate": start.strftime("%Y%m"),
-        "endDate": cutoff.strftime("%Y%m"),
-    }
-    response = getter(url, params)
-    rows = list(csv.reader(io.StringIO(response.content.decode("utf-8-sig"))))
-    if not rows or rows[0] != ["STATUS", "200"]:
-        raise AcquisitionError(f"{source.source_id}: BOJ status is not 200")
-    for row in rows:
-        if row and row[0] == "NEXTPOSITION" and len(row) > 1 and row[1]:
-            raise AcquisitionError(f"{source.source_id}: paginated BOJ response")
-    try:
-        header_index = next(
-            index for index, row in enumerate(rows) if row and row[0] == "SERIES_CODE"
-        )
-    except StopIteration as exc:
-        raise AcquisitionError(f"{source.source_id}: missing BOJ header") from exc
-    header = rows[header_index]
-    records = [dict(zip(header, row, strict=True)) for row in rows[header_index + 1 :]]
-    if not records or any(row["SERIES_CODE"] != source.source_id for row in records):
-        raise AcquisitionError(f"{source.source_id}: BOJ source ID mismatch")
-    dates = [
-        f"{row['SURVEY_DATES'][:4]}-{row['SURVEY_DATES'][4:6]}-01" for row in records
-    ]
-    values = [row[source.value_field] for row in records]
-    canonical = _canonical(dates, values, source, start, cutoff)
     return SourcePayload(
         response.content,
         "provider_response",
