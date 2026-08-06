@@ -127,8 +127,12 @@ def standardize_expanding(
     """Causally standardize each feature on its expanding history (ddof=1).
 
     At day t the z-score uses only observations up to and including t, so no
-    future data leaks backward. The first min_observations rows are dropped as
-    statistical warm-up.
+    future data leaks backward. The first min_observations rows are dropped
+    from the OUTPUT as statistical warm-up, but they remain inside the
+    expanding mean and std forever — EWM warm-up values computed from a
+    handful of observations permanently contaminate the statistics (measured:
+    US sortino_60 expanding std +43% at row 3063 versus a 63-row burn-in).
+    See docs/unspecified-choices.md row 13 before changing this.
     """
     if min_observations < 63:
         raise FeatureError("expanding standardizer needs >= 63 warm-up rows")

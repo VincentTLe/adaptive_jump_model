@@ -1,7 +1,8 @@
 # Free parameters the paper never fixes
 
 Shu, Yu and Mulvey (2024), arXiv:2402.05272v3. Line numbers refer to
-`pdftotext -layout 2402.05272v3.pdf`, 1167 lines.
+`pdftotext -layout 2402.05272v3.pdf`, 1168 lines when split on newlines only
+(str.splitlines also breaks on the form feeds and shifts every number).
 
 Every row here is a knob **we** had to set because the paper does not. Results
 are conditional on these settings. Read this file before proposing a change to
@@ -38,7 +39,7 @@ Data section:
 
 **What we chose.** Causal expanding full-history standardisation anchored at the
 sample start, `min_observations = 63`, then `_IdentityScaler` into the jump
-model (`src/adaptive_jump/features.py:124-145`, config key `standardizer =
+model (`src/adaptive_jump/features.py:124-138`, config key `standardizer =
 "expanding_full_history_ddof1"`).
 
 **Consequence, measured.** The fit window is therefore not centred or unit
@@ -666,3 +667,78 @@ definitions differ by at most **0.000037** of Sharpe and 0.000023 on average
 magnitude below the 0.05 reporting tolerance, because daily cash returns are
 tiny and almost constant. The row is recorded for completeness, not as a live
 uncertainty.
+
+
+---
+
+## 13. EWM warm-up rows inside the expanding standardiser — OPEN, measured, undisclosed until 2026-08-06
+
+**What the paper says.** Nothing. The features are EWM statistics and the paper
+never states a burn-in:
+
+> [line 504] "expectation is based on exponentially decaying weights over historical periods"
+
+**What we chose.** `make_features` emits features from the very first rows
+(`min_periods=0`, `burn_in_observations = 0`), so a "60-day-halflife" Sortino
+exists from four observations — US rows 3-7 read 2.6, 3.3, 2.7, 1.6, 2.1
+against a mature p1/p99 of -0.32/+0.62. `standardize_expanding` then drops the
+first 63 rows from its *output* but keeps them in its *statistics* forever.
+
+**Consequence, measured (2026-08-06 audit).** At US row 3063 the expanding std
+of `sortino_60` is +43.4% and its mean +8.9% versus a 63-row burn-in. In the
+fit window ending 1990-01-04 the per-feature stds are [1.50, 0.79, 0.63]
+(anisotropy 2.39x) against [1.50, 0.89, 0.86] (1.75x) with a burn-in — so part
+of the anisotropy row 1 attributes to the expanding geometry is actually
+warm-up contamination. Over the OOS sample the US `sortino_60` z-score moves by
+mean 0.109 sigma, max 0.612 sigma (jp 0.039/0.220, de 0.011/0.052).
+
+**Bounded where tested.** Refitting the JM on that window under both variants
+changes 0 of 3000 in-sample states (us, lambda 21.54) and 3 of 3000 (jp,
+lambda 10); centroids and objective move (us 3097.5 -> 3821.6). A full
+walk-forward under a feature burn-in has not been run and would need its own
+frozen question; do not run it casually against known targets.
+
+---
+
+## 14. Daily risk-free conversion — OPEN, bounded, undisclosed until 2026-08-06
+
+**What the paper says.** The instrument only:
+
+> [line 155-157] "For the risk-free rates, we use the 3-month Treasury Bill Yield from each corresponding country, sourced from the Global Financial Data (GFD) database."
+
+No day count, no compounding rule (`scripts/check_paper_claims.py` machine-checks
+that 252/365/360/day-count never appear in the body).
+
+**What we chose.** `annual_percent / 100 / 252`, simple and uncompounded,
+accruing on trading days only (`features.py:81-83`).
+
+**Bounds, measured.** Compounded daily conversion would credit cash ~13 bp/yr
+less at the sample-mean 4.47% yield. Actual/365 accrual moves Monday excess
+returns by ~2 bp (cancels over a year). Separately, the US source DTB3 is a
+discount-basis quote while the paper says "Yield": a bond-equivalent conversion
+would raise the mean risk-free by ~14.4 bp/yr and lower every excess return by
+the same. All are level effects far below the 0.05 Sharpe tolerance; recorded
+so the axis is on the books.
+
+---
+
+## 15. The paper's printed DD formula omits its square root — CLOSED against the printed text
+
+**What the paper prints.**
+
+> [line 501] "Downside deviation, calculated as E R2 1{R<0} where R denotes the excess return and the"
+
+— literally the second lower partial moment, no radical.
+
+**What the code does.** `features.py:100-107` takes the square root.
+
+**Why the code is right and the printed formula is the typo.** Four independent
+checks, none of them our fit: (1) the paper itself says scaling DD by sqrt(2)
+puts it on the volatility scale [line 614-615], which is true only with the
+root (a second moment would need x2); (2) measured on the sealed US frame,
+sqrt(2)*sqrt(252)*dd_10 has mean 15.1% against realised annualised excess vol
+18.1% — the caption's claim holds numerically, while the un-rooted version
+gives 1.7%; (3) Figure 3's DD panel is drawn on a 20%-80% axis, which fits the
+rooted centroids and cannot fit 1.7-5%; (4) Shu's dissertation states the root
+explicitly (docs/audit/2026-07-30-jm-deep-research.md:19). **Do not "fix" the
+code to match line 501.**
