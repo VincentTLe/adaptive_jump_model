@@ -1,7 +1,14 @@
-# Current Research Status
+# Development Status — v7 proxy era, frozen 2026-07-22
 
-Last reconciled: 2026-07-22. The append-only experiment registry remains the
-authority for lifecycle status; this page is the short human-readable view.
+> **Scope warning, added 2026-08-06.** Every number on this page is from the v7
+> proxy era and was last reconciled on 2026-07-22. It predates the whole v9/v10
+> arc: the S&P splice repair, the German pre-1988 dividend repair, the
+> drawdown-basis retraction, the v10 calibrated reseal, and — most importantly —
+> the **retraction of the JM replication claim** (registry, 2026-08-01: the
+> estimand is the authors' unpublished candidate set, and nothing this project
+> holds constrains it). Do not quote this page as current. The append-only
+> experiment registry is the authority for lifecycle status; the current sealed
+> baseline is `artifacts/fixed-baselines/fixed-baselines-36ca1ace131c-…`.
 
 ## Bottom line
 
@@ -11,11 +18,22 @@ and costs. For market m:
 
 `G_m = Sharpe_JM,m - max(Sharpe_BuyHold,m, Sharpe_HMM,m)`.
 
-No tested JM currently achieves `G_m > 0` in all three markets. The strongest
-observed candidate by market is DD-only in US, lagged-evidence JM in DE, and
-scaled DD in JP. Their gaps are `+0.25 / +0.05 / -0.12`. This
-ex-post envelope passes in US and DE, but it mixes different models and is not
-a deployable cross-market rule; JP still loses buy-and-hold.
+On the v7 proxy sample no tested JM achieves `G_m > 0` in all three markets. The
+strongest observed candidate by market is DD-only in US, lagged-evidence JM in
+DE, and scaled DD in JP. Their gaps are `+0.25 / +0.05 / -0.12`. This ex-post
+envelope passes in US and DE, but it mixes different models and is not a
+deployable cross-market rule; JP still loses buy-and-hold.
+
+> **Superseded on the v10 baseline, with caveats that travel with it.** Under the
+> v10 contract the fixed JM does clear both controls in all three markets
+> (`+0.158 / +0.031 / +0.114`), and `confirmed_2d` meets the frozen `G_m > 0`
+> rule. That is **not** evidence the paper was reproduced: v10's per-market
+> lambda grids were found by searching against the published Table-4/5 cells, so
+> agreement with those cells is by construction, and the contract is labelled
+> `calibrated baseline`, never `replication`. Registry also records that the
+> frozen bar was written when the -001 baseline did *not* clear the controls, so
+> it is far easier here for reasons unrelated to any challenger, and that
+> `confirmed_2d` is **negative** against the model it modifies in US and JP.
 
 Fresh data through 2026 has been added. Every evaluation below is walk-forward
 causal: each monthly decision uses only trailing data, so the whole
@@ -35,8 +53,9 @@ moved the US number (`0.91` through 2023 to `0.89` through 2026).
 On the **isolated 2024-2026 window** the frozen binary rule returns
 `not_supported`, `0/3`: US B&H `1.05` vs DD-only `0.78`, DE all four
 `0.90` (the German JM never left equity), JP B&H `1.27` vs DD-only `1.17`.
-This window is short (~620 days), the paired bootstrap intervals include zero,
-and it was a broad bull that penalizes any cash rotation. It therefore
+This window is short (~620 days) and was a broad bull that penalizes any cash
+rotation, so a Sharpe gap of this size cannot be distinguished from sampling
+variation at that length. It therefore
 **fails to confirm** the US edge on model-untouched data but **does not
 refute** the full walk-forward result. It is weak evidence, not a clean
 negative. The sample is now spent, and the lagged-log4 batch remains available
@@ -75,7 +94,7 @@ or generalization claim is authorized.
 | Simple challengers | `simple-jm-suite-001` / `simple-jm-suite-2d3d2a779b13-544237a59943-20260721T145043479851Z` | No cross-market winner; DD-only beats both controls in US and improves fixed-JM Sharpe in all three, but passes only `1/3` and is loss-scale confounded |
 | DD loss-scale control | `dd-loss-scale-001` / `dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z` | Mechanism verified; scaled DD beats both controls only in US (`1/3`), so the result is `not_supported` |
 | Separation-turnover diagnostic | `separation-turnover-001` / `separation-turnover-8674ff4d9470-20260722T083551Z` | Not supported; decision-time DD center separation associates positively (US `+0.035`, DE `+0.320`, JP `+0.155`) with next-month switches, JP flips negative once collapsed one-state months are excluded, so no separation gate is justified |
-| One-shot 2024-2026 holdout | `holdout-2026-001` / `holdout-20260722T111757Z` | Frozen rule returns `not_supported` on the isolated 2024-2026 window (`0/3`: US B&H `1.05` vs DD-only `0.78`; DE all four `0.90`; JP B&H `1.27` vs DD-only `1.17`). But the full walk-forward through 2026 still has DD-only beating both controls in the US (`1/3`, unchanged). The window is short and bull-dominated with bootstrap intervals spanning zero, so it fails to confirm the edge on model-untouched data without refuting the 18-year result |
+| One-shot 2024-2026 holdout | `holdout-2026-001` / `holdout-20260722T111757Z` | Frozen rule returns `not_supported` on the isolated 2024-2026 window (`0/3`: US B&H `1.05` vs DD-only `0.78`; DE all four `0.90`; JP B&H `1.27` vs DD-only `1.17`). But the full walk-forward through 2026 still has DD-only beating both controls in the US (`1/3`, unchanged). The window is short and bull-dominated, far too short to resolve a gap of this size, so it fails to confirm the edge on model-untouched data without refuting the 18-year result |
 
 Invalidated runs remain preserved for provenance, but they are not accepted
 evidence. In particular, the `2207...` and `d6fe...` fixed-audit runs and the
@@ -112,10 +131,15 @@ sources, while the free proxy outer samples begin in 2007--2009.
 | DE | `0.30 / 0.35 / 0.44` | `0.290 / 0.008 / 0.166` |
 | JP | `0.12 / 0.19 / 0.31` | `0.545 / 0.399 / 0.329` |
 
-The proxy therefore misses the paper's central ordering: fixed JM is not the
-best of B&H, HMM, and JM in any of the three markets. JP also demonstrates a
-materially different target sample: proxy B&H Sharpe is about `0.545`, versus
-`0.12` in the paper.
+On this v7 proxy the ordering is missed: fixed JM is not the best of B&H, HMM
+and JM in any of the three markets, and the JP outer sample is materially
+different (proxy B&H `0.545` against `0.12` in the paper).
+
+> **Superseded.** On the v10 replication-grade data the same cells read US
+> `0.483 / 0.526 / 0.683`, DE `0.298 / 0.367 / 0.398`, JP `0.138 / 0.177 /
+> 0.291`, with JP buy-and-hold `0.138` against Shu's `0.12` — the outer-sample
+> mismatch that drove the v7 conclusion is gone. The calibrated-grid caveat
+> above applies to every JM figure in that row.
 
 ## What can cause which failure
 
