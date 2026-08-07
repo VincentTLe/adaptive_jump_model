@@ -1,0 +1,7 @@
+grid,model,oos_switches,in_fixed_at_top_months,in_other_months
+g1_table3,fixed,34,3,31
+g1_table3,lagged,42,2,40
+g1_table3,capguard,42,1,41
+g2_v10_us,fixed,30,6,24
+g2_v10_us,lagged,42,4,38
+g2_v10_us,capguard,44,5,39

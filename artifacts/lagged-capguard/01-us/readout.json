@@ -1,0 +1,52 @@
+{
+  "experiment_id": "lagged-capguard-001",
+  "verdict": "NOT SUPPORTED",
+  "supported": false,
+  "deltas": {
+    "g1_table3": {
+      "lagged": -0.06378972396466298,
+      "capguard": -0.07091040974145113
+    },
+    "g2_v10_us": {
+      "lagged": -0.006536234552856901,
+      "capguard": -0.06599623949952094
+    }
+  },
+  "min_over_grids": {
+    "lagged": -0.06378972396466298,
+    "capguard": -0.07091040974145113
+  },
+  "sharpe_tolerance": 0.05,
+  "r1_mechanism": {
+    "excess_switches": 8,
+    "excess_in_top_months": -1,
+    "share_in_top": -0.125,
+    "mechanism_localized": false
+  },
+  "bind_rates": [
+    {
+      "grid": "g1_table3",
+      "months": 415,
+      "fixed_at_top_months": 21,
+      "bind_rate": 0.05060240963855422
+    },
+    {
+      "grid": "g2_v10_us",
+      "months": 415,
+      "fixed_at_top_months": 123,
+      "bind_rate": 0.2963855421686747
+    }
+  ],
+  "gates": [
+    "g1_table3/fixed: parity PASSED on 64338 cells",
+    "g1_table3: beta-zero nesting PASSED (internal gate)",
+    "g1_table3: fixed anchors PASSED (34/0.2187/8565)",
+    "g1_table3: block map proven (decision_day_starts_block)",
+    "g2_v10_us/fixed: parity PASSED on 32169 cells",
+    "g2_v10_us: beta-zero nesting PASSED (internal gate)",
+    "g2_v10_us: fixed selection identical to sealed v10",
+    "g2_v10_us: block map proven (decision_day_starts_block)",
+    "g2_v10_us: fixed sharpe equals sealed (0.683325)"
+  ],
+  "computed_utc": "2026-08-07T10:00:41Z"
+}

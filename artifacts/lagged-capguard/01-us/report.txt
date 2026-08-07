@@ -1,0 +1,33 @@
+lagged-capguard-001 — kết quả (EXPLORATORY, dev data nhìn-nhiều-lần)
+
+VERDICT (rule đóng băng): NOT SUPPORTED
+  min-over-grids Δsharpe:  capguard -0.0709  vs lagged -0.0638  (ngưỡng −0.05)
+
+Δsharpe so với fixed cùng grid (delay 1, 10bp, OOS 1990–2023):
+  g1_table3: lagged -0.0638 | capguard -0.0709
+  g2_v10_us: lagged -0.0065 | capguard -0.0660
+
+Sharpe tuyệt đối:
+  g1_table3/fixed: sharpe 0.7537 | shifts 34 | turnover 0.500
+  g1_table3/lagged: sharpe 0.6899 | shifts 42 | turnover 0.618
+  g1_table3/capguard: sharpe 0.6828 | shifts 42 | turnover 0.618
+  g2_v10_us/fixed: sharpe 0.6833 | shifts 30 | turnover 0.441
+  g2_v10_us/lagged: sharpe 0.6768 | shifts 42 | turnover 0.618
+  g2_v10_us/capguard: sharpe 0.6173 | shifts 44 | turnover 0.647
+
+R1 (g1_table3): {"excess_switches": 8, "excess_in_top_months": -1, "share_in_top": -0.125, "mechanism_localized": false}
+
+Bind rates:
+  g1_table3: 21/415 tháng fixed-ở-đỉnh (5.1%)
+  g2_v10_us: 123/415 tháng fixed-ở-đỉnh (29.6%)
+
+Gates:
+  g1_table3/fixed: parity PASSED on 64338 cells
+  g1_table3: beta-zero nesting PASSED (internal gate)
+  g1_table3: fixed anchors PASSED (34/0.2187/8565)
+  g1_table3: block map proven (decision_day_starts_block)
+  g2_v10_us/fixed: parity PASSED on 32169 cells
+  g2_v10_us: beta-zero nesting PASSED (internal gate)
+  g2_v10_us: fixed selection identical to sealed v10
+  g2_v10_us: block map proven (decision_day_starts_block)
+  g2_v10_us: fixed sharpe equals sealed (0.683325)

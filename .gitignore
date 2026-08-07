@@ -30,6 +30,10 @@ artifacts/jm-residual/*/*.npy
 # investigable; the refitted state matrices are regenerable and stay out.
 !artifacts/audit/
 artifacts/audit/*/states-*.csv
+# lagged-capguard-001: readouts, metrics, choices and trades are committed
+# evidence; regenerable daily state matrices would be the only heavy files
+# and the runner does not persist them.
+!artifacts/lagged-capguard/
 reports/
 *.log
 *.pid
