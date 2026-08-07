@@ -50,7 +50,8 @@ convention. The comparison window is fixed by the paper's own design:
 4. v9.4 reconstruction anchor gate: the replication contract's CV path was
    REBUILT (the v9.4 run directory no longer exists on disk) from the v10
    features — byte-identical to v9.4 by reseal gate 2 — plus the Table-3
-   grid columns of the union cache, and matches the sealed
+   grid columns of the union cache (Table-3 grid = the paper's illustrative
+   example, see §5), and matches the sealed
    `selected-anchors.csv` exactly: us 34 shifts / 0.21868067717454753 /
    8565 days, de 80 / 0.256568239944199 / 8602, jp 93 / 0.4173256649892164 /
    8346. A mismatch stops the script; no knob may be adjusted to pass.
@@ -118,6 +119,10 @@ concentrate in the reconstructed pre-1988 era.
 - The `jm-replication` claim is RETRACTED (registry); the v9.4 path drawn
   here is "the replication contract's CV path (reconstructed)", never a
   sealed replication result — its original run stopped `boundary_failed`.
+- The v9.4/v9.4-recon CV path's candidate grid is the paper's Table-3
+  illustrative shift-rate values {0,5,15,35,70,150} (paper lines 620-646);
+  the paper never discloses this as the grid it searched to pick the lambda
+  behind Table 4/5 or Figure 5's traced path (per SCIENTIFIC_LEDGER.md).
 - v10 is a CALIBRATED baseline: its grids were searched against the
   published cells, so agreement with those cells is by construction. On the
   wealth figures the v10 line is captioned as the ceiling of any

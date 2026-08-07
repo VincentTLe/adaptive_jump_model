@@ -10,6 +10,9 @@ Honesty frame, mirrored on the HTML banner:
 - the jm-replication claim is RETRACTED (registry); the v9.4 CV path drawn
   here is "the replication contract's CV path (reconstructed)", gated on
   sealed anchors, never a sealed replication result;
+- the v9.4 path's candidate grid is the paper's Table-3 illustrative
+  shift-rate values {0,5,15,35,70,150} (paper lines 620-646), never
+  disclosed by the authors as the grid behind Table 4/5 or Figure 5;
 - v10 is a CALIBRATED baseline — its grids were searched against the
   published cells, so agreement with them is by construction, not evidence;
 - every agreement / effective-lambda curve is DESCRIPTIVE and barred from
@@ -190,7 +193,10 @@ def gate_union_parity(market: str, union: pd.DataFrame) -> str:
 
 
 def reconstruct_v94_signal(market: str, cfg, union: pd.DataFrame) -> pd.Series:
-    """Replay the replication contract's monthly CV over the Table-3 grid.
+    """Replay the replication contract's monthly CV over the Table-3 grid —
+    the paper's illustrative {0,5,15,35,70,150} example (lines 620-646), not
+    a disclosed selection grid; used here only because it is one of the two
+    historically-attested JM grids (config.HISTORICAL_JM_GRIDS).
 
     The v9.4 run directory is gone from disk; inputs are the v10 features
     (proven byte-identical to v9.4 by reseal gate 2) and the parity-gated
@@ -957,7 +963,9 @@ footer {{ color:var(--muted); font-size:0.8rem; margin-top:24px; }}
 <div class="banner">
 <strong>Khung trung thực.</strong> Claim "jm-replication" đã RETRACTED trong registry;
 path "v9.4 recon" là <em>CV path của contract replication, tái dựng và gate bằng
-anchor đã sealed</em>, không phải sealed replication result. Path v10 là
+anchor đã sealed</em>, không phải sealed replication result — và bản thân grid
+Table-3 {{0,5,15,35,70,150}} chỉ là ví dụ minh họa shift-rate trong paper (dòng
+620-646), không phải grid CV đã công bố của tác giả. Path v10 là
 <strong>CALIBRATED baseline</strong>: grid được search thẳng vào các ô bảng đã công bố
 nên sự trùng khớp là by-construction, không phải bằng chứng. Mọi đường
 agreement/effective-λ là mô tả — <em>cấm dùng để seed grid/config</em>

@@ -22,6 +22,20 @@ Identity:
 | claim_class / scientific_claim_allowed | `TRANSPORT_SCREEN` / `false` (both confirmed in `run.json`) |
 | Run window | started 2026-08-06T11:10:37Z, finished 2026-08-06T11:48:37Z |
 
+Grid-name key: `shu_v1` = arXiv-v1's withdrawn candidate set; `shu_v3_table3`
+= the six illustrative values Table 3 exercises (paper lines 620-648), not a
+disclosed selection/production grid — the contract's own
+`[baseline_family].grid_provenance` states this, but does not distinguish
+withdrawn-and-published (`shu_v1`) from never-disclosed-as-a-search-grid
+(`shu_v3_table3`); both are equally valid predeclared candidates either way,
+just with different provenance stories (2026-08-07 addendum, prose-only,
+added here rather than to `research/ajm-ext-001.toml` itself: that contract
+is `load_ext_contract`-enforced against its frozen sha256
+`e331b96d662ca703a3fa5140d4ba9d92544c9eed553eb36df1525fafbc0b6a49` and any
+edit — even comment-only — breaks `tests/test_ajm_ext_runner.py`; an amended
+question needs a new experiment id per the loader's own error message, so
+the certified contract is intentionally left untouched).
+
 All recomputation used the repo's own `.venv` interpreter; random sampling in
 checks 5b and 6 used seed 20260806, fixed before any sampled result was seen.
 CSVs were parsed with `float_precision="round_trip"` (see the incident note

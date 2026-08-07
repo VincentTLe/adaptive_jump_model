@@ -235,8 +235,9 @@ materially distorts fits on decimal returns (low-state variance +7-40%,
 high-state up to +97% in early windows; probe reproduces sealed fits exactly
 13/13 and shows the `covars_prior=0` and percent-scaled variants agree to 5
 decimals, isolating the prior — `min_covar` inert). (2) The non-paper wide
-smoothing grid (k to 2560) wrecks the selection layer; the paper's own grid is
-{0,2,4,8,20} (Table 3). Full-path refit under percent scaling + small grid:
+smoothing grid (k to 2560) wrecks the selection layer; the small grid used
+here, {0,2,4,8,20}, is our own choice copied from Table 3's illustration, not
+a candidate set the paper discloses. Full-path refit under percent scaling + small grid:
 **DE follow-CV 0.353 / turnover 214% vs Shu 0.35 / 246%**, with Shu's
 fast-decaying delay shape (0.35→0.28→0.18). Cross-checked by the independent
 fixed-k frontier (k=4: 0.327/202%/76.9% lev). US survives the same fix
@@ -271,7 +272,8 @@ Jan-Aug-1990 crash months).
 ## v8.3 outcome (2026-07-27, run fixed-baselines-353f037e328e-113bf877f679-3e77b13b7bc0)
 
 The identified spec (expanding standardization anchored at 1970, min_obs 63;
-HMM covars_prior=0 with the paper's own smoothing grid {0,2,4,8,20}) was
+HMM covars_prior=0 with the smoothing grid {0,2,4,8,20} copied from Table 3's
+illustration (our own choice, not the paper's disclosed search space)) was
 frozen (3e77b13) and run sealed end to end. Verify replays clean. Exploratory
 delay-1 readout vs Shu Table 4, with 95% moving-block bootstrap CIs (block 21):
 
@@ -289,8 +291,9 @@ project.** Shu's value sits inside the 95% CI in 9/9 cells. The JP fixed-JM
 lambda-150 boundary concentration is cured (3.7% of months vs 32% under
 v8.2); 8/9 fixed-JM boundary gates pass (DE d10 marginal at 5.9%). All
 remaining gate failures are HMM k=20 upper-boundary concentration — the CV
-parks at the top of the paper's own grid (us d10 39%, jp d1 39%) — recorded
-as a finding about the paper's grid design; run status is therefore
+parks at the top of our Table-3-derived grid (us d10 39%, jp d1 39%) —
+recorded as a finding about that grid choice's behavior, not the paper's
+(undisclosed) grid design; run status is therefore
 boundary_failed and official metrics remain sealed per protocol (readout
 above is exploratory, computed from the sealed selected-signal files).
 

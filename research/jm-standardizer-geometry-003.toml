@@ -28,7 +28,7 @@ family_exhaustion = "after this run the geometry family from author artifacts is
 [parent]
 config_path = "research-expanding-v9-4.toml"
 run_id = "fixed-baselines-34e51cd7a388-967806b961b4-e690dbe396f3"
-inputs = "sealed per-market features.csv; sealed lambda grid [0, 5, 15, 35, 70, 150]; raw features masked to sealed availability as in -002"
+inputs = "sealed per-market features.csv; lambda grid [0,5,15,35,70,150] -- Table 3's illustrative values (paper lines ~620-646), used here as -002's inherited registered choice, not a disclosed paper production grid; raw features masked to sealed availability as in -002"
 
 [variants]
 V3_frozen_initial = "raw features; ONE StandardScaler (no clip — -002 showed clip immaterial) fitted on the FIRST 3000-day complete window, frozen for the entire sample; model refits keep the sealed biannual schedule"

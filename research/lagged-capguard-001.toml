@@ -25,7 +25,10 @@ model_refitting = true
 #    choice is made at the decision date from trailing data only.
 # 6. Grid G2's fixed leg is the CALIBRATED v10 baseline; its cells agree with
 #    the published tables by construction and nothing here is a replication
-#    claim. G1 is the Table-3 grid of the replication contract.
+#    claim. G1 uses the six lambda values Table 3 illustrates (paper lines
+#    ~620-646); the paper never discloses these as its actual
+#    production/selection grid. G1 is used here only as one predeclared
+#    candidate, exactly like G2, and neither constitutes a replication claim.
 prior_art = "ajm-ext-001 EXPERIMENT_COMPLETE + CORRECTION (binding spec = short grid; whipsaw measured at JP/EU binding cells, absent at NA); lagged-evidence-mechanism-001/-performance-001 (dev-supported log4 mechanism); baseline-reseal-v10; jm-grid-identification-001 (v9.4 selected-path anchors)"
 
 [inputs]

@@ -35,6 +35,11 @@ Paired fixed-JM baselines:
 | Shu-v3 Table-3 `{0,5,15,35,70,150}` | trailing-window ddof=0 |
 | Shu-v3 Table-3 `{0,5,15,35,70,150}` | causal expanding ddof=1 |
 
+*Table-3 values are the paper's illustrative shift-rate example (lines
+620-648 of the extracted text), not a disclosed selection/production grid;
+used here as one candidate baseline family with published provenance,
+alongside the withdrawn arXiv-v1 grid.*
+
 All arms use the same 3,000-observation fit window, January/July refits,
 eight-year past-only validation, `t+2` return timing, and 10-bps one-way cost.
 The complete data roles, transport gate, confirmation rule, and stop budget are

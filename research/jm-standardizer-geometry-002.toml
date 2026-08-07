@@ -31,7 +31,7 @@ premise_changes = ["US index substitution and splice repair postdate all prior r
 config_path = "research-expanding-v9-4.toml"
 config_sha256 = "34e51cd7a3880ea47067c346b1fc4c6a9c88cff8cac7b67a63d18d0ccea820ad"
 run_id = "fixed-baselines-34e51cd7a388-967806b961b4-e690dbe396f3"
-inputs = "sealed per-market features.csv (raw inputs and excess_return); JM lambda grid fixed at the sealed [0, 5, 15, 35, 70, 150] throughout"
+inputs = "sealed per-market features.csv (raw inputs and excess_return); JM lambda grid fixed at [0,5,15,35,70,150] throughout -- these are Table 3's illustrative values (paper lines ~620-646), inherited from research-expanding-v9-4.toml's own registered choice, not a disclosed production/CV grid. I1 uses them because Table 3 reports its curve at exactly these lambdas (a valid reproduction target); I3's Table-4 cells computed on this grid are one exploratory candidate, not a replication claim."
 
 # Variants, named before any run. The HMM is untouched by all of them (it
 # consumes raw equity_log only).
