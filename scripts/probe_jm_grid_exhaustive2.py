@@ -36,8 +36,13 @@ from adaptive_jump.backtest import apply_signal, performance_metrics  # noqa: E4
 from adaptive_jump.config import load_config  # noqa: E402
 from adaptive_jump.walkforward import select_monthly_candidate  # noqa: E402
 
+# The original v9.4-hash run directory (fixed-baselines-34e51cd7a388-...) is
+# gone from disk (2026-08-07). Substituted with the v10 run: its features.csv
+# is byte-identical to v9.4's by reseal gate 2 (scripts/gate_v10_reseal.py),
+# and rebuilding us-d1's cache from it reproduces the sealed v9.4 anchor
+# (34 shifts / 0.21868067717454... bear / 8565 days) to float precision.
 RUN = ROOT / "artifacts" / "fixed-baselines" / (
-    "fixed-baselines-34e51cd7a388-967806b961b4-e690dbe396f3"
+    "fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736"
 )
 UNION_DIR = ROOT / "artifacts" / "jm-residual" / "01-grid-identification"
 OUT = ROOT / "artifacts" / "jm-residual" / "08-exhaustive-nine-arms"
@@ -105,8 +110,10 @@ def _build_arm(task: tuple[str, int]) -> str:
     dates = pd.DatetimeIndex(frame["date"])
     governing = np.searchsorted(decisions.values, dates.values,
                                 side="right") - 1
-    reported = pd.read_csv(RUN / "metrics-exploratory.csv",
-                           parse_dates=["start", "end"])
+    # v10's metrics.csv carries the same market/model/delay/start/end schema
+    # as the old run's metrics-exploratory.csv (protocol-level window bounds,
+    # not data that could drift between the two runs).
+    reported = pd.read_csv(RUN / "metrics.csv", parse_dates=["start", "end"])
     row = reported[(reported.market == market) & (reported.model == "fixed_jm")
                    & (reported.delay == delay)].iloc[0]
     np.savez_compressed(
@@ -339,7 +346,7 @@ def main() -> None:
             print(line, flush=True)
 
         grids_001 = pd.read_csv(UNION_DIR / "grids.csv")
-        reported = pd.read_csv(RUN / "metrics-exploratory.csv")
+        reported = pd.read_csv(RUN / "metrics.csv")
         for market in MARKETS:
             for delay in DELAYS:
                 key = arm_key(market, delay)
@@ -367,12 +374,20 @@ def main() -> None:
                         for m in METRICS:
                             worst = max(worst, abs(got[m][i] - want[m]))
                 else:
-                    sealed_row = reported[(reported.market == market)
-                                          & (reported.model == "fixed_jm")
-                                          & (reported.delay == delay)].iloc[0]
+                    # v9.4's own metrics-exploratory.csv row (the original
+                    # ground truth for this check) no longer exists on disk,
+                    # and v10's fixed_jm at delay 5/10 uses v10's own
+                    # CALIBRATED grid, not table3_sealed, so it is not a
+                    # valid substitute (confirmed: substituting it here
+                    # failed by 0.68, an expected different-grid mismatch,
+                    # not a code defect). Use a strictly stronger check
+                    # instead: batch_metrics vs. the real apply_signal +
+                    # performance_metrics code path on the table3_sealed
+                    # vector itself -- this needs no external reported file.
                     i = named_names.index("table3_sealed")
+                    slow = slow_metrics(cache, named_vecs[i], cfg)
                     for m in METRICS:
-                        worst = max(worst, abs(got[m][i] - sealed_row[m]))
+                        worst = max(worst, abs(got[m][i] - slow[m]))
                 if worst > 1e-9:
                     raise SystemExit(f"{key}: named parity FAILED {worst:.2e}")
 

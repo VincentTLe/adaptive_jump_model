@@ -34,6 +34,10 @@ artifacts/audit/*/states-*.csv
 # evidence; regenerable daily state matrices would be the only heavy files
 # and the runner does not persist them.
 !artifacts/lagged-capguard/
+# grid-selection-rule-001: per-market grid rankings are small committed
+# evidence (a few hundred to tens of thousands of text rows); regenerable
+# from the -008/-009 caches, which stay excluded above.
+!artifacts/grid-selection-rule/
 reports/
 *.log
 *.pid

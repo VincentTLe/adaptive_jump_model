@@ -116,8 +116,15 @@ def _sweep(task):
                 )
                 seen[key_bytes] = score
             best.append((score, tuple(float(lambdas[j]) for j in block[index])))
+    # No per-chunk truncation: the admissible sets are small enough (US
+    # 36,657 / DE 366 / JP 2,948 per jm-per-market-grid-009) to keep every
+    # row and sort once at the market level in main(). An earlier version of
+    # this probe returned best[:200] per chunk, which silently dropped the
+    # tail of chunks with >200 admissible grids (recorded as a CORRECTION in
+    # the registry, 2026-08-01T05:28:40Z: US retained 11,181/36,657, JP
+    # retained 1,513/2,948; DE was unaffected at 366/366). Fixed 2026-08-07.
     best.sort(key=lambda row: (-row[0], len(row[1]), max(row[1]), row[1]))
-    return best[:200]
+    return best
 
 
 def main() -> int:

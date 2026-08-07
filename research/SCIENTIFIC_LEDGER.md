@@ -1106,3 +1106,54 @@ The complete final-v3 paper grids remain unidentified.
   narrowness, within the tested menu.
 - Artifacts: `artifacts/jm-residual/09-per-market-grids/`. Calibration
   artifacts only; reseal is an owner decision.
+
+### 2026-08-01/2026-08-07 — `grid-selection-rule-001` (complete; v11 reseal PROPOSED, not performed)
+
+- Frozen 2026-08-01, owner-approved: among each market's admissible grids
+  (the 13/14 or 14/14 sets from -009), adopt whichever has the highest
+  daily agreement with the AUTHORS' own Figure-5 state sequence, instead of
+  "the first row of an examples file" (how v10 was actually chosen). No
+  strategy metric enters the selection. A same-day partial run found DE's
+  complete 366-grid enumeration ranked the adopted grid dead last; US/JP
+  were truncated to the top 200 rows per work-chunk (a bug) and left
+  incomplete for five days.
+- Finished 2026-08-07: fixed the truncation bug and completed all three
+  markets. **US**: winner `{0,0.1,20,220}` agreement 0.9609 (3-way tie) vs
+  adopted `{0,21.544,70}` 0.9476 — differs, but adopted sits in the upper
+  part of the `[0.9353,0.9609]` spread. **DE**: winner
+  `{0.1,1,10,21.544,26.827,40,100,500}` agreement 0.8951 (unique) vs
+  adopted `{150,500}` **0.8585 — the exact minimum of the
+  `[0.8585,0.8951]` spread: the adopted German grid ranks dead last, 366th
+  of 366**, on a complete enumeration. **JP**: winner
+  `{1.931,20,25,26.827,40,51.795,220}` agreement 0.8516 (2-way tie) vs
+  adopted `{10,220}` 0.8152 — differs, roughly 58% up the
+  `[0.7645,0.8516]` spread (below median, not worst).
+- Independently CONFIRMED by an agent that read none of the three
+  producing scripts: full from-scratch recomputation of all 366 DE grids
+  (own `select_monthly_candidate` call, own scoring code) reproduced the
+  dead-last finding to exact float64 equality; US/JP winner+adopted
+  spot-checked exact; all three adopted grids' admissible-set membership
+  independently reconfirmed. Receipt:
+  `docs/audit/2026-08-07-grid-selection-rule-001-receipt.md`.
+- Prerequisite infrastructure repair, same session: the -008/-009 binary
+  caches (`*.npz`/`*.npy`) had not survived on disk between sessions —
+  the same class of loss as the deleted v9.4 run directory. Rebuilt by
+  substituting the v10 run directory for the missing v9.4-hash one
+  (features.csv proven byte-identical by reseal gate 2; the rebuilt us-d1
+  cache reproduces the sealed v9.4 anchor to float precision) and fixing
+  one stale parity check that compared against v9.4's own now-missing
+  `metrics-exploratory.csv` for delay 5/10 (replaced with a fast-vs-real-
+  code-path check needing no external file). All three scientifically
+  load-bearing rebuilt outputs (`arms.csv`, `intersections.csv`,
+  `solutions.csv`) verified byte-identical to the previously sealed,
+  committed versions via `git diff` before anything downstream was
+  trusted.
+- Per the spec's own consequence rule: the winner differs from the
+  adopted grid in all three markets, so **a v11 reseal is PROPOSED to the
+  owner, not performed automatically**. Every mechanism result scored
+  against the v10 DE/JP baseline since 2026-08-01 (the five original
+  candidates named in the -001 CORRECTION, plus
+  `adaptive-separation-001` and `jm-disagreement-anatomy-010`'s DE/JP
+  legs) must be rerun against any new baseline before "mechanism X fails
+  in market Y" is restated; `lagged-capguard-001` is US-only and
+  unaffected. Artifacts: `artifacts/grid-selection-rule/01-rule/`.
