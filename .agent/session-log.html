@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">113 session(s) · newest first · 2026-07-22 19:19 UTC</p>
+  <p class="sub">114 session(s) · newest first · 2026-08-07 05:23 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-08-07T05:23Z</span><span class="who">claude · claude-fable-5</span>
+      </div>
+      <p class="goal">Owner redirect: stop number-only grid work, SHOW where our regimes switch vs the paper&#x27;s figures. Delivered the certified Replication Atlas (18 dark figures + HTML, docs/atlas/) from sealed artifacts only, plus frozen exploratory jm-disagreement-anatomy-010. New event-level result: aggregate-cell agreement != event agreement (v10 US matches 30/30 shifts + 8/8 cells yet only 11/30 switch dates within +-10d). -010 NOT SUPPORTED: disagreement concentrates in MODERN data eras (r_DE 0.574, r_JP 0.764; JP official era = 675 extra-bear days, 0 timing, F1 0.00) - overturns the elimination-based data/vintage attribution toward unpublished selection/geometry. Also: proper env (uv sync, repo .venv; /tmp banned by owner), v9.4 run dir found deleted -&gt; deterministic reconstruction anchor-gated to sealed anchors.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>src/adaptive_jump/regime_comparison.py + tests/test_regime_comparison.py (+, 13 toy-pinned tests)</code></li><li><code>scripts/render_replication_atlas.py, scripts/probe_jm_disagreement_anatomy.py, scripts/verify_replication_atlas.py (+)</code></li><li><code>docs/atlas/ (18 png + replication-atlas.html + verifier-receipt.txt) (+)</code></li><li><code>artifacts/jm-residual/atlas/ + artifacts/jm-residual/10-disagreement-anatomy/ (+)</code></li><li><code>research/jm-disagreement-anatomy-010.toml (+, frozen 071be656 pre-run)</code></li><li><code>docs/audit/2026-08-07-jm-replication-atlas.md (+)</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>5 gates before any figure: verify_run v10; fig5 annotation validation; union parity 32169/21342/20684 cells; v9.4 anchor gate exact 34/80/93; ceiling reproduction &lt;=1e-12</li><li>SEPARATE verifier (did not read authoring code, own matcher+taxonomy): 9/9 PASS at identity precision, 961/961 switch events, CERTIFIED - receipt in docs/atlas/verifier-receipt.txt</li><li>uv run pytest: 456+13 passed, 1 known xfail; check_paper_claims 50 quotes OK; HTML opened in real headless chromium, top screenshot inspected</li><li>self-caught in flight: hmm-states.csv is the RAW decode (284 flips) - the selected path lives in hmm-delay-1/selected-signal.csv (122); fixed before shipping</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>b2de20a (chain 1652729..b2de20a on cleanup/research-protocol)</code></p></div>
+        <div><span class="lbl">Next step</span><p>Exit criterion agreed with owner in the approved plan: replication is now CLOSED with per-market labels (US ~replicated; DE/JP bounded-with-causes; reopen only on a new primary source). Next session: freeze extension question #1 - short-grid-robust lagged variant (motivated by ajm-ext-001&#x27;s binding-spec failure) or semi-Markov dwell cost - against the frozen v10 baseline. Do NOT re-slice eras against these paths without a new experiment id (spec -010 bars it).</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Env rule (owner, angry): NEVER anything in /tmp - use uv run with the repo .venv; the old /tmp venv is dead and memory was corrected. v9.4 run dir + V1/V3 daily states are GONE from disk; the reconstruction pattern in render_replication_atlas.py is the way back. hmm-states.csv vs selected-signal polarity trap documented in the audit note.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-07-22T19:19:56Z</span><span class="who">claude-code · claude-opus-4-8</span>
