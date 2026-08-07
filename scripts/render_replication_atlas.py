@@ -407,7 +407,7 @@ def shade_bear(axis, bear: pd.Series, color: str, alpha: float, band=None) -> No
 
 def era_marks(axis, market: str) -> None:
     for date, label in ERA_LINES[market]:
-        axis.axvline(pd.Timestamp(date), color=MUTED, ls="--", lw=0.9)
+        axis.axvline(pd.Timestamp(date), color=MUTED, ls="-", lw=0.9, alpha=0.6)
         axis.annotate(
             label,
             xy=(pd.Timestamp(date), 0.98),
@@ -442,34 +442,34 @@ def fig_wealth(market, cfg, fig5_pos, recon_sig, const_bear, window, sealed) -> 
 
     fig, axis = plt.subplots(figsize=(13.2, 6.6))
     series = [
-        (wealth(bh.pct_change(), lo, hi), MUTED, "-", "buy & hold"),
+        (wealth(bh.pct_change(), lo, hi), MUTED, 0.55, "buy & hold"),
         (
             wealth(theirs["strategy_return"], lo, hi),
             C_THEIRS,
-            "-",
+            1.0,
             "authors' Fig-5 path on our data",
         ),
         (
             wealth(recon["strategy_return"], lo, hi),
             C_V94,
-            "-",
+            1.0,
             "our CV path, Table-3 grid (v9.4 recon)",
         ),
         (
             wealth(const["strategy_return"], lo, hi),
             C_CONST,
-            "--",
+            0.8,
             f"our fixed λ={BEST_CONST[market]:g}",
         ),
         (
             wealth(v10["strategy_return"], lo, hi),
             C_V10,
-            ":",
+            0.8,
             "v10 CALIBRATED (grid searched vs published cells)",
         ),
     ]
-    for values, color, style, label in series:
-        axis.plot(values.index, values / values.iloc[0], color=color, ls=style,
+    for values, color, alpha, label in series:
+        axis.plot(values.index, values / values.iloc[0], color=color, alpha=alpha,
                   lw=1.4, label=label)
     axis.set_yscale("log")
     their_b = their_bear(fig5_pos).loc[lo:hi]
@@ -610,7 +610,7 @@ def fig_ribbon(market, theirs: pd.Series, ours: pd.Series, footer_text) -> Path:
     rolling = disagree.rolling(63, min_periods=21).mean() * 100
     bottom.plot(rolling.index, rolling.to_numpy(), color=C_HMM, lw=1.2)
     overall = disagree.mean() * 100
-    bottom.axhline(overall, color=MUTED, ls=":", lw=1.0)
+    bottom.axhline(overall, color=MUTED, ls="-", lw=1.0, alpha=0.6)
     bottom.annotate(
         f"overall disagreement {overall:.1f}%",
         xy=(0.006, overall),
@@ -640,7 +640,7 @@ def fig_agreement_lambda(market, table: pd.DataFrame, footer_text) -> Path:
               lw=1.3)
     axis.set_xscale("symlog", linthresh=1.0)
     best_lam = float(want["best_constant_lambda"])
-    axis.axvline(best_lam, color=C_CONST, ls="--", lw=1.0)
+    axis.axvline(best_lam, color=C_CONST, ls="-", lw=1.0, alpha=0.7)
     axis.annotate(
         f"best constant λ = {best_lam:g}\n{want['constant_agreement']:.1%} of days",
         xy=(best_lam, want["constant_agreement"] * 100),
@@ -649,7 +649,7 @@ def fig_agreement_lambda(market, table: pd.DataFrame, footer_text) -> Path:
         fontsize=8,
         color=C_CONST,
     )
-    axis.axhline(want["per_month_ceiling"] * 100, color=MUTED, ls=":", lw=1.0)
+    axis.axhline(want["per_month_ceiling"] * 100, color=MUTED, ls="-", lw=1.0, alpha=0.6)
     axis.annotate(
         f"per-month cherry-pick ceiling {want['per_month_ceiling']:.1%}",
         xy=(0.02, want["per_month_ceiling"] * 100),
@@ -701,7 +701,7 @@ def fig_table3(footer_text) -> Path:
     }
     for name, group in variants.groupby("variant"):
         group = group.sort_values("lambda")
-        axis.plot(group["lambda"], group["per_year_calendar"], "--", lw=0.9,
+        axis.plot(group["lambda"], group["per_year_calendar"], "-", lw=0.9,
                   alpha=0.55, label=variant_labels.get(str(name), str(name)))
     for _, row in ours.iterrows():
         ratio = row["per_year_calendar"] / row["published"]

@@ -33,7 +33,6 @@ from adaptive_jump.simple_jm_figures import (  # noqa: E402
     BEAR_ALPHA,
     BEAR_FILL,
     COLORS,
-    LINE_STYLES,
 )
 
 RUN = ROOT / "artifacts" / "lagged-capguard" / "01-us"
@@ -50,12 +49,8 @@ ARM_COLORS = {
     "lagged": COLORS["dd_only"],
     "capguard": COLORS["dd_scaled_3x"],
 }
-ARM_STYLES = {
-    "fixed": "-",
-    "lagged": LINE_STYLES["dd_only"],
-    "capguard": (0, (1, 1)),
-}
 ARM_LABELS = {"fixed": "Fixed JM", "lagged": "Lagged JM", "capguard": "Capguard JM"}
+MARKET_ALPHA = 0.55
 CASH_FACE, CASH_EDGE = "#FBE3D8", COLORS["bear"]
 GUARD_FACE, GUARD_EDGE = "#E7E7E7", "#8A8A8A"
 RC = {
@@ -151,7 +146,8 @@ def fig_shu(grid: str, arms: dict[str, pd.DataFrame]) -> Path:
             arms["fixed"].index,
             market_curve(arms["fixed"]),
             color=COLORS["buy_and_hold"],
-            linestyle=LINE_STYLES["buy_and_hold"],
+            linestyle="-",
+            alpha=MARKET_ALPHA,
             linewidth=1.1,
             zorder=3,
         )
@@ -160,7 +156,7 @@ def fig_shu(grid: str, arms: dict[str, pd.DataFrame]) -> Path:
                 arms[shown].index,
                 excess_curve(arms[shown]),
                 color=ARM_COLORS[shown],
-                linestyle=ARM_STYLES[shown],
+                linestyle="-",
                 linewidth=1.35,
                 zorder=4,
             )
@@ -172,11 +168,10 @@ def fig_shu(grid: str, arms: dict[str, pd.DataFrame]) -> Path:
         for side in ("top", "right"):
             axis.spines[side].set_visible(True)
     handles = [
-        Line2D([0], [0], color=COLORS["buy_and_hold"], lw=1.4,
-               ls=LINE_STYLES["buy_and_hold"], label="Buy & Hold"),
+        Line2D([0], [0], color=COLORS["buy_and_hold"], lw=1.4, alpha=MARKET_ALPHA,
+               label="Buy & Hold"),
         *[
-            Line2D([0], [0], color=ARM_COLORS[n], lw=1.6, ls=ARM_STYLES[n],
-                   label=ARM_LABELS[n])
+            Line2D([0], [0], color=ARM_COLORS[n], lw=1.6, label=ARM_LABELS[n])
             for n in ("fixed", "lagged", "capguard")
         ],
         Patch(facecolor=BEAR_FILL, alpha=BEAR_ALPHA, label="Bear (panel's model)"),
@@ -202,7 +197,7 @@ def fig_relative(grid: str, arms: dict[str, pd.DataFrame]) -> Path:
             arms[name].index,
             excess_curve(arms[name]) - base,
             color=ARM_COLORS[name],
-            linestyle=ARM_STYLES[name],
+            linestyle="-",
             linewidth=1.5,
             label=f"{ARM_LABELS[name]} − Fixed JM",
             zorder=3,
@@ -235,8 +230,8 @@ def fig_zoom(
         hatch_spans(axis, frame["position"] < 0.5, CASH_FACE, CASH_EDGE)
         market = market_curve(arms["fixed"]).loc[lo:hi]
         axis.plot(frame.index, market - market.iloc[0],
-                  color=COLORS["buy_and_hold"],
-                  linestyle=LINE_STYLES["buy_and_hold"], linewidth=1.1, zorder=3)
+                  color=COLORS["buy_and_hold"], alpha=MARKET_ALPHA,
+                  linestyle="-", linewidth=1.1, zorder=3)
         curve = excess_curve(arms[name]).loc[lo:hi]
         axis.plot(frame.index, curve - curve.iloc[0], color=ARM_COLORS[name],
                   linestyle="-", linewidth=1.5, zorder=4)
@@ -265,8 +260,8 @@ def fig_zoom(
             arrowprops={"arrowstyle": "->", "color": "#111111", "lw": 1.0},
         )
     handles = [
-        Line2D([0], [0], color=COLORS["buy_and_hold"], lw=1.3,
-               ls=LINE_STYLES["buy_and_hold"], label="Market excess return"),
+        Line2D([0], [0], color=COLORS["buy_and_hold"], lw=1.3, alpha=MARKET_ALPHA,
+               label="Market excess return"),
         Patch(facecolor=CASH_FACE, edgecolor=CASH_EDGE, hatch="////",
               label="Cash position"),
     ]
