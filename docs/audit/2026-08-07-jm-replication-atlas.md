@@ -129,12 +129,21 @@ concentrate in the reconstructed pre-1988 era.
 
 ## 6. Verifier receipt
 
-An independent verifier (agent that did not write the atlas code) must
-recompute, from raw artifacts: the fig-5 validations, one full per-λ
-agreement vector per market against `ceiling.csv` and
-`concordance-by-lambda.csv` (≤ 1e-12), the v9.4 reconstruction anchors, the
-v10 wealth identity (`selected-signal` through `apply_signal` vs sealed
-trades ≤ 1e-12), the switch tables (independent implementation, exact
-match), the decomposition identities, and the -010 readout arithmetic. The
-receipt is appended below when signed; until then the HTML banner says the
-numbers await certification.
+An independent verifier (agent that did not write the atlas code) recomputed,
+from raw artifacts: the fig-5 validations, the full per-λ agreement vectors
+against `ceiling.csv` and `concordance-by-lambda.csv`, the v9.4
+reconstruction (rerun end-to-end, anchors bit-exact, signal identical on
+every shared date), the v10 wealth identity, the switch tables with its OWN
+matching implementation (all 961 events exact), the decomposition counts
+with its OWN taxonomy (all 21 exact, plus the `(1−concordance)·T`
+identities), the -010 readout arithmetic, and 10 HTML spot-checks traced to
+committed CSV cells.
+
+**Outcome: 9/9 PASS — CERTIFIED**, at identity precision (max recompute
+diffs 0.0; the only anomaly was in the verifier's own harness — pandas
+default float parsing, one ulp — fixed with `float_precision="round_trip"`).
+Receipt: `docs/atlas/verifier-receipt.txt` (embedded verbatim in the HTML);
+verification script committed as `scripts/verify_replication_atlas.py`
+(`uv run python scripts/verify_replication_atlas.py`, exit 0). The receipt
+was produced against commit `795ea25` and the verifier's script added on top
+as `63b56a1`, modifying no verified file.

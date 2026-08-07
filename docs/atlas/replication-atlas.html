@@ -94,7 +94,27 @@ hướng theo |lệch| (van den Burg &amp; Williams 2020); lag dương = ta tr�
 <li>Shading của Fig 5/6 LÀ position đã shift +2 ngày (paper line 896): wealth áp
 thẳng position; so regime thì un-shift đúng convention của -004.</li>
 </ul></section>
-<section><h2>Verifier receipt</h2><div class="receipt">CHƯA CÓ — verifier độc lập chưa ký; số liệu ở trạng thái chờ chứng nhận.</div></section>
+<section><h2>Verifier receipt</h2><div class="receipt">VERIFIER RECEIPT — replication atlas + jm-disagreement-anatomy-010
+UTC: Fri Aug 7 05:20:49 AM UTC 2026 (`date -u`)
+Git HEAD of verified deliverable: 795ea25bbc988a722d15b596a2ceebb1c78cb4e5 (branch cleanup/research-protocol; verifier script committed on top as 63b56a1c1d88b86eba15edfb00c50cad965dcd98, adds only scripts/verify_replication_atlas.py and modifies no verified file)
+Independence statement: I did not open, read, grep, or import scripts/render_replication_atlas.py or scripts/probe_jm_disagreement_anatomy.py at any point. All conventions (un-shift, -004 join, switch matching, decomposition taxonomy, readout rule) were implemented from the frozen spec and audit-note definitions; switch matching and the timing/missing/extra taxonomy are my own independent implementations compared output-to-output against the committed artifacts. Library imports were limited to adaptive_jump.artifacts.verify_run, adaptive_jump.walkforward.select_monthly_candidate, adaptive_jump.backtest.apply_signal, adaptive_jump.config.load_config.
+
+1. PASS — verify_run(v10 run fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736): status=complete, inventory_files=125, metric_rows=27, max metric abs diff 3.797e-14, conclusion &quot;directional gate passed on the calibrated baseline&quot;.
+2. PASS — raw-CSV extraction validation: us-jm 30 shifts/19.7% bear (printed 30/19.7); de-jm 114/15.6% vs printed 116/15.7% (discrepancy exactly as documented); jp-jm 48/25.3% exact; us-hmm 96/27.8% exact.
+3. PASS — per-λ agreement, 29 λs × 3 markets recomputed per the -004 convention: max abs diff 0.00e+00 vs both concordance-by-lambda.csv (all 87 rows) and ceiling.csv V0_expanding rows; argmax λ equal: us 35 → 0.9574915333411188 (n=8563), de 26.826957952797247 → 0.895 exactly (n=8600), jp 150 → 0.8161553211888782 (n=8344).
+4. PASS — v9.4 reconstruction rerun from v10 features + Table-3 grid columns of union-states: sealed anchors bit-exact (us 34/0.21868067717454753/8565, de 80/0.256568239944199/8602, jp 93/0.4173256649892164/8346); reconstructed signal identical to atlas/v94-recon-selected-signal.csv on every shared date — 0 differences over 8692 (us), 8667 (de), 8347 (jp) dates.
+5. PASS — v10 wealth identity: apply_signal(delay 1, 10bp) on fixed_jm-delay-1 selected-signal vs sealed trades strategy_return, max abs diff 0.000e+00 on all shared rows (us n=8565, de n=8602, jp n=8336).
+6. PASS — switch tables, own matcher: all 961 events across all 10 (market, basis) pairs identical to switch-events.csv (pair sets, directions, lags, matched flags), and all 8 stats per row (precision/recall/f1/matched/unmatched_theirs/unmatched_ours/median_lag/mean_lag) exactly equal to switch-f1.csv; matched counts 21/6/31 (de), 3/15/23 (jp), 10/11/10/86 (us incl. hmm_vs_fig6).
+7. PASS — decomposition + era identities, own taxonomy: all 21 (market, era, kind) day counts equal decomposition.csv; labelled days == round((1−concordance)·T) == my disagreement count: us 501/T=8563, de 1100/T=8600, jp 1686/T=8344; every tiling partition&#x27;s era days sum to T; bonus: all 16 era-metrics rows&#x27; days/disagree_days/rate/concordance recomputed OK.
+8. PASS — -010 readout arithmetically forced from era-metrics.csv: r_de=0.5741102065531858, r_jp=0.7637901813054562, r_us(2000)=0.3749049902066829, r_us(2012)=0.9825966254481479, max diff vs readout.json 0.00e+00; frozen rule (threshold 1.5, rule string identical to spec) gives supported=False, inverted=False, verdict NOT SUPPORTED — matches readout.json.
+9. PASS — atlas HTML spot-checks: all 10 summary-table rows × 5 cells traced to path-concordance.csv; per market e.g. us 94.1%→0.9414924675931332 (v94_recon), F1 0.45→0.4545454545454545 (best_const), shifts 30/34; de 87.2%→0.872093023255814, F1 0.09→0.09090909090909091 (v10_selected), shifts 114/46 (best_const); jp 79.8%→0.7979386385426653, F1 0.33→0.326241134751773, shifts 48/93 (v94_recon); plus hmm_vs_fig6 97.5%/0.79/96/122.
+
+Note: the single anomaly encountered was in the verifier&#x27;s own harness, not the deliverable — pandas&#x27; default CSV float parser read selected-anchors.csv bear_share(us) one ulp off (…4753 → …475); with correct round-trip decimal parsing every sealed cell matches the recomputation exactly, and the committed script uses float_precision=&quot;round_trip&quot; throughout.
+
+Overall: CERTIFIED
+
+Verification script (committed): scripts/verify_replication_atlas.py (run: `uv run python scripts/verify_replication_atlas.py`, exit 0, prints the PASS lines above; commit 63b56a1)
+</div></section>
 <section><h2>Provenance</h2>
 <p style="color:var(--muted)">commit <code>c9b5294c1a03209d81fa22afc8211fe03976e7e5</code> ·
 rendered 2026-08-07T05:03:44Z UTC · script
