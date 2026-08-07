@@ -1,0 +1,64 @@
+schema_version = 1
+experiment_id = "jm-disagreement-anatomy-010"
+frozen_at_utc = "2026-08-07T05:00:22Z"
+claim_class = "EXPLORATORY"
+analysis_label = "WHERE THE PATH DISAGREEMENT LIVES — ERA DECOMPOSITION OF OURS-VS-FIG5"
+hypothesis = "If the registered data/vintage attribution of the JM residual is right, the daily disagreement between our replication-contract CV path and the authors' Figure-5 path concentrates in the eras where our equity series rests on a different source than theirs: the Japanese reconstructed-TR era (pre 2011-12-19) and the German pre-Xetra fixing era (pre 2000), with the US — whose OOS window contains no data-source boundary — serving as the placebo at the same cut dates."
+primary_estimand = "per_market_per_era_disagreement_rates_plus_timing_missing_extra_decomposition"
+extension_access = false
+adaptive_experiment = false
+model_refitting = false
+
+# Disclosures at freeze (the ajm-ext-001 lesson: derived windows and known
+# confounders are stated BEFORE the numbers exist, not discovered after):
+# 1. The comparison window is fixed at 1990..2023 by the Figure-5 extraction;
+#    the JP era split is ~22 vs ~12 years and the DE split ~10 vs ~24 years.
+# 2. Era is CONFOUNDED with market regime (the JP reconstructed era contains
+#    the entire post-bubble bear decade). The placebo cuts on the US mitigate
+#    but do not remove this; that is why this experiment is exploratory and
+#    its verdict is about concentration, never about cause.
+# 3. Prior evidence pointing AGAINST a naive vintage story is on record and
+#    must be cited in the report either way: episode-shape-13 found the US HMM
+#    excess flickers do NOT concentrate in the reconstructed pre-1988 era
+#    (12 of 16 short episodes post-2000).
+# 4. All inputs are repeatedly inspected development data; no holdout claim.
+prior_art = "jm-effective-lambda-inversion-004 (daily agreement, join convention); replication-atlas PROCESS_NOTE (v9.4-recon anchor gate, switch metrics); probe_episode_shape (hmm-residual/13); separation-turnover-001 (collapsed-fit lesson)"
+
+[inputs]
+their_paths = "artifacts/hmm-residual/04-figure6-path/position-fig5-{us,de,jp}-jm.csv, un-shifted per the -004 convention ((1-position).shift(-2))"
+our_path = "artifacts/jm-residual/atlas/v94-recon-selected-signal.csv (the anchor-gated reconstruction of the replication contract's CV path; the probe re-verifies the sealed anchors us 34/0.21868067717454753/8565, de 80/0.256568239944199/8602, jp 93/0.4173256649892164/8346 before any use)"
+metrics_module = "src/adaptive_jump/regime_comparison.py at the frozen commit (concordance, switch_f1 margin 10, covering, disagreement_decomposition, era_slices)"
+
+[eras]
+# Sources: docs/data-provenance.md (DE pre-Xetra fixings 1988-1999, daily corr
+# 0.82-0.90 vs Yahoo closes; JP official N225TR from 2011-12-19 with the
+# 2020-07-09..2022-05-31 mirror-hole bridge), scripts/build_sp500_tr.py
+# (OFFICIAL_START 1988-01-04 -> no US boundary inside the 1990+ window),
+# scripts/build_external_sources.py, scripts/build_de_total_return.py.
+de_primary = [["pre_xetra_fixings", "1990-01-01", "1999-12-31"], ["harmonized_closes", "2000-01-01", "2023-12-31"]]
+jp_primary = [["reconstructed_tr", "1990-01-01", "2011-12-18"], ["official_n225tr", "2011-12-19", "2023-12-31"]]
+us_placebo_cuts = ["2000-01-01", "2011-12-19"]
+jp_sub_era_descriptive = [["mirror_hole_bridge", "2020-07-09", "2022-05-31"]]
+secondary_descriptive_cuts = { de_cash_splice = "2007-09-01", jp_cash_splice = "2017-07-01" }
+
+[readout]
+# Frozen BEFORE any per-era number is computed. rate(era) = share of joint
+# trading days in the era where our bear state != theirs, basis v94_recon.
+rule = "SUPPORTED iff r_DE >= 1.5 AND r_JP >= 1.5 AND r_DE > r_US(2000 cut) AND r_JP > r_US(2012 cut), where r_market = rate(old-source era) / rate(modern era) and r_US uses the same cut dates as placebo boundaries on the US pair. INVERTED recorded additionally iff both r_DE and r_JP <= 1/1.5. Anything else: NOT SUPPORTED."
+threshold_ratio = 1.5
+basis = "v94_recon"
+margin_trading_days = 10
+decomposition_and_per_era_f1_are_descriptive = true
+
+[decision]
+winner_selection_allowed = false
+config_changes_allowed = false
+grid_candidacy_from_results = "forbidden — this experiment describes where disagreement lives; it may motivate a NEW frozen question but adopts nothing"
+registered_interpretations = [
+  "SUPPORTED strengthens the registered data/vintage attribution and localizes it: the next frozen question, if any, targets the named source era",
+  "NOT SUPPORTED (including INVERTED) means the residual does not follow the data-source seams, which weighs against the vintage story and toward unpublished selection/geometry as the remaining explanation; no further era slicing may be run against these paths without a new experiment id",
+]
+
+[storage]
+artifact_subdir = "artifacts/jm-residual/10-disagreement-anatomy"
+required_outputs = ["era-metrics.csv", "decomposition.csv", "readout.json", "report.txt"]
