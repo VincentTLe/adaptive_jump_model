@@ -310,18 +310,21 @@ def build_html(figures: dict[str, Path], summary: dict) -> Path:
         )
 
     captions = {
-        "shu": "Ba panel cùng kiểu Figure 5 của paper: đường excess return "
-        "(đi ngang khi ở cash), nền hồng = bear của model ghi trên đầu panel. "
-        "So nền hồng giữa các panel để thấy regime khác nhau ở đâu.",
-        "relative": "Khoảng cách excess return so với Fixed JM (điểm phần "
-        "trăm). Đường chỉ đổi hướng trong các băng gạch — những ngày hai model "
-        "đứng khác vị thế.",
-        "zoom": "Cửa sổ thiệt hại nặng nhất, từng ngày: băng gạch = ở cash. "
-        "Panel dưới cho thấy Lagged rời cash giữa bear (mũi tên) rồi ăn trọn "
-        "cú sập kế tiếp, trong khi Fixed (panel trên) ngồi im.",
-        "guard": "Guard đã đổi được gì: đường = Capguard trừ Lagged. Nó rơi "
-        "ngay TRONG các băng xám (guard bật) — guard đè fixed vào đúng lúc "
-        "lagged đang thắng.",
+        "shu": "Three panels in the paper's Figure-5 style: the excess-return "
+        "line (flat while in cash), salmon fill = that panel's own model's "
+        "bear calls. Compare the salmon fill across panels to see where the "
+        "regimes diverge.",
+        "relative": "Excess-return gap versus the fixed JM (percentage "
+        "points). The line only moves inside the hatched bands — the days "
+        "the two models hold different positions.",
+        "zoom": "The single worst damage window, day by day: hatched bands "
+        "= in cash. Bottom panel shows the lagged arm leaving cash mid-bear "
+        "(arrow) and then eating the next leg down, while the fixed arm "
+        "(top panel) sits still.",
+        "guard": "What the guard actually changed: the line is Capguard "
+        "minus Lagged. It drops exactly INSIDE the gray guard-active bands "
+        "— the guard overrides fixed at precisely the times lagged was "
+        "winning.",
     }
     sections = ""
     for grid in GRIDS:
@@ -329,9 +332,9 @@ def build_html(figures: dict[str, Path], summary: dict) -> Path:
         sections += f"""
 <section>
 <h2>US — {GRID_LABELS[grid]}</h2>
-<p class="stats">ΔSharpe so với Fixed: lagged {s["delta_lagged"]:+.3f} ·
-capguard {s["delta_capguard"]:+.3f} · guard bật {s["guard_days"]:.0%} số ngày ·
-override của guard {s["override"]:+.3f} log</p>
+<p class="stats">&#916;Sharpe vs. fixed: lagged {s["delta_lagged"]:+.3f} &middot;
+capguard {s["delta_capguard"]:+.3f} &middot; guard active {s["guard_days"]:.0%} of days &middot;
+guard override {s["override"]:+.3f} log</p>
 {img(f"shu-{grid}")}<p class="cap">{captions["shu"]}</p>
 {img(f"relative-{grid}")}<p class="cap">{captions["relative"]}</p>
 {img(f"zoom-{grid}")}<p class="cap">{captions["zoom"]}</p>
@@ -339,9 +342,9 @@ override của guard {s["override"]:+.3f} log</p>
 </section>"""
 
     html = f"""<!DOCTYPE html>
-<html lang="vi"><head><meta charset="utf-8">
+<html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Capguard autopsy — vẽ theo văn phạm hình của Shu</title>
+<title>Capguard autopsy — drawn in Shu et al.'s figure grammar</title>
 <style>
 body {{ background:#ffffff; color:#1a1a1a; margin:0; padding:28px;
  font-family:Georgia,"Times New Roman",serif; line-height:1.6; }}
@@ -355,13 +358,13 @@ h1 {{ font-size:1.35rem; }} h2 {{ font-size:1.1rem; margin-top:2rem;
  border-left:3px solid #E69F00; padding-left:10px; }}
 footer {{ color:#888; font-size:0.8rem; margin-top:24px; }}
 </style></head><body><main>
-<h1>lagged-capguard-001 — autopsy bằng hình, theo văn phạm Figure 5 của Shu</h1>
-<div class="banner">EXPLORATORY, dev data nhìn-nhiều-lần; verdict NOT SUPPORTED
-đã certify 7/7. Trang chỉ vẽ số liệu đã đo trong
+<h1>lagged-capguard-001 — visual autopsy, in Shu et al.'s Figure-5 grammar</h1>
+<div class="banner">EXPLORATORY, look-many-times dev data; verdict NOT SUPPORTED,
+certified 7/7. This page only plots numbers already measured under
 <code>artifacts/lagged-capguard/01-us/</code>.</div>
 {sections}
-<footer>lagged-capguard-001 · commit {summary["git_head"][:12]} ·
-{summary["when"]} UTC · scripts/diagnose_lagged_capguard.py</footer>
+<footer>lagged-capguard-001 &middot; commit {summary["git_head"][:12]} &middot;
+{summary["when"]} UTC &middot; scripts/diagnose_lagged_capguard.py</footer>
 </main></body></html>"""
     out = OUT_DOCS / "capguard-autopsy.html"
     out.write_text(html, encoding="utf-8")
