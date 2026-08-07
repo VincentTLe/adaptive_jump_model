@@ -92,7 +92,11 @@ ERA_LINES = {
     "de": [("2000-01-03", "Xetra-era closes begin")],
     "jp": [("2011-12-19", "official N225TR begins")],
 }
-ERA_SPANS = {"us": [], "de": [], "jp": [("2020-07-09", "2022-05-31", "mirror-hole bridge")]}
+ERA_SPANS = {
+    "us": [],
+    "de": [],
+    "jp": [("2020-07-09", "2022-05-31", "mirror-hole bridge")],
+}
 
 
 def dark_style() -> None:
@@ -125,7 +129,10 @@ def sha256(path: Path) -> str:
 
 def utc_now() -> str:
     return subprocess.run(
-        ["date", "-u", "+%Y-%m-%dT%H:%M:%SZ"], capture_output=True, text=True, check=True
+        ["date", "-u", "+%Y-%m-%dT%H:%M:%SZ"],
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout.strip()
 
 
@@ -411,7 +418,7 @@ def era_marks(axis, market: str) -> None:
             va="top",
             ha="right",
         )
-    for start, stop, label in ERA_SPANS[market]:
+    for start, stop, _label in ERA_SPANS[market]:
         axis.axvspan(
             pd.Timestamp(start), pd.Timestamp(stop), color=MUTED, alpha=0.10, lw=0
         )
@@ -828,7 +835,7 @@ def fig_grid_estimate(footer_text) -> Path:
 
 
 def build_html(figures: dict[str, Path], tables: dict[str, pd.DataFrame],
-               provenance: dict) -> Path:
+               provenance: dict, anatomy: dict | None = None) -> Path:
     def img(key: str) -> str:
         data = base64.b64encode(figures[key].read_bytes()).decode("ascii")
         return (f'<img alt="{key}" src="data:image/png;base64,{data}" '
@@ -884,6 +891,27 @@ def build_html(figures: dict[str, Path], tables: dict[str, pd.DataFrame],
         if RECEIPT.exists()
         else "CHƯA CÓ — verifier độc lập chưa ký; số liệu ở trạng thái chờ chứng nhận."
     )
+    anatomy_section = ""
+    if anatomy is not None:
+        era_figs = "".join(
+            img(f"era-{market}") for market in MARKETS if f"era-{market}" in figures
+        )
+        anatomy_section = f"""
+<section><h2>Giải phẫu phần lệch — jm-disagreement-anatomy-010
+(frozen trước khi tính)</h2>
+<p><strong>Verdict theo rule đóng băng (ngưỡng 1.5): {anatomy["verdict"]}.</strong>
+r_DE = {anatomy["r_de"]:.3f}, r_JP = {anatomy["r_jp"]:.3f}; placebo US:
+{anatomy["r_us_placebo_2000"]:.3f} (cắt 2000) / {anatomy["r_us_placebo_2012"]:.3f}
+(cắt 2012). Phần lệch KHÔNG dồn vào era nguồn-data-cũ — cả hai tỷ lệ chỉ theo
+hướng ngược lại. Ô sắc nét nhất (descriptive): JP trong era N225TR chính thức
+lệch 23.9% mà toàn bộ là <em>extra</em> (675 ngày ta-bear-họ-không, 0 ngày
+timing, F1 0.00) — path JP của ta thừa bear đúng ở nơi không thể đổ lỗi cho
+data. Theo nhánh diễn giải đã đăng ký: bằng chứng này ĐI NGƯỢC attribution
+data/vintage (vốn rút ra bằng loại trừ ở -002/-003) và dồn trách nhiệm về các
+lựa chọn selection/geometry chưa công bố. Era ≠ nguyên nhân (đã disclose lúc
+freeze); không có gì được adopt.</p>
+{era_figs}
+</section>"""
     market_sections = ""
     for market in MARKETS:
         market_sections += f"""
@@ -891,7 +919,8 @@ def build_html(figures: dict[str, Path], tables: dict[str, pd.DataFrame],
   <h2>{NAMES[market]}</h2>
   {img(f'wealth-{market}')}
   {img(f'ribbon-{market}')}
-  <div class="row">{img(f'agreement-lambda-{market}')}{img(f'switch-lag-{market}')}</div>
+  <div class="row">{img(f"agreement-lambda-{market}")}{img(
+        f"switch-lag-{market}")}</div>
   {switch_table(market)}
 </section>"""
 
@@ -946,6 +975,7 @@ mỗi thị trường lệch theo một kiểu, và đó là thông tin mà ô b
 {img('table3')}</section>
 <section><h2>Grid của họ — điều tốt nhất thông tin công khai nói được</h2>
 {img('grid-estimate')}</section>
+{anatomy_section}
 <section><h2>Phương pháp</h2>
 <ul>
 <li><b>Concordance (Harding–Pagan):</b> tỷ lệ ngày chung hai path cùng regime.</li>
@@ -1166,6 +1196,16 @@ def main() -> None:
         json.dumps(provenance, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
 
+    anatomy = None
+    anatomy_dir = ROOT / "artifacts" / "jm-residual" / "10-disagreement-anatomy"
+    if (anatomy_dir / "readout.json").exists():
+        anatomy = json.loads(
+            (anatomy_dir / "readout.json").read_text(encoding="utf-8")
+        )
+        for market in MARKETS:
+            era_fig = OUT_DOCS / f"fig-era-decomposition-{market}.png"
+            if era_fig.exists():
+                figures[f"era-{market}"] = era_fig
     page = build_html(
         figures,
         {
@@ -1173,6 +1213,7 @@ def main() -> None:
             "switch_events": switch_events,
         },
         provenance,
+        anatomy,
     )
     size_mb = page.stat().st_size / 1e6
     print(f"\natlas written: {page.relative_to(ROOT)} ({size_mb:.1f} MB), "

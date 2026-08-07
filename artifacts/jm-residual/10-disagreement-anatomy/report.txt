@@ -1,0 +1,32 @@
+jm-disagreement-anatomy-010 — kết quả (EXPLORATORY, descriptive)
+
+Readout (rule đóng băng trước khi tính, ngưỡng 1.5):
+  r_DE  = 0.574   (pre-Xetra / harmonized)
+  r_JP  = 0.764   (reconstructed / official)
+  r_US placebo 2000 cut = 0.375; 2012 cut = 0.983
+  VERDICT: NOT SUPPORTED
+
+Per-era (primary + placebo):
+  de primary/pre_xetra_fixings: rate 8.4% trên 2505 ngày, F1 0.45
+  de primary/harmonized_closes: rate 14.6% trên 6095 ngày, F1 0.24
+  jp primary/reconstructed_tr: rate 18.2% trên 5401 ngày, F1 0.36
+  jp primary/official_n225tr: rate 23.9% trên 2943 ngày, F1 0.00
+  us placebo_2000/pre_cut: rate 2.7% trên 2528 ngày, F1 0.00
+  us placebo_2000/post_cut: rate 7.2% trên 6035 ngày, F1 0.33
+  us placebo_2012/pre_cut: rate 5.8% trên 5538 ngày, F1 0.26
+  us placebo_2012/post_cut: rate 5.9% trên 3025 ngày, F1 0.36
+
+Phân rã (timing/missing/extra, ngày):
+  de/harmonized_closes: timing 645, missing 7, extra 238
+  de/pre_xetra_fixings: timing 185, missing 21, extra 4
+  jp/official_n225tr: timing 0, missing 27, extra 675
+  jp/reconstructed_tr: timing 689, missing 43, extra 252
+  us/2000_2011: timing 189, missing 0, extra 65
+  us/post_2012: timing 115, missing 9, extra 55
+  us/pre_2000: timing 0, missing 68, extra 0
+
+Disclosure mang theo (từ spec): era bị lẫn với market regime (era tái dựng
+của JP chứa trọn thập kỷ bear hậu-bubble); placebo cut trên US giảm nhưng
+không loại bỏ điều đó — verdict nói về CONCENTRATION, không nói về CAUSE.
+Prior ngược chiều phải trích dẫn: episode-shape-13 — flicker thừa của HMM US
+KHÔNG dồn vào era tái dựng pre-1988 (12/16 episode ngắn nằm sau 2000).
