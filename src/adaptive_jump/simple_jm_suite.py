@@ -60,7 +60,13 @@ from adaptive_jump.walkforward import (
 # -002: the same frozen questions rerun against the calibrated-v10 baseline
 # (per-market lambda grids). Verifying the archived -001 run requires the
 # pre-bump commit; recorded in docs/audit and the -002 registry rows.
+# -003 (2026-08-08): the v11 reseal rerun. EXPERIMENT_ID stays "-002" for
+# every OTHER already-sealed cross-reference (dd-loss-scale-002's parent
+# check, its own run directory naming) -- only load_simple_jm_spec/
+# run_simple_jm_study accept either id, deriving run_dir/study_kind from
+# the loaded spec's own experiment_id rather than the hardcoded constant.
 EXPERIMENT_ID = "simple-jm-suite-002"
+SUITE_EXPERIMENT_IDS = (EXPERIMENT_ID, "simple-jm-suite-003")
 LOSS_SCALE_EXPERIMENT_ID = "dd-loss-scale-002"
 MARKETS = ("us", "de", "jp")
 CONTROLS = ("buy_and_hold", "hmm", "fixed_jm")
@@ -181,7 +187,7 @@ def load_simple_jm_spec(path: str | Path, config: ResearchConfig) -> SuiteSpec:
     lambda50_name = sources.get("lambda50_run_root")
     required = (
         document.get("schema_version") == 1,
-        document.get("experiment_id") == EXPERIMENT_ID,
+        document.get("experiment_id") in SUITE_EXPERIMENT_IDS,
         document.get("status") == "FROZEN_BEFORE_RESULTS",
         document.get("claim_class") == "EXPLORATORY",
         sources.get("markets") == list(MARKETS),
@@ -193,7 +199,7 @@ def load_simple_jm_spec(path: str | Path, config: ResearchConfig) -> SuiteSpec:
     )
     if not all(required):
         raise SimpleJMSuiteError("suite contract does not match the frozen identity")
-    _require_frozen_registration(repo_root, EXPERIMENT_ID, digest)
+    _require_frozen_registration(repo_root, document["experiment_id"], digest)
     canonical_root = (repo_root / canonical_name).resolve()
     lambda50_root = (repo_root / lambda50_name).resolve()
     for root in (canonical_root, lambda50_root):
@@ -311,11 +317,12 @@ def run_simple_jm_study(config: ResearchConfig, spec: SuiteSpec) -> Path:
         spec, config, canonical_inventory, lambda_inventory
     )
 
+    experiment_id = spec.document["experiment_id"]
     code_hashes = _implementation_hashes(repo_root)
     code_digest = mapping_digest(code_hashes)
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     run_id = f"simple-jm-suite-{spec.sha256[:12]}-{code_digest[:12]}-{timestamp}"
-    run_dir = repo_root / config.artifact_root / EXPERIMENT_ID / run_id
+    run_dir = repo_root / config.artifact_root / experiment_id / run_id
     started = monotonic()
     run_dir.mkdir(parents=True)
     (run_dir / "study.lock.toml").write_bytes(spec.path.read_bytes())
@@ -343,7 +350,7 @@ def run_simple_jm_study(config: ResearchConfig, spec: SuiteSpec) -> Path:
     )
     _start_run(
         run_dir / "run.json",
-        study_kind=EXPERIMENT_ID,
+        study_kind=experiment_id,
         run_id=run_id,
         spec_sha256=spec.sha256,
         implementation_sha256=code_digest,
