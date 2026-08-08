@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import itertools
+import os
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from math import comb
@@ -44,8 +45,23 @@ from adaptive_jump.walkforward import select_monthly_candidate  # noqa: E402
 RUN = ROOT / "artifacts" / "fixed-baselines" / (
     "fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736"
 )
-UNION_DIR = ROOT / "artifacts" / "jm-residual" / "01-grid-identification"
-OUT = ROOT / "artifacts" / "jm-residual" / "08-exhaustive-nine-arms"
+# Overridable via env var, not post-import monkeypatching: _build_arm runs
+# in ProcessPoolExecutor(mp_context="forkserver") workers, and a plain
+# module-global patch in a wrapper script is not reliably inherited by a
+# forkserver's worker processes. Environment variables are, since they are
+# part of the OS process environment every fork/spawn inherits regardless
+# of context. Used by scripts/run_exhaustive_ninit60.py to point this
+# script at the n_init=60 calibrated-only union (2026-08-08) without
+# touching these defaults, which stay correct for the sealed n_init=10
+# chain other artifacts still depend on.
+_DEFAULT_UNION_DIR = ROOT / "artifacts" / "jm-residual" / "01-grid-identification"
+UNION_DIR = Path(os.environ.get("AJM_UNION_DIR", str(_DEFAULT_UNION_DIR)))
+OUT = Path(
+    os.environ.get(
+        "AJM_EXHAUSTIVE_OUT",
+        str(ROOT / "artifacts" / "jm-residual" / "08-exhaustive-nine-arms"),
+    )
+)
 COST, TOL, N_JOBS, TIE = 10.0, 0.05, 30, 1e-12
 SIZES = range(2, 9)
 MARKETS = ("us", "de", "jp")
