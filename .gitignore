@@ -52,7 +52,20 @@ reports/
 
 # Cold storage for retired minute-era data
 data/legacy-cold/
-data/external/
+data/external/*
+# Exceptions: primary-source paper text/PDFs that are (a) load-bearing for
+# [line NNN] citations elsewhere in the repo (check_paper_claims.py) and/or
+# (b) freely redistributable arXiv preprints -- these must survive a lost
+# local disk, unlike the bulk re-fetchable market-data CSVs this rule exists
+# for. Paywalled/uncertain-license items (SSRN PDFs, the Princeton
+# dissertation, slide decks) stay local-only.
+!data/external/inputs/
+data/external/inputs/*
+!data/external/inputs/shu_paper.txt
+!data/external/inputs/shu-yu-mulvey-2406.09578.pdf
+!data/external/inputs/shu-yu-mulvey-2406.09578.txt
+!data/external/inputs/shu-mulvey-2410.14841.pdf
+!data/external/inputs/shu-mulvey-2410.14841.txt
 
 # Agent worktrees
 .claude/worktrees/
