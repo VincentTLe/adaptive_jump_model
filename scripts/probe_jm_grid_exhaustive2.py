@@ -345,8 +345,6 @@ def main() -> None:
         for line in executor.map(_build_arm, todo):
             print(line, flush=True)
 
-        grids_001 = pd.read_csv(UNION_DIR / "grids.csv")
-        reported = pd.read_csv(RUN / "metrics.csv")
         for market in MARKETS:
             for delay in DELAYS:
                 key = arm_key(market, delay)
@@ -366,25 +364,22 @@ def main() -> None:
                 got = batch_metrics(
                     cache, np.stack([np.frombuffer(v, dtype=np.int8)
                                      for v in named_vecs]))
+                # Every named grid checked against the real, unaccelerated
+                # apply_signal + performance_metrics code path -- strictly
+                # stronger than (and, since 2026-08-08, replaces) comparing
+                # delay==1 against UNION_DIR/grids.csv, an external file
+                # produced by a DIFFERENT script (probe_jm_grid_
+                # identification.py) at whatever n_init IT used. That
+                # cross-script dependency broke the moment this script's
+                # own n_init could legitimately differ (the n_init=60
+                # calibrated-only union, 2026-08-08): comparing an n_init=60
+                # batch fit against an n_init=10 external reference fails
+                # by design, not by defect. Delay 5/10 already used this
+                # self-contained check (v9.4's metrics-exploratory.csv went
+                # missing first); this makes delay==1 match and removes the
+                # grids_001/UNION_DIR-file dependency entirely.
                 worst = 0.0
-                if delay == 1:
-                    for i, name in enumerate(named_names):
-                        want = grids_001[(grids_001.market == market)
-                                         & (grids_001.grid == name)].iloc[0]
-                        for m in METRICS:
-                            worst = max(worst, abs(got[m][i] - want[m]))
-                else:
-                    # v9.4's own metrics-exploratory.csv row (the original
-                    # ground truth for this check) no longer exists on disk,
-                    # and v10's fixed_jm at delay 5/10 uses v10's own
-                    # CALIBRATED grid, not table3_sealed, so it is not a
-                    # valid substitute (confirmed: substituting it here
-                    # failed by 0.68, an expected different-grid mismatch,
-                    # not a code defect). Use a strictly stronger check
-                    # instead: batch_metrics vs. the real apply_signal +
-                    # performance_metrics code path on the table3_sealed
-                    # vector itself -- this needs no external reported file.
-                    i = named_names.index("table3_sealed")
+                for i, _name in enumerate(named_names):
                     slow = slow_metrics(cache, named_vecs[i], cfg)
                     for m in METRICS:
                         worst = max(worst, abs(got[m][i] - slow[m]))
