@@ -8,6 +8,7 @@ statement is scoped to subsets (sizes 2-8) of the 29-lambda sourced menu.
 from __future__ import annotations
 
 import itertools
+import os
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from math import comb
@@ -22,15 +23,20 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from _shu_table4 import METRICS, TABLE4  # noqa: E402
 from probe_jm_grid_exhaustive2 import (  # noqa: E402
-    TABLE5_JM,
     _arm_cache,
     arm_key,
     choice_matrix,
     digest_array,
 )
 
-IN = ROOT / "artifacts" / "jm-residual" / "08-exhaustive-nine-arms"
-OUT = ROOT / "artifacts" / "jm-residual" / "09-per-market-grids"
+# Overridable via env var (same mechanism/rationale as probe_jm_grid_
+# exhaustive2.py's AJM_UNION_DIR/AJM_EXHAUSTIVE_OUT, added 2026-08-08):
+# IN must match whatever AJM_EXHAUSTIVE_OUT was set to for the -008 run
+# this reads. Defaults unchanged.
+_DEFAULT_IN = ROOT / "artifacts" / "jm-residual" / "08-exhaustive-nine-arms"
+_DEFAULT_OUT = ROOT / "artifacts" / "jm-residual" / "09-per-market-grids"
+IN = Path(os.environ.get("AJM_PER_MARKET_IN", str(_DEFAULT_IN)))
+OUT = Path(os.environ.get("AJM_PER_MARKET_OUT", str(_DEFAULT_OUT)))
 N_JOBS, TOL = 30, 0.05
 SIZES = range(2, 9)
 MARKETS = ("us", "de", "jp")

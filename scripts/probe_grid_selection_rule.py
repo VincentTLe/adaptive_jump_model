@@ -10,6 +10,7 @@ No new grid search happens here. No strategy metric enters the selection.
 """
 
 import itertools
+import os
 import sys
 from pathlib import Path
 
@@ -30,17 +31,39 @@ from probe_jm_grid_exhaustive2 import (  # noqa: E402
     digest_array,
 )
 
-IN = ROOT / "artifacts/jm-residual/08-exhaustive-nine-arms"
-BEST = ROOT / "artifacts/jm-residual/09-per-market-grids"
+# IN/BEST overridable via env var (same mechanism as the -008/-009
+# scripts, added 2026-08-08): IN must match AJM_EXHAUSTIVE_OUT and BEST
+# must match AJM_PER_MARKET_OUT from whichever -008/-009 run this reads.
+# Referenced inside _sweep(), which runs in forkserver worker processes.
+IN = Path(os.environ.get(
+    "AJM_EXHAUSTIVE_OUT", str(ROOT / "artifacts/jm-residual/08-exhaustive-nine-arms")
+))
+BEST = Path(os.environ.get(
+    "AJM_PER_MARKET_OUT", str(ROOT / "artifacts/jm-residual/09-per-market-grids")
+))
 FIG = ROOT / "artifacts/hmm-residual/04-figure6-path"
-OUT = ROOT / "artifacts/grid-selection-rule/01-rule"
+OUT = Path(os.environ.get(
+    "AJM_RULE_OUT", str(ROOT / "artifacts/grid-selection-rule/01-rule")
+))
 MARKETS = ("us", "de", "jp")
 DELAYS = (1, 5, 10)
 SIZES = range(2, 9)
+# ADOPTED = the CURRENT baseline this run should check against. Defaults
+# to v10's original grids (the question -001 first asked); the n_init=60
+# rerun overrides this via env var to v11's grids (the question that
+# actually matters once v11 is the adopted baseline).
+_DEFAULT_ADOPTED = {
+    "us": "0.0,21.544346900318832,70.0",
+    "de": "150.0,500.0",
+    "jp": "10.0,220.0",
+}
 ADOPTED = {
-    "us": (0.0, 21.544346900318832, 70.0),
-    "de": (150.0, 500.0),
-    "jp": (10.0, 220.0),
+    market: tuple(
+        float(v) for v in os.environ.get(
+            f"AJM_ADOPTED_{market.upper()}", _DEFAULT_ADOPTED[market]
+        ).split(",")
+    )
+    for market in MARKETS
 }
 
 

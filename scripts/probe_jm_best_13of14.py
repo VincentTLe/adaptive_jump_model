@@ -8,6 +8,7 @@ Same scoping rule as -009; solutions are calibration artifacts.
 from __future__ import annotations
 
 import itertools
+import os
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from math import comb
@@ -28,8 +29,11 @@ from probe_jm_grid_exhaustive2 import (  # noqa: E402
     digest_array,
 )
 
-IN = ROOT / "artifacts" / "jm-residual" / "08-exhaustive-nine-arms"
-OUT = ROOT / "artifacts" / "jm-residual" / "09-per-market-grids"
+# Overridable via env var, same mechanism as probe_jm_per_market_grids.py.
+_DEFAULT_IN = ROOT / "artifacts" / "jm-residual" / "08-exhaustive-nine-arms"
+_DEFAULT_OUT = ROOT / "artifacts" / "jm-residual" / "09-per-market-grids"
+IN = Path(os.environ.get("AJM_PER_MARKET_IN", str(_DEFAULT_IN)))
+OUT = Path(os.environ.get("AJM_PER_MARKET_OUT", str(_DEFAULT_OUT)))
 N_JOBS, TOL = 30, 0.05
 SIZES = range(2, 9)
 
