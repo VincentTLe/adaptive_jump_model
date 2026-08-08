@@ -1,84 +1,144 @@
 schema_version = 1
-config_id = "shu-replication-calibrated-v11"
-frozen_at_utc = "2026-08-08T06:35:00Z"
-# CORRECTION (2026-08-08, before any downstream study completed): n_init
-# raised from 10 to 60 for [jm] only ([hmm].n_init stays 10, HMM is an
-# unaffected identity gate). The first v11 seal (frozen_at_utc
-# 2026-08-08T02:50:00Z, config_sha256 ef90298f32e5...) itself fit cleanly
-# at n_init=10 -- the three new grid values had never been fit together
-# before, but the FULL fixed-JM objective happened to converge. The very
-# next downstream study (simple-jm-suite-003, DD-only's single-feature
-# objective on the same v11 JP grid) hit a coordinate-descent local
-# optimum at lambda 25->26.827 (objective non-monotone, 452.901->446.815)
-# at the same standard n_init=10. Rather than patch n_init per-downstream-
-# study (as was done ad hoc for probe_luo_mulvey_grid.py and the
-# grid-selection-rule-001 cache rebuild), the owner chose to reseal v11
-# once with a higher n_init before any study depends on it, matching the
-# project's established remedy for this exact failure mode
-# (docs/audit/frequency-ladder-001-audit.md F-1: "refitting that window
-# with six times as many restarts lowers its objective"; 60 = 6x10). The
-# first v11 seal is SUPERSEDED, not deleted -- see registry CORRECTION,
-# 2026-08-08.
+config_id = "shu-replication-calibrated-v10-ninit60"
+frozen_at_utc = "2026-08-08T06:40:00Z"
+# n_init-matched comparator, frozen alongside the v11 correction
+# (2026-08-08): v10's ORIGINAL grids, refit at n_init=60 instead of the
+# original seal's n_init=10, so that a v10-ninit60 vs v11 comparison
+# isolates the grid change alone (the earlier v10(n_init=10) vs
+# v11(n_init=10) comparison, done first and independently verified --
+# docs/audit/2026-08-08-baseline-reseal-v11-receipt.md -- remains valid on
+# its own terms; this seal exists so any FUTURE study built on n_init=60
+# has a like-for-like v10-grid comparator, and no comparison ever again
+# has to silently carry two confounded protocol changes at once). The
+# original v10 seal (config_sha256 36ca1ace131c...) is UNCHANGED and
+# stays the historical baseline every pre-2026-08-08 study (simple-jm-
+# suite-002, adaptive-confidence-002, dd-loss-scale-002, grid-selection-
+# rule-001, lagged-capguard-001) is pinned against -- this is a new,
+# additional seal, not a replacement.
 [source_audit]
 run_id = "20260712T012740Z"
 path = "artifacts/data-source-audit/20260712T012740Z/audit.json"
 sha256 = "548c80cbe09f48d1070b5fc23181cb7065bc84fd4d3dbfe457a0318576388ec4"
 
 [study]
-# v11 RESEAL: the per-market JM calibration grids move to the
-# grid-selection-rule-001 winners. Everything else is byte-identical to
-# research-calibrated-v10.toml -- same data pins, features, HMM protocol,
-# selection machinery, metrics. This is still NOT a replication contract;
-# claim_class/claim_label are unchanged from v10.
+# v10 RESEAL: the JM candidate grid moves to per-market CALIBRATION grids and
+# the claim label moves with it. This is NOT a replication contract.
 #
 # What changed and why:
-#   v10 adopted its per-market grid by taking "the first row of an examples
-#   file" -- an unprincipled choice, flagged by the owner 2026-08-07.
-#   grid-selection-rule-001 (frozen 2026-08-01, completed and independently
-#   verified 2026-08-07, receipt
-#   docs/audit/2026-08-07-grid-selection-rule-001-receipt.md) replaced that
-#   with a stated rule: among each market's -009 admissible set (13/14 or
-#   14/14 published cells), adopt whichever grid has the highest daily
-#   agreement with the AUTHORS' OWN Figure-5 state sequence -- no strategy
-#   metric in the selection -- tie-broken (agreement -> fewest members ->
-#   smallest max lambda -> lexicographic) per the frozen spec.
-#     us [0.0, 0.1, 20.0, 220.0]: agreement 0.9609 (v10's grid scored 0.9476,
-#       differs, sits in the upper part of the [0.9353,0.9609] spread)
-#     de [0.1, 1.0, 10.0, 21.544346900318832, 26.826957952797247, 40.0,
-#       100.0, 500.0]: agreement 0.8951 (v10's grid scored 0.8585 -- the
-#       EXACT MINIMUM of the [0.8585,0.8951] spread: v10's German grid
-#       ranked dead last, 366th of 366, on a complete enumeration)
-#     jp [1.93069772888325, 20.0, 25.0, 26.826957952797247, 40.0,
-#       51.7947467923121, 220.0]: agreement 0.8516 (v10's grid scored
-#       0.8152, differs, below median but not worst)
-#   The winner is still a calibration artifact -- chosen by agreement with
-#   published output, not "the authors' grid" -- exactly as
-#   grid-selection-rule-001's own [honesty] block states. claim_label stays
-#   "calibrated baseline".
-#   v10's grids remain in config.py's CALIBRATED_JM_GRIDS whitelist
-#   (not removed) so the sealed v10 run stays independently reloadable.
+#   - [jm].lambda_grid: us [0.0, 21.544346900318832, 70.0]; per-market
+#     overrides de [150.0, 500.0], jp [10.0, 220.0]. Provenance: the paper
+#     never publishes its grid (line 638 says only "a range of candidate
+#     values"); the exhaustive-search chain jm-grid-identification-001 ->
+#     jm-effective-lambda-inversion-004 -> jm-grid-exhaustive-007/-008 ->
+#     jm-per-market-grid-009 searched all 6,474,511 size-2..8 subsets of a
+#     29-lambda sourced menu against Table 4 (delay 1) and Table 5 (delays
+#     5/10). The us grid passes all 14 published target cells (worst
+#     deviation 0.011/0.023/0.014 at d1/d5/d10); de and jp pass 13 of 14,
+#     with the blocking cell measured and frozen in the -009 artifacts
+#     (de: turnover, joint-constraint ceiling 1.465 vs target 1.70;
+#     jp: leverage, ceiling 0.737 lattice-wide vs target 0.75).
+#   - BECAUSE the grids were found by searching against the published
+#     targets, agreement with those cells is BY CONSTRUCTION and is not
+#     evidence of replication. These are calibration artifacts, never "the
+#     authors' grid". claim_label/claim_class say so, config.py enforces the
+#     coupling, and every downstream artifact inherits the label.
+#   - [selection].upper_boundary_month_fraction_limit: 1.0 (report-only).
+#     A 2-3 value calibration grid concentrates monthly choices at its upper
+#     edge by construction, and this contract never claims the grid brackets
+#     a finite optimum, so the 0.05 stop that (correctly) blocks replication
+#     contracts would only block the baseline this contract exists to seal.
+#     boundaries.csv still records every fraction.
+#   - Everything else is byte-identical to research-expanding-v9-4.toml:
+#     same data pins, features, HMM protocol, selection machinery, metrics.
+#     The HMM row is therefore an identity gate: it must reproduce the
+#     v9.4 run exactly, or the run is invalid.
 #
-# Consequence, per grid-selection-rule-001's own [consequence] block: every
-# mechanism result scored against the v10 DE/JP baseline since 2026-08-01
-# (dd-only, static lambda50, arrival beta=log2, scale-free penalty,
-# feature-metric rotation, adaptive-separation-001,
-# jm-disagreement-anatomy-010's DE/JP legs) must be rerun against this v11
-# baseline before "mechanism X fails in market Y" is restated.
-# lagged-capguard-001 is US-only, both its grids are unchanged from v10's
-# own g2 (v10 US calibrated) and g1 (Table-3 illustrative) -- unaffected.
+# Purpose: a sealed, honestly-labeled reference baseline so the JM extension
+# studies (simple-jm-suite, dd-loss-scale, adaptive transition costs) can be
+# rerun on replication-grade data against a fixed comparator. Extension
+# deltas against this baseline are internally valid because both sides share
+# the same frozen grids.
 #
-# Owner authorization: 2026-08-08, choosing option (a) of the reseal
-# proposal (adopt grid-selection-rule-001's winners and rerun the affected
-# mechanisms) over (b) (keep v10, treat the ranking as descriptive only).
-# Adoption decision recorded in research/experiment_registry.jsonl.
-#
-# Everything below this point is copied verbatim from
-# research-calibrated-v10.toml (all v9/v9.1/v9.2/v9.3/v9.4 provenance notes
-# apply unchanged) except config_id, frozen_at_utc, and the three
-# lambda_grid/jm_lambda_grid values.
+# Owner authorization: 2026-07-31 ("reseal ... lam di; chay lai tat ca cac
+# thi nghiem tren du lieu moi ... cung voi cac luoi lambda ma chung ta co
+# duoc"). Adoption decision recorded in research/experiment_registry.jsonl.
+# v9.4: the drawdown basis returns to total_wealth. v9.1 had adopted
+# risky_leg_wealth_flat_in_cash on the argument that Figure 5's caption pinned it
+# down; the caption is about a CUMULATIVE EXCESS RETURN axis, whose flatness in
+# cash follows from the axis and says nothing about a drawdown path. With that
+# argument gone, the basis had been selected by minimising error against Table 4,
+# which is fitting an unspecified knob to the target and is forbidden by
+# CLAUDE.md. total_wealth is the conventional reading and what v8.x used. The
+# retraction costs nothing: rescored under both bases, every cell in all three
+# markets gives the same verdict at the 0.05 tolerance. Only maximum drawdown and
+# Calmar move at all; the other six metrics never touch the drawdown path.
+# v9.3: the S&P 500 splice loses no session. The v9..v9.2 builder reconstructed
+# only up to 1987-12-31, anchored THAT level to the official index's first close
+# (1988-01-04), then dropped the row -- so the row labelled 1988-01-04 carried
+# 1987-12-31's return of -0.30% and the actual +3.59% session of 1988-01-04 was
+# deleted outright. One observation of 14,598, but a large one: every rolling
+# 3000-day window from 1988-01-04 to 1999-11 read it, which covers the first ten
+# years of the reported sample. Found by an external review (Codex), 2026-07-29.
+# The fix reconstructs THROUGH the splice date and hands over the day after;
+# 14,596 of 14,597 daily log returns are bit-identical to v9.2.
 paper = "Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3"
 claim_class = "CALIBRATED_BASELINE"
 claim_label = "calibrated baseline"
+# v9.2: the German equity series regains the dividends it was missing before
+# 1988. The DAX is a performance index, so the Stooq file was treated as total
+# return end to end -- but measured against the OECD German SHARE PRICE index it
+# runs +3.02%/yr above it over 1988-2023, exactly as a performance index should,
+# and -0.15%/yr BELOW it over 1970-1987. The vendor spliced the DAX Kursindex
+# backcast onto the performance index; both are 1000.0 on 1987-12-30 so the
+# joint leaves no trace. The consequence was a German equity risk premium of
+# -3.98%/yr sustained across eighteen years, against the +0.02%/yr that JST
+# Macrohistory reports independently for the same window. Repaired by the same
+# recipe already used for Japan: price path plus JST annual German dividend
+# yields, chained onto the official base value. After the repair the backcast
+# era carries +3.24%/yr of dividend against the official era's +3.02%, the
+# premium moves to -0.60% against JST's +0.02%, and daily volatility shifts
+# 0.004pp. Note this cannot be fitting: Table 4's German column covers
+# 1990-2023, which lies entirely inside the untouched official segment.
+# Built and gated by scripts/build_de_total_return.py.
+# v9.1: the drawdown row moves onto the path the paper measures it on. Table 4
+# never defines it, but two published facts pin it down together. First, the
+# buy-and-hold drawdowns (-55.2% / -72.7% / -79.1%) are reproduced to 0.001 /
+# 0.000 / 0.012 only with the equity leg at total return, which rules out any
+# excess-return path. Second, the caption of Figure 5 [line 899-900] says the
+# shading marks days "when the JM-guided 0/1 strategy is fully invested in the
+# risk-free asset, leading to a flat yellow curve" -- so the plotted strategy
+# path pays nothing while in cash. Total return when invested plus nothing when
+# in cash is this basis, and it is forced by those two facts rather than chosen
+# to fit anything. Tested on ten cells, four of which use Shu's own position
+# paths read off Figures 5 and 6: mean absolute drawdown error falls from 0.0330
+# to 0.0072 and mean absolute Calmar error from 0.0262 to 0.0055. Evidence in
+# artifacts/hmm-residual/06-mdd-convention/. Nothing else moves from v9, and
+# selection never reads the drawdown, so no fitted state changes.
+# v9: the equity series for the US changes from the CRSP value-weighted total
+# market to the S&P 500 the paper names at [line 153-155] "The data analyzed in
+# this article comprises the daily total return series of three major equity
+# indices: S&P 500, DAX, and Nikkei 225". The substitution was recorded as a
+# deviation from the first contract and treated as harmless because
+# buy-and-hold matched. It was not harmless: on 1987-10-19 the S&P 500 fell
+# 20.47% and CRSP fell 17.41%, so every 3000-day window containing that day
+# fitted a high-volatility regime about 8 percentage points below Figure 2's
+# published values, and the US HMM turned defensive across 1998-2002 where the
+# paper's model did not. Full trace in docs/audit/2026-07-full-audit.md.
+# Nothing else moves: Germany and Japan already use the paper's own indices.
+# v8.4: 1970-01-01 (v8.3) truncated the series at acquisition, which pushed the
+# 3000th complete feature day to 1982-02-17 (us) / 1982-05-28 (de) / 1982-08-02
+# (jp) and flipped the [oos_start] max() branch onto "fit + 8 years", so the
+# three markets started out of sample 2, 5 and 7 months after the paper's
+# 1990-01-02 and did not even share a window with each other. The source series
+# all begin in 1965 and DTB3 in 1954, so no data was missing; only the requested
+# start bound. 1969-05-01 is the latest month start that puts every market back
+# on the paper's anchor. [oos_start] resolves to us 1990-01-02, de 1990-01-02,
+# jp 1990-01-04. The first row of the reported table is later where a delay-10
+# candidate has no position yet, because [metrics].comparison_sample intersects
+# complete rows across every model and delay: us 1990-01-02, de 1990-01-02,
+# jp 1990-01-19. Quote the second set when reporting a window.
+# The choice keeps the expanding-standardizer anchor as close to 1970 as the
+# rule allows.
 requested_sample_start = "1969-05-01"
 replication_cutoff = "2023-12-31"
 extension_download_enabled = false
@@ -156,7 +216,7 @@ state_cash_label = 1
 
 [jm]
 implementation = "jumpmodels.JumpModel"
-lambda_grid = [0.0, 0.1, 20.0, 220.0]
+lambda_grid = [0.0, 21.544346900318832, 70.0]
 n_init = 60
 random_state = 0
 max_iter = 1000
@@ -266,7 +326,7 @@ max_staleness_calendar_days = 10
 
 [[markets]]
 id = "de"
-jm_lambda_grid = [0.1, 1.0, 10.0, 21.544346900318832, 26.826957952797247, 40.0, 100.0, 500.0]
+jm_lambda_grid = [150.0, 500.0]
 name = "Germany"
 currency = "EUR"
 classification = "proxy_replication"
@@ -307,7 +367,7 @@ max_staleness_calendar_days = 120
 
 [[markets]]
 id = "jp"
-jm_lambda_grid = [1.93069772888325, 20.0, 25.0, 26.826957952797247, 40.0, 51.7947467923121, 220.0]
+jm_lambda_grid = [10.0, 220.0]
 name = "Japan"
 currency = "JPY"
 classification = "proxy_replication"

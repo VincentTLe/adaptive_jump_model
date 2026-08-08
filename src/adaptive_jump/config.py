@@ -510,6 +510,23 @@ def _model_protocol(row: dict[str, Any]) -> ModelProtocol:
     return ModelProtocol(n_states, fit_window, risky, cash, standardizer, min_obs)
 
 
+# n_init is locked to 10 for every replication-lineage contract (v7..v9.4,
+# and the original v10/v11 calibrated seals): a fixed, small, unchanged
+# restart count keeps the whole comparability chain on one footing and
+# blocks the ad hoc "raise n_init until it converges nicely" pattern.
+# 60 is allowed ONLY for calibrated-baseline contracts (never replication
+# contracts), and only as a deliberate, symmetric correction: 2026-08-08,
+# the v10/v11 calibrated seals were BOTH resealed at n_init=60 together
+# (not just whichever one hit a local optimum first) after
+# simple-jm-suite-003's DD-only fit hit a coordinate-descent local optimum
+# on v11's new grid at the standard n_init=10 (docs/audit/
+# frequency-ladder-001-audit.md F-1 precedent: 6x restarts). Resealing
+# only the affected side would have reintroduced an uncontrolled variable
+# into the v10-vs-v11 grid comparison already independently verified at
+# matched n_init=10 (docs/audit/2026-08-08-baseline-reseal-v11-receipt.md).
+CALIBRATED_JM_N_INITS = (10, 60)
+
+
 def _jm_protocol(row: dict[str, Any], calibrated: bool = False) -> JMProtocol:
     grid = _number_tuple(row, "lambda_grid")
     allowed = HISTORICAL_JM_GRIDS + (CALIBRATED_JM_GRIDS if calibrated else ())
@@ -527,8 +544,13 @@ def _jm_protocol(row: dict[str, Any], calibrated: bool = False) -> JMProtocol:
         _positive_number(row, "tol"),
         tuple(refit),
     )
+    n_inits = CALIBRATED_JM_N_INITS if calibrated else (10,)
     _require(
-        protocol == JMProtocol(grid, 10, 0, 1000, 1e-8, (1, 7)), "invalid JM settings"
+        any(
+            protocol == JMProtocol(grid, n, 0, 1000, 1e-8, (1, 7))
+            for n in n_inits
+        ),
+        "invalid JM settings",
     )
     return protocol
 
