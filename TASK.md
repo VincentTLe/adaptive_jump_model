@@ -2,6 +2,22 @@
 
 ## Just completed
 
+**Mulvey-lab literature sweep — closed, no rescue for DE/JP.** Read 7
+companion papers from the same Princeton lab (2406.09578, 2410.14841,
+plus 5 more acquired 2026-08-08: the CJM paper, Deep-SJM, Allocation-
+Focused Regimes, Deep-Generative-Models, and Luo & Mulvey 2026 — the one
+the owner's advisor specifically flagged for its page-13 grid disclosure).
+None discloses the target paper's (2402.05272) actual grid; every paper
+uses a different feature set, standardization silence, and validation
+protocol (no lab house-style). The one real, disclosed, real-market grid
+found (Luo & Mulvey's λ∈[1,100]-step-10) was tested directly against
+Table 4 (same method as jm-grid-identification-001's other 8 named grids,
+n_init raised 10→60 to clear a local optimum at λ=61→71 never fit before)
+— result us 5/8, de 3/8, jp 3/8 within tolerance, worse than the existing
+frontier grids on both markets. Confirms rather than contradicts: the
+DE/JP block is state-sequence shape, not λ menu coverage. Registry:
+jm-grid-identification-001 PROCESS_NOTE (FROZEN + EXPERIMENT_COMPLETE).
+
 **grid-selection-rule-001 — complete, verified, v11 reseal PROPOSED (not
 performed).** A frozen 2026-08-01 spec (owner-approved) that orders each
 market's already-admissible grids (the 13/14 or 14/14 -009 sets) by daily
