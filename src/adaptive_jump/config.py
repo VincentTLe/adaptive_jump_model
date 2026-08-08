@@ -44,9 +44,22 @@ HISTORICAL_JM_GRIDS = (
 # A contract carrying one must therefore declare claim_label
 # "calibrated baseline"; load_config enforces the coupling both ways.
 CALIBRATED_JM_GRIDS = (
-    (0.0, 21.544346900318832, 70.0),  # us: passes all 14 target cells
-    (150.0, 500.0),  # de: best 13/14, turnover is the measured blocking cell
-    (10.0, 220.0),  # jp: best 13/14, leverage is the measured blocking cell
+    (0.0, 21.544346900318832, 70.0),  # v10 us: passes all 14 target cells
+    (150.0, 500.0),  # v10 de: best 13/14, turnover is the blocking cell
+    (10.0, 220.0),  # v10 jp: best 13/14, leverage is the blocking cell
+    # v11 grids, adopted by owner decision 2026-08-08 following
+    # grid-selection-rule-001 (frozen 2026-08-01, completed and
+    # independently verified 2026-08-07): among each market's -009
+    # admissible set, the grid with highest daily agreement with the
+    # AUTHORS' OWN Figure-5 state sequence, tie-broken by fewest members
+    # then smallest max lambda then lexicographic, per the frozen spec's
+    # own rule. v10's grids are LEFT IN PLACE above (not removed) so
+    # sealed v10 runs remain independently reloadable/replayable.
+    (0.0, 0.1, 20.0, 220.0),  # v11 us: agreement 0.9609 (v10 was 0.9476)
+    (0.1, 1.0, 10.0, 21.544346900318832, 26.826957952797247, 40.0, 100.0,
+     500.0),  # v11 de: agreement 0.8951 (v10 was 0.8585, ranked dead last)
+    (1.93069772888325, 20.0, 25.0, 26.826957952797247, 40.0,
+     51.7947467923121, 220.0),  # v11 jp: agreement 0.8516 (v10 was 0.8152)
 )
 
 # hmmlearn's covars_prior default is 0.01, which turns the paper's plain
