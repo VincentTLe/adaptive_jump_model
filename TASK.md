@@ -2,6 +2,37 @@
 
 ## Just completed
 
+**baseline-reseal-v11 — SEALED and independently verified (owner chose
+option (a): reseal + rerun).** `research-calibrated-v11.toml` adopts
+grid-selection-rule-001's winning per-market grids (us [0,0.1,20,220]; de
+[0.1,1,10,21.544,26.827,40,100,500]; jp [1.931,20,25,26.827,40,51.795,220]),
+byte-identical to v10 otherwise. Run
+`fixed-baselines-ef90298f32e5-5c822491f87a-82c4499ff4ac`, status complete,
+directional gate passed, HMM identity gate exact. Table 4/5 pass counts
+UNCHANGED from v10 (us 14/14, de 13/14, jp 13/14) but DE/JP blocking-cell
+deviations measurably tighten (DE turnover 1.4363→0.9090, JP leverage
+0.1498→0.1206) under a grid chosen purely by state-path agreement with the
+authors' Figure-5, zero strategy metric in the selection — an encouraging
+independent cross-check, not a replication claim. CONFIRMED by a separate
+verifying agent (receipt
+`docs/audit/2026-08-08-baseline-reseal-v11-receipt.md`): config hash,
+HMM-identity, full raw-feature pipeline replay for US/JP (diff ≤3.3e-14),
+`adaptive-jump verify` all exact. v10's grids remain whitelisted in
+config.py so the sealed v10 run stays independently reloadable.
+
+**NEXT REQUIRED (per grid-selection-rule-001's own consequence rule, not
+yet started):** rerun dd-only, static lambda50, arrival beta=log2,
+scale-free penalty, feature-metric rotation, adaptive-separation-001, and
+jm-disagreement-anatomy-010's DE/JP legs against v11 before restating any
+"mechanism X fails in market Y" verdict. Several of these have known bugs
+flagged in the 2026-08-07 idea survey that should be fixed during the
+rerun, not carried forward: scale-free-penalty-001 never ran the mechanism
+it named (needs a fresh spec, can't patch the old id); feature-metric-
+rotation-001 has a tautological causality falsifier and a single-reference
+gap-normalization bug; the simple-jm-suite return-aware/Robust-L1 variants
+were fit through an unintended double-standardization scaler bug. This is
+the largest remaining block of work from the 2026-08-07/08 sessions.
+
 **Mulvey-lab literature sweep — closed, no rescue for DE/JP.** Read 7
 companion papers from the same Princeton lab (2406.09578, 2410.14841,
 plus 5 more acquired 2026-08-08: the CJM paper, Deep-SJM, Allocation-
@@ -35,13 +66,8 @@ rebuilding lost -008/-009 binary caches first (substituted v10's run
 directory for the deleted v9.4-hash one; all load-bearing rebuilt outputs
 verified byte-identical to the sealed originals before use).
 
-**Decision pending from the owner:** per the spec's own consequence rule, a
-v11 reseal is proposed, not automatic. If accepted, every mechanism result
-scored against the v10 DE/JP baseline since 2026-08-01 — dd-only, static
-lambda50, arrival beta=log2, scale-free penalty, feature-metric rotation,
-`adaptive-separation-001`, and `jm-disagreement-anatomy-010`'s DE/JP legs —
-must be rerun before "mechanism X fails in market Y" is restated.
-`lagged-capguard-001` is US-only and unaffected either way.
+(Owner chose the reseal 2026-08-08 — see baseline-reseal-v11 above.
+`lagged-capguard-001` below is US-only and unaffected either way.)
 
 **lagged-capguard-001 — NOT SUPPORTED, certified.** The cap-guarded lagged
 challenger (owner-directed, US only, both baseline grids, frozen spec
@@ -78,11 +104,11 @@ doc instead.
 
 ## Next
 
-**Owner decision needed:** accept the v11 reseal (adopt each market's
-grid-selection-rule-001 winner) or keep v10 and treat the ranking as
-descriptive only. Either way, the next actual experiment work is rerunning
-the mechanism list above against whichever baseline is chosen — this is
-mechanical (baselines + rerun harness both already exist), not new design.
+**In progress:** rerun dd-only, static lambda50, arrival beta=log2,
+scale-free penalty, feature-metric rotation, adaptive-separation-001, and
+jm-disagreement-anatomy-010's DE/JP legs against v11 — mechanical (v11
+baseline + rerun harness both already exist), except where a known bug
+(see baseline-reseal-v11 above) needs fixing first.
 
 After that queue clears, the standing motivated candidate is **semi-Markov
 dwell cost** (nonzero-diagonal penalty; `dp_tv` already sums stay-penalties,
