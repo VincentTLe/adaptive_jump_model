@@ -1,158 +1,200 @@
-# Task state (2026-08-07)
+# Task state (2026-08-09)
 
-## Just completed
+## Pending owner decisions (nothing below is adopted until decided)
 
-**baseline-reseal-v11 — SEALED and independently verified (owner chose
-option (a): reseal + rerun).** `research-calibrated-v11.toml` adopts
-grid-selection-rule-001's winning per-market grids (us [0,0.1,20,220]; de
-[0.1,1,10,21.544,26.827,40,100,500]; jp [1.931,20,25,26.827,40,51.795,220]),
-byte-identical to v10 otherwise. Run
-`fixed-baselines-ef90298f32e5-5c822491f87a-82c4499ff4ac`, status complete,
-directional gate passed, HMM identity gate exact. Table 4/5 pass counts
-UNCHANGED from v10 (us 14/14, de 13/14, jp 13/14) but DE/JP blocking-cell
-deviations measurably tighten (DE turnover 1.4363→0.9090, JP leverage
-0.1498→0.1206) under a grid chosen purely by state-path agreement with the
-authors' Figure-5, zero strategy metric in the selection — an encouraging
-independent cross-check, not a replication claim. CONFIRMED by a separate
-verifying agent (receipt
-`docs/audit/2026-08-08-baseline-reseal-v11-receipt.md`): config hash,
-HMM-identity, full raw-feature pipeline replay for US/JP (diff ≤3.3e-14),
-`adaptive-jump verify` all exact. v10's grids remain whitelisted in
-config.py so the sealed v10 run stays independently reloadable.
+1. **DA-JM: the 5 open design questions.** Proposals delivered 2026-08-09
+   (owner is thinking them over — explicitly NOT approved yet):
+   D_max = 504 trading days with a geometric tail beyond the cap; left-censor
+   the first in-window segment (no age surcharge on it); no duration-reset
+   question exists (the architecture decodes a fresh trailing window daily);
+   anchor pi per (market, state) to sealed mean segment length excluding the
+   right-censored final segment, re-anchored per beta by mean-matching;
+   three preregistered scenario arms beta in {0.5, 1.0, 2.0} with no CV over
+   beta. Full grounding in registry NOTE
+   `da-jm-open-questions-factfinding-2026-08-09`.
+2. **DE v12 reseal question.** At n_init=60, v11's currently-adopted DE grid
+   fails its own admissibility bar and a different grid
+   {26.826957952797247, 30, 40} is the verified winner (details below).
+   Owner chose (2026-08-08) to record the finding and return to the rerun
+   queue first; whether to reseal a v12 remains open.
+3. **lambda50 donor asymmetry.** The static_lambda50 donor (v10 machinery,
+   n_init=10) is now KNOWN not fully converged on >=2 DE windows (objectives
+   improve by 9.2e-3 and 0.187 at n_init=60). The running simple-jm-suite-003
+   therefore compares 10-start donor states against the 60-start canonical
+   baseline. Options: accept with a disclosed caveat, or rebuild the donor at
+   n_init=60 (small run + spec CORRECTION/refreeze + suite rerun). Flagged in
+   registry PROCESS_NOTE 2026-08-09; not acted on.
+4. **DA-JM formalization doc revision** (gated on decision 1): the verified
+   revision list — retract the Section-7 sigmoid back-out, restate the gate
+   as an objective identity under the excess-cost form, recast Section 6 in
+   excess terms — is written down in the fact-finding NOTE and waits for the
+   parameterization decision before the doc is edited.
 
-**NEXT REQUIRED (per grid-selection-rule-001's own consequence rule, not
-yet started):** rerun dd-only, static lambda50, arrival beta=log2,
-scale-free penalty, feature-metric rotation, adaptive-separation-001, and
-jm-disagreement-anatomy-010's DE/JP legs against v11 before restating any
-"mechanism X fails in market Y" verdict. Several of these have known bugs
-flagged in the 2026-08-07 idea survey that should be fixed during the
-rerun, not carried forward: scale-free-penalty-001 never ran the mechanism
-it named (needs a fresh spec, can't patch the old id); feature-metric-
-rotation-001 has a tautological causality falsifier and a single-reference
-gap-normalization bug; the simple-jm-suite return-aware/Robust-L1 variants
-were fit through an unintended double-standardization scaler bug. This is
-the largest remaining block of work from the 2026-08-07/08 sessions.
+## Current state — baselines and the n_init saga
 
-**Mulvey-lab literature sweep — closed, no rescue for DE/JP.** Read 7
-companion papers from the same Princeton lab (2406.09578, 2410.14841,
-plus 5 more acquired 2026-08-08: the CJM paper, Deep-SJM, Allocation-
-Focused Regimes, Deep-Generative-Models, and Luo & Mulvey 2026 — the one
-the owner's advisor specifically flagged for its page-13 grid disclosure).
-None discloses the target paper's (2402.05272) actual grid; every paper
-uses a different feature set, standardization silence, and validation
-protocol (no lab house-style). The one real, disclosed, real-market grid
-found (Luo & Mulvey's λ∈[1,100]-step-10) was tested directly against
-Table 4 (same method as jm-grid-identification-001's other 8 named grids,
-n_init raised 10→60 to clear a local optimum at λ=61→71 never fit before)
-— result us 5/8, de 3/8, jp 3/8 within tolerance, worse than the existing
-frontier grids on both markets. Confirms rather than contradicts: the
-DE/JP block is state-sequence shape, not λ menu coverage. Registry:
-jm-grid-identification-001 PROCESS_NOTE (FROZEN + EXPERIMENT_COMPLETE).
+**Four sealed calibrated-baseline configs now exist.** The paper specifies
+n_init=10 for the JM (shu_paper.txt lines 481-482), so replication-lineage
+contracts stay hard-locked at 10; `CALIBRATED_JM_N_INITS = (10, 60)` in
+config.py relaxes ONLY calibrated contracts:
 
-**grid-selection-rule-001 — complete, verified, v11 reseal PROPOSED (not
-performed).** A frozen 2026-08-01 spec (owner-approved) that orders each
-market's already-admissible grids (the 13/14 or 14/14 -009 sets) by daily
-agreement with the AUTHORS' own Figure-5 state sequence — no strategy
-metric involved — instead of "first row of an examples file" (how v10 was
-actually chosen). Result, full and untruncated: US winner {0,0.1,20,220}
-0.9609 vs adopted {0,21.5,70} 0.9476 (differs, upper part of spread); **DE
-winner {0.1,1,10,21.5,26.8,40,100,500} 0.8951 vs adopted {150,500} 0.8585
-— the adopted German grid ranks DEAD LAST, 366th of 366, on a complete
-enumeration**; JP winner {1.93,20,25,26.8,40,51.8,220} 0.8516 vs adopted
-{10,220} 0.8152 (differs, below median, not worst). Independently CONFIRMED
-by full from-scratch recomputation of all 366 DE grids (receipt:
-`docs/audit/2026-08-07-grid-selection-rule-001-receipt.md`). Required
-rebuilding lost -008/-009 binary caches first (substituted v10's run
-directory for the deleted v9.4-hash one; all load-bearing rebuilt outputs
-verified byte-identical to the sealed originals before use).
+- v10 original (n_init=10, config `36ca1ace…`) — the historical pin every
+  pre-2026-08-08 study references. UNCHANGED.
+- v10-ninit60 (config `bd47fa83…`) — v10's grids refit at n_init=60.
+- v11 original (n_init=10, config `ef90298f…`) — SUPERSEDED for downstream
+  use (registry CORRECTION 2026-08-08).
+- **v11-ninit60 (config `5b12efa2…`, run
+  `fixed-baselines-5b12efa2948c-d57a9e7d9c07-b277dea3beb3`) — the canonical
+  baseline for all new downstream work.**
 
-(Owner chose the reseal 2026-08-08 — see baseline-reseal-v11 above.
-`lagged-capguard-001` below is US-only and unaffected either way.)
+Why: simple-jm-suite-003's dd_only fit hit a coordinate-descent local
+optimum on v11's new JP grid (lambda 25→26.827, objective non-monotone
+452.901→446.815) at the standard n_init=10. Owner chose the symmetric
+correction: reseal BOTH v10 and v11 at n_init=60 so the grid comparison
+stays clean at matched optimizer fidelity. Both reseals independently
+verified (receipts in docs/audit/).
 
-**lagged-capguard-001 — NOT SUPPORTED, certified.** The cap-guarded lagged
-challenger (owner-directed, US only, both baseline grids, frozen spec
-`1e6b03a7…`) made the worst-grid delta WORSE: min-over-grids ΔSharpe
-capguard −0.0709 vs plain lagged −0.0638, and fails the −0.05 rent. Visual
-autopsy (owner-directed, redrawn in the paper's own Figure-5 grammar after a
-style correction) localized the failure: lagged re-enters mid-way through
-the August 2022 bear-market rally and rides the October leg down while
-fixed stays in cash — the concrete motivation for a semi-Markov dwell-cost
-candidate, not just an unmotivated variant. Independent verifier CERTIFIED
-7/7. Per the registered interpretation the cap-guard idea is CLOSED for the
-lagged mechanism.
+**The n_init=60 rebuild chain (grid-selection-rule-001-ninit60) — complete
+and independently verified end-to-end:**
 
-**Replication track — CLOSED with per-market labels** (2026-08-07 atlas,
+- 29-lambda union rebuilt at n_init=60, parity-gated exactly against the
+  sealed ninit60 baselines.
+- -008 exhaustive rerun (6,474,511 subsets): **Germany delay-1 now has 2
+  passing grids — {0,40,1000} and {0,40,500,1000} — where n_init=10 found
+  ZERO of 6.47M.** Turnover, the cell that blocked every prior DE grid
+  (dev 0.9-1.4), is now essentially exact (dev 0.0009). Neither grid passes
+  delay-10, so all-nine stays 0; scope per the frozen spec: a calibration
+  artifact now exists for DE, NOT "Germany replicated".
+- -009 rerun: DE 389 / JP 5348 admissible grids (>=7/8 delay-1 + full
+  delay-5/10); still ZERO DE/JP grids passing all three delays.
+- Ranking rerun: US/JP minor churn only — both adopted grids stay admissible
+  within ~0.002-0.003 of the new top (JP's own agreement bit-identical to
+  its n_init=10 score). **DE: v11's adopted 8-value grid is DISQUALIFIED —
+  refit at n_init=60 it scores only 6/8 Table-4 delay-1 (sharpe dev 0.0507,
+  turnover dev 0.8797) and 2/3 delay-10, below both admissibility bars, so
+  it drops out of the 389-grid ranking entirely. The new winner
+  {26.826957952797247, 30, 40} passes 7/8 + 3/3 + 3/3 and scores Figure-5
+  agreement 0.9074 — higher than any DE grid ever found at n_init=10 (old
+  winner 0.8951; v10's {150,500} was 0.8585, dead last).** Independent
+  verifier reproduced everything from raw pipeline refits (parity vs sealed
+  baseline 2.3e-14; agreement to 10 decimals). Receipt:
+  `docs/audit/2026-08-08-grid-selection-rule-001-ninit60-receipt.md`.
+
+## Current state — rerun queue against v11-ninit60
+
+**simple-jm-suite-003 — RUNNING (third attempt, in background).** Spec
+corrected + refrozen (2026-08-08T23:50Z, sha `dc212949…`) to point at
+v11-ninit60. Attempt 1 (old spec, v11 n_init=10) crashed on the JP local
+optimum — the crash that triggered the whole n_init investigation. Attempt
+2 completed ALL fits (~5.5h) and died at the final trace-receipt stage:
+the static_lambda50 trace verified v10 donor evidence (sealed n_init=10)
+but refit at the live n_init=60, finding lower objectives on 2 DE windows.
+Fixed 2026-08-09 (`_trace_evidence` now replays the donor's own protocol —
+a receipt must replay the protocol that produced the evidence it checks);
+both incomplete run dirs left on disk for investigability. Only
+static_lambda50 / dd_only / confirmed_2d are valid results of this run;
+return_aware / robust_l1 carry the known double-standardization defect
+forward as same-defect controls only.
+
+**Rest of the original rerun queue, honestly relabeled:**
+- adaptive-separation-001 and jm-disagreement-anatomy-010 DE/JP legs — do
+  NOT need v11 reruns (earlier overbroad claim corrected in registry: one
+  uses the v7-era proxy config, the other the Table-3 grid).
+- arrival beta=log2 (adaptive-confidence-002) — UNRUNNABLE, its
+  implementation modules were deleted in the 2026-08-05 cleanup; needs
+  resurrection as separate work.
+- scale-free-penalty and feature-metric-rotation — need fresh specs (the
+  old ids carry disqualifying bugs: mechanism-never-ran and a tautological
+  falsifier + gap-normalization bug respectively).
+- frequency-ladder-001 — open defect F-1 (JP 1989-07-03 window violates
+  monotonicity; the recorded map is not converged at n_init=10). Tracked by
+  a pre-existing xfail in tests; repair or spec correction pending.
+
+## Next research direction — DA-JM (Duration-Aware Jump Model)
+
+The standing motivated extension candidate, sharpened by the
+lagged-capguard-001 autopsy (model re-enters mid-way through the August
+2022 bear-market rally and rides the October leg down — a short-segment /
+regime-age failure a constant lambda cannot encode). Progress so far, all
+math/no code, everything independently verified:
+
+1. **Novelty sweep** (registry `da-jm-novelty-sweep-2026-08-08`):
+   duration-dependence itself is decades old (Sichel 1991; Durland &
+   McCurdy 1994; Bulla & Bulla 2006 — the exact paper the CJM authors cite
+   for their own robustness stress test); none of the Mulvey-lab papers
+   implement any duration/hazard penalty (confirmed by direct PDF read);
+   the one real gap is embedding a duration cost inside the SJM's
+   penalized-DP framework specifically.
+2. **Formalization** (`docs/theory/da-jm-formalization.md` + receipt
+   `docs/audit/2026-08-08-da-jm-formalization-receipt.md`): discrete-Weibull
+   duration family, hazard-decomposed augmented-state DP V_t(k,d), reduction
+   theorem at beta=1, right-censoring exactness, M-step invariance (gap
+   found and closed by the independent verifier).
+3. **Open-questions fact-finding** (registry
+   `da-jm-open-questions-factfinding-2026-08-09`, 5-agent workflow):
+   - RETRACTION-GRADE: the doc's pi=sigmoid(lambda) back-out is unusable —
+     at lambda>=~37 float64 rounds pi to exactly 1.0 (the model can never
+     switch); at lambda=20 the surviving effect is inert except a
+     sign-perverse v-term. Implied durations at calibrated lambdas are
+     astronomical (lambda=20 → 4.9e8 days) vs observed 130-1190 days:
+     in the JM, durations are loss-driven, not penalty-driven.
+   - Replacement (adversarially verified, pending owner approval): an
+     EXCESS duration cost log[q_geometric/q_Weibull] added on top of the
+     untouched calibrated-lambda machinery; beta=1 gives a term-by-term
+     objective identity with classic JM for any anchor; DP with negative
+     excess edges verified against brute force (300/300); per-beta
+     mean-matched re-anchoring is load-bearing (without it q(1) is
+     beta-invariant and short segments are not discriminated).
+   - Machinery facts (file:line verified): candidate states come from a
+     DAILY fresh online decode of the trailing 3000-row window with frozen
+     centroids — no persistent duration counter exists anywhere, so
+     "reset across refits" dissolves into the window-boundary censoring
+     convention. Scenario arms keep columns == lambda grid, so the monthly
+     CV machinery needs zero API change. The lambda-monotonicity gate's
+     argument still holds at fixed beta; cross-beta needs its own gate. An
+     augmented (k,d) DP needs a custom fit loop (JumpModel.fit treats every
+     DP state as a cluster; precedent: simple_jm_fitting).
+   - Literature: Durland-McCurdy froze the hazard beyond tau=9 quarters
+     (chosen by in-sample likelihood search — a method this repo forbids;
+     Lam 1997/2004 chose 40 quarters a priori instead). Guedon/Yu censoring
+     conventions support the left-censor proposal. No prior art found for
+     the LLR-vs-geometric formulation (searched ~7 phrasings). Empirical
+     magnitudes split by regime-definition camp: daily latent-state
+     (Bulla: effective beta ~0.4-0.6, hazard decreasing in BOTH states) vs
+     dated-phase (bear hazard rising; NB shape 2 ~ beta 1.4) — which is
+     why the proposed scenario set {0.5, 1.0, 2.0} brackets both.
+
+After the owner decides the 5 questions: revise the formalization doc per
+the verified revision list, then freeze a research/*.toml spec with its own
+experiment id (comparators B&H / HMM / JM / DA-JM, same features, data,
+selection, costs, delays), then code.
+
+## Closed tracks (stable, unchanged)
+
+**Replication — CLOSED with per-market labels** (2026-08-07 atlas,
 verifier-certified 9/9; `docs/atlas/replication-atlas.html`): US ≈
 replicated (30/30 shifts, Sharpe 0.683 vs 0.68, 95.7% daily concordance at
-λ=35); DE/JP bounded-with-causes — their Fig-5 sequences are not generable
-from public information (0 of 6.47M grids; geometry family exhausted), and
-jm-disagreement-anatomy-010 (NOT SUPPORTED) moved the residual attribution
-from data/vintage to the authors' unpublished selection/geometry. Reopen
+lambda=35); DE/JP bounded-with-causes — their Fig-5 sequences are not
+generable from public information under the n_init=10 geometry family
+(the n_init=60 DE delay-1 finding above narrows but does not overturn
+this: delay-10 still fails and the artifact is calibration-lane). Reopen
 only on a new primary source (Yu dissertation, DataSpace, re-check late
 2026; author e-mail sent by owner, no reply).
 
-**Documentation audit — Table-3 grid mischaracterization, fixed.** Owner
-correction: the Table-3 illustrative grid {0,5,15,35,70,150} is not Shu's
-disclosed production/CV grid. An 8-agent audit found this caveat already
-present in SCIENTIFIC_LEDGER.md/hyperparameter-grid-attribution.toml since
-2026-07-17/18 but missing from this session's newer deliverables; added it
-in 10 locations (labeling-only, no certified number changed). One edit
-(research/ajm-ext-001.toml) was attempted and reverted — that contract is
-hash-enforced against its certified run and even a comment breaks
-`tests/test_ajm_ext_runner.py`; the clarification went into the receipt
-doc instead.
+**Mulvey-lab literature sweep — closed, no rescue for DE/JP.** 7 companion
+papers read; none discloses the target paper's grid; the one disclosed
+real-market grid (Luo & Mulvey lambda ∈ [1,100] step 10) tested directly:
+us 5/8, de 3/8, jp 3/8 — worse than existing frontier grids.
 
-## Next
+**lagged-capguard-001 — NOT SUPPORTED, certified 7/7.** Cap-guard worsened
+the worst-grid delta (ΔSharpe −0.0709 vs −0.0638). Its autopsy is the
+motivation for DA-JM above. CLOSED for the lagged mechanism.
 
-**In progress:** rerun dd-only, static lambda50, arrival beta=log2,
-scale-free penalty, feature-metric rotation, adaptive-separation-001, and
-jm-disagreement-anatomy-010's DE/JP legs against v11 — mechanical (v11
-baseline + rerun harness both already exist), except where a known bug
-(see baseline-reseal-v11 above) needs fixing first.
+**grid-selection-rule-001 (n_init=10 era) — complete, verified.** Its
+winners were adopted into v11; its own n_init=60 rerun (above) then
+disqualified the DE winner — recorded as the live v12 question, not as an
+error in the frozen rule.
 
-After that queue clears, the standing motivated candidate is **duration-aware
-(semi-Markov) dwell cost** — sharpened by the lagged-capguard-001 autopsy into
-a concrete target: penalize exactly the "re-enter mid-chop, get run over"
-behavior it diagnosed.
-
-CORRECTION (2026-08-08, before any code ran): the line above previously said
-"nonzero-diagonal penalty; `dp_tv` already sums stay-penalties, so no solver
-change." That is true only for a constant marginal stay-cost — verified by
-hand: a discrete-Weibull duration cost phi_k(d) = -log q_k(d) is affine in d
-exactly at shape beta=1 (the geometric/memoryless case), where the marginal
-cost per extra day is the constant -log(q_k) — and a constant marginal cost is
-exactly what `dp_tv`'s existing nonzero-diagonal `penalty_seq[t][k,k]` already
-sums. That constant-hazard case recovers the *original* constant-lambda JM,
-not a semi-Markov extension. Genuine duration-dependence (beta != 1, hazard
-that changes with regime age) needs an augmented-state DP, `V_t(k,d)` instead
-of `V_t(k)` (state (k,d): stay -> (k,d+1), switch -> (k',1)), which the
-current solver does not have. Cost is still cheap (O(T*K*D_max), no
-combinatorial blowup), but "no solver change" was wrong and is retracted.
-Needs its own frozen question and experiment id before any code runs; formal
-DP derivation comes first, per owner request 2026-08-08.
-
-**Literature novelty check done (2026-08-08, registry NOTE
-`da-jm-novelty-sweep-2026-08-08`):** duration-dependent/semi-Markov regime
-switching is NOT novel in general — settled since the 1990s (Sichel 1991
-Weibull-hazard NBER cycles; Durland & McCurdy 1994; Diebold-Lee-Weinbach 1994;
-Bulla & Bulla 2006 for finance, the exact paper the CJM authors themselves
-cite for their own duration-misspecification stress test). Confirmed by
-direct PDF read (not inference) that none of the three checked Mulvey-lab
-papers (Continuous JM `ssrn-4556048`, state-aware/MoE JM `ssrn-5817083`,
-allocation-focused regimes `ssrn-5235747`) implement any duration/hazard
-penalty — all are strictly first-order, function of `(s_{t-1},s_t)` only.
-No paper found (two independent search angles) combining explicit-duration/
-hazard cost with the SJM/JM-lineage's penalized-DP framework specifically —
-this is the one real gap. Defensible framing: do NOT claim
-duration-dependence itself is novel (cite Sichel 1991, Bulla & Bulla 2006 as
-prior art); the correctly-scoped claim is narrower — embedding a duration/
-hazard cost inside the SJM's penalized-DP objective, which needs the
-augmented-state DP `V_t(k,d)` above, has not been done. Caveat: single search
-pass per angle; a second independent pass on very recent 2025–2026 SJM
-preprints is warranted before fully certifying, per this project's
-separate-audit-agent convention — not yet done.
-
-An independent 8-agent survey of every other past-proposed, not-yet-run idea
-(23 ranked candidates) is available on request; several are cheaper than
-duration-aware dwell cost (already-frozen specs never executed, or known bugs
-in prior runs awaiting a rerun).
+**Documentation audit — Table-3 grid mischaracterization, fixed** in 10
+locations 2026-08-07 (labeling-only). The Table-3 illustrative grid
+{0,5,15,35,70,150} is not Shu's disclosed production/CV grid; nothing in
+the repo may claim otherwise.
