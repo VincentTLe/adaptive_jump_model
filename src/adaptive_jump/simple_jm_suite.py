@@ -8,7 +8,7 @@ import json
 import math
 import tomllib
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, date, datetime
 from multiprocessing import get_context
 from pathlib import Path
@@ -1536,10 +1536,17 @@ def _trace_evidence(
 ) -> dict[str, Any]:
     full_features = ("dd_10", "sortino_20", "sortino_60")
     observation_loss_scale = 1.0
+    jm_protocol = config.jm_protocol
     if variant == "static_lambda50":
         penalty = 50.0
         record = _active_refit(source.lambda50_refits, signal_date, penalty)
         feature_columns = full_features
+        # The lambda50 donor evidence was sealed by the v10 machinery at
+        # n_init=10; a trace receipt must replay the protocol that produced
+        # the evidence it verifies. Refitting at the live config's n_init=60
+        # finds strictly lower objectives on some DE windows (-0.009 and
+        # -0.187 confirmed 2026-08-09) and spuriously fails the receipt.
+        jm_protocol = replace(jm_protocol, n_init=10)
     elif variant == "confirmed_2d":
         penalty = _active_choice(source.canonical_choices, signal_date)
         record = _active_refit(source.canonical_refits, signal_date, penalty)
@@ -1565,7 +1572,7 @@ def _trace_evidence(
     receipt = fixed_jm_trace_receipt(
         source.features,
         config.model_protocol,
-        config.jm_protocol,
+        jm_protocol,
         feature_columns=feature_columns,
         penalty=penalty,
         refit_record=record,
