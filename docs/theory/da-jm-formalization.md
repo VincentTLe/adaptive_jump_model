@@ -1,336 +1,332 @@
 # Duration-Aware Jump Model (DA-JM) — formalization
 
-Status: **math only, no code, no frozen experiment spec yet.** This is step 3
-("formalize DA-JM") of the owner's plan, following the literature-novelty
-sweep (registry NOTE `da-jm-novelty-sweep-2026-08-08`). Nothing here has been
-implemented or run. Everything below is derived by hand; every claim that
-looked "obvious" at first pass and turned out to need a careful check is
-flagged as such, because two of them did not survive the check as originally
-stated.
+Status: **math only, no code, no frozen experiment spec yet.**
 
-Notation follows this repo's own TOML-spec style (`sum_t`, `argmin`, plain
-ASCII), not LaTeX, to match `research/*.toml`.
+## Revision history
 
----
+- **v1 (2026-08-08).** Original formalization: total-cost parameterization
+  `phi_k(d) = -log q_k(d)` replacing the constant lambda, with a
+  `pi = sigmoid(lambda)` back-out. Independently verified as internally
+  correct mathematics (receipt
+  `docs/audit/2026-08-08-da-jm-formalization-receipt.md`).
+- **v2 (2026-08-09, this version).** The sigmoid back-out is **retracted**
+  (internally correct but numerically dead at this repo's lambda scales —
+  see Section 7's warning box) and the model is reparameterized as an
+  **excess (LLR-vs-geometric) duration cost added on top of the untouched
+  classic-lambda machinery**, per the adversarially verified fact-finding
+  (registry `da-jm-open-questions-factfinding-2026-08-09`) and the owner
+  decisions of 2026-08-09 (D_max=504 with hazard-level geometric tail;
+  left-censored first in-window segment; restricted-mean anchors computed
+  from v12; beta roles 2.0 primary / 0.5 adversarial / 1.0 identity). The
+  v1 receipt covers the v1 math; every v2-specific claim below cites the
+  fact-finding NOTE that verified it.
 
-## 1. Baseline: the classic constant-lambda JM
-
-For a single market, K=2 states, T observations:
-
-```
-J(theta, s_1:T) = sum_t=1..T  L(x_t, theta_{s_t})
-                 + lambda * sum_t=2..T  I(s_t != s_{t-1})
-```
-
-Fit by coordinate descent: fix theta, solve for s via exact DP (first-order,
-`dp_tv` in this repo, `tv_jump.py:168`); fix s, update theta by cluster mean.
-The DP recursion for a *constant* penalty matrix `Lambda` (this repo already
-generalizes `dp_tv` to a *time-varying* `penalty_seq[t]`, but the base case
-here is `penalty_seq[t] = Lambda` for all t):
-
-```
-V_t(k) = L(x_t, theta_k) + min_k'  [ V_t-1(k') + Lambda[k'][k] ]
-```
-
-Classic JM: `Lambda[k][k] = 0`, `Lambda[k'][k] = lambda` for `k' != k` (single
-scalar, symmetric, zero diagonal).
-
-**Already-published generalization** (found during the novelty sweep, not new
-here): CJM (`paper/ssrn-4556048.pdf`, Sec 3.3) already allows a full
-state-pair matrix `Lambda[i][j] >= 0`, still zero-diagonal, still strictly
-first-order (`(s_t-1, s_t)` only — confirmed by direct PDF read, no duration
-term). This matters below: part of the beta=1 reduction result lands *inside*
-this already-known family, not beyond it. (Citation note: this fact is
-sourced from the earlier literature workflow's PDF read, not re-verified by
-the math-only independent check on this document — the math check confirmed
-everything derived *from* it, not the citation itself.)
+Notation follows this repo's TOML-spec style (`sum_t`, `argmin`, plain
+ASCII).
 
 ---
 
-## 2. Duration-augmented objective
-
-Partition the path into segments `j = 1..J`, each with state `z_j`, start
-`a_j`, end `b_j`, length `d_j = b_j - a_j + 1`, consecutive segments differing
-(`z_j != z_j+1`):
+## 1. Baseline: the classic constant-lambda JM (untouched)
 
 ```
-J_DA(theta, segments) = sum_j [ sum_t=a_j..b_j  L(x_t, theta_{z_j})  +  phi_{z_j}(d_j) ]
+J_JM(theta, s_1:T) = sum_t L(x_t, theta_{s_t})
+                   + lambda * sum_t=2..T I(s_t != s_{t-1})
 ```
 
-`phi_k(d)` is a state-specific duration cost, charged once per completed
-segment, not once per timestep. This is the standard explicit-duration /
-semi-Markov move (Yu 2010 survey; Guedon 2003) — nothing new in this
-paragraph either. The new part is what `phi_k` is and how it plugs into
-*this* DP-based (not EM-based) model, section 4 below.
+K=2 states, coordinate descent (DP E-step / cluster-mean M-step). In this
+repo lambda is never a single constant: each market has a calibrated grid
+and monthly trailing-CV selection among per-lambda candidate paths. **DA-JM
+leaves all of that machinery byte-identical** — the calibrated grids, the
+CV rule, the online decode, the costs. This is the load-bearing change from
+v1, which replaced lambda and therefore had to translate it into a
+probability scale (the step that failed numerically).
 
----
+Already-published neighbors (novelty sweep + CJM PDF read, registry
+`da-jm-novelty-sweep-2026-08-08`): CJM's state-pair matrix `Lambda[i][j]`
+is zero-diagonal and strictly first-order; no Mulvey-lab paper implements
+any duration/hazard penalty; no found paper embeds a duration cost in the
+SJM's penalized-DP framework. A second novelty pass over 2025-2026
+preprints and forward citations is running; strong novelty claims wait for
+it.
 
-## 3. Discrete-Weibull duration family
-
-```
-q_k(d) = pi_k^((d-1)^beta_k)  -  pi_k^(d^beta_k),     d = 1, 2, 3, ...
-```
-
-`pi_k` in (0,1) is a per-state scale parameter, `beta_k > 0` the duration-
-dependence shape. (Standard "Type I discrete Weibull," Nakagawa & Osaki 1975
-— citing as borrowed, per the novelty sweep's recommendation, not claiming it
-as new.)
-
-Survival function telescopes cleanly:
+## 2. The DA-JM objective: excess duration cost
 
 ```
-S_k(d) = P(D_k >= d) = sum_{d'>=d} q_k(d') = pi_k^((d-1)^beta_k)
+J_DA = J_JM + J_duration(beta)
 ```
 
-Hazard:
+Segments j = 1..J with state z_j and length d_j. For each market m and
+state k, fix a **geometric reference** q_G with scale pi*_{m,k} and a
+**discrete-Weibull duration model** q_{W,beta} with scale pi_{beta,m,k}
+(both anchored to the same observed duration statistic — Section 5). The
+duration term charges each segment the log-likelihood ratio of the
+reference against the duration model:
 
 ```
-h_k(d) = q_k(d) / S_k(d) = 1 - pi_k^(d^beta_k - (d-1)^beta_k)
+J_duration = sum_j Delta_phi_{z_j}(d_j),
+Delta_phi_k(d) = log[ q_{G,pi*_k}(d) / q_{W,beta,pi_beta,k}(d) ]
 ```
 
-Checked at beta_k=1: `h_k(d) = 1 - pi_k`, constant in d — confirms the
-memoryless/geometric claim at the hazard level, not just at the pmf level
-(the pmf-level check alone, `q_k(d) = pi_k^(d-1)(1-pi_k)`, is the easy part;
-the hazard staying constant is the part that actually matters for the DP
-below).
+with the censoring and cap conventions of Sections 4-6. Immediate
+consequences (all adversarially verified in the fact-finding NOTE):
 
----
+- **beta = 1 gives an objective identity, not just path equivalence.**
+  At beta=1 the Weibull family IS the geometric family and the anchor
+  equation is the same equation, so pi_{1,k} = pi*_k and
+  Delta_phi_k(d) = 0 for every d, every k, every anchor value:
+  J_DA == J_JM term by term. This is strictly stronger than v1's
+  reduction theorem and needs no symmetric-state assumption.
+- Negative partial costs occur (Delta_u < 0 at young ages for beta > 1,
+  etc.) and are harmless: the augmented DP is min-sum on a finite
+  time-layered DAG — verified against brute-force path enumeration on 300
+  random problems, 0 mismatches.
 
-## 4. Augmented-state DP
-
-State at time t: `(k_t, d_t)` — regime and consecutive days in it. Stay:
-`(k,d) -> (k,d+1)`. Switch: `(k,d) -> (k',1)`.
-
-Decompose `phi_k(d) = -log q_k(d)` into per-step increments via the hazard
-(this is the standard HSMM-Viterbi trick, not new):
-
-```
--log q_k(d) = sum_{j=1..d-1} u_k(j)  +  v_k(d)
-  where  u_k(j) = -log(1 - h_k(j))     ["survive past age j" cost]
-         v_k(d) = -log(h_k(d))         ["terminate exactly at age d" cost]
-```
-
-Closed form from the discrete-Weibull hazard:
+## 3. Discrete-Weibull hazard machinery (unchanged from v1, verified)
 
 ```
-u_k(j) = (j^beta_k - (j-1)^beta_k) * lambda_k,     lambda_k := -log(pi_k)
+q(d)  = pi^((d-1)^beta) - pi^(d^beta),          d = 1, 2, ...
+S(d)  = pi^((d-1)^beta)                          [survival]
+h(d)  = 1 - pi^(d^beta - (d-1)^beta)             [hazard]
+u(j)  = -log(1 - h(j)) = (j^beta - (j-1)^beta) * (-log pi)   [stay cost]
+v(d)  = -log h(d)                                [terminate cost]
+-log q(d) = sum_{j=1}^{d-1} u(j) + v(d)          [telescoping identity]
 ```
 
-(`v_k(d)` has no equally clean closed form for beta_k != 1; not needed in
-closed form for the DP itself, only for the reduction proof below.)
+At beta=1: h constant (memoryless), u constant, v constant. All checked
+two independent ways in the v1 receipt.
 
-DP recursion:
+The excess decomposes the same way:
+
+```
+Delta_u_k(j) = u_{W,beta}(j) - u_G(j)
+Delta_v_k(d) = v_{W,beta}(d) - v_G(d)
+Delta_phi_k(d) = sum_{j=1}^{d-1} Delta_u_k(j) + Delta_v_k(d)
+```
+
+(verified to <2e-15 at d in {1, 5, 74, 500}).
+
+## 4. D_max and the hazard-level geometric tail (decided: D_max = 504)
+
+Owner decision 2026-08-09, sharpening the earlier cap proposal: the cap is
+defined **at the hazard level**, not by clipping Delta_phi:
+
+```
+j <= D_max:  Delta_u_k(j) as in Section 3
+j >  D_max:  Delta_u_k(j) = 0
+d <= D_max:  Delta_v_k(d) as in Section 3
+d >  D_max:  Delta_v_k(d) = 0
+```
+
+Equivalently: the duration model's hazard follows the Weibull for ages up
+to 504 trading days (2 years) and **reverts exactly to the geometric
+reference's hazard beyond** — a spliced distribution that is still a
+proper duration distribution (hazards in (0,1), geometric tail sums to 1).
+A segment that survives past 504 keeps the excess it accumulated in the
+memory zone and accrues nothing further.
+
+This one convention simultaneously removes both failure modes the
+adversarial check found in the uncapped form: the unbounded fragmentation
+pressure on real multi-year segments at beta > 1 (+14 to +183 nats), and
+the unbounded never-switch subsidy at beta < 1. Total |excess| per segment
+is bounded by the memory-zone accumulation (order of a few nats at the
+anchors measured).
+
+Precedents: Durland & McCurdy (1994) freeze their hazard beyond a memory
+cap tau (tau = 9 quarters — chosen there by in-sample likelihood search, a
+selection method this repo forbids; we set D_max a priori like Lam
+1997/2004's 40 quarters); Langrock-Zucchini HSMM-as-HMM approximations use
+exact-duration-up-to-N plus a geometric tail — literally this device.
+Rationale for 504 specifically: only 3-6 segments per market exceed 504
+days on the sealed canonical paths — too few to identify hazard shape
+beyond it; and the failure mode DA-JM targets (short re-entries) lives at
+young ages. If the cap binds often it is reported as a limitation.
+
+## 5. Anchors: restricted mean, interior segments, per (market, state), from v12
+
+Owner decision 2026-08-09 (replacing v1's sigmoid back-out AND the interim
+full-mean proposal):
+
+```
+mu504_{m,k} = mean( min(D_i, 504) )
+```
+
+over the **interior** segments i of market m, state k, of the **v12**
+canonical monthly-selected fixed-JM delay-1 state path — excluding the
+first segment (left-censored: the regime may predate the OOS window) and
+the final segment (right-censored: still running at sample end). Then for
+every beta arm, solve the scale so the restricted mean matches:
+
+```
+E_{pi}[ min(D, 504) ] = sum_{d=1}^{504} S_pi(d) = mu504_{m,k}
+```
+
+once for the geometric reference (giving pi*_{m,k}) and once per beta
+(giving pi_{beta,m,k}).
+
+Verified properties (fact-finding NOTE):
+
+- **Well-posed**: E[min(D,504)] depends only on hazards at ages < 504 —
+  entirely inside the memory zone, independent of the tail convention —
+  and is strictly increasing in pi, so the solve has a unique root for any
+  target in (1, 504).
+- **Identity-safe**: at beta=1 the anchor equation is the geometric
+  reference's own equation, so pi_1 = pi* exactly and Section 2's
+  objective identity holds. Implementation requirement: **special-case
+  beta=1 to Delta == 0 exactly** — a root-solver residual (~1e-15) is
+  enough to flip exact DP ties, and the identity gate is bit-for-bit.
+- **Re-anchoring per beta is load-bearing, not cosmetic**: at a shared pi,
+  q(1) = 1 - pi identically in beta — short segments would not be
+  discriminated at all. Mean-matched re-anchoring is what makes beta > 1
+  genuinely surcharge short segments (at anchor 74: Delta_phi(1) = +1.16
+  nats at beta=1.25, +2.30 at beta=1.5) while subsidizing near-anchor
+  lengths — the mass-to-the-middle reshaping.
+- **Robustness of the anchor itself**: the restricted mean caps the
+  influence of the few multi-year runs that dominate a full mean (US bull:
+  full mean 464.5 vs median 97 over only 15 segments) and is consistent
+  with the memory zone: the statistic never looks past the age range where
+  the model has memory.
+- Anchors are computed from sealed v12 artifacts (deterministic, never
+  searched) and are disclosed as in-sample-flavored development anchors.
+  **They must be recomputed from v12, not v11** — v12 changes DE's grid
+  and therefore DE's canonical path.
+
+## 6. Interpretation of beta (excess form)
+
+`Delta_u_k(j)` is the excess marginal cost of staying one more day at age
+j, relative to the geometric reference with the same restricted-mean
+persistence:
+
+- beta = 1: zero everywhere (the identity).
+- beta > 1 (mean-matched): negative at young ages up to a crossover
+  (subsidize staying while the regime is young), positive past it
+  (pressure to leave old regimes); terminating very young segments carries
+  a surcharge (Delta_phi(1) > 0). Net effect: segments are pushed toward
+  the anchor scale — few 1-5-day flickers, fewer indefinitely-old regimes
+  inside the memory zone. This is the direction the August-2022
+  lagged-capguard autopsy motivates ("re-enter mid-chop, get run over" =
+  a short young segment that should have been suppressed) — hence
+  **beta = 2.0 is the preregistered PRIMARY arm**.
+- beta < 1 (mean-matched): the reverse reshaping (heavier mass at both
+  very short and very long durations) — the direction the daily
+  latent-state HSMM literature reports (Bulla & Bulla 2006: NB shape
+  0.02-0.33 in both states, effective Weibull beta ~0.4-0.6). Hence
+  **beta = 0.5 is the ADVERSARIAL / opposite-direction control**, not a
+  co-equal candidate: if 2.0 fails and 0.5 wins, the primary hypothesis is
+  REFUTED and 0.5 seeds a new frozen hypothesis for a later experiment —
+  the paper does not silently become "the beta=0.5 model".
+
+Convexity argument for the monotonicity of `j^beta - (j-1)^beta` (v1
+receipt): second difference positive for beta>1, negative for beta<1;
+e.g. beta=2 gives 2j-1 (increasing), beta=0.5 gives 1, 0.414, 0.318, ...
+(decreasing).
+
+## 7. What was retracted, and the augmented DP
+
+**RETRACTED (v1 Section 7): `pi = sigmoid(lambda)`.** The idea was to
+reuse the calibrated lambda as logit(pi). Empirically fatal at this repo's
+lambda scales (fact-finding NOTE, all numbers verified):
+
+- lambda >= ~37: `sigmoid(lambda)` rounds to exactly 1.0 in float64 →
+  hazard 0, v = +inf — the model can never switch at all. Most calibrated
+  lambdas (40-1000) hit this.
+- lambda = 20 (no overflow): the beta modulation of the stay costs
+  accumulates to ~0.019 nats over 3000 days — inert — while the one
+  surviving effect (a v-term modulation ~ (beta-1)*log d) has a PERVERSE
+  sign: it rewards terminating old segments. A log-space implementation
+  would "fix" the overflow and silently ship that perverse residual —
+  the trap is documented here so the retraction is understood as "wrong
+  scale anchor", not "numerical bug to patch".
+- Root cause: implied durations at calibrated lambdas are astronomical
+  (lambda=20 → E[D] ~ 4.9e8 days; lambda=220 → 3.5e95) against observed
+  segment means of 130-1190 days. **In the JM, durations are loss-driven,
+  not penalty-driven** — lambda is a loss-scale smoother, not a duration
+  prior, and cannot be converted into one.
+
+**Augmented DP (unchanged in structure from v1, costs now the excess):**
+state (k, d), d saturating at D_max (absorbing age bucket, zero excess
+inside it):
 
 ```
 V_t(k,d) = L(x_t, theta_k) +
-    { V_t-1(k, d-1) + u_k(d-1)                              if d >= 2 (stay)
-    { min_{k' != k} [ min_d' V_t-1(k', d') + v_k'(d') ]      if d == 1 (switch in)
-
-V_1(k,1) = L(x_1, theta_k)     [no duration cost charged at the first obs —
-                                 a boundary convention, see open question #2]
+    { V_t-1(k, d-1) + Delta_u_k(d-1)                          stay, d >= 2
+    { min_{k' != k} [ min_d' V_t-1(k',d') + Delta_v_k'(d') ] + lambda
+                                                              switch in, d = 1
 ```
 
-**Right-censoring falls out for free — and charges exactly the correct
-amount, not just "nothing extra."** The final active segment (from its start
-through t=T, length d) never has `v_k(d)` charged on it, because `v` is only
-paid at the moment a segment *ends* (switches out) — true by construction of
-the recursion, not an assumption. What it *does* accumulate is the `u_k(j)`
-stay-costs for `j=1..d-1`, and Section 4's telescoping identity shows these
-sum to exactly `-log S_k(d)`. That is precisely the textbook right-censored
-survival-likelihood contribution (`P(D>=d)`, not the density `q_k(d)`) — the
-statistically correct treatment of an unfinished segment, exactly, not just
-approximately reasonable. (Independently confirmed.)
+(the constant lambda rides along exactly as in the classic DP; Delta terms
+vanish at beta=1 leaving the classic recursion). Right-censoring is exact:
+the final open segment accumulates only its Delta_u sum =
+-log[S_beta/S_G](d) — the textbook censored-likelihood contribution.
+Left-censoring (owner decision): the FIRST segment of each trailing
+window charges no Delta at all (its age is unknown; assigning it age 1
+would misattribute the young-age cost schedule precisely where beta
+acts). Complexity O(T*K*D_max) with the switch-in min memoized once per
+source state per timestep.
 
-Complexity: `O(T * K * D_max)` if, for each timestep and source state `k'`,
-`min_d' [V_t-1(k',d') + v_k'(d')]` is memoized once and reused across all `K`
-destination states `k`; `O(T * K^2 * D_max)` if recomputed per destination.
-Either is tractable; the memoized form is the one to implement. `D_max` is a
-cap that must be pinned before any code runs (open question #1).
+**M-step invariance (v1 receipt, unchanged):** Delta_phi has zero
+theta-dependence, so for any fixed path the M-step is identical to classic
+JM's for any beta; combined with the beta=1 objective identity, induction
+over coordinate-descent iterations gives full-fit bit-for-bit reproduction
+at beta=1 — the identity gate.
 
----
+**Integration facts (fact-finding NOTE, file:line verified):** candidate
+states are produced by a DAILY fresh forward-DP decode of the trailing
+3000-row window with frozen centroids — there is no persistent duration
+counter anywhere, so no reset-vs-carry question exists; the left-censor
+convention above is the whole boundary story. Scenario arms keep candidate
+columns == the lambda grid, so the monthly CV machinery needs zero API
+change. The lambda-monotonicity gate's argument (pointwise min of affine,
+nondecreasing-in-lambda path objectives) still holds at fixed beta because
+Delta_phi is lambda-independent per path; cross-beta comparisons need
+their own gate. The augmented DP needs a custom fit loop (JumpModel.fit
+would treat every (k,d) meta-state as a cluster; precedent:
+simple_jm_fitting's custom E/M loops).
 
-## 5. Reduction theorem (beta_k = 1)
+## 8. Design decisions (owner, 2026-08-09) and what remains open
 
-This is the part that did **not** survive the first pass unchanged — the
-naive "beta=1 gives back the JM" claim is directionally right but the
-argument needs two real steps, and the literal target it reduces to is
-**not** always the single-scalar-lambda classic JM.
+Decided (frozen intent; the experiment spec will restate them verbatim):
 
-**Step 1 — general (state-asymmetric) pi_1, pi_2, K=2.**
+1. **D_max = 504** trading days, hazard-level geometric tail (Section 4).
+2. **Left-censor** the first in-window segment (Section 7).
+3. **No duration state across refits** — architecture fact, nothing to
+   decide (Section 7).
+4. **Anchors**: restricted mean to 504, interior segments only, per
+   (market, state), computed from **v12**, re-anchored per beta
+   (Section 5).
+5. **beta roles**: 2.0 PRIMARY (preregistered, motivated by the
+   August-2022 autopsy BEFORE DA-JM existed), 0.5 ADVERSARIAL control,
+   1.0 IDENTITY gate. No winner selection between 0.5 and 2.0 on the
+   evaluation sample.
+6. **Success criterion** (spec-level, recorded here for completeness):
+   primary is Delta_m = Sharpe_DA - Sharpe_fixedJM per market at delay 1.
+   *Directional support*: Delta > 0 in US, DE, JP. *Statistical support*:
+   paired moving-block bootstrap on the two daily return streams (same
+   block indices both streams), 95% one-sided lower bound > 0 in all
+   three markets (intersection-union test — no extra multiplicity
+   correction needed for the all-three claim). Delays 5/10 are robustness
+   reporting and cannot rescue a primary failure. A separate *economic*
+   tier is Sharpe_DA > max(JM, HMM, B&H). No hard minimum Sharpe delta is
+   set; "statistically supported" and "economically material" are kept as
+   distinct labels.
+7. **Gates before any real-data P&L** (mechanism gates only, never
+   profitability evidence): beta=1 full-fit bit-for-bit identity;
+   synthetic DGP recovery (planted beta=2 duration structure must be
+   recovered better than by memoryless JM, per a metric frozen in the
+   spec; planted geometric must show NO improvement); flat-loss
+   adversarial case (excess costs must not induce periodic switching to
+   harvest negative Delta_phi); brute-force DP parity on small problems.
 
-At beta_k=1: `u_k(j) = lambda_k` (constant in j, `lambda_k = -log(pi_k)`),
-`v_k(d) = mu_k` (constant in d, `mu_k = -log(1-pi_k)`). Both duration terms
-drop out of the DP, so `d` can be marginalized: define
-`V~_t(k) = min_d V_t(k,d)`. The augmented DP collapses to:
+Still open (to pin in the spec, none block the doc):
 
-```
-V~_t(k) = L(x_t, theta_k) + min( V~_t-1(k) + lambda_k,
-                                  V~_t-1(k') + mu_k' )     [k' = the other state]
-```
+- Bootstrap block length and the exact synthetic-DGP recovery metric.
+- Per-state beta: explicitly deferred (one new parameter only).
+- v12 anchors: numeric values await the v12 seal (gated on the
+  n_init=180 convergence stress test, registry
+  `v12-de-ninit180-stress-gate`).
 
-This is a first-order DP with penalty matrix `Lambda[k][k] = lambda_k`
-(nonzero diagonal), `Lambda[k'][k] = mu_k'` for `k' != k`. **This is not the
-classic JM** (nonzero diagonal, and CJM's own Lambda_ij convention fixes the
-diagonal at zero) — it lands in the *already-published* state-pair-penalty
-family (Sec 1 above) but strictly outside its zero-diagonal convention, for
-general `pi_1 != pi_2`.
+## 9. What this document is not
 
-**Step 2 — further special case pi_1 = pi_2 = pi (symmetric).**
-
-Now `lambda_1 = lambda_2 = lambda` (shared), and the recursion is:
-
-```
-V~_t(k) = L(x_t, theta_k) + min( V~_t-1(k) + lambda, V~_t-1(k') + mu )
-```
-
-Factor the shared additive constant out of the min (`min(A+c, B+d) = c +
-min(A, B+d-c)`, valid for any c):
-
-```
-V~_t(k) = L(x_t, theta_k) + lambda + min( V~_t-1(k), V~_t-1(k') + (mu - lambda) )
-```
-
-`lambda` is now added identically at *every* step regardless of the state
-chosen — it contributes a path-independent constant `(T-1)*lambda` to the
-total objective and cannot change the argmin. Dropping it:
-
-```
-V~_t(k) = L(x_t, theta_k) + min( V~_t-1(k), V~_t-1(k') + lambda_effective )
-    where   lambda_effective = mu - lambda = log(pi) - log(1-pi) = logit(pi)
-```
-
-**This is exactly the classic single-scalar constant-lambda JM**, with
-
-```
-lambda_effective = logit(pi) = log( pi / (1 - pi) )
-```
-
-**Checked, not assumed:** `lambda_effective > 0` (a normal, sensible
-switching penalty) requires `pi > 0.5`, i.e. expected geometric duration
-`E[D] = 1/(1-pi) > 2` days. A state whose fitted duration distribution has
-`E[D] < 2` days would, under this reduction, produce a *negative* effective
-lambda (switching *rewarded*) — which is the correct behavior for a
-short-lived, alternating-by-construction state, not a bug, but worth stating
-plainly since it is not the intuition one gets from staring at the classic
-JM alone.
-
-**Statement of "JM ⊂ Duration-JM":** the correct form of this claim is
-*path-equivalence*, not objective-value equality (the two objectives differ
-by an additive path-independent constant) — for every theta, the beta=1,
-symmetric-pi slice of Duration-JM and the classic JM (at
-`lambda=logit(pi)`) have the *same* argmin state sequence. That is the
-rigorous sense in which the classic JM is recovered as a special case.
-
----
-
-## 6. Interpretation of beta != 1
-
-`u_k(j) = (j^beta_k - (j-1)^beta_k) * lambda_k` is the marginal cost of
-staying one more day at age j.
-
-- `beta_k = 1`: constant marginal cost (memoryless, Section 5).
-- `beta_k > 1`: `j^beta_k-(j-1)^beta_k` increasing in j — staying gets
-  *more* expensive as the regime ages ("aging fragility": positive duration
-  dependence, switch-pressure grows with regime age).
-- `beta_k < 1`: decreasing in j — staying gets *cheaper* as the regime ages
-  ("seasoning": negative duration dependence, entrenched regimes get more
-  entrenched).
-
-Why (convexity of `x^beta`, not just asserted): the second difference of
-`f(j) = j^beta - (j-1)^beta` is positive for `beta>1` (convex power) and
-negative for `0<beta<1` (concave power), so `f` is increasing in the first
-case, decreasing in the second — e.g. `beta=2`: `f(j)=2j-1`, exactly
-increasing; `beta=0.5`: `f(1,2,3,...) = 1, 0.414, 0.318, ...`, decreasing.
-`beta=1`: `f(j)=1` for every j, the constant case of Section 5.
-
-This is exactly the shape of question Sichel (1991) asked about NBER
-expansion/contraction durations with a Weibull hazard — the closest prior
-art found in the novelty sweep, cited here as the source of the
-interpretation, not as something DA-JM discovers.
-
----
-
-## 7. Parameter discipline (owner's step 5: add only beta)
-
-Per the instruction to add exactly one new parameter, not 3-4 per state:
-
-- `beta` shared across both states within a market (not per-state) as the
-  *first* cut — matches "don't give bull/bear their own 3-4 parameters yet."
-  A per-state `beta_k` is a natural follow-up, explicitly deferred.
-- `pi` (equivalently `lambda`) is **not** a new parameter — back it out from
-  the *already-sealed, already-calibrated* lambda via
-  `pi = sigmoid(lambda) = 1/(1+exp(-lambda))`, the inverse of Section 5's
-  `lambda_effective = logit(pi)`. This only holds rigorously in the
-  symmetric-state reduction (Step 2) — see open question #4 for why the
-  calibrated grids (multi-value, monthly-CV-selected, not a single scalar
-  lambda) make this back-out non-trivial for DE/JP specifically.
-- **Falsifiable gate for the eventual frozen spec:** DA-JM at `beta=1`, fed
-  the *same* fixed lambda as one held-fixed comparator arm (e.g.
-  `static_lambda50`, or any single month's CV-selected lambda held constant
-  for that month), must reproduce the classic-JM state path **bit-for-bit**
-  across a *full coordinate-descent fit*, not just a single DP step. This is
-  a real regression test, not a soft sanity check. Section 5 only proves
-  single-step path equivalence at a fixed theta; closing the gap to a full
-  fit needs one more fact, proved here rather than left as an assumption:
-  `J_DA`'s theta-dependence lives entirely in `L(x_t, theta_{z_j})` —
-  `phi_k(d)` does not depend on theta at all. So for any *fixed* path, the
-  theta-minimizing M-step (e.g. cluster mean) is identical in form and value
-  to classic JM's M-step, for *any* beta, not only beta=1. Combined with
-  Section 5's per-step path equivalence at beta=1, induction over
-  coordinate-descent iterations (E-step path-equivalent ⟹ same points
-  assigned to each state ⟹ M-step identical ⟹ same theta going into the next
-  E-step ⟹ ...) gives the full bit-for-bit result, not just a plausible
-  expectation of it. (Gap identified and closed during independent
-  verification, 2026-08-08 — see the receipt.)
-
----
-
-## 8. Open questions to pin before any frozen spec (not yet decided)
-
-1. **D_max cap.** Needs a concrete number before code exists (e.g. capped at
-   the 3000-observation fit window, or some smaller multiple of the longest
-   observed segment in the sealed baselines — DE's slowest grid runs ~430
-   days/segment on average per the -008/-009 work). Whatever is chosen must
-   be justified on a priori grounds (project rule: never tune a knob against
-   the fit outcome), then reported as a limitation if it turns out to bind.
-2. **t=1 boundary convention.** Charging nothing for the very first
-   observation (mirrors classic JM) vs. charging a `v_k(1)`-style "start"
-   cost. Almost certainly immaterial for T~8600 days, but should be stated,
-   not silently assumed.
-3. **Duration state across monthly refits.** This repo's whole pipeline
-   refits monthly (Jan/Jul) on a rolling window and reselects lambda by
-   trailing CV. Does the duration counter `d` reset at each refit boundary,
-   or carry through from the previous month's terminal state? This is a real
-   design choice with no obvious default — carrying `d` through is more
-   faithful to "the regime doesn't know a refit happened," resetting is
-   simpler to implement and audit. Needs an explicit decision, not a default.
-4. **Back-out of pi_k for the multi-value calibrated grids.** Section 7's
-   `pi = sigmoid(lambda)` back-out is clean for a single scalar lambda
-   (`static_lambda50`, or US's simpler grids). DE/JP's calibrated grids are
-   multi-value CV-selected schedules, not one constant — there is no single
-   "the" lambda to invert. Needs a stated convention (e.g. invert the
-   *modal* monthly-selected lambda, or run the beta=1 gate per-month against
-   whichever lambda CV picked that month) before the falsifiable gate in
-   Section 7 can even be run on DE/JP.
-5. **How is beta itself chosen?** Inner-CV like lambda currently is (same
-   monthly-trailing-Sharpe selection machinery, extended to a 2-D grid over
-   `(lambda, beta)`), or fixed a priori on theoretical grounds and reported
-   as a limitation? The owner's plan does not yet say; this determines
-   whether DA-JM inherits the exact same selection-rule machinery already in
-   this repo (cheap) or needs a new one (real design work).
-6. ~~M-step (centroid update) interaction~~ — **closed on paper, no longer
-   open.** Proved in Section 7: `phi_k(d)` carries no theta-dependence, so
-   the M-step is identical in form/value to classic JM's for any beta, given
-   a fixed path. Still worth a direct code-level check once implemented (an
-   assertion, not a re-derivation), but this is no longer an open design
-   question.
-
----
-
-## 9. What this document does *not* do
-
-No frozen experiment spec, no code, no lambda/beta values chosen, no market
-run. Per the owner's plan this is step 3 only; step 4 (the DP derivation) is
-folded into Section 4 above since the two are inseparable in practice. Next
-step per the owner's own plan is a decision on open questions 1-5, then a
-frozen `research/*.toml` spec with its own experiment id, before any code.
+No frozen experiment spec, no code, no anchors computed yet. Order fixed
+by the owner 2026-08-09: v12 stress gate → v12 reseal → (parallel: lambda50
+donor rebuild) → this doc → second novelty pass completes → freeze DA-JM
+spec → implement + gates → P&L.

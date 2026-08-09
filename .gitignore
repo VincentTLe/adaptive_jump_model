@@ -49,6 +49,9 @@ artifacts/audit/*/states-*.csv
 # evidence (a few hundred to tens of thousands of text rows); regenerable
 # from the -008/-009 caches, which stay excluded above.
 !artifacts/grid-selection-rule/
+# v12 stress gate: 255-row objective comparison + verdict -- small committed
+# evidence; the n_init=180 refits themselves are regenerable and not persisted.
+!artifacts/v12-stress-gate/
 reports/
 *.log
 *.pid

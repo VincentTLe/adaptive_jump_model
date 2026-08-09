@@ -1,0 +1,11 @@
+v12-de-ninit180-stress-gate result
+windows x lambdas compared: 255 (85 windows x 3 lambdas)
+objectives changed beyond tolerance: 1
+max |delta|: 2.556e-01
+state-path mismatch days (all lambdas): 0
+
+VERDICT: FAIL -- v12 STOPPED per frozen rule; reopen optimizer fidelity
+
+changed rows:
+      fit_date training_start training_end  observations      scaler_mean     scaler_scale  lambda  objective_180                                                                                                                           centers  active_state_count  collapsed_to_one_state  objective_60     delta  changed
+181 2011-07-01     1999-09-17   2011-07-01          3000  [0.0, 0.0, 0.0]  [1.0, 1.0, 1.0]    30.0    2871.131355  [[0.023079546194950708, 0.31556140130059374, 0.4613300535612225], [2.187120711631531, -0.7648874627724008, -1.0550732870006838]]                   2                   False   2871.386936 -0.255581     True
