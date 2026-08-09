@@ -129,12 +129,28 @@ of `V_t(k)` (state (k,d): stay -> (k,d+1), switch -> (k',1)), which the
 current solver does not have. Cost is still cheap (O(T*K*D_max), no
 combinatorial blowup), but "no solver change" was wrong and is retracted.
 Needs its own frozen question and experiment id before any code runs; formal
-DP derivation and a literature-novelty check (duration-dependent
-Markov-switching is well established in econometrics since the 1990s —
-Durland & McCurdy 1994, Diebold-Lee-Weinbach 1994, Bulla & Bulla 2006 for
-finance specifically; novelty, if any, is in combining it with the JM's
-penalized-DP framework specifically, not in duration-dependence itself) come
-before any code, per owner request 2026-08-08.
+DP derivation comes first, per owner request 2026-08-08.
+
+**Literature novelty check done (2026-08-08, registry NOTE
+`da-jm-novelty-sweep-2026-08-08`):** duration-dependent/semi-Markov regime
+switching is NOT novel in general — settled since the 1990s (Sichel 1991
+Weibull-hazard NBER cycles; Durland & McCurdy 1994; Diebold-Lee-Weinbach 1994;
+Bulla & Bulla 2006 for finance, the exact paper the CJM authors themselves
+cite for their own duration-misspecification stress test). Confirmed by
+direct PDF read (not inference) that none of the three checked Mulvey-lab
+papers (Continuous JM `ssrn-4556048`, state-aware/MoE JM `ssrn-5817083`,
+allocation-focused regimes `ssrn-5235747`) implement any duration/hazard
+penalty — all are strictly first-order, function of `(s_{t-1},s_t)` only.
+No paper found (two independent search angles) combining explicit-duration/
+hazard cost with the SJM/JM-lineage's penalized-DP framework specifically —
+this is the one real gap. Defensible framing: do NOT claim
+duration-dependence itself is novel (cite Sichel 1991, Bulla & Bulla 2006 as
+prior art); the correctly-scoped claim is narrower — embedding a duration/
+hazard cost inside the SJM's penalized-DP objective, which needs the
+augmented-state DP `V_t(k,d)` above, has not been done. Caveat: single search
+pass per angle; a second independent pass on very recent 2025–2026 SJM
+preprints is warranted before fully certifying, per this project's
+separate-audit-agent convention — not yet done.
 
 An independent 8-agent survey of every other past-proposed, not-yet-run idea
 (23 ranked candidates) is available on request; several are cheaper than
