@@ -143,16 +143,46 @@ def main() -> int:
             )
 
         # --- L2: fitted-state disagreement across families
+        sealed_metrics = pd.read_csv(RUN / "metrics.csv")
+        jm_row = sealed_metrics[
+            (sealed_metrics["market"] == market)
+            & (sealed_metrics["model"] == "fixed_jm")
+            & (sealed_metrics["delay"] == DELAY)
+        ].iloc[0]
+        oos_start = pd.Timestamp(jm_row["start"])
+        oos_end = pd.Timestamp(jm_row["end"])
+
         state_disagreement_days = 0
+        in_oos_days = 0
         per_lambda: list[dict] = []
+        disagreement_dates: list[dict] = []
         for lam in grid:
             columns = [families[s].states[lam] for s in SEEDS]
             stacked = pd.concat(columns, axis=1)
             valid = stacked.notna().all(axis=1)
             differs = valid & (stacked.nunique(axis=1, dropna=False) > 1)
             days = int(differs.sum())
+            dates = stacked.index[differs]
+            inside = int(((dates >= oos_start) & (dates <= oos_end)).sum())
             state_disagreement_days += days
-            per_lambda.append({"market": market, "lambda": lam, "disagree_days": days})
+            in_oos_days += inside
+            for date in dates:
+                disagreement_dates.append(
+                    {
+                        "market": market,
+                        "lambda": lam,
+                        "date": date.date().isoformat(),
+                        "in_oos_window": bool(oos_start <= date <= oos_end),
+                    }
+                )
+            per_lambda.append(
+                {
+                    "market": market,
+                    "lambda": lam,
+                    "disagree_days": days,
+                    "disagree_days_in_oos": inside,
+                }
+            )
             sealed_column = None
             for candidate in sealed_states.columns:
                 if math.isclose(float(candidate), lam, rel_tol=0, abs_tol=1e-9):
@@ -177,12 +207,18 @@ def main() -> int:
                 "L1_max_objective_spread": float(spread.max()),
                 "L1b_max_centroid_spread": centroid_spread,
                 "L2_state_disagreement_days": state_disagreement_days,
+                "L2_disagreement_days_in_oos": in_oos_days,
+                "oos_start": oos_start.date().isoformat(),
                 "seed0_vs_sealed_max_diff": seed0_max_diff,
             }
         )
         pd.DataFrame(per_lambda).to_csv(
             OUT / f"l2-per-lambda-{market}.csv", index=False, lineterminator="\n"
         )
+        if disagreement_dates:
+            pd.DataFrame(disagreement_dates).to_csv(
+                OUT / f"l2-dates-{market}.csv", index=False, lineterminator="\n"
+            )
         print(
             f"{market}: L1 differing {changed}, max spread {spread.max():.3e}, "
             f"L1b centroid {centroid_spread:.3e}, L2 days {state_disagreement_days}",
@@ -213,6 +249,7 @@ def main() -> int:
                     "market": market,
                     "seed": seed,
                     "sharpe": float(metrics["sharpe"]),
+                    "sealed_sharpe": float(jm_row["sharpe"]),
                     "cagr": float(metrics["cagr"]),
                     "turnover": float(metrics["turnover"]),
                     "choices_signature": hash(
