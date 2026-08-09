@@ -1157,3 +1157,41 @@ The complete final-v3 paper grids remain unidentified.
   legs) must be rerun against any new baseline before "mechanism X fails
   in market Y" is restated; `lagged-capguard-001` is US-only and
   unaffected. Artifacts: `artifacts/grid-selection-rule/01-rule/`.
+
+## 2026-08-09 — resampling intervals are descriptive, not gates
+
+**Retraction (mine, owner-caught).** I wrote that the return-sampling
+bootstrap CI half-width, about ±0.03 Sharpe, was a "binding noise floor"
+that DA-JM "must clear". Withdrawn. A CI half-width moves with the
+confidence level, block length, bootstrap procedure, sample length and
+period, and the stationarity assumption — change 95% to 90%, or add ten
+years of data, and the "floor" shrinks with no model changing. It is
+*estimated conditional sampling uncertainty for one comparison under one
+bootstrap design*. Also withdrawn: writing the bootstrap replicate
+fraction as "P(Δ > 0)", which reads as a posterior probability.
+
+Not withdrawn: Sharpe-difference inference is a studied problem (Ledoit &
+Wolf 2008 studentized time-series bootstrap; Politis & Romano 1994). The
+tool is valid; promoting it to a decision gate was the error. This repeats
+a defect already corrected once — see `docs/audit/2026-07-full-audit.md`
+(§ "the 95% CI was used as evidence when it carries none").
+
+**Two different ±0.03 exist in this repo — do not conflate them.**
+`research/lagged-capguard-001.toml` records a *5-seed optimizer spread* of
+about ±0.03 Sharpe (a spread of point estimates across initialization
+seeds). The 2026-08-09 receipt records a *bootstrap CI half-width* of about
+±0.03 (a sampling-uncertainty interval). Same number, different quantity,
+different meaning. Neither is a threshold.
+
+**Precedent that is frozen, not endorsed.** `research/ajm-ext-001.toml`
+gates on `paired_block_bootstrap_95pct_lower_bound > 0`. That contract is
+hash-pinned to a closed experiment and its bootstrap was never run
+(`docs/audit/2026-08-06-ajm-ext-d1-receipt.md`). It is not a template. The
+correct in-repo model is `research/holdout-2026-001.toml`: "95 percent
+interval; reported, never gating".
+
+**Replacement hierarchy** (registry `da-jm-evaluation-hierarchy-2026-08-09`,
+written into `docs/theory/da-jm-formalization.md` item 6): effect size →
+cross-market transport → mechanism consistency → robustness → external
+transport → resampling evidence last and descriptive only. Neither
+"interval contains 0" nor "interval excludes 0" decides success.

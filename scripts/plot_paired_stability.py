@@ -1,7 +1,8 @@
 """Why the paired delta is the right optimizer test, drawn.
 
 Left panels: the LEVEL of each arm's Sharpe across five initialization-seed
-families -- this is what moves, and what a raw "noise floor" would measure.
+families -- this is what moves, and what a raw single-arm spread would
+measure.
 Right panels: the PAIRED delta (challenger minus fixed JM) under the same
 seed -- what actually has to be stable, because a seed that moves both arms
 together cancels in the difference.

@@ -1,0 +1,264 @@
+confirmed_2d vs fixed JM: DIVERGENCE-EPISODE anatomy (seed 0, delay 1)
+Episode definition frozen before any result was seen; see the script
+docstring in scripts/probe_confirmed2d_episodes.py.
+Delta_R_e = sum over the episode of (confirmed_2d minus fixed JM daily
+strategy_return), in arithmetic daily-return units.
+
+================ US ================
+window 1990-01-02 .. 2023-12-29  (8565 in-window days, sealed count asserted)
+
+1. EPISODE COVERAGE
+   episodes                27
+   days inside episodes    27 (0.32% of in-window days)
+   identical-position days 99.68%
+
+   EXHAUSTIVENESS CHECK (primary definition, as frozen)
+   sum_e Delta_R_e            +0.0517823014
+   total in-window difference +0.0267823014
+   residual                   -2.500e-02  -> <=1e-12? FAIL
+   residual attribution: the day after each episode both arms hold the
+   same position but arrive from different ones, so their 10 bps cost
+   still differs. residual minus the sum of those settlement days = -3.469e-18 -> PASS (<=1e-12)
+   i.e. the frozen episode window books the fixed JM's transition cost
+   but defers confirmed_2d's by one day, so each episode's Delta_R_e
+   carries a mechanical +10 bps that is repaid outside the episode:
+   in-episode cost component +0.027000 over 27 episodes; gross (pre-cost) component +0.024782.
+   DIAGNOSTIC (frozen definition untouched): 'closed' episodes = each
+   episode plus its own settlement day. Disjoint, exhaustive, and
+   cost-complete.
+   sum_e closed Delta = +0.0267823014, residual vs total +3.469e-18
+
+   episode lengths: max 1 day(s); all exactly 1 day? True
+
+2. EPISODE WIN/LOSS COUNTS
+   Delta_R_e > 0   17
+   Delta_R_e < 0   10
+   Delta_R_e == 0  0
+
+3. DISTRIBUTION OF Delta_R_e
+   mean +0.001918   median +0.001344   std 0.016488
+   min  -0.042195   max    +0.047476
+   positive total +0.180583   negative total -0.128801   net +0.051782
+
+4. CONCENTRATION (episodes ranked by |Delta_R_e|)
+   share of NET total: top1 +91.7%   top3 +60.3%   top5 +138.1%
+   (signed sums: top1 +0.047476  top3 +0.031218  top5 +0.071529)
+   share of POSITIVE subtotal: top1 +26.3%   top3 +53.1%   top5 +69.5%
+   share of NEGATIVE subtotal: top1 +32.8%   top3 +56.1%   top5 +78.4%
+   same numerators against the ACTUAL total in-window difference (+0.026782):
+      top1 +177.3%   top3 +116.6%   top5 +267.1%
+   DIAGNOSTIC, cost-complete 'closed' episodes (net +0.026782, positive 14 / negative 13):
+      top1 +173.5%   top3 +105.4%   top5 +248.4%   (signed sums +0.046476 / +0.028218 / +0.066529)
+
+5. LARGEST EPISODES
+   5 largest POSITIVE episodes
+      start        end          days  Delta_R_e   JM regime at start   period
+      2011-08-11   2011-08-11      1  +0.047476  bear_cash       normal
+      2003-05-19   2003-05-19      1  +0.025936  bull_equity     normal
+      2022-08-22   2022-08-22      1  +0.022401  bull_equity     inflation_shock
+      2007-03-21   2007-03-21      1  +0.017910  bear_cash       normal
+      2000-03-28   2000-03-28      1  +0.011800  bull_equity     dotcom
+
+   5 largest NEGATIVE episodes
+      start        end          days  Delta_R_e   JM regime at start   period
+      2020-03-20   2020-03-20      1  -0.042195  bear_cash       covid
+      2011-11-02   2011-11-02      1  -0.015201  bull_equity     normal
+      2020-07-06   2020-07-06      1  -0.014880  bull_equity     normal
+      2023-11-10   2023-11-10      1  -0.014561  bull_equity     normal
+      2000-05-02   2000-05-02      1  -0.014175  bear_cash       dotcom
+
+6. REGIME CONTEXT (fixed JM's held state on the episode's first day)
+   start in bear_cash   episodes  13   win   7   loss   6   summed Delta_R +0.006190   | closed: win   6   loss   7   sum -0.006810
+   start in bull_equity episodes  14   win  10   loss   4   summed Delta_R +0.045593   | closed: win   8   loss   6   sum +0.033593
+
+7. CRISIS vs NORMAL (preassigned windows, episode start date)
+   dotcom           2000-03-01..2002-10-31  episodes   5   summed Delta_R +0.024189   closed +0.021189
+   gfc              2007-10-01..2009-03-31  episodes   2   summed Delta_R -0.001376   closed -0.003376
+   covid            2020-02-01..2020-04-30  episodes   1   summed Delta_R -0.042195   closed -0.043195
+   inflation_shock  2022-01-01..2022-10-31  episodes   3   summed Delta_R +0.017669   closed +0.014669
+   ALL CRISIS                               episodes  11   summed Delta_R -0.001713   closed -0.010713
+   NORMAL                                   episodes  16   summed Delta_R +0.053495   closed +0.037495
+
+8. SIGN TEST (DESCRIPTIVE ONLY -- not a confirmatory test; the episode
+   definition and window were frozen, but this statistic is reported as
+   a description of episode-level consistency, nothing more)
+   17 positive of 27 non-zero episodes (27 total), two-sided binomial p = 0.2478 under p=0.5
+   DIAGNOSTIC, cost-complete closed episodes: 14 positive of 27, p = 1.0000
+
+SECONDARY (robustness only): episodes padded +/-5 trading days, merged
+   merged episodes 22   days 266 (3.11% of window)   positive 11 / negative 11
+   net +0.026782   residual vs total +3.469e-18
+   share of padded net: top1 +173.5%   top3 +105.4%   top5 +121.2%
+
+================ DE ================
+window 1990-01-02 .. 2023-12-29  (8602 in-window days, sealed count asserted)
+
+1. EPISODE COVERAGE
+   episodes                55
+   days inside episodes    55 (0.64% of in-window days)
+   identical-position days 99.36%
+
+   EXHAUSTIVENESS CHECK (primary definition, as frozen)
+   sum_e Delta_R_e            +0.1847297568
+   total in-window difference +0.1317297568
+   residual                   -5.300e-02  -> <=1e-12? FAIL
+   residual attribution: the day after each episode both arms hold the
+   same position but arrive from different ones, so their 10 bps cost
+   still differs. residual minus the sum of those settlement days = +2.082e-17 -> PASS (<=1e-12)
+   i.e. the frozen episode window books the fixed JM's transition cost
+   but defers confirmed_2d's by one day, so each episode's Delta_R_e
+   carries a mechanical +10 bps that is repaid outside the episode:
+   in-episode cost component +0.055000 over 55 episodes; gross (pre-cost) component +0.129730.
+   DIAGNOSTIC (frozen definition untouched): 'closed' episodes = each
+   episode plus its own settlement day. Disjoint, exhaustive, and
+   cost-complete.
+   sum_e closed Delta = +0.1317297568, residual vs total +2.776e-17
+
+   episode lengths: max 1 day(s); all exactly 1 day? True
+
+2. EPISODE WIN/LOSS COUNTS
+   Delta_R_e > 0   30
+   Delta_R_e < 0   25
+   Delta_R_e == 0  0
+
+3. DISTRIBUTION OF Delta_R_e
+   mean +0.003359   median +0.001460   std 0.019572
+   min  -0.046011   max    +0.063588
+   positive total +0.468951   negative total -0.284221   net +0.184730
+
+4. CONCENTRATION (episodes ranked by |Delta_R_e|)
+   share of NET total: top1 +34.4%   top3 +42.1%   top5 +48.9%
+   (signed sums: top1 +0.063588  top3 +0.077724  top5 +0.090301)
+   share of POSITIVE subtotal: top1 +13.6%   top3 +35.8%   top5 +48.2%
+   share of NEGATIVE subtotal: top1 +16.2%   top3 +35.9%   top5 +51.2%
+   same numerators against the ACTUAL total in-window difference (+0.131730):
+      top1 +48.3%   top3 +59.0%   top5 +68.6%
+   DIAGNOSTIC, cost-complete 'closed' episodes (net +0.131730, positive 28 / negative 27):
+      top1 +47.5%   top3 +56.7%   top5 +64.8%   (signed sums +0.062588 / +0.074724 / +0.085301)
+
+5. LARGEST EPISODES
+   5 largest POSITIVE episodes
+      start        end          days  Delta_R_e   JM regime at start   period
+      1998-10-02   1998-10-02      1  +0.063588  bull_equity     normal
+      2008-01-24   2008-01-24      1  +0.060147  bear_cash       gfc
+      2003-10-03   2003-10-03      1  +0.044364  bear_cash       normal
+      1991-08-21   1991-08-21      1  +0.029424  bear_cash       normal
+      1999-03-24   1999-03-24      1  +0.028554  bull_equity     normal
+
+   5 largest NEGATIVE episodes
+      start        end          days  Delta_R_e   JM regime at start   period
+      2015-08-24   2015-08-24      1  -0.046011  bear_cash       normal
+      1998-08-27   1998-08-27      1  -0.031786  bear_cash       normal
+      2020-05-05   2020-05-05      1  -0.024115  bull_equity     normal
+      2016-01-07   2016-01-07      1  -0.021911  bear_cash       normal
+      2016-04-19   2016-04-19      1  -0.021665  bull_equity     normal
+
+6. REGIME CONTEXT (fixed JM's held state on the episode's first day)
+   start in bear_cash   episodes  28   win  15   loss  13   summed Delta_R +0.082096   | closed: win  14   loss  14   sum +0.056096
+   start in bull_equity episodes  27   win  15   loss  12   summed Delta_R +0.102634   | closed: win  14   loss  13   sum +0.075634
+
+7. CRISIS vs NORMAL (preassigned windows, episode start date)
+   dotcom           2000-03-01..2002-10-31  episodes   5   summed Delta_R +0.010016   closed +0.005016
+   gfc              2007-10-01..2009-03-31  episodes   3   summed Delta_R +0.085569   closed +0.082569
+   covid            2020-02-01..2020-04-30  episodes   1   summed Delta_R +0.003756   closed +0.002756
+   inflation_shock  2022-01-01..2022-10-31  episodes   0   summed Delta_R +0.000000   closed +0.000000
+   ALL CRISIS                               episodes   9   summed Delta_R +0.099341   closed +0.090341
+   NORMAL                                   episodes  46   summed Delta_R +0.085389   closed +0.041389
+
+8. SIGN TEST (DESCRIPTIVE ONLY -- not a confirmatory test; the episode
+   definition and window were frozen, but this statistic is reported as
+   a description of episode-level consistency, nothing more)
+   30 positive of 55 non-zero episodes (55 total), two-sided binomial p = 0.5901 under p=0.5
+   DIAGNOSTIC, cost-complete closed episodes: 28 positive of 55, p = 1.0000
+
+SECONDARY (robustness only): episodes padded +/-5 trading days, merged
+   merged episodes 47   days 566 (6.58% of window)   positive 28 / negative 19
+   net +0.131730   residual vs total +0.000e+00
+   share of padded net: top1 +47.5%   top3 +56.7%   top5 +55.6%
+
+================ JP ================
+window 1990-01-19 .. 2023-12-29  (8336 in-window days, sealed count asserted)
+
+1. EPISODE COVERAGE
+   episodes                49
+   days inside episodes    49 (0.59% of in-window days)
+   identical-position days 99.41%
+
+   EXHAUSTIVENESS CHECK (primary definition, as frozen)
+   sum_e Delta_R_e            +0.0985342904
+   total in-window difference +0.0515342904
+   residual                   -4.700e-02  -> <=1e-12? FAIL
+   residual attribution: the day after each episode both arms hold the
+   same position but arrive from different ones, so their 10 bps cost
+   still differs. residual minus the sum of those settlement days = -4.163e-17 -> PASS (<=1e-12)
+   i.e. the frozen episode window books the fixed JM's transition cost
+   but defers confirmed_2d's by one day, so each episode's Delta_R_e
+   carries a mechanical +10 bps that is repaid outside the episode:
+   in-episode cost component +0.049000 over 49 episodes; gross (pre-cost) component +0.049534.
+   DIAGNOSTIC (frozen definition untouched): 'closed' episodes = each
+   episode plus its own settlement day. Disjoint, exhaustive, and
+   cost-complete.
+   sum_e closed Delta = +0.0515342904, residual vs total +0.000e+00
+
+   episode lengths: max 1 day(s); all exactly 1 day? True
+
+2. EPISODE WIN/LOSS COUNTS
+   Delta_R_e > 0   29
+   Delta_R_e < 0   20
+   Delta_R_e == 0  0
+
+3. DISTRIBUTION OF Delta_R_e
+   mean +0.002011   median +0.001344   std 0.012571
+   min  -0.032142   max    +0.034600
+   positive total +0.285248   negative total -0.186714   net +0.098534
+
+4. CONCENTRATION (episodes ranked by |Delta_R_e|)
+   share of NET total: top1 +35.1%   top3 -23.0%   top5 +22.5%
+   (signed sums: top1 +0.034600  top3 -0.022672  top5 +0.022154)
+   share of POSITIVE subtotal: top1 +12.1%   top3 +27.8%   top5 +42.1%
+   share of NEGATIVE subtotal: top1 +17.2%   top3 +39.8%   top5 +54.7%
+   same numerators against the ACTUAL total in-window difference (+0.051534):
+      top1 +67.1%   top3 -44.0%   top5 +43.0%
+   DIAGNOSTIC, cost-complete 'closed' episodes (net +0.051534, positive 27 / negative 22):
+      top1 +65.2%   top3 -49.8%   top5 +33.3%   (signed sums +0.033600 / -0.025672 / +0.017154)
+
+5. LARGEST EPISODES
+   5 largest POSITIVE episodes
+      start        end          days  Delta_R_e   JM regime at start   period
+      2006-06-22   2006-06-22      1  +0.034600  bear_cash       normal
+      1998-06-01   1998-06-01      1  +0.023289  bull_equity     normal
+      1995-09-04   1995-09-04      1  +0.021538  bull_equity     normal
+      1993-11-30   1993-11-30      1  +0.021356  bear_cash       normal
+      1998-08-18   1998-08-18      1  +0.019223  bear_cash       normal
+
+   5 largest NEGATIVE episodes
+      start        end          days  Delta_R_e   JM regime at start   period
+      1998-04-02   1998-04-02      1  -0.032142  bear_cash       normal
+      1991-07-03   1991-07-03      1  -0.025130  bear_cash       normal
+      2000-09-27   2000-09-27      1  -0.017094  bear_cash       dotcom
+      2011-03-23   2011-03-23      1  -0.015458  bear_cash       normal
+      1998-06-03   1998-06-03      1  -0.012307  bear_cash       normal
+
+6. REGIME CONTEXT (fixed JM's held state on the episode's first day)
+   start in bear_cash   episodes  25   win  13   loss  12   summed Delta_R -0.025511   | closed: win  12   loss  13   sum -0.048511
+   start in bull_equity episodes  24   win  16   loss   8   summed Delta_R +0.124045   | closed: win  15   loss   9   sum +0.100045
+
+7. CRISIS vs NORMAL (preassigned windows, episode start date)
+   dotcom           2000-03-01..2002-10-31  episodes   7   summed Delta_R +0.017644   closed +0.010644
+   gfc              2007-10-01..2009-03-31  episodes   0   summed Delta_R +0.000000   closed +0.000000
+   covid            2020-02-01..2020-04-30  episodes   0   summed Delta_R +0.000000   closed +0.000000
+   inflation_shock  2022-01-01..2022-10-31  episodes   0   summed Delta_R +0.000000   closed +0.000000
+   ALL CRISIS                               episodes   7   summed Delta_R +0.017644   closed +0.010644
+   NORMAL                                   episodes  42   summed Delta_R +0.080890   closed +0.040890
+
+8. SIGN TEST (DESCRIPTIVE ONLY -- not a confirmatory test; the episode
+   definition and window were frozen, but this statistic is reported as
+   a description of episode-level consistency, nothing more)
+   29 positive of 49 non-zero episodes (49 total), two-sided binomial p = 0.2529 under p=0.5
+   DIAGNOSTIC, cost-complete closed episodes: 27 positive of 49, p = 0.5682
+
+SECONDARY (robustness only): episodes padded +/-5 trading days, merged
+   merged episodes 45   days 520 (6.24% of window)   positive 26 / negative 19
+   net +0.051534   residual vs total -1.388e-17
+   share of padded net: top1 +65.2%   top3 -49.8%   top5 +29.5%
+

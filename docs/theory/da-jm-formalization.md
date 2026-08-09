@@ -313,26 +313,53 @@ Decided (frozen intent; the experiment spec will restate them verbatim):
    August-2022 autopsy BEFORE DA-JM existed), 0.5 ADVERSARIAL control,
    1.0 IDENTITY gate. No winner selection between 0.5 and 2.0 on the
    evaluation sample.
-6. **Success criterion** (spec-level, recorded here for completeness):
-   primary is Delta_m = Sharpe_DA - Sharpe_fixedJM per market at delay 1,
-   against a SINGLE primary comparator (the canonical fixed JM) so the
-   hypothesis stays clean. *Directional support*: Delta > 0 in US, DE, JP.
-   *Statistical support*: paired moving-block bootstrap on the two daily
-   return streams (same block indices applied to both streams), 95%
-   one-sided lower bound > 0 in all three markets — an intersection-union
-   test, so no extra multiplicity correction is needed for the all-three
-   claim. The **block length must be pinned in the spec before any P&L**
-   (either one economically justified value or a preregistered automatic
-   rule); trying 5/10/20/60 days and keeping the nicest interval is
-   forbidden. Delays 5/10 are robustness reporting and cannot rescue a
-   primary failure. A separate *economic* tier is
-   Sharpe_DA > max(JM, HMM, B&H). No hard minimum Sharpe delta is set;
-   "statistically supported" and "economically material" stay distinct
-   labels.
-   **Naming (owner instruction, 2026-08-09):** the bootstrap result is
-   reported as **paired resampling evidence**, never as clean confirmatory
-   statistical evidence. US/DE/JP are development data that has been
-   looked at many times; resampling does not undo that selection history.
+6. **Evaluation hierarchy** (owner decision 2026-08-09, registry
+   `da-jm-evaluation-hierarchy-2026-08-09`). This REPLACES the earlier
+   two-tier "directional + statistical support" criterion, whose
+   statistical tier required a 95% one-sided bootstrap lower bound > 0 in
+   all three markets. **That gate is withdrawn**: a resampling interval is
+   not permitted to decide success or failure here, in either direction.
+   Evidence is weighed in this order, strongest first:
+
+   1. **Effect size.** Report `Delta_m = Sharpe_DA,m - Sharpe_fixedJM,m`
+      per market at delay 1, against a SINGLE primary comparator (the
+      canonical fixed JM), as the raw number — never hidden behind
+      significance. A vector like (+0.12, +0.09, +0.07) is interesting and
+      (+0.003, +0.002, +0.001) is not, and no interval is needed to tell
+      them apart. **No fixed threshold** (in particular no ±0.03) is
+      imposed.
+   2. **Cross-market transport.** The primary criterion: Delta > 0 in US,
+      DE and JP for the same frozen variant, with non-trivial magnitude.
+   3. **Mechanism consistency.** If the claim is duration dependence, the
+      model must demonstrably change short segments, hazards, whipsaws and
+      the relevant transition episodes in the PREREGISTERED direction. A
+      Sharpe increase whose duration mechanism does not behave as the
+      theory predicts is not support.
+   4. **Robustness.** Delays 1/5/10, transaction costs, the prespecified
+      baseline family (item 6b), the optimizer seed families, subperiods.
+   5. **External transport** — the gold standard. Freeze DA-JM completely,
+      then apply it to markets or periods never used to conceive it.
+      Delta > 0 on untouched markets outweighs any interval computed on
+      development US/DE/JP.
+   6. **Resampling evidence — LAST, and descriptive only.** Reported as a
+      description of uncertainty, never as a guillotine: neither "interval
+      contains 0" nor "interval excludes 0" decides anything. If reported
+      it must use the **studentized** Sharpe-difference procedure (Ledoit &
+      Wolf 2008), not a raw percentile interval, with the **block length
+      pinned before any P&L** — trying several and keeping the nicest is
+      forbidden. Label it **paired resampling evidence on repeatedly
+      inspected development data**; resampling does not undo selection
+      history (White 2000).
+
+   **Episode-level reporting is mandatory** for any challenger that acts
+   only at transitions — which DA-JM plausibly is. Alongside daily returns,
+   report per-divergence-episode `Delta_R_e` with win/loss counts, median,
+   distribution, **concentration** (what share of the net comes from the
+   largest one, three and five episodes), regime context, and
+   crisis-versus-normal split. The confirmed_2d study
+   (`artifacts/confirmed2d-episodes/`) is the worked example of why: its
+   aggregate Sharpe advantage dissolves into a handful of single days once
+   viewed this way.
 6b. **Baseline-uncertainty robustness** (owner addition, 2026-08-09).
    Because the exact Shu JM is demonstrably underidentified from public
    information, "DA-JM beats OUR calibrated reconstruction" invites the
@@ -365,7 +392,8 @@ Decided (frozen intent; the experiment spec will restate them verbatim):
 
 Still open (to pin in the spec, none block the doc):
 
-- Bootstrap block length (must be fixed before any P&L, per item 6) and
+- Bootstrap block length (must be fixed before any P&L — a practice
+  requirement, not a gate; the resampling itself is descriptive) and
   the exact synthetic-recovery metric for classes A/B/C.
 - Per-state beta: explicitly deferred (one new parameter only).
 - **Which baseline the anchors are computed from.** The v12 reseal is
