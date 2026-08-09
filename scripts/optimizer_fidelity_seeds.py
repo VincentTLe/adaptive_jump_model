@@ -275,6 +275,18 @@ def main() -> int:
                 delay_trading_days=DELAY,
                 one_way_cost_bps=config.backtest_protocol.one_way_cost_bps,
             )
+            # apply_signal returns the FULL history (from 1969); the reported
+            # metrics live on the sealed OOS comparison window only. Without
+            # this restriction the spread would be measured on 13.8k days of
+            # which 5.2k are pre-OOS burn-in that no published number uses.
+            trades = trades[
+                (trades["date"] >= oos_start) & (trades["date"] <= oos_end)
+            ]
+            if len(trades) != int(jm_row["observations"]):
+                raise SystemExit(
+                    f"{market} seed={seed}: window has {len(trades)} rows, sealed "
+                    f"metrics say {int(jm_row['observations'])}"
+                )
             metrics = performance_metrics(trades)
             level3_rows.append(
                 {

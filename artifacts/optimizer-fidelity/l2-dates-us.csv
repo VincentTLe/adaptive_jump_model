@@ -1,0 +1,8 @@
+market,lambda,date,in_oos_window
+us,0.0,1984-03-21,False
+us,0.0,1984-06-22,False
+us,0.0,1984-06-25,False
+us,0.0,1985-10-10,False
+us,0.0,2018-04-20,True
+us,0.1,1985-10-02,False
+us,0.1,2020-07-01,True
