@@ -56,6 +56,8 @@ artifacts/audit/*/states-*.csv
 # evidence; the per-seed refit cache is regenerable and stays out.
 !artifacts/optimizer-fidelity/
 artifacts/optimizer-fidelity/fit-cache/
+# confirmed_2d episode-level evidence: 27/55/49 one-row-per-episode tables.
+!artifacts/confirmed2d-episodes/
 reports/
 *.log
 *.pid

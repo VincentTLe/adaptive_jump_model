@@ -1,0 +1,172 @@
+Ledoit-Wolf (2008) studentized bootstrap for the paired Sharpe difference
+confirmed_2d minus fixed_jm, seed 0, sealed OOS window, delay 1
+
+DESCRIPTIVE DIAGNOSTIC. Resampling sits last in the evaluation hierarchy
+(da-jm-evaluation-hierarchy-2026-08-09). Neither interval below is a gate:
+'contains 0' is not a verdict of no effect, 'excludes 0' would not be a
+verdict of a real one. All four limitations recorded in the L4 receipt
+(data snooping, conditioning on one fitted path, stationarity, and the
+wrong unit of analysis for a challenger that differs on 0.3-0.6% of days)
+apply to the studentized interval exactly as they did to the percentile one.
+
+METHOD
+  Estimand    Delta = Sharpe(confirmed_2d) - Sharpe(fixed_jm), annualized by
+              sqrt(252); repo Sharpe = mean(strategy - cash) / sd(strategy).
+  (a) SE      delta method on the moment vector v, Ledoit-Wolf Eq. (5):
+              s(Delta) = sqrt(grad f(v)' Psi grad f(v) / T). Psi is the
+              PREWHITENED PARZEN kernel HAC estimate (Andrews 1991 automatic
+              bandwidth S_T = 2.6614 (alpha(2) T)^0.2 on VAR(1)-prewhitened
+              residuals, Andrews-Monahan 1992 recoloring, T/(T-p)
+              adjustment).
+              v = (mu1, mu2, gamma1, gamma2) with gradient Eq. (4) for the
+              canonical LW estimator on excess returns; v is extended to
+              (m1, m2, g1, g2, k) with k = E[cash] for the repo's Sharpe,
+              which nets a stochastic cash leg in the numerator only. The
+              5-vector gradient collapses onto Eq. (4) exactly at k = 0.
+  (b) Student the bootstrap statistic is (Delta*_b - Delta_hat)/s(Delta*_b),
+              with s(Delta*_b) RECOMPUTED on each resample from the
+              block-sum estimator Psi* = (1/l) sum_j zeta_j zeta_j',
+              zeta_j = b^-0.5 sum_{t in block j} y*_t (LW Section 3.2.2,
+              Goetze-Kuensch 1996) -- not the raw Delta*_b.
+  (c) CI      studentized bootstrap-t. Primary = LW Eq. (7) symmetric
+              interval Delta +- z*_{|.|,0.95} s(Delta); the equal-tailed
+              bootstrap-t interval is reported beside it. p-value = LW
+              Eq. (9), (#{d* >= d} + 1)/(M + 1), d = |Delta|/s(Delta).
+  (d) Resample CIRCULAR BLOCK BOOTSTRAP of Politis-Romano (1992), fixed block
+              size, blocks of ROWS of the joint (c2d, jm, cash) matrix so the
+              pairing is preserved. Chosen because it is what LW Section
+              3.2.2 specifies (circular wrapping removes the moving-block
+              edge effect that under-weights the first and last b-1 rows).
+              The stationary bootstrap of Politis-Romano (1994), expected
+              block length L, is run as a robustness arm because it is what
+              this repo's frozen inference contract uses.
+  Replicates  M = 4999 (LW use 4999 in their applications);
+              primary block b = 63 trading days, matching
+              the superseded check so only the method changes.
+
+SANITY CHECKS
+  analytic vs central-difference gradient, max relative error: 8.06e-08
+  us: T = 8565; performance_metrics Delta +0.004391 vs moment-form Delta +0.004392 (ddof 1 vs 0, difference 2.56e-07)
+  de: T = 8602; performance_metrics Delta +0.022057 vs moment-form Delta +0.022058 (ddof 1 vs 0, difference 1.28e-06)
+  jp: T = 8336; performance_metrics Delta +0.009276 vs moment-form Delta +0.009276 (ddof 1 vs 0, difference 5.56e-07)
+
+OLD (plain percentile) vs NEW (Ledoit-Wolf studentized), block = 63 days
+
+market      Delta    HAC SE        OLD percentile 95%       NEW studentized 95%   p (LW)
+us       +0.00439   0.01906        [-0.0271, +0.0396]        [-0.0340, +0.0427]    0.836
+de       +0.02206   0.02573        [-0.0254, +0.0707]        [-0.0296, +0.0737]    0.400
+jp       +0.00928   0.01672        [-0.0190, +0.0377]        [-0.0233, +0.0418]    0.577
+
+  OLD = Kuensch moving-block, 2000 replicates, np.percentile(deltas,
+        [2.5, 97.5]); recomputed on the same series (block 63).
+  NEW = LW Eq. (7) symmetric studentized interval. Equal-tailed variant and
+        the un-studentized percentile interval of the SAME circular-block
+        draws are in studentized-ci.csv.
+
+Published percentile numbers from the L4 receipt, for provenance:
+  us: receipt [-0.0267, +0.0397] frac+ 0.62 | recomputed [-0.0271, +0.0396] frac+ 0.62 (Monte Carlo difference only; seeds were not recorded)
+  de: receipt [-0.0214, +0.0684] frac+ 0.84 | recomputed [-0.0254, +0.0707] frac+ 0.84 (Monte Carlo difference only; seeds were not recorded)
+  jp: receipt [-0.0201, +0.0404] frac+ 0.74 | recomputed [-0.0190, +0.0377] frac+ 0.72 (Monte Carlo difference only; seeds were not recorded)
+
+FULL PER-MARKET DETAIL (circular block bootstrap, repo Sharpe)
+
+US  T = 8565, Delta = +0.004392
+  days on which the two arms' returns differ at all: 54 / 8565 (0.63%)
+  HAC standard error (prewhitened Parzen)   0.019057
+  median bootstrap standard error s(Delta*) 0.016960
+  same block estimator on the ORIGINAL sample              0.017440   (+9.3% vs kernel HAC)
+  studentized symmetric 95%    [-0.03395, +0.04274]  contains 0
+  studentized equal-tailed 95% [-0.03285, +0.04395]  contains 0
+  OLD percentile 95%           [-0.02714, +0.03963]  contains 0
+  two-sided p-value, studentized distribution (LW Eq. 9)  0.8362
+  two-sided p-value, equal-tailed studentized             0.8396
+  fraction of bootstrap replicates with positive delta     0.600
+     (this is a property of the resampling distribution. It is NOT
+      P(true delta > 0) and must never be written that way.)
+  robustness, stationary bootstrap L = 63: [-0.03270, +0.04148], p 0.8318
+  cross-check, canonical LW 4-moment excess-return Sharpe: Delta +0.004397, SE 0.019063, [-0.03421, +0.04300], p 0.8318
+
+DE  T = 8602, Delta = +0.022058
+  days on which the two arms' returns differ at all: 110 / 8602 (1.28%)
+  HAC standard error (prewhitened Parzen)   0.025734
+  median bootstrap standard error s(Delta*) 0.023055
+  same block estimator on the ORIGINAL sample              0.023132   (+11.2% vs kernel HAC)
+  studentized symmetric 95%    [-0.02961, +0.07373]  contains 0
+  studentized equal-tailed 95% [-0.02698, +0.07625]  contains 0
+  OLD percentile 95%           [-0.02544, +0.07075]  contains 0
+  two-sided p-value, studentized distribution (LW Eq. 9)  0.4000
+  two-sided p-value, equal-tailed studentized             0.3848
+  fraction of bootstrap replicates with positive delta     0.828
+     (this is a property of the resampling distribution. It is NOT
+      P(true delta > 0) and must never be written that way.)
+  robustness, stationary bootstrap L = 63: [-0.03072, +0.07484], p 0.4214
+  cross-check, canonical LW 4-moment excess-return Sharpe: Delta +0.022065, SE 0.025730, [-0.02880, +0.07293], p 0.3948
+
+JP  T = 8336, Delta = +0.009276
+  days on which the two arms' returns differ at all: 98 / 8336 (1.18%)
+  HAC standard error (prewhitened Parzen)   0.016719
+  median bootstrap standard error s(Delta*) 0.014934
+  same block estimator on the ORIGINAL sample              0.016161   (+3.5% vs kernel HAC)
+  studentized symmetric 95%    [-0.02326, +0.04182]  contains 0
+  studentized equal-tailed 95% [-0.02143, +0.04373]  contains 0
+  OLD percentile 95%           [-0.01898, +0.03775]  contains 0
+  two-sided p-value, studentized distribution (LW Eq. 9)  0.5772
+  two-sided p-value, equal-tailed studentized             0.5712
+  fraction of bootstrap replicates with positive delta     0.734
+     (this is a property of the resampling distribution. It is NOT
+      P(true delta > 0) and must never be written that way.)
+  robustness, stationary bootstrap L = 63: [-0.02293, +0.04148], p 0.5742
+  cross-check, canonical LW 4-moment excess-return Sharpe: Delta +0.009274, SE 0.016711, [-0.02343, +0.04198], p 0.5840
+
+BLOCK-LENGTH SENSITIVITY (studentized symmetric interval, circular block)
+
+market   block    HAC SE           studentized 95%   p (LW)   frac +  zero
+us          21   0.01906        [-0.0326, +0.0414]    0.827    0.598  contains 0
+us          63   0.01906        [-0.0340, +0.0427]    0.836    0.600  contains 0
+us         126   0.01906        [-0.0350, +0.0438]    0.832    0.609  contains 0
+us         252   0.01906        [-0.0372, +0.0460]    0.832    0.630  contains 0
+de          21   0.02573        [-0.0275, +0.0717]    0.397    0.819  contains 0
+de          63   0.02573        [-0.0296, +0.0737]    0.400    0.828  contains 0
+de         126   0.02573        [-0.0300, +0.0741]    0.415    0.820  contains 0
+de         252   0.02573        [-0.0298, +0.0739]    0.418    0.798  contains 0
+jp          21   0.01672        [-0.0233, +0.0418]    0.582    0.723  contains 0
+jp          63   0.01672        [-0.0233, +0.0418]    0.577    0.734  contains 0
+jp         126   0.01672        [-0.0248, +0.0434]    0.595    0.742  contains 0
+jp         252   0.01672        [-0.0258, +0.0443]    0.593    0.752  contains 0
+
+  The HAC standard error does not depend on the block length (it is a
+  kernel estimate on the original sample); only the studentized quantile
+  z*_{|.|,0.95} moves with b.
+  Qualitative reading across all 12 (market, block) cells: every interval contains zero -- unchanged.
+
+'fraction of bootstrap replicates with positive delta' is reported above
+under exactly that name. It is not a posterior probability that the true
+delta is positive.
+
+HOW TO READ THE OLD-vs-NEW CHANGE
+
+1. The studentized interval is WIDER than the percentile interval in all
+   three markets, by roughly 10-25% of half-width, and the qualitative
+   reading is unchanged: all three still contain zero, at every block
+   length tried, under both resamplers, and under both the repo Sharpe
+   and the canonical Ledoit-Wolf excess-return Sharpe. The percentile
+   shortcut did not mislead about direction here -- it was simply the
+   less accurate of two procedures that agree.
+2. Two separate things widen it, and they should not be conflated. The
+   first is studentization proper (z*_{|.|,0.95} exceeds the normal 1.96
+   because the studentized distribution has heavier tails). The second is
+   that Ledoit-Wolf use two DIFFERENT variance estimators by design -- a
+   kernel HAC for s(Delta_hat), a block-sum estimator for s(Delta*) -- and
+   the block-sum estimator sits below the kernel one on this data (see
+   the per-market lines above), which inflates every d* by that ratio.
+3. Serial dependence turns out to be nearly irrelevant to THIS statistic.
+   The prewhitened-Parzen HAC standard error is within about 1% of the
+   i.i.d. delta-method standard error, and the interval barely moves
+   across block lengths 21 to 252. The reason is visible above: the two
+   arms hold identical positions on ~99% of days, so the difference is
+   carried by a few dozen isolated days that are not serially clustered.
+   The corollary is uncomfortable and stands regardless of procedure --
+   the effective sample for this comparison is tens of switching
+   episodes, not ~8,500 daily observations, and no choice of bootstrap
+   repairs that.
+

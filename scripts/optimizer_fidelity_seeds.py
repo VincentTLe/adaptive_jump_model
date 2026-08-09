@@ -319,7 +319,14 @@ def main() -> int:
         spread["spread"] = spread["max"] - spread["min"]
         lines += ["L3 (computed: L2 > 0 somewhere)", level3.to_string(index=False), ""]
         lines += ["L3c delay-1 Sharpe spread by market", spread.to_string(), ""]
-        lines.append("VERDICT: PROPAGATING -- the L3c spread is the DA-JM noise floor.")
+        lines.append(
+            "VERDICT: PROPAGATING -- optimizer choice reaches the estimand. The L3c\n"
+            "spread is a DESCRIPTIVE measure of that sensitivity for THIS comparison.\n"
+            "It is NOT a threshold a model must clear: see the retraction in\n"
+            "docs/audit/2026-08-09-optimizer-fidelity-l4-receipt.md. For any\n"
+            "challenger the load-bearing quantity is the PAIRED delta (L4), not the\n"
+            "raw spread of either arm."
+        )
     else:
         lines.append(
             "VERDICT: INVARIANT -- L2 = 0 in every market, so monthly selection, "

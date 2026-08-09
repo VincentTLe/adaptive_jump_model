@@ -74,20 +74,34 @@ JP but only 1.80× in DE. "Optimizer noise is largely common to both arms"
 holds where the claim leans on it and fails elsewhere; it is not a uniform
 property.
 
-## Qualification (c): optimizer noise is not the binding uncertainty
+## Qualification (c): return sampling is a much larger source of variation
+
+> **RETRACTION NOTICE (2026-08-09).** This section originally called the CI
+> half-width a "binding noise floor" that DA-JM "must clear". That framing is
+> **retracted** — see the [retraction subsection](#retraction-the-ci-half-width-is-not-a-noise-floor)
+> below. The numbers stand; the interpretation does not.
 
 Paired 63-day moving-block bootstrap (2000 resamples, common block index
-across both arms so the pairing is preserved), seed 0, sealed OOS window:
+across both arms so the pairing is preserved), seed 0, sealed OOS window.
+Note this is a plain **percentile** interval, not the studentized procedure
+Ledoit & Wolf (2008) recommend for Sharpe differences — see the procedure
+note below.
 
-| market | Δ | 95% CI | P(Δ > 0) |
+| market | Δ | 95% percentile interval | fraction of bootstrap replicates with positive delta |
 |---|---|---|---|
 | us | +0.004391 | [−0.0267, +0.0397] | 0.62 |
 | de | +0.022057 | [−0.0214, +0.0684] | 0.84 |
 | jp | +0.009276 | [−0.0201, +0.0404] | 0.74 |
 
-Stable across block lengths 21 / 63 / 126 / 252 — **every CI straddles
-zero**. The sampling-CI half-width (about 0.03 Sharpe) is **5–20× the paired
-optimizer spread** (0.0000 / 0.0065 / 0.0017).
+Stable across block lengths 21 / 63 / 126 / 252 — every interval contains
+zero. The interval half-width (about 0.03 Sharpe) is 5–20× the paired
+optimizer spread (0.0000 / 0.0065 / 0.0017), so return sampling varies far
+more than optimizer choice does *for this comparison under this design*.
+
+**Wording correction:** the last column is the fraction of bootstrap
+replicates with a positive delta. It was previously written as "P(Δ > 0)",
+which wrongly suggests a posterior probability that the true effect is
+positive. It is not one.
 
 Mechanism, measured: positions differ on only 27/8565, 55/8602, 49/8336 days
 (0.3–0.6%); the filter delays each transition by one day and removes exactly
@@ -98,17 +112,75 @@ the net difference — a small residual of larger offsetting terms).
 
 ## Corrected status of confirmed_2d
 
-Optimizer-robust in sign on the optima found, but **not distinguishable from
-zero on the return-sampling axis in any of the three markets**. Recorded as
-an observation; explicitly not evidence that the margin is real.
+Optimizer-robust in sign on the optima found. The effect is small in
+absolute terms (+0.004 / +0.022 / +0.009 Sharpe) and the percentile
+intervals above contain zero, so the resampling evidence does not
+distinguish it from zero — but per the retraction below, that fact is
+reported as a description of uncertainty, **not** as a verdict that the
+effect is absent. Recorded as an observation; explicitly not evidence that
+the margin is real, and equally not evidence that it is zero.
 
-## Direct consequence for the DA-JM experiment design
+## Retraction: the CI half-width is not a "noise floor"
 
-The binding noise floor on this data is the **return-sampling floor of
-roughly ±0.03 Sharpe** (CI half-width), not the optimizer floor of
-0.002–0.007. A DA-JM effect must clear the former to be reportable under the
-owner's frozen two-tier criterion; clearing only the latter is insufficient.
-Both floors are to be reported.
+Owner correction, 2026-08-09. This receipt originally concluded that "the
+binding noise floor on this data is the return-sampling floor of roughly
+±0.03 Sharpe" and that "a DA-JM effect must clear the former to be
+reportable". **Both statements are withdrawn.**
+
+A confidence-interval half-width is not an intrinsic minimum effect size. It
+moves with the confidence level (90 / 95 / 99%), the block length, the
+bootstrap procedure, the sample length and period, the statistic, and the
+stationarity assumptions. Switch 95% to 90%, or add ten years of data, and
+the "floor" shrinks without anything about any model changing. The honest
+description of 0.03 is: *estimated conditional sampling uncertainty for the
+confirmed_2d comparison under one particular moving-block bootstrap design.*
+
+What is **not** retracted: inference on a difference of Sharpe ratios is a
+legitimate, studied problem — Ledoit & Wolf (2008), *Journal of Empirical
+Finance* 15(5), 850–859, give a studentized time-series bootstrap for exactly
+this case, and block-bootstrap theory for weakly dependent series is standard
+(Künsch; Politis & Romano 1994). The tool is valid; promoting it to a
+decision gate was the error.
+
+### Four limitations of the interval as computed
+
+1. **Data snooping.** US/DE/JP have been used to reproduce Shu, to search
+   millions of λ grids, and to develop and reject DD-only, adaptive λ,
+   lagged evidence, cap-guard and confirmation variants — and to design DA-JM
+   itself. Bootstrapping that same sample does not restore out-of-sample
+   status, and ordinary inference afterwards does not account for the
+   specification search (White 2000, *Reality Check*).
+2. **Conditional on a fixed strategy path.** The procedure resamples realized
+   return blocks with the fitted decision structure frozen. It therefore
+   excludes parameter-estimation uncertainty, grid-selection uncertainty,
+   rolling model selection, optimizer uncertainty, and model-development
+   selection. It measures conditional return-sampling uncertainty only.
+3. **Stationarity.** Moving-block theory assumes weak dependence and
+   stationarity, while the sample spans dot-com, the GFC, QE, COVID and the
+   2022 rate cycle under a rolling-refit model. Insensitivity across block
+   lengths 21/63/126/252 shows the conclusion does not depend on those four
+   choices; it does not establish that stationarity holds.
+4. **Wrong unit of analysis for this challenger.** The two arms hold
+   identical positions on 99.4–99.7% of days, and the US top-5 days
+   contribute 267% of the net difference. The effective information is a
+   small number of switching episodes, not 8,500 daily observations — so an
+   episode-level analysis is the appropriate companion measurement.
+
+### Procedure defect, confirmed by reading the code
+
+The interval above is a plain **percentile** bootstrap — the verifying
+agent's script computes `np.percentile(deltas, [2.5, 97.5])` — not the
+studentized bootstrap-*t* interval Ledoit & Wolf recommend. A correct
+studentized implementation is being produced for comparison; these numbers
+stand only as what the shortcut gave.
+
+## Consequence for the DA-JM experiment design
+
+Not a threshold. The evaluation hierarchy is instead (registry
+`da-jm-evaluation-hierarchy-2026-08-09`): effect size → cross-market
+transport → mechanism consistency → robustness → external transport →
+resampling evidence last, descriptive only, never a guillotine. Neither
+"interval contains 0" nor "interval excludes 0" decides success.
 
 ## Latent hazard (no numeric effect today)
 

@@ -1,7 +1,8 @@
 """Why the paired delta is the right optimizer test, drawn.
 
 Left panels: the LEVEL of each arm's Sharpe across five initialization-seed
-families -- this is what moves, and what a raw "noise floor" would measure.
+families -- this is what moves, and what a raw single-arm spread would
+measure.
 Right panels: the PAIRED delta (challenger minus fixed JM) under the same
 seed -- what actually has to be stable, because a seed that moves both arms
 together cancels in the difference.
@@ -12,9 +13,10 @@ delta moves by 0.0017 and never changes sign.
 Honesty caveat drawn on the figure: after monthly selection the five seed
 families collapse to only 1 (US) / 3 (DE) / 2 (JP) DISTINCT selected paths,
 so this is sign-stability over that many distinct optima, not over five.
-And the paired optimizer spread is 5-20x SMALLER than the return-sampling
-CI half-width (about 0.03), which is the binding uncertainty -- every
-paired bootstrap CI straddles zero. See the verification receipt.
+And the paired optimizer spread is 5-20x smaller than the return-sampling
+interval half-width. That interval is NOT a threshold the effect must
+clear -- it is conditional sampling uncertainty under one bootstrap
+design (retraction recorded in the verification receipt).
 
 Style follows the repo's Shu-grammar convention (simple_jm_figures.py):
 serif, white ground, Okabe-Ito palette, y-grid only, solid strokes only.
@@ -135,8 +137,8 @@ def main() -> int:
         )
         figure.text(
             0.5, 0.935,
-            "sign-stable on the optima found -- but the return-sampling CI "
-            "(about \u00b10.03) is 5-20x wider and straddles zero",
+            "sign-stable on the optima found; return sampling varies 5-20x more "
+            "(descriptive, not a threshold)",
             ha="center", fontsize=9.5, color="#666666",
         )
         figure.tight_layout(rect=(0, 0.055, 1, 0.925))

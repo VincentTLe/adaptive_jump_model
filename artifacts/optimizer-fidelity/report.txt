@@ -31,4 +31,9 @@ de      0.385935  0.397684  0.011748
 jp      0.276815  0.293846  0.017032
 us      0.677286  0.677286  0.000000
 
-VERDICT: PROPAGATING -- the L3c spread is the DA-JM noise floor.
+VERDICT: PROPAGATING -- optimizer choice reaches the estimand. The L3c
+spread is a DESCRIPTIVE measure of that sensitivity for THIS comparison.
+It is NOT a threshold a model must clear: see the retraction in
+docs/audit/2026-08-09-optimizer-fidelity-l4-receipt.md. For any
+challenger the load-bearing quantity is the PAIRED delta (L4), not the
+raw spread of either arm.
