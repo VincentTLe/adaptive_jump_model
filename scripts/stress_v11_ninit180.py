@@ -39,7 +39,7 @@ MARKETS = ("us", "de", "jp")
 
 def market_grid(config, market: str) -> tuple[float, ...]:
     for entry in config.markets:
-        if entry.name == market:
+        if entry.id == market:
             override = entry.jm_lambda_grid
             if override:
                 return tuple(override)
