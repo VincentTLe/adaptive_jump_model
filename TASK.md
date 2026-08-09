@@ -110,12 +110,33 @@ jm-disagreement-anatomy-010's DE/JP legs against v11 — mechanical (v11
 baseline + rerun harness both already exist), except where a known bug
 (see baseline-reseal-v11 above) needs fixing first.
 
-After that queue clears, the standing motivated candidate is **semi-Markov
-dwell cost** (nonzero-diagonal penalty; `dp_tv` already sums stay-penalties,
-so no solver change) — sharpened by the lagged-capguard-001 autopsy into a
-concrete target: penalize exactly the "re-enter mid-chop, get run over"
-behavior it diagnosed. Needs its own frozen question and experiment id
-before any code runs. An independent 8-agent survey of every other
-past-proposed, not-yet-run idea (23 ranked candidates) is available on
-request; several are cheaper than semi-Markov (already-frozen specs never
-executed, or known bugs in prior runs awaiting a rerun).
+After that queue clears, the standing motivated candidate is **duration-aware
+(semi-Markov) dwell cost** — sharpened by the lagged-capguard-001 autopsy into
+a concrete target: penalize exactly the "re-enter mid-chop, get run over"
+behavior it diagnosed.
+
+CORRECTION (2026-08-08, before any code ran): the line above previously said
+"nonzero-diagonal penalty; `dp_tv` already sums stay-penalties, so no solver
+change." That is true only for a constant marginal stay-cost — verified by
+hand: a discrete-Weibull duration cost phi_k(d) = -log q_k(d) is affine in d
+exactly at shape beta=1 (the geometric/memoryless case), where the marginal
+cost per extra day is the constant -log(q_k) — and a constant marginal cost is
+exactly what `dp_tv`'s existing nonzero-diagonal `penalty_seq[t][k,k]` already
+sums. That constant-hazard case recovers the *original* constant-lambda JM,
+not a semi-Markov extension. Genuine duration-dependence (beta != 1, hazard
+that changes with regime age) needs an augmented-state DP, `V_t(k,d)` instead
+of `V_t(k)` (state (k,d): stay -> (k,d+1), switch -> (k',1)), which the
+current solver does not have. Cost is still cheap (O(T*K*D_max), no
+combinatorial blowup), but "no solver change" was wrong and is retracted.
+Needs its own frozen question and experiment id before any code runs; formal
+DP derivation and a literature-novelty check (duration-dependent
+Markov-switching is well established in econometrics since the 1990s —
+Durland & McCurdy 1994, Diebold-Lee-Weinbach 1994, Bulla & Bulla 2006 for
+finance specifically; novelty, if any, is in combining it with the JM's
+penalized-DP framework specifically, not in duration-dependence itself) come
+before any code, per owner request 2026-08-08.
+
+An independent 8-agent survey of every other past-proposed, not-yet-run idea
+(23 ranked candidates) is available on request; several are cheaper than
+duration-aware dwell cost (already-frozen specs never executed, or known bugs
+in prior runs awaiting a rerun).
