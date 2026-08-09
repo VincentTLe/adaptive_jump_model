@@ -25,6 +25,7 @@ import json
 import math
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -43,10 +44,19 @@ RUN = (
     "fixed-baselines-5b12efa2948c-d57a9e7d9c07-b277dea3beb3"
 )
 OUT = ROOT / "artifacts/optimizer-fidelity"
+CACHE = OUT / "fit-cache"
 SEEDS = (0, 1, 2, 3, 4)
 N_JOBS = 12
 MARKETS = ("us", "de", "jp")
 DELAY = 1
+
+
+@dataclass(frozen=True)
+class FamilyFit:
+    """Just the two frames the ladder needs, cacheable across reruns."""
+
+    states: pd.DataFrame
+    refits: pd.DataFrame
 
 
 def market_grid(config, market: str) -> tuple[float, ...]:
@@ -59,7 +69,10 @@ def market_grid(config, market: str) -> tuple[float, ...]:
 
 
 def parse_centers(raw: object) -> np.ndarray:
-    return np.asarray(json.loads(str(raw)), dtype=float)
+    """Centers arrive as list, ndarray, or (after a CSV round-trip) a string."""
+    if isinstance(raw, str):
+        return np.asarray(json.loads(raw), dtype=float)
+    return np.asarray(raw, dtype=float)
 
 
 def main() -> int:
@@ -80,17 +93,31 @@ def main() -> int:
 
         families: dict[int, object] = {}
         for seed in SEEDS:
+            cache = CACHE / f"{market}-seed{seed}"
+            states_path = cache / "states.pkl"
+            refits_path = cache / "refits.pkl"
+            if states_path.exists() and refits_path.exists():
+                families[seed] = FamilyFit(
+                    states=pd.read_pickle(states_path),
+                    refits=pd.read_pickle(refits_path),
+                )
+                print(f"{market} seed={seed}: loaded from cache", flush=True)
+                continue
             protocol = dataclasses.replace(
                 config.jm_protocol, lambda_grid=grid, random_state=seed
             )
             start = time.time()
-            families[seed] = fixed_jm_states(
+            fitted = fixed_jm_states(
                 frame,
                 config.model_protocol,
                 protocol,
                 n_jobs=N_JOBS,
                 include_fit_diagnostics=True,
             )
+            families[seed] = FamilyFit(states=fitted.states, refits=fitted.refits)
+            cache.mkdir(parents=True, exist_ok=True)
+            fitted.states.to_pickle(states_path)
+            fitted.refits.to_pickle(refits_path)
             print(
                 f"{market} seed={seed}: {len(grid)} lambdas fitted in "
                 f"{time.time() - start:.0f}s",
@@ -131,16 +158,21 @@ def main() -> int:
                 )
             )
         )
-        centers = {
-            s: families[s].refits.set_index(["fit_date", "lambda"])["centers"]
-            for s in SEEDS
-        }
-        centroid_spread = 0.0
-        for key in centers[0].index:
-            stack = np.stack([parse_centers(centers[s].loc[key]) for s in SEEDS])
-            centroid_spread = max(
-                centroid_spread, float(np.abs(stack.max(0) - stack.min(0)).max())
-            )
+        # L1b is a secondary descriptive measure: never let it abort the run.
+        centroid_spread = float("nan")
+        try:
+            centers = {
+                s: families[s].refits.set_index(["fit_date", "lambda"])["centers"]
+                for s in SEEDS
+            }
+            centroid_spread = 0.0
+            for key in centers[0].index:
+                stack = np.stack([parse_centers(centers[s].loc[key]) for s in SEEDS])
+                centroid_spread = max(
+                    centroid_spread, float(np.abs(stack.max(0) - stack.min(0)).max())
+                )
+        except Exception as error:  # noqa: BLE001 - reported, not fatal
+            print(f"{market}: L1b centroid spread unavailable ({error})", flush=True)
 
         # --- L2: fitted-state disagreement across families
         sealed_metrics = pd.read_csv(RUN / "metrics.csv")

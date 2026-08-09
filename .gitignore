@@ -52,6 +52,10 @@ artifacts/audit/*/states-*.csv
 # v12 stress gate: 255-row objective comparison + verdict -- small committed
 # evidence; the n_init=180 refits themselves are regenerable and not persisted.
 !artifacts/v12-stress-gate/
+# optimizer-fidelity characterization: the ladder tables are small committed
+# evidence; the per-seed refit cache is regenerable and stays out.
+!artifacts/optimizer-fidelity/
+artifacts/optimizer-fidelity/fit-cache/
 reports/
 *.log
 *.pid
