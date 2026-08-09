@@ -9,6 +9,13 @@ together cancels in the difference.
 Japan is the case that makes the point: the levels move by 0.017 while the
 delta moves by 0.0017 and never changes sign.
 
+Honesty caveat drawn on the figure: after monthly selection the five seed
+families collapse to only 1 (US) / 3 (DE) / 2 (JP) DISTINCT selected paths,
+so this is sign-stability over that many distinct optima, not over five.
+And the paired optimizer spread is 5-20x SMALLER than the return-sampling
+CI half-width (about 0.03), which is the binding uncertainty -- every
+paired bootstrap CI straddles zero. See the verification receipt.
+
 Style follows the repo's Shu-grammar convention (simple_jm_figures.py):
 serif, white ground, Okabe-Ito palette, y-grid only, solid strokes only.
 """
@@ -99,9 +106,11 @@ def main() -> int:
             bottom.set_ylim(-0.004, 0.026)
             bottom.set_xticks(seeds)
             bottom.set_xlabel("initialization seed family")
+            distinct = int(rows["paired_delta"].round(12).nunique())
             bottom.text(
-                0.5, 0.92,
-                f"delta moves by {delta_spread:.4f}, never crosses zero",
+                0.5, 0.93,
+                f"delta moves by {delta_spread:.4f} over {distinct} distinct "
+                f"optim{'um' if distinct == 1 else 'a'}",
                 transform=bottom.transAxes, ha="center", fontsize=9.0,
                 color="#444444",
             )
@@ -124,7 +133,13 @@ def main() -> int:
             "Optimizer seeds move the levels, not the effect",
             fontsize=13.0,
         )
-        figure.tight_layout(rect=(0, 0.055, 1, 0.965))
+        figure.text(
+            0.5, 0.935,
+            "sign-stable on the optima found -- but the return-sampling CI "
+            "(about \u00b10.03) is 5-20x wider and straddles zero",
+            ha="center", fontsize=9.5, color="#666666",
+        )
+        figure.tight_layout(rect=(0, 0.055, 1, 0.925))
         figure.savefig(OUT, dpi=200)
         plt.close(figure)
 
