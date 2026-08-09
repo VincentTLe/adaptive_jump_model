@@ -1,0 +1,13 @@
+v11-ninit60 convergence diagnostic vs n_init=180 (DIAGNOSTIC ONLY)
+
+market  lambdas  windows  fits_compared  objectives_changed  max_abs_delta  state_mismatch_days  seconds
+    us        4       86            344                  11       0.032141                    3      848
+    de        8       85            680                  21       2.128403                    5     1234
+    jp        7       85            595                   9       1.779761                    3      956
+
+total objectives changed: 41 of 1619
+total state-path mismatch days: 11
+
+READ: if total_changed > 0, n_init=60 is not a convergence guarantee for the
+SEALED baseline either -- the v12 gate failure is not candidate-specific.
+If state mismatch days are 0, the non-convergence moves refit records only.

@@ -1,0 +1,29 @@
+L4: paired confirmed_2d minus fixed-JM delta across seed families
+(the quantity that must be stable -- NOT the raw fixed-JM spread)
+
+market  seed  jm_sharpe  c2d_sharpe  paired_delta
+    us     0   0.677286    0.681677      0.004391
+    us     1   0.677286    0.681677      0.004391
+    us     2   0.677286    0.681677      0.004391
+    us     3   0.677286    0.681677      0.004391
+    us     4   0.677286    0.681677      0.004391
+    de     0   0.389350    0.411407      0.022057
+    de     1   0.385935    0.402953      0.017017
+    de     2   0.397684    0.413203      0.015520
+    de     3   0.389350    0.411407      0.022057
+    de     4   0.389350    0.411407      0.022057
+    jp     0   0.293846    0.303122      0.009276
+    jp     1   0.293846    0.303122      0.009276
+    jp     2   0.293846    0.303122      0.009276
+    jp     3   0.276815    0.287780      0.010965
+    jp     4   0.293846    0.303122      0.009276
+
+             min       max      mean       std    spread  all_positive  raw_jm_spread
+market                                                                               
+de      0.015520  0.022057  0.019742  0.003214  0.006537          True       0.011748
+jp      0.009276  0.010965  0.009614  0.000756  0.001690          True       0.017032
+us      0.004391  0.004391  0.004391  0.000000  0.000000          True       0.000000
+
+us: sealed delta +0.0044 | paired range [+0.0044, +0.0044] spread 0.0000 (raw JM spread 0.0000) -> sign-stable across all five families
+de: sealed delta +0.0221 | paired range [+0.0155, +0.0221] spread 0.0065 (raw JM spread 0.0117) -> sign-stable across all five families
+jp: sealed delta +0.0093 | paired range [+0.0093, +0.0110] spread 0.0017 (raw JM spread 0.0170) -> sign-stable across all five families

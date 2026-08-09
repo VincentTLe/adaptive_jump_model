@@ -41,13 +41,29 @@ CV rule, the online decode, the costs. This is the load-bearing change from
 v1, which replaced lambda and therefore had to translate it into a
 probability scale (the step that failed numerically).
 
-Already-published neighbors (novelty sweep + CJM PDF read, registry
-`da-jm-novelty-sweep-2026-08-08`): CJM's state-pair matrix `Lambda[i][j]`
-is zero-diagonal and strictly first-order; no Mulvey-lab paper implements
-any duration/hazard penalty; no found paper embeds a duration cost in the
-SJM's penalized-DP framework. A second novelty pass over 2025-2026
-preprints and forward citations is running; strong novelty claims wait for
-it.
+Already-published neighbors (two independent novelty passes, registry
+`da-jm-novelty-sweep-2026-08-08` and
+`da-jm-novelty-second-pass-2026-08-09`): CJM's state-pair matrix
+`Lambda[i][j]` is zero-diagonal and strictly first-order; no Mulvey-lab
+paper implements any duration/hazard penalty; across 51 forward citations
+and every 2025-2026 SJM-lineage paper (penalty form verified in text) the
+constant per-transition lambda is unmodified.
+
+**Frozen novelty wording (owner instruction, 2026-08-09).** The only
+claim permitted is the narrow intersection one:
+
+> To our knowledge, no prior work incorporates explicit regime-duration /
+> hazard dependence into the penalized dynamic-programming objective of
+> the Statistical Jump Model family.
+
+Explicitly forbidden phrasings: "we are the first duration-aware regime
+model" (false — Sichel 1991, Durland & McCurdy 1994, Bulla & Bulla 2006);
+"no duration-aware Jump Model exists" (too strong for the coverage
+achieved); "DA-JM is novel" (too vague). The novelty is the intersection
+SJM penalized clustering + explicit duration hazard + augmented DP, and
+because 9 citing works were unreachable and Google Scholar is not
+crawlable, the manuscript must say "to our knowledge", never a categorical
+non-existence claim.
 
 ## 2. The DA-JM objective: excess duration cost
 
@@ -298,35 +314,79 @@ Decided (frozen intent; the experiment spec will restate them verbatim):
    1.0 IDENTITY gate. No winner selection between 0.5 and 2.0 on the
    evaluation sample.
 6. **Success criterion** (spec-level, recorded here for completeness):
-   primary is Delta_m = Sharpe_DA - Sharpe_fixedJM per market at delay 1.
-   *Directional support*: Delta > 0 in US, DE, JP. *Statistical support*:
-   paired moving-block bootstrap on the two daily return streams (same
-   block indices both streams), 95% one-sided lower bound > 0 in all
-   three markets (intersection-union test — no extra multiplicity
-   correction needed for the all-three claim). Delays 5/10 are robustness
-   reporting and cannot rescue a primary failure. A separate *economic*
-   tier is Sharpe_DA > max(JM, HMM, B&H). No hard minimum Sharpe delta is
-   set; "statistically supported" and "economically material" are kept as
-   distinct labels.
+   primary is Delta_m = Sharpe_DA - Sharpe_fixedJM per market at delay 1,
+   against a SINGLE primary comparator (the canonical fixed JM) so the
+   hypothesis stays clean. *Directional support*: Delta > 0 in US, DE, JP.
+   *Statistical support*: paired moving-block bootstrap on the two daily
+   return streams (same block indices applied to both streams), 95%
+   one-sided lower bound > 0 in all three markets — an intersection-union
+   test, so no extra multiplicity correction is needed for the all-three
+   claim. The **block length must be pinned in the spec before any P&L**
+   (either one economically justified value or a preregistered automatic
+   rule); trying 5/10/20/60 days and keeping the nicest interval is
+   forbidden. Delays 5/10 are robustness reporting and cannot rescue a
+   primary failure. A separate *economic* tier is
+   Sharpe_DA > max(JM, HMM, B&H). No hard minimum Sharpe delta is set;
+   "statistically supported" and "economically material" stay distinct
+   labels.
+   **Naming (owner instruction, 2026-08-09):** the bootstrap result is
+   reported as **paired resampling evidence**, never as clean confirmatory
+   statistical evidence. US/DE/JP are development data that has been
+   looked at many times; resampling does not undo that selection history.
+6b. **Baseline-uncertainty robustness** (owner addition, 2026-08-09).
+   Because the exact Shu JM is demonstrably underidentified from public
+   information, "DA-JM beats OUR calibrated reconstruction" invites the
+   obvious reviewer question. The primary comparator stays single, but the
+   spec additionally reports Delta (DA structure vs fixed structure) under
+   a **small prespecified baseline family**: the canonical calibrated
+   grid, the Shu arXiv-v1 disclosed grid, and the Table-3 illustrative
+   grid (labelled as illustrative, never as a disclosed production grid).
+   **No winner is selected among them** — the point is whether the DA
+   structure helps under each plausible reconstruction, not which
+   reconstruction flatters it.
 7. **Gates before any real-data P&L** (mechanism gates only, never
-   profitability evidence): beta=1 full-fit bit-for-bit identity;
-   synthetic DGP recovery (planted beta=2 duration structure must be
-   recovered better than by memoryless JM, per a metric frozen in the
-   spec; planted geometric must show NO improvement); flat-loss
-   adversarial case (excess costs must not induce periodic switching to
-   harvest negative Delta_phi); brute-force DP parity on small problems.
+   profitability evidence):
+   - beta=1 full-fit bit-for-bit identity with the classic JM;
+   - **synthetic recovery over three DGP classes** (owner correction,
+     2026-08-09 — planting beta=2 alone is a home game, since the data
+     would come from DA-JM's own assumed family):
+     **(A) geometric / memoryless null** — DA-JM must show NO artificial
+     advantage over classic JM;
+     **(B) discrete-Weibull, beta=2, correctly specified** — DA-JM must
+     recover the duration mechanism better than memoryless JM on a metric
+     frozen in the spec;
+     **(C) out-of-family duration** (e.g. negative-binomial / explicit
+     HSMM sojourns) — DA-JM need not recover the exact parameters, but
+     must respond in the correct DIRECTION when genuine duration
+     dependence is present;
+   - flat-loss adversarial case: excess costs must not induce periodic
+     switching purely to harvest negative Delta_phi;
+   - brute-force DP parity on small problems.
 
 Still open (to pin in the spec, none block the doc):
 
-- Bootstrap block length and the exact synthetic-DGP recovery metric.
+- Bootstrap block length (must be fixed before any P&L, per item 6) and
+  the exact synthetic-recovery metric for classes A/B/C.
 - Per-state beta: explicitly deferred (one new parameter only).
-- v12 anchors: numeric values await the v12 seal (gated on the
-  n_init=180 convergence stress test, registry
-  `v12-de-ninit180-stress-gate`).
+- **Which baseline the anchors are computed from.** The v12 reseal is
+  STOPPED: its pre-frozen convergence gate FAILED (registry
+  `v12-de-ninit180-stress-gate`, 2026-08-09 — 254/255 DE fits identical
+  at n_init=180, one window improved, so v12 does not seal at n_init=60).
+  Per owner decision the response is NOT to escalate n_init again but to
+  characterize whether optimizer uncertainty reaches the estimand at all
+  (registry `optimizer-fidelity-characterization-2026-08-09`, five
+  independent seed families). Anchors are computed from whichever
+  baseline stands after that characterization, and cannot be computed
+  before it.
 
 ## 9. What this document is not
 
-No frozen experiment spec, no code, no anchors computed yet. Order fixed
-by the owner 2026-08-09: v12 stress gate → v12 reseal → (parallel: lambda50
-donor rebuild) → this doc → second novelty pass completes → freeze DA-JM
-spec → implement + gates → P&L.
+No frozen experiment spec, no code, no anchors computed yet.
+
+Order as revised by the owner after the v12 gate failed (2026-08-09):
+v12 stress gate (**DONE — FAILED, v12 stopped**) → optimizer-fidelity
+characterization with independent seeds (**running**) → decide the
+baseline question from the frozen escalation ladder, with **no further
+n_init escalation under either outcome** → (parallel: lambda50 donor
+rebuild + metadata-driven trace receipt) → second novelty pass (**DONE**)
+→ freeze DA-JM spec → implement + mechanism gates → only then P&L.

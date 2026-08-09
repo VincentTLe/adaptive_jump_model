@@ -28,12 +28,12 @@ from adaptive_jump.simple_jm_suite import (
     CONTROLS,
     DD_OBSERVATION_LOSS_SCALE,
     DEVELOPMENT_CUTOFF,
-    EXPERIMENT_ID,
     FITTED_VARIANTS,
     LOSS_SCALE_EXPERIMENT_ID,
     LOSS_SCALE_MODELS,
     MARKETS,
     SCALED_DD_VARIANT,
+    SUITE_EXPERIMENT_IDS,
     LossScaleMarketSource,
     SimpleJMSuiteError,
     VariantOutput,
@@ -294,7 +294,7 @@ def verify_simple_jm_run(run_dir: Path) -> dict[str, Any]:
     metadata = read_json(run_dir / "run.json")
     if (
         metadata.get("status") != "complete"
-        or metadata.get("study_kind") != EXPERIMENT_ID
+        or metadata.get("study_kind") not in SUITE_EXPERIMENT_IDS
     ):
         raise SimpleJMSuiteError("run metadata is not a completed simple-JM suite")
     spec_hash = sha256_file(run_dir / "study.lock.toml")
