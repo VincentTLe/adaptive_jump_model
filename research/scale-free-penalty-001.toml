@@ -1,0 +1,72 @@
+schema_version = 1
+experiment_id = "scale-free-penalty-001"
+parent_id = "adaptive-confidence-002"
+claim_class = "EXPLORATORY"
+status = "FROZEN_BEFORE_RESULTS"
+frozen_at_utc = "2026-08-01T00:38:24Z"
+
+[question]
+text = "Is the jump penalty's lack of scale invariance a confound that explains why every adaptive mechanism helps only the United States, and does measuring the penalty in units of the training-window loss scale change the cross-market pattern?"
+motivation = """
+Measured on the sealed artifacts before this question was frozen, and the only
+reason it is being asked: the penalty a market actually operates at, expressed
+in units of its own loss scale (lambda0 / q_train), differs by an order of
+magnitude ACROSS markets - us 14.6, de 127.7, jp 11.7 at the median - and is
+not even stable WITHIN a market, ranging over a factor of 67 to 90 and drifting
+by decade (de median 25.7 in the 1990s to 1322.9 in the 2020s; jp 127.4 to 14.0
+to 620.9). A fixed lambda is therefore a moving target in real terms, because
+the feature-loss scale itself moves with the volatility regime. Two consequences
+are testable. First, a multiplicative beta discount cannot mean the same thing
+in two markets whose stiffness differs ninefold, which is a mechanical reason -
+independent of economics - for an adaptive rule to help one market only. Second,
+a model running at stiffness 1323 is a one-state rule, which is what the
+observed degeneracy in de already shows.
+This property belongs to the published protocol, not to our implementation: the
+paper specifies a fixed candidate grid in raw loss units.
+"""
+
+[hypotheses]
+h1_transfer = "Under a scale-free penalty, the arrival mechanism at beta=log2 satisfies the -001 trade-off rule (delta_sharpe>=0, delta_maximum_drawdown>=0, delta_turnover<=0, delta_switch_count<=0, at least one strict, each measured against its OWN beta=0 arm) in at least 2 of 3 markets. It is currently satisfied in 1 of 3."
+h2_degeneracy = "Under a scale-free penalty on the like-for-like menu, the share of selected months resting on a collapsed one-state fit falls in de and jp relative to the sealed baseline."
+h3_stability = "Under a scale-free penalty, the realized stiffness lambda_w / q_w is constant by construction within an arm; the DISPERSION of realized raw lambda_w across refit windows is therefore the quantity to report, and is expected to be large where q_w moves most."
+falsification = "If the transfer count stays at or below 1 market AND the de/jp degeneracy shares do not fall, the stiffness confound is not the explanation for the cross-market pattern, and that is the reported result."
+
+[method]
+penalty = "lambda_w = kappa * q_w, recomputed at every scheduled refit w"
+loss_scale = "q_w = median absolute deviation about the median of all finite state-loss entries of the lambda=0 fit on that same past-only training window"
+loss_scale_provenance = "the lambda=0 fit is a penalty-free reference fit on the identical window, so q_w carries no circular dependence on the penalty being set; this mirrors robust_loss_scale as already used by the arrival family, but anchored to lambda=0 instead of to the fit whose penalty it determines"
+causality = "q_w and every fitted parameter come from the trailing 3000-observation window only; online inference uses frozen parameters and the same t+2 execution and 10bp cost as the sealed contract"
+schedule = "identical to the sealed contract: refit in January and July, monthly candidate re-selection by trailing eight-year strategy Sharpe, tie to the lower candidate"
+
+[menus]
+derivation = "mechanical, from grids already frozen in baseline-reseal-v10; no search over kappa is performed or permitted"
+like_for_like = "each market's own calibrated lambda grid divided by that market's median q_train as measured on the sealed adaptive-confidence-002 beta=0 arm; same number of candidates as the sealed baseline, so selection freedom is unchanged"
+union = "the union of the three markets' converted kappa sets, offered identically to all three markets; this is the transfer test"
+union_caveat = "the union menu offers more candidates than the sealed baseline (7 against 2 or 3), so any improvement seen ONLY on the union arm must be attributed to selection freedom and not to scale invariance; the like-for-like arm is the controlled comparison and the union arm is read only against it"
+
+[arms]
+betas = [0.0, 0.6931471805599453]
+markets = ["us", "de", "jp"]
+menus = ["like_for_like", "union"]
+delay_trading_days = 1
+one_way_cost_bps = 10
+
+[comparison]
+baseline = "the sealed v10 calibrated baseline run fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736 and the sealed adaptive-confidence-002 arms"
+sample = "the sealed per-market comparison window, unchanged"
+metrics = ["sharpe", "maximum_drawdown", "turnover", "cash_fraction", "switch_count"]
+degeneracy = "share of selected months whose governing fit occupies a single state, reported without post-result exclusion"
+
+[claim_restriction]
+text = "Repeatedly inspected through-2023 development evidence against a CALIBRATED baseline whose grids were themselves searched against the published table. No replication, performance, profitability, holdout or generalization claim is permitted from any outcome. A scale-free penalty is a different model from the paper's, and no result here is evidence about what the paper's own model would do."
+
+[verification]
+required = [
+  "beta=0 with a kappa reproducing a sealed raw lambda on a window where q_w is such that kappa*q_w equals that lambda must reproduce the sealed states on that window",
+  "q_w depends only on the training window and is identical across kappa values",
+  "no fitted parameter or q_w uses an observation later than its window",
+  "realized lambda_w series reported per market and arm",
+  "degeneracy counted from fits, not inferred from paths",
+  "t+2 signal-position-return identity and the paper turnover convention",
+  "no date later than 2023-12-31",
+]

@@ -20,9 +20,8 @@ from adaptive_jump.models import (
     fit_fixed_jm_window,
     fixed_jm_states,
     terminal_online_state,
+    window_scaler,
 )
-from adaptive_jump.monitor import model_runtime as runtime
-from adaptive_jump.monitor.events import EventObserver
 from adaptive_jump.simple_jm_l1 import L1JumpModel
 from adaptive_jump.simple_jm_return import (
     ReturnAwareJumpModel,
@@ -100,7 +99,6 @@ def dd_only_states(
     jm_protocol: JMProtocol,
     *,
     observation_loss_scale: float = 1.0,
-    observer: EventObserver | None = None,
 ) -> FixedJMResult:
     """Fit upstream squared-loss JM on DD10 using the canonical row calendar."""
     mask = canonical_complete_mask(frame)
@@ -113,7 +111,6 @@ def dd_only_states(
         feature_columns=("dd_10",),
         observation_loss_scale=observation_loss_scale,
         include_fit_diagnostics=True,
-        observer=observer,
     )
     expected_first = pd.Timestamp(
         frame.loc[mask, "date"].iloc[model_protocol.fit_window - 1]
@@ -243,7 +240,6 @@ def custom_variant_states(
     jm_protocol: JMProtocol,
     *,
     variant: VariantKind,
-    observer: EventObserver | None = None,
 ) -> FixedJMResult:
     """Generate causal terminal states for L1 or return-aware JM."""
     if variant not in ("robust_l1", "return_aware"):
@@ -261,14 +257,6 @@ def custom_variant_states(
     fitted: _CustomFit | None = None
     last_anchor: tuple[int, int] | None = None
     first_terminal = model_protocol.fit_window - 1
-    total = len(complete) - first_terminal
-    runtime.emit_fixed_jm_started(
-        observer,
-        model_protocol.fit_window,
-        jm_protocol.lambda_grid,
-        0,
-        total,
-    )
     for terminal in range(first_terminal, len(complete)):
         window = complete.iloc[terminal - first_terminal : terminal + 1]
         current_date = pd.Timestamp(window.iloc[-1]["date"])
@@ -284,34 +272,16 @@ def custom_variant_states(
             )
             last_anchor = anchor
             records.extend(_custom_fit_records(fitted, window, current_date, variant))
-            runtime.emit_fixed_jm_refit(
-                observer,
-                current_date.date(),
-                terminal - first_terminal,
-                total,
-            )
 
         scaled = fitted.scaler.transform(window.loc[:, FEATURE_COLUMNS])
         for penalty, model in fitted.models.items():
             states.loc[current_date, penalty] = terminal_online_state(model, scaled)
-        completed = terminal - first_terminal + 1
-        runtime.emit_fixed_jm_terminal(
-            observer,
-            current_date.date(),
-            completed,
-            total,
-            [
-                (penalty, int(states.loc[current_date, penalty]))
-                for penalty in jm_protocol.lambda_grid
-            ],
-        )
 
     states.index.name = "date"
     observed = states.dropna(how="all")
     expected_first = pd.Timestamp(complete.iloc[first_terminal]["date"])
     if observed.empty or observed.index[0] != expected_first:
         raise SimpleJMFitError("custom JM state calendar is incomplete")
-    runtime.emit_stage_completed(observer, "fixed_jm", total)
     return FixedJMResult(states=states, refits=pd.DataFrame.from_records(records))
 
 
@@ -422,7 +392,9 @@ def _fit_custom_window(
     if len(window) != model_protocol.fit_window:
         raise SimpleJMFitError("custom JM fit window violates the frozen length")
     features = window.loc[:, FEATURE_COLUMNS]
-    scaler = StandardScaler().fit(features)
+    # The same choice the baseline makes; see models.window_scaler for why this
+    # must not be decided independently here.
+    scaler = window_scaler(model_protocol, features)
     scaled = pd.DataFrame(
         scaler.transform(features), index=features.index, columns=features.columns
     )

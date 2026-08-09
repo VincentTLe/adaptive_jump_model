@@ -1,0 +1,406 @@
+schema_version = 1
+config_id = "shu-replication-calibrated-v10-ninit60"
+frozen_at_utc = "2026-08-08T06:40:00Z"
+# n_init-matched comparator, frozen alongside the v11 correction
+# (2026-08-08): v10's ORIGINAL grids, refit at n_init=60 instead of the
+# original seal's n_init=10, so that a v10-ninit60 vs v11 comparison
+# isolates the grid change alone (the earlier v10(n_init=10) vs
+# v11(n_init=10) comparison, done first and independently verified --
+# docs/audit/2026-08-08-baseline-reseal-v11-receipt.md -- remains valid on
+# its own terms; this seal exists so any FUTURE study built on n_init=60
+# has a like-for-like v10-grid comparator, and no comparison ever again
+# has to silently carry two confounded protocol changes at once). The
+# original v10 seal (config_sha256 36ca1ace131c...) is UNCHANGED and
+# stays the historical baseline every pre-2026-08-08 study (simple-jm-
+# suite-002, adaptive-confidence-002, dd-loss-scale-002, grid-selection-
+# rule-001, lagged-capguard-001) is pinned against -- this is a new,
+# additional seal, not a replacement.
+[source_audit]
+run_id = "20260712T012740Z"
+path = "artifacts/data-source-audit/20260712T012740Z/audit.json"
+sha256 = "548c80cbe09f48d1070b5fc23181cb7065bc84fd4d3dbfe457a0318576388ec4"
+
+[study]
+# v10 RESEAL: the JM candidate grid moves to per-market CALIBRATION grids and
+# the claim label moves with it. This is NOT a replication contract.
+#
+# What changed and why:
+#   - [jm].lambda_grid: us [0.0, 21.544346900318832, 70.0]; per-market
+#     overrides de [150.0, 500.0], jp [10.0, 220.0]. Provenance: the paper
+#     never publishes its grid (line 638 says only "a range of candidate
+#     values"); the exhaustive-search chain jm-grid-identification-001 ->
+#     jm-effective-lambda-inversion-004 -> jm-grid-exhaustive-007/-008 ->
+#     jm-per-market-grid-009 searched all 6,474,511 size-2..8 subsets of a
+#     29-lambda sourced menu against Table 4 (delay 1) and Table 5 (delays
+#     5/10). The us grid passes all 14 published target cells (worst
+#     deviation 0.011/0.023/0.014 at d1/d5/d10); de and jp pass 13 of 14,
+#     with the blocking cell measured and frozen in the -009 artifacts
+#     (de: turnover, joint-constraint ceiling 1.465 vs target 1.70;
+#     jp: leverage, ceiling 0.737 lattice-wide vs target 0.75).
+#   - BECAUSE the grids were found by searching against the published
+#     targets, agreement with those cells is BY CONSTRUCTION and is not
+#     evidence of replication. These are calibration artifacts, never "the
+#     authors' grid". claim_label/claim_class say so, config.py enforces the
+#     coupling, and every downstream artifact inherits the label.
+#   - [selection].upper_boundary_month_fraction_limit: 1.0 (report-only).
+#     A 2-3 value calibration grid concentrates monthly choices at its upper
+#     edge by construction, and this contract never claims the grid brackets
+#     a finite optimum, so the 0.05 stop that (correctly) blocks replication
+#     contracts would only block the baseline this contract exists to seal.
+#     boundaries.csv still records every fraction.
+#   - Everything else is byte-identical to research-expanding-v9-4.toml:
+#     same data pins, features, HMM protocol, selection machinery, metrics.
+#     The HMM row is therefore an identity gate: it must reproduce the
+#     v9.4 run exactly, or the run is invalid.
+#
+# Purpose: a sealed, honestly-labeled reference baseline so the JM extension
+# studies (simple-jm-suite, dd-loss-scale, adaptive transition costs) can be
+# rerun on replication-grade data against a fixed comparator. Extension
+# deltas against this baseline are internally valid because both sides share
+# the same frozen grids.
+#
+# Owner authorization: 2026-07-31 ("reseal ... lam di; chay lai tat ca cac
+# thi nghiem tren du lieu moi ... cung voi cac luoi lambda ma chung ta co
+# duoc"). Adoption decision recorded in research/experiment_registry.jsonl.
+# v9.4: the drawdown basis returns to total_wealth. v9.1 had adopted
+# risky_leg_wealth_flat_in_cash on the argument that Figure 5's caption pinned it
+# down; the caption is about a CUMULATIVE EXCESS RETURN axis, whose flatness in
+# cash follows from the axis and says nothing about a drawdown path. With that
+# argument gone, the basis had been selected by minimising error against Table 4,
+# which is fitting an unspecified knob to the target and is forbidden by
+# CLAUDE.md. total_wealth is the conventional reading and what v8.x used. The
+# retraction costs nothing: rescored under both bases, every cell in all three
+# markets gives the same verdict at the 0.05 tolerance. Only maximum drawdown and
+# Calmar move at all; the other six metrics never touch the drawdown path.
+# v9.3: the S&P 500 splice loses no session. The v9..v9.2 builder reconstructed
+# only up to 1987-12-31, anchored THAT level to the official index's first close
+# (1988-01-04), then dropped the row -- so the row labelled 1988-01-04 carried
+# 1987-12-31's return of -0.30% and the actual +3.59% session of 1988-01-04 was
+# deleted outright. One observation of 14,598, but a large one: every rolling
+# 3000-day window from 1988-01-04 to 1999-11 read it, which covers the first ten
+# years of the reported sample. Found by an external review (Codex), 2026-07-29.
+# The fix reconstructs THROUGH the splice date and hands over the day after;
+# 14,596 of 14,597 daily log returns are bit-identical to v9.2.
+paper = "Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3"
+claim_class = "CALIBRATED_BASELINE"
+claim_label = "calibrated baseline"
+# v9.2: the German equity series regains the dividends it was missing before
+# 1988. The DAX is a performance index, so the Stooq file was treated as total
+# return end to end -- but measured against the OECD German SHARE PRICE index it
+# runs +3.02%/yr above it over 1988-2023, exactly as a performance index should,
+# and -0.15%/yr BELOW it over 1970-1987. The vendor spliced the DAX Kursindex
+# backcast onto the performance index; both are 1000.0 on 1987-12-30 so the
+# joint leaves no trace. The consequence was a German equity risk premium of
+# -3.98%/yr sustained across eighteen years, against the +0.02%/yr that JST
+# Macrohistory reports independently for the same window. Repaired by the same
+# recipe already used for Japan: price path plus JST annual German dividend
+# yields, chained onto the official base value. After the repair the backcast
+# era carries +3.24%/yr of dividend against the official era's +3.02%, the
+# premium moves to -0.60% against JST's +0.02%, and daily volatility shifts
+# 0.004pp. Note this cannot be fitting: Table 4's German column covers
+# 1990-2023, which lies entirely inside the untouched official segment.
+# Built and gated by scripts/build_de_total_return.py.
+# v9.1: the drawdown row moves onto the path the paper measures it on. Table 4
+# never defines it, but two published facts pin it down together. First, the
+# buy-and-hold drawdowns (-55.2% / -72.7% / -79.1%) are reproduced to 0.001 /
+# 0.000 / 0.012 only with the equity leg at total return, which rules out any
+# excess-return path. Second, the caption of Figure 5 [line 899-900] says the
+# shading marks days "when the JM-guided 0/1 strategy is fully invested in the
+# risk-free asset, leading to a flat yellow curve" -- so the plotted strategy
+# path pays nothing while in cash. Total return when invested plus nothing when
+# in cash is this basis, and it is forced by those two facts rather than chosen
+# to fit anything. Tested on ten cells, four of which use Shu's own position
+# paths read off Figures 5 and 6: mean absolute drawdown error falls from 0.0330
+# to 0.0072 and mean absolute Calmar error from 0.0262 to 0.0055. Evidence in
+# artifacts/hmm-residual/06-mdd-convention/. Nothing else moves from v9, and
+# selection never reads the drawdown, so no fitted state changes.
+# v9: the equity series for the US changes from the CRSP value-weighted total
+# market to the S&P 500 the paper names at [line 153-155] "The data analyzed in
+# this article comprises the daily total return series of three major equity
+# indices: S&P 500, DAX, and Nikkei 225". The substitution was recorded as a
+# deviation from the first contract and treated as harmless because
+# buy-and-hold matched. It was not harmless: on 1987-10-19 the S&P 500 fell
+# 20.47% and CRSP fell 17.41%, so every 3000-day window containing that day
+# fitted a high-volatility regime about 8 percentage points below Figure 2's
+# published values, and the US HMM turned defensive across 1998-2002 where the
+# paper's model did not. Full trace in docs/audit/2026-07-full-audit.md.
+# Nothing else moves: Germany and Japan already use the paper's own indices.
+# v8.4: 1970-01-01 (v8.3) truncated the series at acquisition, which pushed the
+# 3000th complete feature day to 1982-02-17 (us) / 1982-05-28 (de) / 1982-08-02
+# (jp) and flipped the [oos_start] max() branch onto "fit + 8 years", so the
+# three markets started out of sample 2, 5 and 7 months after the paper's
+# 1990-01-02 and did not even share a window with each other. The source series
+# all begin in 1965 and DTB3 in 1954, so no data was missing; only the requested
+# start bound. 1969-05-01 is the latest month start that puts every market back
+# on the paper's anchor. [oos_start] resolves to us 1990-01-02, de 1990-01-02,
+# jp 1990-01-04. The first row of the reported table is later where a delay-10
+# candidate has no position yet, because [metrics].comparison_sample intersects
+# complete rows across every model and delay: us 1990-01-02, de 1990-01-02,
+# jp 1990-01-19. Quote the second set when reporting a window.
+# The choice keeps the expanding-standardizer anchor as close to 1970 as the
+# rule allows.
+requested_sample_start = "1969-05-01"
+replication_cutoff = "2023-12-31"
+extension_download_enabled = false
+extension_results_enabled = false
+
+[data_policy]
+local_research_only = true
+redistribute_raw_data = false
+allow_definition_splicing = true
+splice_documentation = """
+Documented splices, each validated at its overlap (scripts/build_external_sources.py):
+DE cash: OECD 3M interbank (<=1975-06) -> IMF IFS Germany T-bill (1975-07..2007-08)
+-> ECB euro-area 3M AAA month-start (>=2007-09); joint delta -0.09pp, std 0.18pp.
+JP cash: IMF IFS Japan T-bill (<=2017-06) -> BoJ 3M uncollateralized call (>=2017-07);
+28y overlap corr 0.986, NIRP-era joint delta ~0.
+JP equity: official Nikkei 225 TR from 2011-12-19; mirror hole 2020-07-09..2022-05-31
+bridged by the ^N225 price path with even daily dividend accrual calibrated so both
+official edges match exactly; 1970-2011 reconstructed from the ^N225 price path plus
+JST Macrohistory annual dividend yields, method validated on the 2012-2023 overlap
+(daily return corr 0.9977, implied yields within 0.3pp of JST eq_dp).
+"""
+allow_synthetic_backfill = false
+allow_forward_fill = false
+allow_imputation = false
+allow_outlier_removal = false
+preserve_source_missing_values = true
+preserve_raw_response = true
+hash_algorithm = "sha256"
+
+[oos_start]
+requested = "1990-01-01"
+fit_window_observations = 3000
+online_validation_calendar_years = 8
+rule = "first complete feature date on or after max(requested, 3000th complete feature date + 8 calendar years)"
+compute_from_downloaded_coverage = true
+
+[returns]
+equity_simple = "P_t / P_prev_valid - 1"
+equity_log = "log(P_t / P_prev_valid)"
+cash_daily = "annual_percent / 100 / 252"
+excess = "equity_simple - cash_daily"
+trading_days_per_year = 252
+allow_negative_yields = true
+
+[cash_alignment]
+method = "backward_asof_after_causal_availability"
+reject_beyond_staleness = true
+
+[features]
+downside_halflife = 10
+sortino_halflives = [20, 60]
+ewm_adjust = true
+ewm_ignore_na = false
+burn_in_observations = 0
+zero_downside_deviation = "missing"
+allow_clipping = false
+allow_annualization = false
+
+[backtest]
+signal_risky_value = 1
+signal_cash_value = 0
+primary_delay_trading_days = 1
+signal_to_return_offset = 2
+robustness_delays = [1, 5, 10]
+one_way_cost_bps = 10
+charge_initial_allocation = false
+
+[model]
+n_states = 2
+fit_window_observations = 3000
+standardizer = "expanding_full_history_ddof1"
+standardizer_min_observations = 63
+state_risky_label = 0
+state_cash_label = 1
+
+[jm]
+implementation = "jumpmodels.JumpModel"
+lambda_grid = [0.0, 21.544346900318832, 70.0]
+n_init = 60
+random_state = 0
+max_iter = 1000
+tol = 1e-8
+sort_by = "cumret"
+refit_months = [1, 7]
+online_terminal_only = true
+
+[hmm]
+implementation = "hmmlearn.GaussianHMM"
+# v8.5, the only change from v8.4. The paper never publishes the candidate set;
+# line 390 says only "it is selected from a range of candidate values
+# automatically via a cross-validation framework". Every earlier config took the
+# grid from Table 3's illustration, which tabulates k = 0, 2, 4, 8, 20 (line
+# 643). That table demonstrates how persistence responds to k; it never claims to
+# be the search space. Copying it dropped the one value the paper does name:
+#
+#   [line 390] "Originally, k was set at 6; in our approach, it is selected from
+#              a range of candidate values automatically via a cross-validation
+#              framework."
+#
+# k = 6 is Bulla et al. (2011)'s setting, cited at line 387 as the source of the
+# median filter itself. A candidate range that excludes the literature value the
+# method inherits is our construction error, not the paper's. Adding it back.
+#
+# The grid stays a free parameter either way -- see docs/unspecified-choices.md.
+# The justification for 6 is that the paper names it, and nothing else. It was
+# NOT chosen because it improves agreement with Table 4.
+smoothing_grid = [0, 2, 4, 6, 8, 20]
+n_init = 10
+seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+covariance_type = "diag"
+min_covar = 0.001
+covars_prior = 0.0
+n_iter = 1000
+tol = 1e-6
+algorithm = "viterbi"
+require_converged = true
+convergence_rule = "abs_final_delta_lt_tol"
+state_label_rule = "lower_vol_0_higher_vol_1"
+median_threshold = 0.5
+median_min_periods = 1
+
+[selection]
+cadence = "monthly_prior_month_last_complete_date"
+validation_calendar_years = 8
+minimum_valid_returns = 252
+objective = "annualized_strategy_excess_sharpe"
+tie_tolerance = 1e-12
+tie_rule = "lower_smoothing"
+upper_boundary_month_fraction_limit = 1.0
+
+[metrics]
+periods_per_year = 252
+volatility_ddof = 1
+comparison_sample = "per_market_all_delays_intersection_of_complete_metric_rows"
+sharpe_numerator = "mean_strategy_minus_cash"
+sharpe_denominator = "strategy_return_volatility"
+cagr = "compound_252_over_n"
+calmar_numerator = "annualized_arithmetic_mean_excess"
+expected_shortfall_quantile = 0.05
+turnover = "half_mean_one_way_turnover_times_252"
+maximum_drawdown = "total_wealth"
+leverage = "mean_risky_weight"
+
+[storage]
+raw_root = "data/raw"
+processed_root = "data/processed"
+artifact_root = "artifacts"
+
+[[markets]]
+id = "us"
+name = "United States"
+currency = "USD"
+classification = "proxy_replication"
+deviations = [
+  "equity is the S&P 500 the paper names; the official S&P 500 total-return index from 1988-01-04 as published, and before that the price path plus a dividend accrual from Shiller monthly dividends, chained onto the first official value. The reconstruction reproduces the official index over their 9070 shared sessions: daily log-return correlation 0.999603, annualised volatility off by 0.0027pp, CAGR off by 0.0837pp. Only 1966-1987 is reconstructed and it lies wholly inside the training window",
+  "paper source identifiers and cash-yield conversion are undisclosed",
+]
+
+[markets.equity]
+provider = "localfile"
+source_id = "SP500_TR"
+canonical_url = "https://finance.yahoo.com/quote/%5ESP500TR/history/"
+file_path = "data/external/us_equity_tr_sp500.csv"
+sha256 = "5fcdf04f06188b3eedb495c236d6c8c8416f84ce4c7c3ba19e4c88c71f850d7f"
+construction = "S&P 500 total return: the official ^SP500TR index from 1988-01-05 as published, and 1966-01-03..1988-01-04 from the ^GSPC price path plus a dividend accrual taken from Shiller monthly S&P 500 dividends spread across each month's trading days, chained onto the official 1988-01-04 close; built and overlap-validated by scripts/build_sp500_tr.py"
+frequency = "daily"
+value_field = "value"
+return_type = "gross_total_return_index"
+classification = "documented_proxy_candidate"
+source_start_observed = "1966-01-03"
+
+[markets.cash]
+provider = "fred"
+source_id = "DTB3"
+canonical_url = "https://fred.stlouisfed.org/series/DTB3"
+retrieval_url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTB3"
+frequency = "daily"
+value_field = "DTB3"
+unit = "percent_per_annum"
+instrument = "3_month_us_treasury_bill_secondary_market_discount_basis"
+classification = "definition_parity_candidate"
+source_start_observed = "1954-01-04"
+availability_lag_calendar_days = 1
+max_staleness_calendar_days = 10
+
+[[markets]]
+id = "de"
+jm_lambda_grid = [150.0, 500.0]
+name = "Germany"
+currency = "EUR"
+classification = "proxy_replication"
+deviations = [
+  "equity before 1988 is the Stehle academic backcast carried by Stooq; anchor 1987-12-30 equals the official DAX base 1000.0 exactly and monthly returns correlate 0.985 with the independent OECD MEI share-price index in the 1970s",
+  "pre-Xetra fixings 1988-1999 differ from Yahoo closes intraday (daily corr 0.82-0.90) while monthly levels agree",
+  "cash is a documented three-segment ladder (interbank, IMF T-bill, ECB 3M AAA), not a single T-bill series",
+]
+
+[markets.equity]
+provider = "localfile"
+source_id = "STOOQ_DAX_TR"
+canonical_url = "https://stooq.com/q/d/?s=%5Edax"
+file_path = "data/external/de_equity_tr_dividend_adjusted.csv"
+sha256 = "ec496b7cd3d62503dc10b212d1f215fcf70eccaa84265f611076b6888fe846be"
+construction = "DAX total return: the performance index as published from 1987-12-30 (base 1000.0), and before that the same Stooq price path plus JST Macrohistory annual German dividend yields spread across each year's sessions, chained onto the base value. The unrepaired file omitted dividends before 1988, which cost 3.24%/yr across the training window; built and gated by scripts/build_de_total_return.py"
+frequency = "daily"
+value_field = "value"
+return_type = "performance_gross_return_index"
+classification = "documented_proxy_candidate"
+source_start_observed = "1965-01-04"
+
+[markets.cash]
+provider = "localfile"
+source_id = "DE_TBILL_LADDER"
+canonical_url = "https://fred.stlouisfed.org/series/INTGSTDEM193N"
+file_path = "data/external/de_cash_ladder.csv"
+sha256 = "30a0f2f105b9d954bc343994fe6e7f8ff84a60a02ec82389d25c5634362c9085"
+construction = "Monthly percent per annum: OECD 3M interbank (<=1975-06), IMF IFS Germany Treasury-bill rate (1975-07..2007-08), ECB euro-area 3M AAA spot yield at month start (>=2007-09); splice deltas measured in scripts/build_external_sources.py"
+frequency = "monthly"
+value_field = "value"
+unit = "percent_per_annum"
+instrument = "three_segment_government_bill_ladder"
+classification = "documented_proxy_candidate"
+source_start_observed = "1965-01-01"
+availability_lag_month_starts = 2
+max_staleness_calendar_days = 120
+
+[[markets]]
+id = "jp"
+jm_lambda_grid = [10.0, 220.0]
+name = "Japan"
+currency = "JPY"
+classification = "proxy_replication"
+deviations = [
+  "equity total return is official Nikkei 225 TR from 2011-12-19 with a documented reconstruction before that (price index plus JST Macrohistory annual dividend yields) and a calibrated bridge across the mirror hole 2020-07..2022-05",
+  "cash is the IMF IFS Japan Treasury-bill rate spliced to the BoJ 3M call rate after 2017-06",
+]
+
+[markets.equity]
+provider = "localfile"
+source_id = "N225_TR_FULL"
+canonical_url = "https://indexes.nikkei.co.jp/en/nkave/index/profile?idx=nk225tr"
+file_path = "data/external/jp_equity_tr.csv"
+sha256 = "e8717952ed760b33cb3bd5ecb597e1aae1201c029983bd5bbf61bc731785fc11"
+construction = "Nikkei 225 total return: official N225TR 2011-12-19 onward (Investing.com mirror of Nikkei Inc. values); 2020-07-09..2022-05-31 mirror hole bridged with the ^N225 price path plus even daily dividend accrual calibrated to both official edges (endpoint error 2e-16); 1970-2011 reconstructed from the ^N225 price path plus JST Macrohistory annual eq_dp anchored at the first official value; method validated on the 2012-2023 overlap (daily corr 0.9977, implied yields within 0.3pp of JST); built by scripts/build_external_sources.py"
+frequency = "daily"
+value_field = "value"
+return_type = "gross_total_return_index_reconstructed"
+classification = "documented_proxy_candidate"
+source_start_observed = "1965-01-05"
+
+[markets.cash]
+provider = "localfile"
+source_id = "JP_TBILL_LADDER"
+canonical_url = "https://fred.stlouisfed.org/series/INTGSTJPM193N"
+file_path = "data/external/jp_cash_ladder.csv"
+sha256 = "c9cc574451667f49a868b630f045db6667019d7f5f60f4f13307686f0ed03be0"
+construction = "Monthly percent per annum: IMF IFS Japan Treasury-bill rate (<=2017-06) spliced to BoJ 3M uncollateralized call rate (>=2017-07); 28-year overlap corr 0.986, call above T-bill +0.50pp on average, NIRP-era joint delta ~0; built by scripts/build_external_sources.py"
+frequency = "monthly"
+value_field = "value"
+unit = "percent_per_annum"
+instrument = "imf_tbill_spliced_to_boj_call"
+classification = "documented_proxy_candidate"
+source_start_observed = "1965-01-01"
+availability_lag_month_starts = 2
+max_staleness_calendar_days = 120

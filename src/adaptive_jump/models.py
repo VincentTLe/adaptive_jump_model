@@ -20,8 +20,7 @@ from sklearn.preprocessing import StandardScaler
 from threadpoolctl import threadpool_limits
 
 from adaptive_jump.config import HMMProtocol, JMProtocol, ModelProtocol
-from adaptive_jump.monitor import model_runtime as runtime
-from adaptive_jump.monitor.events import EventObserver
+from adaptive_jump.runtime import model_runtime as runtime
 
 FEATURE_COLUMNS = ("dd_10", "sortino_20", "sortino_60")
 
@@ -93,11 +92,13 @@ def fixed_jm_states(
     initial: FixedJMResult | None = None,
     checkpoint_every: int = 50,
     progress: Callable[[FixedJMResult], None] | None = None,
-    observer: EventObserver | None = None,
+    n_jobs: int = 1,
 ) -> FixedJMResult:
     """Generate causal terminal online states for every frozen lambda."""
     if checkpoint_every < 1:
         raise ModelError("JM checkpoint interval must be positive")
+    if n_jobs < 1:
+        raise ModelError("JM worker count must be positive")
     observation_loss_scale = _validated_observation_loss_scale(observation_loss_scale)
     if initial is not None and observation_loss_scale != 1.0:
         raise ModelError("scaled JM does not support checkpoint resume")
@@ -129,8 +130,6 @@ def fixed_jm_states(
         first_terminal = resume.first_terminal
         last_refit_terminal = resume.last_refit_terminal
     total = max(0, len(complete) - fit_window + 1)
-    completed = max(0, first_terminal - fit_window + 1)
-    runtime.emit_fixed_jm_started(observer, fit_window, penalties, completed, total)
     if last_refit_terminal is not None and first_terminal < len(complete):
         refit_window = complete.iloc[
             last_refit_terminal - fit_window + 1 : last_refit_terminal + 1
@@ -144,6 +143,24 @@ def fixed_jm_states(
         )
         refit_date = pd.Timestamp(refit_window.iloc[-1]["date"])
         last_anchor = (refit_date.year, refit_date.month)
+    if n_jobs > 1:
+        return _fixed_jm_states_parallel(
+            complete,
+            states,
+            records,
+            first_terminal=first_terminal,
+            carried_fit=fit,
+            last_anchor=last_anchor,
+            total=total,
+            model_protocol=model_protocol,
+            jm_protocol=jm_protocol,
+            feature_columns=feature_columns,
+            observation_loss_scale=observation_loss_scale,
+            include_fit_diagnostics=include_fit_diagnostics,
+            checkpoint_every=checkpoint_every,
+            progress=progress,
+            n_jobs=n_jobs,
+        )
     for terminal in range(first_terminal, len(complete)):
         window = complete.iloc[terminal - fit_window + 1 : terminal + 1]
         current_date = pd.Timestamp(window.iloc[-1]["date"])
@@ -166,12 +183,6 @@ def fixed_jm_states(
                     include_fit_diagnostics=include_fit_diagnostics,
                 )
             )
-            runtime.emit_fixed_jm_refit(
-                observer,
-                current_date.date(),
-                terminal - fit_window + 1,
-                total,
-            )
 
         scaled = fit.transform(window.loc[:, feature_columns])
         for penalty, fitted_model in fit.models.items():
@@ -179,16 +190,6 @@ def fixed_jm_states(
                 fitted_model, scaled
             )
         completed = terminal - fit_window + 2
-        runtime.emit_fixed_jm_terminal(
-            observer,
-            current_date.date(),
-            completed,
-            total,
-            [
-                (penalty, int(states.loc[current_date, penalty]))
-                for penalty in penalties
-            ],
-        )
         if progress is not None and (
             completed % checkpoint_every == 0 or completed == total
         ):
@@ -196,8 +197,165 @@ def fixed_jm_states(
 
     states.index.name = "date"
     refits = pd.DataFrame.from_records(records)
-    runtime.emit_stage_completed(observer, "fixed_jm", total)
     return FixedJMResult(states=states, refits=refits)
+
+
+def _fit_jm_window_task(
+    task: tuple[pd.DataFrame, ModelProtocol, JMProtocol, tuple[str, ...], float],
+) -> FixedJMFit:
+    window, model_protocol, jm_protocol, feature_columns, scale = task
+    with threadpool_limits(limits=1):
+        return fit_fixed_jm_window(
+            window,
+            model_protocol,
+            jm_protocol,
+            feature_columns=feature_columns,
+            observation_loss_scale=scale,
+        )
+
+
+def _jm_infer_task(
+    task: tuple[dict[float, JumpModel], np.ndarray, int],
+) -> np.ndarray:
+    models, scaled_block, fit_window = task
+    days = len(scaled_block) - fit_window + 1
+    out = np.empty((days, len(models)), dtype=float)
+    with threadpool_limits(limits=1):
+        for i in range(days):
+            window = scaled_block[i : i + fit_window]
+            for j, model in enumerate(models.values()):
+                out[i, j] = terminal_online_state(model, window)
+    return out
+
+
+def _fixed_jm_states_parallel(
+    complete: pd.DataFrame,
+    states: pd.DataFrame,
+    records: list[dict[str, object]],
+    *,
+    first_terminal: int,
+    carried_fit: FixedJMFit | None,
+    last_anchor: tuple[int, int] | None,
+    total: int,
+    model_protocol: ModelProtocol,
+    jm_protocol: JMProtocol,
+    feature_columns: tuple[str, ...],
+    observation_loss_scale: float,
+    include_fit_diagnostics: bool,
+    checkpoint_every: int,
+    progress: Callable[[FixedJMResult], None] | None,
+    n_jobs: int,
+) -> FixedJMResult:
+    """Same day-by-day decisions as the serial loop, fanned across processes.
+
+    The schedule below replays the serial refit rule exactly (refit when no fit
+    governs yet, or on the first day of a scheduled month with a new anchor),
+    so every terminal day is independent work given its governing fit: refits
+    fan out first, then day inference in checkpoint-aligned batches. Scaling a
+    whole block once and slicing is elementwise-identical to scaling each
+    window, because both scalers are per-element affine maps.
+    """
+    fit_window = model_protocol.fit_window
+    dates = pd.DatetimeIndex(complete["date"])
+    governing: list[int] = []
+    refit_terminals: list[int] = []
+    anchor = last_anchor
+    have_fit = carried_fit is not None
+    for terminal in range(first_terminal, len(complete)):
+        current_date = dates[terminal]
+        current_anchor = (current_date.year, current_date.month)
+        scheduled = current_date.month in jm_protocol.refit_months
+        if not have_fit or (scheduled and current_anchor != anchor):
+            refit_terminals.append(terminal)
+            anchor = current_anchor
+            have_fit = True
+        governing.append(refit_terminals[-1] if refit_terminals else -1)
+
+    executor = ProcessPoolExecutor(
+        max_workers=n_jobs, mp_context=get_context("forkserver")
+    )
+    try:
+        fit_tasks = [
+            (
+                complete.iloc[t - fit_window + 1 : t + 1],
+                model_protocol,
+                jm_protocol,
+                feature_columns,
+                observation_loss_scale,
+            )
+            for t in refit_terminals
+        ]
+        fits: dict[int, FixedJMFit] = dict(
+            zip(
+                refit_terminals,
+                executor.map(_fit_jm_window_task, fit_tasks),
+                strict=True,
+            )
+        )
+        if carried_fit is not None:
+            fits[-1] = carried_fit
+
+        emitted_records = 0
+        batch_start = first_terminal
+        while batch_start < len(complete):
+            # end the batch exactly where the serial loop calls progress
+            batch_end = batch_start
+            while batch_end < len(complete) - 1 and (
+                (batch_end - fit_window + 2) % checkpoint_every != 0
+            ):
+                batch_end += 1
+            chunk_days = max(1, math.ceil((batch_end - batch_start + 1) / n_jobs))
+            infer_tasks = []
+            spans: list[tuple[int, int]] = []
+            chunk_from = batch_start
+            while chunk_from <= batch_end:
+                owner = governing[chunk_from - first_terminal]
+                chunk_to = min(
+                    batch_end, chunk_from + chunk_days - 1
+                )
+                while governing[chunk_to - first_terminal] != owner:
+                    chunk_to -= 1
+                fit = fits[owner]
+                block = complete.iloc[chunk_from - fit_window + 1 : chunk_to + 1]
+                scaled_block = fit.transform(block.loc[:, feature_columns])
+                infer_tasks.append((fit.models, scaled_block, fit_window))
+                spans.append((chunk_from, chunk_to))
+                chunk_from = chunk_to + 1
+            for (span_from, _), rows in zip(
+                spans, executor.map(_jm_infer_task, infer_tasks), strict=True
+            ):
+                for offset, row in enumerate(rows):
+                    states.loc[dates[span_from + offset]] = row
+            while (
+                emitted_records < len(refit_terminals)
+                and refit_terminals[emitted_records] <= batch_end
+            ):
+                refit_terminal = refit_terminals[emitted_records]
+                window = complete.iloc[
+                    refit_terminal - fit_window + 1 : refit_terminal + 1
+                ]
+                records.extend(
+                    _jm_fit_records(
+                        fits[refit_terminal],
+                        window,
+                        dates[refit_terminal],
+                        include_fit_diagnostics=include_fit_diagnostics,
+                    )
+                )
+                emitted_records += 1
+            completed = batch_end - fit_window + 2
+            if progress is not None and (
+                completed % checkpoint_every == 0 or completed == total
+            ):
+                progress(
+                    FixedJMResult(states.copy(), pd.DataFrame.from_records(records))
+                )
+            batch_start = batch_end + 1
+    finally:
+        executor.shutdown(cancel_futures=True)
+
+    states.index.name = "date"
+    return FixedJMResult(states=states, refits=pd.DataFrame.from_records(records))
 
 
 def terminal_online_state(model: JumpModel, scaled_window: np.ndarray) -> int:
@@ -223,7 +381,6 @@ def hmm_states(
     n_jobs: int = 1,
     checkpoint_every: int = 50,
     progress: Callable[[HMMResult], None] | None = None,
-    observer: EventObserver | None = None,
 ) -> HMMResult:
     """Fit the frozen HMM daily and retain each Viterbi terminal state."""
     if n_jobs < 1 or checkpoint_every < 1:
@@ -238,16 +395,6 @@ def hmm_states(
         states = initial.states.copy()
         records = initial.fits.to_dict("records")
         first_terminal += len(records)
-    total = max(0, len(complete) - fit_window + 1)
-    runtime.emit_hmm_started(
-        observer,
-        fit_window,
-        len(hmm_protocol.seeds),
-        n_jobs,
-        len(records),
-        total,
-    )
-
     executor = (
         ProcessPoolExecutor(max_workers=n_jobs, mp_context=get_context("forkserver"))
         if n_jobs > 1
@@ -278,25 +425,12 @@ def hmm_states(
                 fit_date = pd.Timestamp(window.iloc[-1]["date"])
                 states.loc[fit_date] = fit.terminal_state
                 records.append(_hmm_fit_record(window, fit, fit_date))
-                runtime.emit_hmm_terminal(
-                    observer,
-                    fit_date.date(),
-                    len(records),
-                    total,
-                    fit.terminal_state,
-                    fit.seed,
-                    fit.log_likelihood,
-                    fit.variances,
-                    fit.accepted_starts,
-                    fit.failed_starts,
-                )
             if progress is not None:
                 progress(HMMResult(states.copy(), pd.DataFrame.from_records(records)))
     finally:
         if executor is not None:
             executor.shutdown(cancel_futures=True)
     result = HMMResult(states=states, fits=pd.DataFrame.from_records(records))
-    runtime.emit_stage_completed(observer, "hmm", total)
     return result
 
 
@@ -341,6 +475,10 @@ def _validate_hmm_initial(
     )
     if not fit_dates.equals(expected) or initial.states.loc[fit_dates].isna().any():
         raise ModelError("HMM checkpoint is not a contiguous causal prefix")
+    if initial.states.drop(fit_dates).notna().any():
+        raise ModelError("HMM checkpoint contains states outside its prefix")
+    if not initial.states.loc[fit_dates].isin((0.0, 1.0)).all():
+        raise ModelError("HMM checkpoint states must be 0 or 1")
 
 
 def best_hmm_terminal_fit(
@@ -482,6 +620,61 @@ def smoothed_hmm_states(
     return candidates
 
 
+class _IdentityScaler:
+    """No-op scaler for features standardized causally upstream."""
+
+    def fit(self, features: pd.DataFrame) -> _IdentityScaler:
+        width = np.asarray(features, dtype=float).shape[1]
+        self.mean_ = np.zeros(width)
+        self.scale_ = np.ones(width)
+        self.var_ = np.ones(width)
+        return self
+
+    def transform(self, features: pd.DataFrame) -> np.ndarray:
+        return np.asarray(features, dtype=float)
+
+
+def window_scaler(model_protocol: ModelProtocol, features: pd.DataFrame):
+    """The scaler a fit window must use under this protocol.
+
+    Every model fitted on a window has to make the same choice here, or two
+    variants of the same study end up seeing differently transformed features.
+    That is not hypothetical: until 2026-08-01 the custom variants applied
+    StandardScaler unconditionally while the baseline honoured the expanding
+    protocol, so return_aware and robust_l1 were fitted on doubly standardised
+    features. The branch lives here, once, and both call sites use it.
+    """
+    if model_protocol.standardizer == "expanding_full_history_ddof1":
+        # features were causally standardized upstream; keep them untouched
+        return _IdentityScaler().fit(features)
+    return StandardScaler().fit(features)
+
+
+def _require_nondecreasing_jm_objectives(
+    models: dict[float, JumpModel], *, absolute_tolerance: float
+) -> None:
+    ordered = sorted(models.items())
+    if not ordered:
+        return
+    # compare against the running maximum so sub-tolerance decreases cannot
+    # accumulate across the grid; the tolerance is spent once, not per pair
+    best_penalty, best_model = ordered[0]
+    best_value = float(best_model.val_)
+    for penalty, model in ordered[1:]:
+        value = float(model.val_)
+        scale = max(1.0, abs(best_value), abs(value))
+        slack = max(absolute_tolerance, 32 * math.ulp(scale))
+        if value < best_value - slack:
+            raise ModelError(
+                "JM objective decreased from "
+                f"lambda {best_penalty:g} ({best_value:g}) to "
+                f"lambda {penalty:g} ({value:g}); "
+                "the fit window contains a local optimum"
+            )
+        if value > best_value:
+            best_penalty, best_value = penalty, value
+
+
 def fit_fixed_jm_window(
     window: pd.DataFrame,
     model_protocol: ModelProtocol,
@@ -496,7 +689,7 @@ def fit_fixed_jm_window(
     observation_loss_scale = _validated_observation_loss_scale(observation_loss_scale)
     features = window.loc[:, feature_columns]
     returns = window.loc[:, "excess_return"]
-    scaler = StandardScaler().fit(features)
+    scaler = window_scaler(model_protocol, features)
     scaled_values = scaler.transform(features)
     if observation_loss_scale != 1.0:
         scaled_values = scaled_values * math.sqrt(observation_loss_scale)
@@ -517,6 +710,10 @@ def fit_fixed_jm_window(
         if not np.isin(labels, [0, 1]).all():
             raise ModelError(f"JM lambda {penalty:g} produced invalid states")
         models[penalty] = fitted
+    _require_nondecreasing_jm_objectives(
+        models,
+        absolute_tolerance=jm_protocol.tol * observation_loss_scale,
+    )
     return FixedJMFit(
         scaler=scaler,
         models=models,

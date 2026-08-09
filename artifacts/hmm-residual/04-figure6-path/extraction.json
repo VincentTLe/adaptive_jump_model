@@ -1,0 +1,63 @@
+{
+  "source": "2402.05272v3.pdf",
+  "meaning": "red shading = traded position in cash (Figure 5 caption: shading shifted forward by 2 days; Figure 6 defers to it)",
+  "x_axis_mapped_to": [
+    "1990-01-02",
+    "2023-12-29"
+  ],
+  "panels": [
+    {
+      "panel": "fig6-us-hmm",
+      "market": "us",
+      "model": "hmm",
+      "paper_line": 903,
+      "file": "position-path.csv",
+      "axis_bear_fraction": 0.27825783167063584,
+      "annotated_bear": 0.278,
+      "spans": 48,
+      "annotated_shifts": 96,
+      "trading_day_cash_share": 0.2783420899007589,
+      "trading_day_shifts": 96
+    },
+    {
+      "panel": "fig5-us-jm",
+      "market": "us",
+      "model": "fixed_jm",
+      "paper_line": 829,
+      "file": "position-fig5-us-jm.csv",
+      "axis_bear_fraction": 0.1977649150396441,
+      "annotated_bear": 0.197,
+      "spans": 15,
+      "annotated_shifts": 30,
+      "trading_day_cash_share": 0.19731465265615877,
+      "trading_day_shifts": 30
+    },
+    {
+      "panel": "fig5-de-jm",
+      "market": "de",
+      "model": "fixed_jm",
+      "paper_line": 851,
+      "file": "position-fig5-de-jm.csv",
+      "axis_bear_fraction": 0.15649571547608926,
+      "annotated_bear": 0.157,
+      "spans": 58,
+      "annotated_shifts": 116,
+      "trading_day_cash_share": 0.15635898628225994,
+      "trading_day_shifts": 114
+    },
+    {
+      "panel": "fig5-jp-jm",
+      "market": "jp",
+      "model": "fixed_jm",
+      "paper_line": 873,
+      "file": "position-fig5-jp-jm.csv",
+      "axis_bear_fraction": 0.25352650143427147,
+      "annotated_bear": 0.253,
+      "spans": 24,
+      "annotated_shifts": 48,
+      "trading_day_cash_share": 0.2526959022286125,
+      "trading_day_shifts": 48
+    }
+  ],
+  "written_utc": "2026-07-28T12:43:52+00:00"
+}

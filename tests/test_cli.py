@@ -1,5 +1,6 @@
 import hashlib
 import json
+import tomllib
 from pathlib import Path
 
 import pandas as pd
@@ -19,32 +20,27 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_fetch_cli_runs_complete_fixture_pipeline(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
-    config = tmp_path / "research.toml"
-    config.write_bytes((ROOT / "research.toml").read_bytes())
-
-    def yahoo_loader(_source, _start, _end):
-        return pd.DataFrame(
-            {"Close": [100.0, 101.0]},
-            index=pd.to_datetime(["2023-01-03", "2023-12-29"]),
-        ), {"adapter": "fixture"}
+    """The live acquisition path: hash-pinned local files plus one FRED series."""
+    name = "research-calibrated-v10.toml"
+    config = tmp_path / name
+    config.write_bytes((ROOT / name).read_bytes())
+    document = tomllib.loads(config.read_text())
+    pinned = [
+        source["file_path"]
+        for market in document["markets"]
+        for source in (market["equity"], market["cash"])
+        if source["provider"] == "localfile"
+    ]
+    assert len(pinned) == 5
+    for relative in pinned:
+        target = tmp_path / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((ROOT / relative).read_bytes())
 
     def http_get(url, _params):
-        if "fredgraph" in url:
-            source_id = "DTB3" if "DTB3" in url else "IR3TIB01DEM156N"
-            content = (
-                f"observation_date,{source_id}\n1970-01-02,1.0\n2023-12-01,2.0\n"
-            ).encode()
-        else:
-            content = (
-                b"STATUS,200\nNEXTPOSITION,\n"
-                b"SERIES_CODE,NAME_OF_TIME_SERIES,UNIT,FREQUENCY,CATEGORY,"
-                b"LAST_UPDATE,SURVEY_DATES,VALUES\n"
-                b"STRACLUC3M,Call,percent,MONTHLY,Call,20240101,198901,1.0\n"
-                b"STRACLUC3M,Call,percent,MONTHLY,Call,20240101,202312,2.0\n"
-            )
+        content = b"observation_date,DTB3\n1970-01-02,1.0\n2023-12-01,2.0\n"
         return HttpResult(content, url, 200, "text/csv")
 
-    monkeypatch.setattr(data, "_download_yahoo", yahoo_loader)
     monkeypatch.setattr(data, "_get_http", http_get)
     monkeypatch.setattr(data, "research_git_sha", lambda _root: "abc123")
 
@@ -53,26 +49,16 @@ def test_fetch_cli_runs_complete_fixture_pipeline(
     manifest_path = Path(capsys.readouterr().out.strip())
     manifest = json.loads(manifest_path.read_text())
     assert manifest["config_sha256"] == (
-        "8adb330565d64f8ed6edd986f0422dbba72585eda4efd34b0c1b41b95450d81b"
+        "36ca1ace131c36562d7293e1ecc01f45dc4c149a577ad5659642d88339541c9e"
     )
     assert len(manifest["sources"]) == 6
+    assert [row["payload_type"] for row in manifest["sources"]].count("local_file") == 5
     assert manifest_path.parent.parent == tmp_path / "data/raw"
 
 
 def test_fetch_cli_reports_missing_config(capsys) -> None:
     assert main(["fetch", "--config", "missing.toml"]) == 2
     assert "missing.toml" in capsys.readouterr().err
-
-
-def test_monitor_cli_delegates_to_the_loopback_server(monkeypatch) -> None:
-    calls = []
-    monkeypatch.setattr(
-        "adaptive_jump.monitor.server.run_monitor_server",
-        lambda config: calls.append(config) or 0,
-    )
-
-    assert main(["monitor", "--config", "research.toml"]) == 0
-    assert calls == ["research.toml"]
 
 
 def test_figures_cli_delegates_and_prints_each_output(
@@ -119,73 +105,18 @@ def test_figures_cli_uses_shared_artifact_error_handling(
     assert captured.err == "adaptive-jump: invalid figure artifact\n"
 
 
-def test_calibration_cli_uses_frozen_spec(monkeypatch, capsys) -> None:
-    expected = ROOT / "artifacts/calibration-fixture"
-    calls = []
-
-    def fake_run(config, spec):
-        calls.append((config, spec))
-        return expected
-
-    monkeypatch.setattr("adaptive_jump.cli.run_calibration_study", fake_run)
-    monkeypatch.setattr(
-        "adaptive_jump.cli._artifacts.verify_run",
-        lambda artifact: {"run_id": artifact.name, "status": "complete"},
-    )
-    arguments = [
-        "run",
-        "--study",
-        "persistence-calibration",
-        "--config",
-        str(ROOT / "research.toml"),
-    ]
-
-    assert main(arguments) == 0
-    assert Path(capsys.readouterr().out.strip()) == expected
-    assert calls[0][1].name == "persistence-calibrated-search.toml"
-
-
-def test_grid_evaluation_cli_uses_frozen_spec(
-    monkeypatch: pytest.MonkeyPatch, capsys
-) -> None:
-    expected = ROOT / "artifacts/grid-fixture"
-    calls = []
-
-    def fake_run(config, spec, observer):
-        calls.append((config, spec, observer))
-        return expected
-
-    monkeypatch.setattr("adaptive_jump.cli.run_grid_evaluation", fake_run)
-    monkeypatch.setattr(
-        "adaptive_jump.cli._artifacts.verify_run",
-        lambda artifact: {"run_id": artifact.name, "status": "boundary_failed"},
-    )
-    arguments = [
-        "run",
-        "--study",
-        "persistence-grid-evaluation",
-        "--config",
-        str(ROOT / "research.toml"),
-    ]
-
-    assert main(arguments) == 0
-    assert Path(capsys.readouterr().out.strip()) == expected
-    assert calls[0][1].jm_grid[-1] == 256.0
-    assert calls[0][1].hmm_grid[-1] == 1115
-
-
 @pytest.mark.parametrize(
     ("study", "spec_name", "loader_name", "runner_name"),
     [
         (
             "simple-jm-suite",
-            "simple-jm-suite-001.toml",
+            "simple-jm-suite-002.toml",
             "load_simple_jm_spec",
             "run_simple_jm_study",
         ),
         (
             "dd-loss-scale",
-            "dd-loss-scale-001.toml",
+            "dd-loss-scale-002.toml",
             "load_dd_loss_scale_spec",
             "run_dd_loss_scale_study",
         ),
@@ -201,29 +132,24 @@ def test_simple_jm_cli_uses_shared_runner(
 ) -> None:
     expected = ROOT / "artifacts" / f"{study}-fixture"
     calls = []
-    events = []
+    verified = []
     loaded_spec = object()
-
-    def observer(event):
-        events.append(event)
 
     def fake_load(path, config):
         calls.append(("load", config, path))
         return loaded_spec
 
-    def fake_run(config, spec, selected_observer):
-        calls.append(("run", config, spec, selected_observer))
+    def fake_run(config, spec):
+        calls.append(("run", config, spec))
         return expected
+
+    def fake_verify(artifact):
+        verified.append(artifact)
+        return {"run_id": artifact.name, "status": "complete"}
 
     monkeypatch.setattr(f"adaptive_jump.cli.{loader_name}", fake_load)
     monkeypatch.setattr(f"adaptive_jump.cli.{runner_name}", fake_run)
-    monkeypatch.setattr(
-        "adaptive_jump.cli._artifacts.verify_run",
-        lambda artifact: {"run_id": artifact.name, "status": "complete"},
-    )
-    monkeypatch.setattr(
-        "adaptive_jump.cli.child_observer_from_environment", lambda: observer
-    )
+    monkeypatch.setattr("adaptive_jump.cli._artifacts.verify_run", fake_verify)
 
     assert (
         main(
@@ -242,89 +168,17 @@ def test_simple_jm_cli_uses_shared_runner(
     assert calls[0][2].name == spec_name
     assert calls[1][0] == "run"
     assert calls[1][2] is loaded_spec
-    assert calls[1][3] is observer
-    assert events[0].kind == "artifact_verified"
-    assert events[0].payload == {
-        "run_id": expected.name,
-        "status": "complete",
-    }
-
-
-def test_window_study_cli_uses_frozen_spec_without_manifest(
-    monkeypatch: pytest.MonkeyPatch, capsys
-) -> None:
-    expected = ROOT / "artifacts/window-fixture"
-    calls = []
-    events = []
-
-    def observer(event):
-        events.append(event)
-
-    def verify(artifact):
-        assert artifact == expected
-        return {"run_id": "window-fixture", "status": "boundary_failed"}
-
-    def fake_run(config, spec, observer):
-        calls.append((config, spec, observer))
-        return expected
-
-    monkeypatch.setattr("adaptive_jump.cli.run_window_sensitivity", fake_run)
-    monkeypatch.setattr("adaptive_jump.cli._artifacts.verify_run", verify)
-    monkeypatch.setattr(
-        "adaptive_jump.cli.child_observer_from_environment", lambda: observer
-    )
-    arguments = [
-        "run",
-        "--study",
-        "train-window-sensitivity",
-        "--config",
-        str(ROOT / "research.toml"),
-    ]
-    assert main(arguments) == 0
-    assert Path(capsys.readouterr().out.strip()) == expected
-    assert calls[0][1].challenger_window == 4000
-    assert calls[0][2] is observer
-    assert events[0].kind == "artifact_verified"
-    assert events[0].visibility == "decision"
-    assert events[0].payload == {
-        "run_id": "window-fixture",
-        "status": "boundary_failed",
-    }
-
-    def reject(_artifact):
-        raise ArtifactError("verification failed")
-
-    events.clear()
-    monkeypatch.setattr("adaptive_jump.cli._artifacts.verify_run", reject)
-    assert main(arguments) == 2
-    captured = capsys.readouterr()
-    assert captured.out == ""
-    assert "verification failed" in captured.err
-    assert events == []
-
-
-def test_window_study_cli_rejects_manifest_override(capsys) -> None:
-    result = main(
-        [
-            "run",
-            "--study",
-            "train-window-sensitivity",
-            "--config",
-            str(ROOT / "research.toml"),
-            "--manifest",
-            "other.json",
-        ]
-    )
-
-    assert result == 2
-    assert "only valid for replication" in capsys.readouterr().err
+    # The run must still be verified before its path is printed. The monitor
+    # used to observe that verification; with the monitor gone, the call itself
+    # is what the CLI contract requires.
+    assert verified == [expected]
 
 
 @pytest.mark.parametrize(
     ("study_kind", "verifier_name"),
     [
-        ("simple-jm-suite-001", "verify_simple_jm_run"),
-        ("dd-loss-scale-001", "verify_dd_loss_scale_run"),
+        ("simple-jm-suite-002", "verify_simple_jm_run"),
+        ("dd-loss-scale-002", "verify_dd_loss_scale_run"),
     ],
 )
 def test_verify_run_dispatches_simple_jm_suite(
@@ -340,7 +194,7 @@ def test_verify_run_dispatches_simple_jm_suite(
     )
     expected = {"run_id": run.name, "status": "complete"}
     monkeypatch.setattr(
-        f"adaptive_jump.simple_jm_suite.{verifier_name}",
+        f"adaptive_jump.simple_jm_verifier.{verifier_name}",
         lambda selected: expected if selected == run.resolve() else None,
     )
 
@@ -498,7 +352,7 @@ def test_replication_runner_writes_and_verifies_complete_artifact(
     assert json.loads((run_dir / "claim.json").read_text())["passed"] is False
     assert (run_dir / "us/trades/fixed_jm-delay-1.csv").is_file()
     assert not list(run_dir.rglob("*.pkl"))
-    runtime_root = tmp_path / "artifacts/.monitor/checkpoints"
+    runtime_root = tmp_path / "artifacts/.runtime/checkpoints"
     assert len(list(runtime_root.rglob("baseline-study.json"))) == 3
     assert run_replication(config, frozen) == run_dir
     assert main(["verify", "--run", str(run_dir)]) == 0
@@ -583,7 +437,7 @@ def test_replication_runner_resumes_hmm_progress_after_interruption(
     monkeypatch.setattr("adaptive_jump.cli.hmm_states", interrupted)
     with pytest.raises(RuntimeError, match="interrupted"):
         run_replication(config, frozen)
-    runtime_root = tmp_path / "artifacts/.monitor/checkpoints"
+    runtime_root = tmp_path / "artifacts/.runtime/checkpoints"
     assert len(list(runtime_root.rglob("hmm-progress.json"))) == 1
 
     resumed_inputs = []
@@ -625,7 +479,7 @@ def test_replication_runner_resumes_fixed_jm_progress_after_interruption(
     monkeypatch.setattr("adaptive_jump.cli.fixed_jm_states", interrupted)
     with pytest.raises(RuntimeError, match="interrupted"):
         run_replication(config, frozen)
-    runtime_root = tmp_path / "artifacts/.monitor/checkpoints"
+    runtime_root = tmp_path / "artifacts/.runtime/checkpoints"
     assert len(list(runtime_root.rglob("jm-progress.json"))) == 1
 
     resumed_inputs = []
@@ -678,7 +532,7 @@ def test_replication_runner_resumes_monthly_selection_after_interruption(
     monkeypatch.setattr("adaptive_jump.cli.build_baseline_study", interrupted)
     with pytest.raises(RuntimeError, match="interrupted"):
         run_replication(config, frozen)
-    runtime_root = tmp_path / "artifacts/.monitor/checkpoints"
+    runtime_root = tmp_path / "artifacts/.runtime/checkpoints"
     assert len(list(runtime_root.rglob("selection-fixed_jm-delay-1.json"))) == 1
 
     resumed_inputs = []

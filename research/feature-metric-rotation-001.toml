@@ -1,0 +1,72 @@
+schema_version = 1
+experiment_id = "feature-metric-rotation-001"
+parent_id = "baseline-reseal-v10"
+claim_class = "EXPLORATORY"
+status = "FROZEN_BEFORE_RESULTS"
+frozen_at_utc = "2026-08-01T01:04:40Z"
+
+[question]
+text = "Does measuring feature dissimilarity with a general quadratic form instead of plain squared Euclidean distance change the jump model's regimes and its economics, and is any change attributable to the ROTATION of the decision direction rather than to a rescaling of the centre gap relative to lambda?"
+source = """
+This is the dissertation's own first open problem. Shu (2025), Chapter 5,
+page 130: "One of the most pressing challenge encountered in practical use is
+how JMs measure the (dis-)similarity between two feature vectors." Chapter 2,
+section 2.3, page 22 names the remedy without implementing it: "A general
+quadratic form for the loss function, e.g., squared Mahalanobis distance, is
+also applicable if we have prior knowledge of the covariance matrix of the
+features or if we intend to learn it from the data." Neither the thesis nor
+the author's own library implements it - jumpmodels hardcodes a squared
+Euclidean distance - so this is genuinely unimplemented rather than merely
+unpublished. No novelty is claimed over Hallac et al. (2017), which learns a
+per-cluster Toeplitz precision by ADMM and is a different object.
+"""
+motivation = "Our three features are strongly collinear by construction: the two Sortino ratios share a numerator family and correlate about 0.86, and the leading eigenvalue carries roughly three quarters of the correlation matrix. Plain Euclidean distance therefore counts one direction of feature space nearly twice."
+
+[hypotheses]
+h1 = "A whitening metric rotates the K=2 decision direction materially, so the state path changes on a non-trivial share of days."
+h2 = "After the rotation is isolated from the accompanying change in effective penalty, the residual economic effect is small and not same-signed across markets, because the collinearity being removed is shared feature construction rather than regime information."
+falsifier_geometry = "If the raw arm and the gap-normalised arm move together, the effect is rescaling and not geometry - the finding then duplicates dd-loss-scale-002 and scale-free-penalty-001 and must be reported as such, not as a metric result."
+falsifier_causality = "If the diagonal sanity arm is not a near no-op, the causal cadence or the standardisation assumption is wrong; the run stops and is explained before any other arm is read."
+
+[method]
+loss = "l_M(x, theta) = 0.5 * (x - theta)^T M (x - theta), M symmetric positive definite"
+implementation = """
+No library change and no new estimator. Write M = L^T L by Cholesky; then
+l_M(x, theta) = 0.5 * || L x - L theta ||^2, so fitting the SEALED jump model
+on linearly transformed features z = L x is exactly the Mahalanobis jump
+model. The M-step is unaffected because a mean is equivariant under an
+invertible linear map, and the dynamic program is untouched. This is an
+identity, not an approximation, and it is verified as a gate below.
+"""
+metric_source = "M = R^{-1} where R is the correlation matrix of the standardised features on the SAME trailing 3000-observation training window that fits the centres, recomputed at every scheduled refit. Past-only by construction and identical in information set to the fit it accompanies."
+cadence = "January and July refits, unchanged; monthly lambda re-selection by trailing eight-year strategy Sharpe, unchanged; delay 1, 10bp, t+2, unchanged"
+
+[arms]
+a_raw = "M = R^{-1}"
+a_prime_gap_normalised = "M~ = c * R^{-1} with c = (g^T g) / (g^T R^{-1} g), where g is the centre gap of the SEALED baseline fit on the same window. Same rotation, unit gap scale: this isolates rotation from the change in effective penalty."
+b_diagonal = "M = diag(R)^{-1}, a sanity arm expected to be a near no-op because the features are already standardised"
+c_identity = "M = I is the sealed baseline itself; not rerun"
+gap_normalisation_rationale = "Pre-measurement on six refit windows per market found the centre gap moves by 0.43x to 2.01x under R^{-1}, in OPPOSITE directions across markets. Since the gap is what competes with lambda, the raw arm confounds geometry with effective penalty by up to a factor of two, and the rescaling half is already a measured null in dd-loss-scale-002."
+
+[decision_rule]
+declared_before_running = true
+primary_bar = "STRICT THREE-WAY: an arm is a win in a market only if its Sharpe exceeds max(buy_and_hold, HMM, the sealed calibrated fixed_jm baseline) in that market. The earlier two-way bar, max(buy_and_hold, HMM), is retired here: it was written when the JM baseline did not clear the controls, and the calibrated baseline now clears them in all three markets, which makes the old bar uninformative."
+supported = "the gap-normalised arm a-prime wins under the strict three-way bar in ALL THREE markets"
+partial = "the gap-normalised arm wins in one or two markets: reported as a per-market mechanism finding, explicitly NOT a cross-market result, and no per-market winner may be selected after the fact"
+not_supported = "the gap-normalised arm wins in no market"
+secondary = "the -001 trade-off rule (delta sharpe >= 0, delta maximum_drawdown >= 0, delta turnover <= 0, delta switch_count <= 0, at least one strict) against the sealed baseline, reported for completeness in every arm"
+arm_a_cannot_support = "the raw arm alone can never support the claim, whatever it shows; it is reported only as the decomposition partner of a-prime"
+
+[claim_restriction]
+text = "Repeatedly inspected through-2023 development evidence against a CALIBRATED baseline. The project's own first validation priority is untouched markets or genuinely prospective data, and none is licensed; the 2024-2026 window was spent in holdout-2026-001. Therefore NO outcome of this experiment can constitute confirmation. At best it is a registered mechanism finding or a registered null."
+
+[verification]
+required = [
+  "identity gate: with M = I the transformed pipeline must reproduce the sealed jm-states.csv exactly in all three markets, or the run stops",
+  "Cholesky gate: L^T L must reproduce M to machine precision, and M must be symmetric positive definite on every refit window",
+  "the diagonal sanity arm must be a near no-op or the run stops",
+  "R uses the training window only; no observation later than the refit date enters it",
+  "rotation angle between the sealed decision direction and the transformed one reported per refit window",
+  "t+2 signal-position-return identity and the paper turnover convention",
+  "no date later than 2023-12-31",
+]

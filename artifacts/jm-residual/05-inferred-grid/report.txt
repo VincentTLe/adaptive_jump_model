@@ -1,0 +1,18 @@
+jm-inferred-grid-005 — kết quả
+(lưới ƯỚC LƯỢNG từ lựa chọn tháng của chính tác giả; lượt chạy là chẩn đoán CÓ ĐIỀU KIỆN, không phải xác nhận; cấm nhận nuôi)
+
+Lưới suy ra (rule 90% trọng số, đông cứng trước khi nhìn):
+   us: 0|0.1|1|1.9307|3.72759|10|20
+   de: 0|0.1|1|1.9307|3.72759|4.64159|7.19686|10|15|20|70|500
+   jp: 0|0.1|1|1.9307|3.72759|7.19686|10|20|50|60|100|150
+   union: 0|0.1|1|1.9307|3.72759|4.64159|7.19686|10|15|20|50|60|70|100|150|500
+
+Chạy điều kiện (CV tháng của TA trên lưới suy ra, V0 sealed):
+   us [union] 7/8 | sharpe 0.680 (Shu 0.68) | turnover 0.706 (Shu 0.44)
+   us [per_market] 5/8 | sharpe 0.697 (Shu 0.68) | turnover 0.736 (Shu 0.44)
+   de [union] 3/8 | sharpe 0.368 (Shu 0.44) | turnover 1.084 (Shu 1.70)
+   de [per_market] 3/8 | sharpe 0.340 (Shu 0.44) | turnover 1.055 (Shu 1.70)
+   jp [union] 3/8 | sharpe 0.161 (Shu 0.31) | turnover 1.300 (Shu 0.72)
+   jp [per_market] 3/8 | sharpe 0.115 (Shu 0.31) | turnover 1.345 (Shu 0.72)
+
+Đối chiếu: sealed 4/3/3, geometry tốt nhất (V3, mô tả) 6/4/5.

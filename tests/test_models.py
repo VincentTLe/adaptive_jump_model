@@ -60,6 +60,21 @@ def _frame(periods: int = 14) -> pd.DataFrame:
     )
 
 
+def _patch_jump_objectives(
+    monkeypatch: pytest.MonkeyPatch, objectives: dict[float, float]
+) -> None:
+    class ObjectiveJumpModel:
+        def __init__(self, *, jump_penalty: float, **_: object) -> None:
+            self.jump_penalty = jump_penalty
+
+        def fit(self, features: pd.DataFrame, **_: object) -> "ObjectiveJumpModel":
+            self.val_ = objectives[self.jump_penalty]
+            self.labels_ = np.zeros(len(features), dtype=int)
+            return self
+
+    monkeypatch.setattr("adaptive_jump.models.JumpModel", ObjectiveJumpModel)
+
+
 def test_terminal_state_matches_upstream_online_dp() -> None:
     features = np.array([[-2.0], [-1.0], [1.0], [2.0]])
     returns = np.array([0.02, 0.01, -0.01, -0.02])
@@ -105,21 +120,63 @@ def test_fixed_jm_uses_cumulative_return_state_order() -> None:
     assert np.isfinite(first_fit["objective"])
 
 
-def test_fixed_jm_observer_is_output_neutral() -> None:
-    model, jm = _protocols()
-    events = []
+def test_fixed_jm_rejects_decreasing_objective_across_lambda(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    objectives = {5.0: 90.0, 10.0: 80.0}
+    _patch_jump_objectives(monkeypatch, objectives)
+    model, _ = _protocols()
+    reverse_grid = JMProtocol((10.0, 5.0), 4, 0, 100, 1e-8, (1, 7))
 
-    baseline = fixed_jm_states(_frame(), model, jm)
-    observed = fixed_jm_states(_frame(), model, jm, observer=events.append)
+    with pytest.raises(
+        ModelError,
+        match=r"objective decreased.*lambda 5.*90.*lambda 10.*80",
+    ):
+        fit_fixed_jm_window(_frame().iloc[:6], model, reverse_grid)
 
-    pd.testing.assert_frame_equal(observed.states, baseline.states)
-    pd.testing.assert_frame_equal(observed.refits, baseline.refits)
-    assert events[0].kind == "stage_started"
-    assert events[-1].kind == "stage_completed"
-    terminals = [event for event in events if event.kind == "terminal_state"]
-    assert len(terminals) == 9
-    assert terminals[-1].completed == terminals[-1].total == 9
-    assert terminals[-1].payload["states"] == [{"candidate": 5.0, "state": 1}]
+
+def test_fixed_jm_objective_gate_preserves_configured_grid_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    objectives = {5.0: 80.0, 10.0: 90.0, 20.0: 100.0}
+    _patch_jump_objectives(monkeypatch, objectives)
+    model, _ = _protocols()
+    reverse_grid = JMProtocol((20.0, 10.0, 5.0), 4, 0, 100, 1e-8, (1, 7))
+
+    fit = fit_fixed_jm_window(_frame().iloc[:6], model, reverse_grid)
+
+    assert tuple(fit.models) == reverse_grid.lambda_grid
+
+
+def test_fixed_jm_objective_gate_uses_optimizer_tolerance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    objectives = {5.0: 90.0, 10.0: 90.0 - 0.5e-8}
+    _patch_jump_objectives(monkeypatch, objectives)
+    model, _ = _protocols()
+    protocol = JMProtocol((5.0, 10.0), 4, 0, 100, 1e-8, (1, 7))
+
+    fit = fit_fixed_jm_window(_frame().iloc[:6], model, protocol)
+
+    assert tuple(fit.models) == protocol.lambda_grid
+
+
+def test_fixed_jm_objective_gate_does_not_accumulate_tolerance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tolerance = 1e-8
+    objectives = {
+        float(penalty): 90.0 - penalty * 0.75 * tolerance for penalty in range(10)
+    }
+    _patch_jump_objectives(monkeypatch, objectives)
+    model, _ = _protocols()
+    protocol = JMProtocol(tuple(objectives), 4, 0, 100, tolerance, (1, 7))
+
+    with pytest.raises(
+        ModelError,
+        match=r"objective decreased.*lambda 0.*lambda 2",
+    ):
+        fit_fixed_jm_window(_frame().iloc[:6], model, protocol)
 
 
 def test_fixed_jm_default_loss_scale_is_exactly_unchanged() -> None:
@@ -232,7 +289,6 @@ def test_fixed_jm_resumes_exactly_from_causal_checkpoint() -> None:
 
     with pytest.raises(RuntimeError, match="simulated interruption"):
         fixed_jm_states(frame, model, jm, checkpoint_every=3, progress=interrupt)
-    events = []
     resumed_checkpoints = []
     resumed = fixed_jm_states(
         frame,
@@ -240,16 +296,71 @@ def test_fixed_jm_resumes_exactly_from_causal_checkpoint() -> None:
         jm,
         initial=captured[0],
         progress=resumed_checkpoints.append,
-        observer=events.append,
     )
     uninterrupted = fixed_jm_states(frame, model, jm)
 
     pd.testing.assert_frame_equal(resumed.states, uninterrupted.states)
     pd.testing.assert_frame_equal(resumed.refits, uninterrupted.refits)
     pd.testing.assert_frame_equal(resumed_checkpoints[-1].states, resumed.states)
-    assert events[0].completed == 3
-    assert sum(event.kind == "terminal_state" for event in events) == 6
     assert resumed.refits["fit_date"].value_counts().eq(1).all()
+
+
+def test_fixed_jm_parallel_matches_serial_exactly() -> None:
+    model, jm = _protocols()
+    frame = _frame(periods=20)
+    serial_snaps: list[FixedJMResult] = []
+    parallel_snaps: list[FixedJMResult] = []
+
+    serial = fixed_jm_states(
+        frame,
+        model,
+        jm,
+        include_fit_diagnostics=True,
+        checkpoint_every=3,
+        progress=serial_snaps.append,
+    )
+    parallel = fixed_jm_states(
+        frame,
+        model,
+        jm,
+        include_fit_diagnostics=True,
+        checkpoint_every=3,
+        progress=parallel_snaps.append,
+        n_jobs=2,
+    )
+
+    pd.testing.assert_frame_equal(parallel.states, serial.states, check_exact=True)
+    pd.testing.assert_frame_equal(parallel.refits, serial.refits)
+    assert len(parallel_snaps) == len(serial_snaps)
+    for parallel_snap, serial_snap in zip(parallel_snaps, serial_snaps, strict=True):
+        pd.testing.assert_frame_equal(
+            parallel_snap.states, serial_snap.states, check_exact=True
+        )
+
+
+def test_fixed_jm_parallel_resumes_exactly_from_causal_checkpoint() -> None:
+    model, jm = _protocols()
+    frame = _frame(periods=20)
+    captured: list[FixedJMResult] = []
+
+    def interrupt(result: FixedJMResult) -> None:
+        captured.append(result)
+        raise RuntimeError("simulated interruption")
+
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        fixed_jm_states(frame, model, jm, checkpoint_every=3, progress=interrupt)
+    resumed = fixed_jm_states(frame, model, jm, initial=captured[0], n_jobs=2)
+    uninterrupted = fixed_jm_states(frame, model, jm)
+
+    pd.testing.assert_frame_equal(resumed.states, uninterrupted.states)
+    pd.testing.assert_frame_equal(resumed.refits, uninterrupted.refits)
+
+
+def test_fixed_jm_rejects_non_positive_worker_count() -> None:
+    model, jm = _protocols()
+
+    with pytest.raises(ModelError, match="worker count must be positive"):
+        fixed_jm_states(_frame(), model, jm, n_jobs=0)
 
 
 def test_fixed_jm_accepts_empty_checkpoint() -> None:
@@ -476,24 +587,6 @@ def test_hmm_daily_fit_is_causal(monkeypatch: pytest.MonkeyPatch) -> None:
     pd.testing.assert_series_equal(before.iloc[:-1], after.iloc[:-1])
 
 
-def test_hmm_observer_is_output_neutral(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("adaptive_jump.models.GaussianHMM", _FakeHMM)
-    model = ModelProtocol(2, 4, 0, 1)
-    frame = _frame(9).rename(columns={"excess_return": "equity_log"})
-    events = []
-
-    baseline = hmm_states(frame, model, _hmm_protocol())
-    observed = hmm_states(frame, model, _hmm_protocol(), observer=events.append)
-
-    pd.testing.assert_series_equal(observed.states, baseline.states)
-    pd.testing.assert_frame_equal(observed.fits, baseline.fits)
-    assert [events[0].kind, events[-1].kind] == ["stage_started", "stage_completed"]
-    terminals = [event for event in events if event.kind == "terminal_state"]
-    assert len(terminals) == 6
-    assert terminals[-1].completed == terminals[-1].total == 6
-    assert terminals[-1].payload["state"] == 1
-
-
 def test_hmm_resumes_from_contiguous_checkpoint(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -519,6 +612,40 @@ def test_hmm_resumes_from_contiguous_checkpoint(
 
     pd.testing.assert_series_equal(resumed.states, complete.states)
     pd.testing.assert_frame_equal(resumed.fits, complete.fits)
+
+
+def test_hmm_rejects_corrupted_checkpoint_states(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("adaptive_jump.models.GaussianHMM", _FakeHMM)
+    model = ModelProtocol(2, 4, 0, 1)
+    frame = _frame(10).rename(columns={"excess_return": "equity_log"})
+    captured = {}
+
+    def stop_after_first(result: HMMResult) -> None:
+        captured["result"] = result
+        raise RuntimeError("simulated interruption")
+
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        hmm_states(
+            frame,
+            model,
+            _hmm_protocol(),
+            checkpoint_every=2,
+            progress=stop_after_first,
+        )
+    good = captured["result"]
+
+    spurious = HMMResult(good.states.copy(), good.fits.copy())
+    spurious.states.iloc[0] = 1.0  # before the first terminal, never overwritten
+    with pytest.raises(ModelError, match="outside its prefix"):
+        hmm_states(frame, model, _hmm_protocol(), initial=spurious)
+
+    invalid = HMMResult(good.states.copy(), good.fits.copy())
+    fit_dates = pd.to_datetime(invalid.fits["fit_date"])
+    invalid.states.loc[fit_dates.iloc[0]] = 2.0
+    with pytest.raises(ModelError, match="must be 0 or 1"):
+        hmm_states(frame, model, _hmm_protocol(), initial=invalid)
 
 
 def test_parallel_hmm_matches_sequential_results() -> None:

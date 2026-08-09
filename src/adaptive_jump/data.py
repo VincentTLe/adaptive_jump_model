@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import hashlib
 import io
 import json
@@ -11,7 +10,7 @@ import platform
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
@@ -41,7 +40,6 @@ class SourcePayload:
     retrieval: dict[str, Any]
 
 
-YahooLoader = Callable[[SourceConfig, date, date], tuple[pd.DataFrame, dict[str, Any]]]
 HttpGetter = Callable[[str, dict[str, str]], HttpResult]
 
 
@@ -50,18 +48,23 @@ def fetch_source(
     start: date,
     cutoff: date,
     *,
-    yahoo_loader: YahooLoader | None = None,
+    repo_root: str | Path | None = None,
     http_get: HttpGetter | None = None,
 ) -> SourcePayload:
     """Fetch one configured source without applying research transformations."""
-    if source.provider == "yahoo":
-        return _fetch_yahoo(source, start, cutoff, yahoo_loader or _download_yahoo)
-    getter = http_get or _get_http
+    if source.provider == "localfile":
+        if repo_root is None:
+            raise AcquisitionError(f"{source.source_id}: localfile requires repo_root")
+        return _fetch_localfile(source, start, cutoff, repo_root)
     if source.provider == "fred":
-        return _fetch_fred(source, start, cutoff, getter)
-    if source.provider == "boj":
-        return _fetch_boj(source, start, cutoff, getter)
-    raise AcquisitionError(f"Unsupported provider: {source.provider}")
+        return _fetch_fred(source, start, cutoff, http_get or _get_http)
+    # The yahoo and boj adapters were retired on 2026-08-06. They built the
+    # pinned files under data/external/ once; re-running them could never
+    # reproduce a sealed run anyway, because those vendors revise history.
+    raise AcquisitionError(
+        f"{source.source_id}: provider {source.provider!r} is retired; "
+        "acquire from a hash-pinned localfile instead"
+    )
 
 
 def canonical_bytes(frame: pd.DataFrame) -> bytes:
@@ -76,10 +79,6 @@ def quality(frame: pd.DataFrame) -> dict[str, Any]:
         "rows": len(frame),
         "valid_rows": len(valid),
         "missing_values": int(frame["value"].isna().sum()),
-        "duplicate_dates": int(frame["date"].duplicated().sum()),
-        "nonfinite_values": int(
-            valid["value"].map(lambda value: not math.isfinite(value)).sum()
-        ),
         "first_valid_date": valid["date"].min() if not valid.empty else None,
         "last_valid_date": valid["date"].max() if not valid.empty else None,
     }
@@ -92,7 +91,6 @@ def acquire(
     run_id: str | None = None,
     created_at: datetime | None = None,
     git_sha: str | None = None,
-    yahoo_loader: YahooLoader | None = None,
     http_get: HttpGetter | None = None,
 ) -> Path:
     """Acquire all configured sources and write a complete manifest last."""
@@ -116,7 +114,7 @@ def acquire(
                 source,
                 config.sample_start,
                 config.replication_cutoff,
-                yahoo_loader=yahoo_loader,
+                repo_root=root,
                 http_get=http_get,
             )
             stem = f"{market.id}_{kind}"
@@ -169,61 +167,52 @@ def acquire(
     return manifest_path
 
 
-def _fetch_yahoo(
+def _fetch_localfile(
     source: SourceConfig,
     start: date,
     cutoff: date,
-    loader: YahooLoader,
+    repo_root: str | Path,
 ) -> SourcePayload:
-    frame, retrieval = loader(source, start, cutoff + timedelta(days=1))
-    if frame.empty:
-        raise AcquisitionError(f"{source.source_id}: Yahoo returned no rows")
-    if source.value_field not in frame.columns:
-        raise AcquisitionError(
-            f"{source.source_id}: missing Yahoo field {source.value_field}"
-        )
-    raw = frame.to_csv(index=True, lineterminator="\n", na_rep="").encode()
-    index = pd.to_datetime(frame.index, errors="raise")
-    timezone = source.settings.get("timezone")
-    if index.tz is not None and isinstance(timezone, str):
-        index = index.tz_convert(timezone).tz_localize(None)
-    canonical = _canonical(
-        pd.Series(index.strftime("%Y-%m-%d")),
-        frame[source.value_field].reset_index(drop=True),
-        source,
-        start,
-        cutoff,
-    )
-    return SourcePayload(raw, "adapter_output", canonical, retrieval)
-
-
-def _download_yahoo(
-    source: SourceConfig, start: date, end_exclusive: date
-) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Load a hash-pinned, pre-built canonical date,value file from the repo."""
+    relative = _setting(source, "file_path")
+    path = Path(relative)
+    if path.is_absolute() or ".." in path.parts:
+        raise AcquisitionError(f"{source.source_id}: unsafe localfile path")
+    root = Path(repo_root).resolve()
+    resolved = (root / path).resolve()
     try:
-        import yfinance as yf
-    except ImportError as exc:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise AcquisitionError(f"{source.source_id}: unsafe localfile path") from exc
+    if not resolved.is_file():
+        raise AcquisitionError(f"{source.source_id}: missing localfile {relative}")
+    raw = resolved.read_bytes()
+    digest = hashlib.sha256(raw).hexdigest()
+    expected = _setting(source, "sha256")
+    if digest != expected:
         raise AcquisitionError(
-            "Yahoo acquisition requires: uv sync --extra data"
-        ) from exc
-
-    arguments = {
-        "tickers": source.source_id,
-        "start": start.isoformat(),
-        "end": end_exclusive.isoformat(),
-        "interval": "1d",
-        "actions": False,
-        "auto_adjust": bool(source.settings.get("auto_adjust", False)),
-        "repair": False,
-        "keepna": True,
-        "progress": False,
-        "threads": False,
-        "ignore_tz": False,
-        "multi_level_index": False,
-        "timeout": 30,
-    }
-    frame = yf.download(**arguments)
-    return frame, {"adapter": "yfinance.download", "arguments": arguments}
+            f"{source.source_id}: localfile sha256 mismatch "
+            f"(expected {expected}, found {digest})"
+        )
+    rows = pd.read_csv(io.BytesIO(raw), dtype=str, keep_default_na=False)
+    if list(rows.columns) != ["date", "value"]:
+        raise AcquisitionError(f"{source.source_id}: localfile must be date,value")
+    dates = pd.to_datetime(rows["date"], errors="raise").dt.date
+    keep = (dates >= start) & (dates <= cutoff)
+    canonical = _canonical(
+        rows.loc[keep, "date"], rows.loc[keep, "value"], source, start, cutoff
+    )
+    return SourcePayload(
+        raw,
+        "local_file",
+        canonical,
+        {
+            "adapter": "localfile",
+            "arguments": {"file_path": relative},
+            "sha256": digest,
+            "construction": _setting(source, "construction"),
+        },
+    )
 
 
 def _fetch_fred(
@@ -242,45 +231,12 @@ def _fetch_fred(
         response.content,
         "provider_response",
         canonical,
-        _http_metadata(response, params),
-    )
-
-
-def _fetch_boj(
-    source: SourceConfig, start: date, cutoff: date, getter: HttpGetter
-) -> SourcePayload:
-    url = _setting(source, "retrieval_url")
-    params = {
-        "startDate": start.strftime("%Y%m"),
-        "endDate": cutoff.strftime("%Y%m"),
-    }
-    response = getter(url, params)
-    rows = list(csv.reader(io.StringIO(response.content.decode("utf-8-sig"))))
-    if not rows or rows[0] != ["STATUS", "200"]:
-        raise AcquisitionError(f"{source.source_id}: BOJ status is not 200")
-    for row in rows:
-        if row and row[0] == "NEXTPOSITION" and len(row) > 1 and row[1]:
-            raise AcquisitionError(f"{source.source_id}: paginated BOJ response")
-    try:
-        header_index = next(
-            index for index, row in enumerate(rows) if row and row[0] == "SERIES_CODE"
-        )
-    except StopIteration as exc:
-        raise AcquisitionError(f"{source.source_id}: missing BOJ header") from exc
-    header = rows[header_index]
-    records = [dict(zip(header, row, strict=True)) for row in rows[header_index + 1 :]]
-    if not records or any(row["SERIES_CODE"] != source.source_id for row in records):
-        raise AcquisitionError(f"{source.source_id}: BOJ source ID mismatch")
-    dates = [
-        f"{row['SURVEY_DATES'][:4]}-{row['SURVEY_DATES'][4:6]}-01" for row in records
-    ]
-    values = [row[source.value_field] for row in records]
-    canonical = _canonical(dates, values, source, start, cutoff)
-    return SourcePayload(
-        response.content,
-        "provider_response",
-        canonical,
-        _http_metadata(response, params),
+        {
+            "url": response.url,
+            "status": response.status,
+            "content_type": response.content_type,
+            "params": params,
+        },
     )
 
 
@@ -339,15 +295,6 @@ def _get_http(url: str, params: dict[str, str]) -> HttpResult:
     )
 
 
-def _http_metadata(response: HttpResult, params: dict[str, str]) -> dict[str, Any]:
-    return {
-        "url": response.url,
-        "status": response.status,
-        "content_type": response.content_type,
-        "params": params,
-    }
-
-
 def _setting(source: SourceConfig, key: str) -> str:
     value = source.settings.get(key)
     if not isinstance(value, str) or not value:
@@ -364,7 +311,18 @@ def _file_record(root: Path, path: Path, payload: bytes) -> dict[str, Any]:
 
 
 def research_git_sha(root: Path) -> str:
-    scope = ["research.toml", "pyproject.toml", "uv.lock", "src", "tests"]
+    scope = [
+        "research.toml",
+        # Glob magic so every root research contract is covered, including ones
+        # added later. ':(glob)' keeps '*' from crossing '/', so experiment
+        # configs under research/ stay out of scope.
+        ":(glob)research-*.toml",
+        "pyproject.toml",
+        "uv.lock",
+        "scripts",
+        "src",
+        "tests",
+    ]
     tracked = subprocess.run(
         ["git", "diff", "--quiet", "HEAD", "--", *scope], cwd=root, check=False
     )
@@ -393,7 +351,7 @@ def research_git_sha(root: Path) -> str:
 
 def _package_versions() -> dict[str, str]:
     versions: dict[str, str] = {}
-    for package in ("adaptive-jump-model", "pandas", "requests", "yfinance"):
+    for package in ("adaptive-jump-model", "pandas", "requests"):
         try:
             versions[package] = version(package)
         except PackageNotFoundError:

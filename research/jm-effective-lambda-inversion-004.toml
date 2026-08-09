@@ -1,0 +1,43 @@
+schema_version = 1
+experiment_id = "jm-effective-lambda-inversion-004"
+frozen_at_utc = "2026-07-31T04:20:00Z"
+claim_class = "EXPLORATORY"
+analysis_label = "JM EFFECTIVE-LAMBDA INVERSION FROM THE AUTHORS' OWN FIGURE-5 PATHS"
+hypothesis = "The authors' Figure-5 JM position paths, applied to our returns, reproduce Table 4's JM turnover row almost exactly (accounting is right); their state sequences are matched only partially by our per-lambda online paths under any tested geometry, and the unmatched remainder localizes the data/vintage residual at daily resolution."
+primary_estimand = "per_market_accounting_check_plus_effective_lambda_trajectory_plus_matching_ceiling"
+extension_access = false
+adaptive_experiment = false
+model_refitting = false
+
+# This is the inversion the owner asked for, done the legitimate way: we READ
+# the authors' choices out of their own published figure (lossless matplotlib
+# vectors, validated against the panel annotations they printed), rather than
+# searching our knobs for what matches their table. The same technique closed
+# the HMM accounting question (Figure 6, turnover reproduced to 0.002).
+# Registered boundary: best-matching lambdas DESCRIBE the authors' path
+# through our lens; they are NOT grid candidates and may not seed any config.
+prior_art = "hmm Figure-6 path check (docs/audit ledger); jm-grid-identification-001; jm-standardizer-geometry-002/-003"
+
+[inputs]
+figure5_paths = "artifacts/hmm-residual/04-figure6-path/position-fig5-{us,de,jp}-jm.csv (extracted in a prior session; validation against printed annotations re-run in this probe: us 30 shifts / 19.7% bear vs printed 30 / 19.7%; de 114 / 15.6% vs 116 / 15.7%; jp 48 / 25.3% vs 48 / 25.3%)"
+returns = "sealed v9.4 per-market features.csv (equity_simple, cash_return)"
+our_state_paths = "-001 union states (29 lambdas, V0 geometry), -002 V1 states (6 lambdas), -003 V3 states (6 lambdas); all already computed and gated"
+annotation_quotes = ["[line 829] quoted in probe docstring", "[line 851]", "[line 873]"]
+
+[questions]
+QA_accounting = "apply each Figure-5 path to our returns with the sealed trading convention (signal at t applied t+2, 10bp one-way) and score all eight Table-4 JM cells; registered prediction: turnover lands near-exactly (the printed shift counts already imply 0.44/1.70/0.72), so remaining Sharpe/CAGR deviations measure pure data differences under the authors' own states"
+QB_trajectory = "per calendar month, daily agreement between the authors' regime states and each of our per-lambda fixed online paths, per geometry; report per-lambda overall agreement, per-month best lambda (the effective-lambda trajectory), and months where max agreement < 0.9"
+QC_ceiling = "the matching ceiling: daily agreement achievable by the best constant lambda and by the per-month best lambda (the upper bound for ANY grid under monthly CV), per geometry; if the ceiling itself falls short, the state-level mismatch is data/geometry, closing the inversion honestly"
+
+[decision]
+winner_selection_allowed = false
+config_changes_allowed = false
+grid_candidacy_from_results = "forbidden — effective lambdas are descriptive of the authors' path, never candidates"
+registered_interpretations = [
+  "if QA reproduces turnover near-exactly, the JM accounting and trading conventions are right and the whole residual is in states",
+  "if QC's per-month ceiling is high (>0.95 daily agreement) under some geometry, the authors' path is reachable by our machinery and the barrier is only the unpublished selection; if the ceiling is materially below 1, no grid choice could reproduce their path on our data and the JM row closes exactly like the HMM turnover row",
+]
+
+[storage]
+artifact_subdir = "artifacts/jm-residual/04-effective-lambda-inversion"
+required_outputs = ["accounting.csv", "trajectory.csv", "ceiling.csv", "report.txt"]

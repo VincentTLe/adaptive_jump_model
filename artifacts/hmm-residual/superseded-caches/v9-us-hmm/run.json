@@ -1,0 +1,23 @@
+{
+  "what": "HMM arm only, US only, v9 config; NOT a sealed run",
+  "config": "research-expanding-v9.toml",
+  "config_sha256": "15f3c2addb6cdc5e029ab6893924433d7086c34f0a33ed73e7807e92c1f37207",
+  "guard_run": "fixed-baselines-7b95ec50dece-6bd27647967d-13641890668f",
+  "guard_max_drift": 3.552713678800501e-14,
+  "scoring_window": [
+    "1990-01-02",
+    "2023-12-29"
+  ],
+  "scoring_window_source": "v8.5 sealed comparison sample, so the two are scored over identical days",
+  "delay_trading_days": 1,
+  "one_way_cost_bps": 10.0,
+  "smoothing_grid": [
+    0,
+    2,
+    4,
+    6,
+    8,
+    20
+  ],
+  "written_utc": "2026-07-28T12:37:20+00:00"
+}

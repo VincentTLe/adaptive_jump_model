@@ -15,6 +15,7 @@ from matplotlib import pyplot as plt  # noqa: E402
 from matplotlib.axes import Axes  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
 from matplotlib.patches import Patch  # noqa: E402
+from matplotlib.ticker import PercentFormatter  # noqa: E402
 
 from adaptive_jump.artifacts import (  # noqa: E402
     ArtifactError,
@@ -34,6 +35,7 @@ COST_BPS: Final = 10.0
 DEVELOPMENT_CUTOFF: Final = pd.Timestamp("2023-12-31")
 
 MARKET_LABELS: Final = {"us": "US", "de": "Germany", "jp": "Japan"}
+INDEX_LABELS: Final = {"us": "S&P 500", "de": "DAX", "jp": "Nikkei 225"}
 MODEL_LABELS: Final = {
     "buy_and_hold": "Buy & Hold",
     "fixed_jm": "Fixed JM",
@@ -61,6 +63,10 @@ LINE_STYLES: Final = {
     "dd_scaled_3x": "-",
     "hmm": (0, (1, 1)),
 }
+# Shu-style solid bear shading (Figure 5 of arXiv:2402.05272): a filled, semi-
+# transparent salmon span spanning the full panel height.
+BEAR_FILL: Final = "#EE9AA0"
+BEAR_ALPHA: Final = 0.60
 
 
 class SimpleJMFigureError(ArtifactError):
@@ -174,7 +180,9 @@ def render_figures(
     outputs: list[Path] = []
     with plt.rc_context(
         {
-            "font.family": "DejaVu Sans",
+            "font.family": "serif",
+            "font.serif": ["DejaVu Serif"],
+            "mathtext.fontset": "dejavuserif",
             "font.size": 11,
             "axes.titleweight": "bold",
             "axes.spines.top": False,
@@ -189,11 +197,13 @@ def render_figures(
         }
     ):
         if run.study_kind == "simple-jm-suite-001":
-            outputs.extend(
-                _save_formats(
-                    _causal_regime_figure(run), destination / "us-causal-regimes"
+            for market in MARKETS:
+                outputs.extend(
+                    _save_formats(
+                        _causal_regime_figure(run, market),
+                        destination / f"{market}-causal-regimes",
+                    )
                 )
-            )
             outputs.extend(
                 _save_formats(
                     _shu_style_figure(run), destination / "shu-style-net-wealth"
@@ -209,8 +219,7 @@ def render_figures(
     return tuple(outputs)
 
 
-def _causal_regime_figure(run: FigureRun) -> plt.Figure:
-    market = "us"
+def _causal_regime_figure(run: FigureRun, market: str = "us") -> plt.Figure:
     figure, axes = plt.subplots(3, 1, figsize=(7.0, 7.4), sharex=True)
     market_path = run.paths[market]["buy_and_hold"]
     wealth = _indexed_wealth(market_path["equity_simple"])
@@ -228,7 +237,13 @@ def _causal_regime_figure(run: FigureRun) -> plt.Figure:
         axis.set_ylabel("Market wealth")
 
     handles = [
-        Line2D([0], [0], color=COLORS["market"], lw=1.5, label="US market proxy"),
+        Line2D(
+            [0],
+            [0],
+            color=COLORS["market"],
+            lw=1.5,
+            label=f"{MARKET_LABELS[market]} market proxy",
+        ),
         Patch(
             facecolor="#FBE3D8",
             edgecolor=COLORS["bear"],
@@ -242,51 +257,71 @@ def _causal_regime_figure(run: FigureRun) -> plt.Figure:
     return figure
 
 
+def _cumulative_excess_return(frame: pd.DataFrame) -> pd.Series:
+    """Cumulative excess return (%) = running sum of return over the cash rate.
+
+    Matching Shu et al. (Figure 5), the curve is additive rather than compounded,
+    so lines stay readable and a strategy parked in the risk-free asset (position
+    zero, strategy return equal to the cash return) contributes a flat segment.
+    """
+    excess = pd.to_numeric(frame["strategy_return"], errors="coerce") - pd.to_numeric(
+        frame["cash_return"], errors="coerce"
+    )
+    if not np.isfinite(excess.to_numpy(dtype=float)).all():
+        raise SimpleJMFigureError("excess returns must be finite")
+    return 100.0 * excess.cumsum()
+
+
 def _shu_style_figure(run: FigureRun) -> plt.Figure:
-    figure, axes = plt.subplots(3, 1, figsize=(7.0, 7.5), sharex=True)
+    figure, axes = plt.subplots(3, 1, figsize=(7.0, 8.2), sharex=True)
     for axis, market in zip(axes, MARKETS, strict=True):
         paths = run.paths[market]
-        _shade_zero(axis, paths["dd_only"]["date"], paths["dd_only"]["position"])
+        dd_only = paths["dd_only"]
+        _shade_bear(axis, dd_only["date"], dd_only["position"])
         for model in WEALTH_MODELS:
             frame = paths[model]
             axis.plot(
                 frame["date"],
-                _indexed_wealth(frame["strategy_return"]),
+                _cumulative_excess_return(frame),
                 color=COLORS[model],
-                linestyle=LINE_STYLES[model],
-                linewidth=1.55,
+                linestyle="-",
+                linewidth=1.35,
                 label=MODEL_LABELS[model],
+                zorder=3,
             )
-        axis.set_title(MARKET_LABELS[market], loc="left", fontsize=11)
-        axis.set_ylabel("Net wealth")
-    handles = [
-        Line2D(
-            [0],
-            [0],
-            color=COLORS[model],
-            linestyle=LINE_STYLES[model],
-            lw=1.8,
-            label=MODEL_LABELS[model],
+        bear_pct = 100.0 * (1.0 - float(dd_only["position"].mean()))
+        shifts = int(dd_only["one_way_turnover"].gt(0).sum())
+        axis.set_title(
+            f"Bear regimes online inferred by the DD-only JM for the "
+            f"{INDEX_LABELS[market]}: {bear_pct:.1f}%, "
+            f"number of regime shifts: {shifts}",
+            loc="left",
+            fontsize=9.0,
         )
+        axis.set_ylabel("Cumulative Excess Return")
+        axis.yaxis.set_major_formatter(PercentFormatter(decimals=0))
+        axis.margins(x=0.01)
+        axis.grid(False)
+        for side in ("top", "right"):
+            axis.spines[side].set_visible(True)
+
+    handles = [
+        Line2D([0], [0], color=COLORS[model], lw=1.6, label=MODEL_LABELS[model])
         for model in WEALTH_MODELS
     ]
     handles.append(
-        Patch(
-            facecolor="#FBE3D8",
-            edgecolor=COLORS["bear"],
-            hatch="////",
-            label="DD-only cash position",
-        )
+        Patch(facecolor=BEAR_FILL, alpha=BEAR_ALPHA, label="Bear (DD-only JM)")
     )
-    figure.legend(
+    axes[0].legend(
         handles=handles,
-        loc="upper center",
-        ncols=2,
-        bbox_to_anchor=(0.5, 1.0),
-        frameon=False,
+        loc="upper left",
+        frameon=True,
+        framealpha=0.9,
+        edgecolor="#CCCCCC",
+        fontsize=8.3,
     )
     axes[-1].set_xlabel("Date")
-    figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.90), pad=0.8)
+    figure.tight_layout(pad=0.8)
     return figure
 
 
@@ -341,6 +376,22 @@ def _loss_scale_regime_figure(run: FigureRun) -> plt.Figure:
     )
     figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.94), pad=0.9)
     return figure
+
+
+def _shade_bear(axis: Axes, dates: pd.Series, position: pd.Series) -> None:
+    """Solid, full-height salmon span over cash (bear) days, Shu Figure 5 style."""
+    axis.fill_between(
+        dates,
+        0,
+        1,
+        where=position.eq(0).to_numpy(),
+        step="post",
+        transform=axis.get_xaxis_transform(),
+        facecolor=BEAR_FILL,
+        edgecolor="none",
+        alpha=BEAR_ALPHA,
+        zorder=0,
+    )
 
 
 def _shade_zero(axis: Axes, dates: pd.Series, values: pd.Series) -> None:

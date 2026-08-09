@@ -1,0 +1,45 @@
+kiểm: apply_position trùng khớp apply_signal trên đường vị thế ngẫu nhiên — đạt
+
+Vị thế của Figure 6 áp lên LỢI SUẤT CỦA TA (S&P 500 v9):
+                Figure 6 trên data ta   Table 4   |lệch|    đường của ta
+  Return                       0.0879     0.085    0.003          0.0850
+  Volatility                   0.1129     0.113    0.000          0.1131
+  Sharpe                       0.5719     0.540    0.032          0.5471
+  MDD                         -0.2303    -0.289    0.059         -0.2321
+  Calmar                       0.2805     0.210    0.071          0.2666
+  ES 5%                       -0.0178    -0.018    0.000         -0.0179
+  Turnover                     1.4123     1.410    0.002          1.7065
+  Leverage                     0.7217     0.720    0.002          0.7240
+  lần đổi                          96        96        0             116
+  -> 6/8 ô trong ngưỡng 0.05
+
+Các đợt sụt sâu nhất — Figure 6 (Shu)
+  1998-07-17 .. 2002-04-15   -23.03%
+  1990-07-16 .. 1990-10-11   -19.12%
+  2011-04-29 .. 2011-08-08   -17.45%
+  2007-07-19 .. 2009-08-17   -16.99%
+  2018-01-26 .. 2018-04-02   -12.76%
+  2015-07-20 .. 2016-01-20   -12.74%
+
+Các đợt sụt sâu nhất — của ta (v9)
+  1999-07-16 .. 2002-02-07   -23.21%
+  1998-07-17 .. 1998-10-01   -19.45%
+  1990-07-16 .. 1990-10-11   -19.34%
+  2011-04-29 .. 2011-08-08   -17.45%
+  2007-07-19 .. 2009-08-17   -15.34%
+  2018-01-26 .. 2018-03-23   -14.61%
+
+Hai đường vị thế trùng nhau 97.1% số ngày (8565 ngày)
+Số đoạn bất đồng: 81; dài nhất (top 8):
+  1998-12-10 .. 1998-12-24    11 ngày  ta GIỮ CỔ PHIẾU, Shu giữ tiền
+  2023-05-09 .. 2023-05-19     9 ngày  ta GIỮ CỔ PHIẾU, Shu giữ tiền
+  1998-10-23 .. 1998-11-02     7 ngày  ta GIỮ CỔ PHIẾU, Shu giữ tiền
+  1999-04-05 .. 1999-04-13     7 ngày  ta GIỮ CỔ PHIẾU, Shu giữ tiền
+  1999-09-13 .. 1999-09-21     7 ngày  ta GIỮ CỔ PHIẾU, Shu giữ tiền
+  2002-02-05 .. 2002-02-13     7 ngày  ta GIỮ CỔ PHIẾU, Shu giữ tiền
+  2021-01-29 .. 2021-02-05     6 ngày  ta GIỮ TIỀN, Shu giữ cổ phiếu
+  2021-11-30 .. 2021-12-07     6 ngày  ta GIỮ TIỀN, Shu giữ cổ phiếu
+
+Đợt sụt sâu nhất của Shu: 1998-07-17 .. 2002-04-15 (-23.03%)
+  Shu  trong đúng đoạn đó: tỉ lệ nắm cổ phiếu 32.4%, lãi lỗ tích luỹ -22.85%
+  ta   trong đúng đoạn đó: tỉ lệ nắm cổ phiếu 36.0%, lãi lỗ tích luỹ -17.17%

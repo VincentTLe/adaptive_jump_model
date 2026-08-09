@@ -1,0 +1,378 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{microtype}
+\usepackage[round,authoryear]{natbib}
+\usepackage[hidelinks]{hyperref}
+\usepackage{caption}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\setlength{\emergencystretch}{2em}
+\captionsetup{font=small,labelfont=bf}
+
+\newcommand{\ind}{\mathbf{1}}
+\newcommand{\sech}{\operatorname{sech}}
+\newcommand{\clip}{\operatorname{clip}}
+\newcommand{\BH}{Buy\&Hold}
+\newtheorem{proposition}{Proposition}
+
+\title{\textbf{When Should a Jump Model Switch?}\\
+Evidence-Adaptive Transition Costs with Exact Decoding}
+\author{Tan Le}
+\date{July 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A statistical jump model encourages persistent state sequences by charging a fixed cost whenever the state changes. The rule is transparent, but it is also inflexible: a switch supported by a large loss difference pays the same price as a switch supported by almost none. We study transition costs that respond to state-fit evidence while preserving the exact dynamic program of the standard jump model. The first rule discounts the arrival-day transition cost when the current observation fits the destination state better. In the two-state case, an exact value-difference recursion shows that this rule can use the same observation twice---once in the state loss and again by moving the switching barrier. A lagged rule removes that direct same-day reuse. A pair-balanced rule additionally keeps the two directional transition costs centered on the fixed penalty. All three models nest the standard jump model at zero adaptation and retain $O(TK^2)$ decoding. On public U.S., German, and Japanese equity proxies, the mechanisms behave as designed but their economic effects differ sharply. Lagging reduces candidate-path whipsaws from 17 to 6 and improves the standard model's Sharpe ratio in all three markets, yet it beats both buy-and-hold and a Gaussian hidden Markov model only in Germany and increases switching in Japan. Pair balancing does not improve the lagged model overall. The contribution is therefore a set of exact adaptive objectives and a clear account of when their mechanisms fail, not a general performance claim.
+\end{abstract}
+
+\noindent\textbf{Keywords:} statistical jump models; time-varying transition costs; dynamic programming; regime persistence; market regimes; walk-forward validation.
+
+\section{Introduction}
+
+The fixed jump penalty in a statistical jump model is easy to understand. Every state change costs the same amount, regardless of when it occurs or how strongly the new observation favors the destination state. That simplicity is one reason jump models produce smoother regime paths than ordinary clustering \citep{bemporad2018,nystrup2020}. It is also a limitation.
+
+Consider two candidate switches. In the first, the current observation fits the two states almost equally well. In the second, it fits the destination state much better. A fixed jump model treats both transitions as equally expensive. Intuitively, the second switch should be easier to justify. The challenge is to make the transition cost responsive without turning the model into an opaque forecasting rule or losing exact decoding.
+
+This paper studies three evidence-adaptive transition costs. The first uses the current state-loss gap to discount the cost of moving toward the better-fitting state. The second uses the previous observation's loss gap instead. The third applies a pair-balance constraint so that making one direction cheaper makes the opposite direction more expensive by the same amount around the fixed penalty.
+
+The mathematical questions are straightforward to state. Does the resulting objective remain additive and exactly solvable? Does zero adaptation reproduce the fixed model exactly? Can the cost be bounded and scaled using training data only? In the two-state case, what does an evidence-dependent barrier do to the dynamic-programming recursion?
+
+The empirical question is deliberately narrower. Under the market-or-cash protocol of \citet{shu2024}, do these mechanisms produce a cleaner trade-off between latency and whipsaw than the fixed jump model? The experiment uses public U.S., German, and Japanese proxies, past information only, monthly walk-forward penalty selection, a one-day trading delay, and 10 basis points of one-way trading cost. The same sample has been inspected repeatedly, so the results are development evidence rather than a confirmatory performance test.
+
+The main finding is mixed. The adaptive objectives work exactly as specified. The arrival-day model changes real state paths and nests the parent model at zero adaptation, but its prespecified economic criterion is not met. Lagging the evidence materially reduces short-lived candidate-path reversals and raises Sharpe relative to the fixed model in all three markets. After monthly parameter selection, however, it beats both same-sample controls only in Germany and becomes much more active in Japan. Pair balancing preserves most early confirmations but does not improve the lagged model overall.
+
+The paper's contribution is therefore primarily methodological. It gives an exact family of time-varying jump-model decoders, derives a two-state recursion that exposes a same-day amplification channel, and separates candidate-path behavior from the behavior of a strategy whose penalty is reselected each month. The empirical failures are useful because they show that a mechanism that improves a fixed candidate path need not improve the selected strategy.
+
+\section{Fixed and time-varying jump models}
+
+\subsection{The fixed model}
+
+Let $x_0,\ldots,x_{T-1}\in\mathbb{R}^D$ be observations, let $\theta_0,\ldots,\theta_{K-1}$ be fitted centers, and let $s_t\in\{0,\ldots,K-1\}$ be the hidden state. The standard squared-loss jump model solves
+\begin{equation}
+\min_{\Theta,S}\sum_{t=0}^{T-1}\frac{1}{2}\lVert x_t-\theta_{s_t}\rVert_2^2
++\lambda\sum_{t=1}^{T-1}\ind\{s_t\neq s_{t-1}\}.
+\label{eq:fixed}
+\end{equation}
+For fixed centers, define the point loss
+\begin{equation}
+L_t(k)=\frac{1}{2}\lVert x_t-\theta_k\rVert_2^2.
+\end{equation}
+The state path is then obtained by dynamic programming. A larger $\lambda$ generally produces longer runs, but can also delay genuine changes or collapse the fitted path to one state.
+
+\subsection{A general time-varying decoder}
+
+Replace the fixed off-diagonal cost with an arrival-specific transition matrix $C_t$:
+\begin{equation}
+J(S\mid\hat\Theta)=\sum_{t=0}^{T-1}L_t(s_t)
++\sum_{t=1}^{T-1}C_t(s_{t-1},s_t),
+\qquad C_t(i,i)=0.
+\label{eq:tvobjective}
+\end{equation}
+
+\begin{proposition}[Exact decoding]
+For fixed centers and arbitrary finite transition matrices $C_t$, the objective in Equation~\eqref{eq:tvobjective} is solved by
+\begin{equation}
+V_t(j)=L_t(j)+\min_i\{V_{t-1}(i)+C_t(i,j)\}.
+\label{eq:dp}
+\end{equation}
+The computational complexity is $O(TK^2)$ and therefore linear in $T$ for a fixed number of states.
+\end{proposition}
+
+The result is immediate from the additive path structure, but it matters in practice. Adaptation can be introduced through the transition matrices without replacing the exact state-sequence solver by a heuristic.
+
+\subsection{A training-only evidence scale}
+
+The adaptive cost should respond to a dimensionless loss gap. At each refit, we use the raw median absolute deviation of all finite state-loss entries on the same trailing training window used to fit the scaler and centers:
+\begin{equation}
+q_{\mathrm{train}}=
+\operatorname{median}_{u,k}
+\left|L_u(k)-\operatorname{median}_{v,\ell}L_v(\ell)\right|.
+\label{eq:qtrain}
+\end{equation}
+The adaptive studies require $q_{\mathrm{train}}>0$ and use no future-dependent fallback. If every loss and $q_{\mathrm{train}}$ are multiplied by the same positive constant, the ratios below are unchanged.
+
+\section{Three evidence-adaptive transition rules}
+
+\subsection{Arrival-day evidence}
+
+The first rule discounts a transition only when the current observation fits the destination state better:
+\begin{equation}
+C_t^{A}(i,j)=\lambda_0\exp\left[
+-\beta\tanh\left(
+\frac{[L_t(i)-L_t(j)]_+}{q_{\mathrm{train}}}
+\right)\right],
+\qquad i\neq j.
+\label{eq:arrival}
+\end{equation}
+The diagonal is zero. For $\beta\geq 0$,
+\begin{equation}
+\lambda_0 e^{-\beta}\leq C_t^A(i,j)\leq\lambda_0.
+\end{equation}
+At $\beta=0$, every off-diagonal cost is exactly $\lambda_0$. The objective, decoded states, monthly choices, positions, trades, costs, and returns therefore reproduce the fixed jump model.
+
+The rule has an intuitive reading. The fixed penalty remains in place unless the current observation gives positive evidence for the destination state. The discount is bounded, so even overwhelming evidence does not make a switch free.
+
+\subsection{The two-state recursion and same-day amplification}
+
+For two states, define
+\begin{equation}
+g_t=L_t(1)-L_t(0),\qquad
+a_t=C_t(0,1),\qquad b_t=C_t(1,0),
+\end{equation}
+and let $d_t=V_t(1)-V_t(0)$ be the difference between the two dynamic-programming values.
+
+\begin{proposition}[Binary value-difference recursion]
+For any two-state transition costs with zero diagonal,
+\begin{equation}
+d_t=g_t+\clip(d_{t-1},-b_t,a_t),
+\label{eq:binary}
+\end{equation}
+where $\clip(x,\ell,u)=\min\{u,\max\{\ell,x\}\}$.
+\end{proposition}
+
+Equation~\eqref{eq:binary} shows the fixed jump model as an evidence accumulator with a hysteresis interval. The current loss gap $g_t$ moves the value difference, while the previous accumulated difference is clipped at the switching barriers.
+
+Under the arrival rule, the same observation affects both terms: it enters directly through $g_t$ and also changes the active barrier. On an evidence-supported active boundary,
+\begin{equation}
+\left|\frac{\partial d_t}{\partial g_t}\right|
+=1+\frac{\beta C_t}{q_{\mathrm{train}}}
+\sech^2\!\left(\frac{|g_t|}{q_{\mathrm{train}}}\right)>1,
+\label{eq:amplification}
+\end{equation}
+for positive $\beta$, positive cost, strict evidence, and away from ties. This is a local branch identity, not a general instability theorem. It nevertheless identifies a concrete mechanism by which one isolated observation can have more than one-for-one influence on the terminal decision.
+
+\subsection{Lagged evidence}
+
+The lagged rule removes direct same-day reuse:
+\begin{equation}
+C_t^{L}(i,j)=\lambda_0\exp\left[
+-\beta\tanh\left(
+\frac{[L_{t-1}(i)-L_{t-1}(j)]_+}{q_{\mathrm{train}}}
+\right)\right],
+\qquad i\neq j.
+\label{eq:lagged}
+\end{equation}
+At $t=0$, the decoder uses the fixed transition matrix. The bounds, scaling invariance, and exact $\beta=0$ identity are unchanged.
+
+The name ``lagged evidence'' is precise, but a small timing qualification is needed. On a scheduled refit date, the previous row's loss is recomputed under the scaler and centers fitted through the current row. The online decision remains past-only at day $t$, but the discount term on those dates is not claimed to be strictly $\mathcal{F}_{t-1}$-measurable.
+
+\subsection{Pair-balanced lagged evidence}
+
+A binary model with constant asymmetric costs does not separately control bull- and bear-state durations. If $a=C(0,1)$ and $b=C(1,0)$, then
+\begin{equation}
+aN_{01}+bN_{10}
+=\frac{a+b}{2}N_{\mathrm{switch}}
++\frac{a-b}{2}(s_{T-1}-s_0).
+\label{eq:directedidentity}
+\end{equation}
+The asymmetry is a symmetric switching penalty plus an endpoint bias.
+
+The pair-balanced alternative makes one direction cheaper and the opposite direction more expensive around the fixed penalty:
+\begin{equation}
+C_t^{B}(i,j)=\lambda_0\left[
+1-(1-e^{-\beta})
+\tanh\left(
+\frac{L_{t-1}(i)-L_{t-1}(j)}{q_{\mathrm{train}}}
+\right)\right],
+\qquad i\neq j.
+\label{eq:balanced}
+\end{equation}
+It satisfies
+\begin{equation}
+C_t^{B}(i,j)+C_t^{B}(j,i)=2\lambda_0
+\end{equation}
+and
+\begin{equation}
+\lambda_0e^{-\beta}\leq C_t^{B}(i,j)\leq\lambda_0(2-e^{-\beta}).
+\end{equation}
+Again, $\beta=0$ is exactly the fixed model.
+
+\begin{table}[H]
+\centering
+\caption{Summary of the adaptive transition rules.}
+\label{tab:rules}
+\small
+\begin{tabularx}{\textwidth}{l X X X}
+\toprule
+Rule & Evidence used & Main purpose & Exact properties \\
+\midrule
+Arrival & Current loss gap & Make strongly supported current switches cheaper & Bounded discount; scale invariant; exact fixed-JM nesting; $O(TK^2)$ DP \\
+Lagged & Previous loss gap & Remove direct same-day reuse of the observation & Same bounds and nesting; exact DP; partial latency gain on locked toy paths \\
+Pair-balanced & Signed previous loss gap & Preserve the average cost of opposite directions & Directional costs sum to $2\lambda_0$; bounded; exact fixed-JM nesting; exact DP \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Empirical design}
+
+The empirical study uses public proxies for the U.S., German, and Japanese equity markets through 2023. The primary evaluation samples begin on 4 December 2007, 3 January 2008, and 7 May 2009. These are economic-role proxies rather than vendor-level replicas of the licensed data in \citet{shu2024}.
+
+The parent fixed JM uses downside deviation with half-life 10 and Sortino ratios with half-lives 20 and 60. It is fitted with two states on a trailing 3,000-observation window, refitted in January and July, and decoded online with the most recent scaler and centers. Adaptive candidates reuse those fitted scalers and centers and change only the online transition cost.
+
+The base jump penalty is selected monthly from the same candidate grid by trailing eight-year strategy Sharpe. Candidate signals are evaluated with the same one-day trading delay and 10-basis-point one-way cost as the outer strategy. The frozen adaptation scenarios are $\beta\in\{0,\log 2,\log 4\}$, corresponding to maximum discounts of 0\%, 50\%, and 75\% for the arrival and lagged rules.
+
+Two levels of evidence are kept separate. Mechanism diagnostics examine candidate state paths without opening strategy returns. The economic readout then evaluates the selected market-or-cash strategy against the same-sample fixed JM, Gaussian HMM, and buy-and-hold. This distinction matters because monthly validation can choose different base penalties after the decoder changes.
+
+\section{Results}
+
+\subsection{Arrival adaptation is operational but not economically supported}
+
+At $\beta=0$, arrival adaptation reproduces the fixed JM exactly. Positive $\beta$ changes real state paths and selected strategies, so the mechanism is not numerically inert. The economic effects are heterogeneous.
+
+Table~\ref{tab:arrival} reports Sharpe ratios across the three adaptation levels. In the United States, adaptation lowers Sharpe as $\beta$ increases. In Germany, it raises Sharpe and reduces switching. In Japan, the results are non-monotone and activity rises. The frozen arrival-study criterion required non-worse Sharpe and maximum drawdown together with non-higher turnover and switch count, with at least one strict improvement. Neither positive-$\beta$ scenario satisfies that rule in any market.
+
+\begin{table}[H]
+\centering
+\caption{Net Sharpe under arrival-day adaptation.}
+\label{tab:arrival}
+\begin{tabular}{lrrr}
+\toprule
+Market & $\beta=0$ & $\beta=\log 2$ & $\beta=\log 4$ \\
+\midrule
+US & 0.569865 & 0.512427 & 0.501745 \\
+Germany & 0.166440 & 0.271817 & 0.277070 \\
+Japan & 0.329270 & 0.143204 & 0.385254 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The result is consistent with the same-day amplification channel but does not prove that the channel caused the market outcomes. Arrival adaptation can react earlier to persistent evidence, but the same mechanism can also make an isolated gap more influential.
+
+\subsection{Lagging removes many candidate-path whipsaws}
+
+Before strategy performance was opened, a frozen mechanism study compared arrival and lagged candidate paths at $\beta=\log 4$. A whipsaw was defined as a switch attributable to the adaptive discount that reversed within 20 emitted signal days. Lagging reduced these events from 6 to 2 in the United States, 6 to 3 in Germany, and 5 to 1 in Japan, for a pooled change from 17 to 6.
+
+The lagged rule did not simply become as slow as the fixed model. On locked toy paths, arrival, lagged, and fixed first switched at indices 3, 4, and 6 under a persistent shift. On the real Japanese candidate paths, 11 persistent events still switched before the fixed model. The mechanism therefore retained part of the latency gain while removing many short-lived reversals.
+
+\subsection{Selection changes the economic readout}
+
+Table~\ref{tab:adaptiveperf} reports the selected-strategy results at $\beta=\log 4$. Lagged-minus-fixed Sharpe is positive in all three markets: +0.0169 in the United States, +0.1714 in Germany, and +0.0839 in Japan. The same rule, however, beats both buy-and-hold and HMM only in Germany. In the United States, HMM Sharpe remains higher. In Japan, buy-and-hold remains higher.
+
+The activity pattern is equally uneven. Lagging reduces selected-strategy switches from 21 to 15 in the United States and from 32 to 8 in Germany, but increases them from 13 to 33 in Japan. A candidate-path mechanism that reduces local reversals can still make the final strategy more active if monthly validation changes which base penalties are selected.
+
+\begin{table}[H]
+\centering
+\caption{Primary-delay performance and activity at $\beta=\log 4$. MDD and turnover are percentages.}
+\label{tab:adaptiveperf}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrr}
+\toprule
+Market & Model & Sharpe & MDD & Turnover & Switches \\
+\midrule
+US & Fixed JM & 0.569865 & -33.857 & 65.398 & 21 \\
+US & Arrival JM & 0.501745 & -33.790 & 59.170 & 19 \\
+US & Lagged JM & 0.586777 & -33.790 & 46.713 & 15 \\
+US & Pair-balanced JM & 0.616326 & -33.790 & 40.484 & 13 \\
+\addlinespace
+Germany & Fixed JM & 0.166440 & -38.779 & 99.335 & 32 \\
+Germany & Arrival JM & 0.277070 & -38.779 & 43.459 & 14 \\
+Germany & Lagged JM & 0.337888 & -38.779 & 24.834 & 8 \\
+Germany & Pair-balanced JM & 0.335543 & -38.779 & 49.667 & 16 \\
+\addlinespace
+Japan & Fixed JM & 0.329270 & -32.162 & 45.678 & 13 \\
+Japan & Arrival JM & 0.385254 & -41.348 & 94.869 & 27 \\
+Japan & Lagged JM & 0.413215 & -31.799 & 115.951 & 33 \\
+Japan & Pair-balanced JM & 0.244542 & -41.303 & 137.033 & 39 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+A frozen $2\times2$ attribution separated the adaptive candidate path from the monthly choice schedule. For equal-market mean Sharpe, the total lagged-minus-fixed difference was +0.090769. The path Shapley component was -0.034835, the choice-schedule component was +0.125603, and the interaction was +0.205076. These are exact allocations of a nonlinear metric, not causal effects. They show why the simple story ``lagging makes the path better'' is incomplete: much of the measured gain arrives through different monthly penalty choices and their interaction with the path.
+
+\subsection{Pair balancing does not solve the selection problem}
+
+Pair balancing was designed to preserve the average cost of opposite directions while retaining evidence-sensitive asymmetry. In the mechanism study, it preserved 87.5\% of eligible early confirmations and produced no unconfirmed persistent lock-ins. Pooled whipsaws did not fall, however.
+
+The economic readout is also negative relative to the lagged model. Balanced-minus-lagged Sharpe is +0.0295 in the United States, -0.0023 in Germany, and -0.1687 in Japan, for an equal-market mean of -0.0472. It reduces U.S. turnover and switches, but raises both in Germany and Japan. The pair-balance identity is mathematically clean; the tested rule is not empirically superior.
+
+\subsection{Finite grids and one-state fits}
+
+The adaptive results remain conditional on a finite base-penalty grid. The upper penalty is selected frequently for lagged and balanced candidates, especially in Germany and Japan, so the finite optimum is not identified. This is not a cosmetic diagnostic: monthly selection is path-discrete, and adding or removing a candidate can change the chosen state path.
+
+One-state fitted candidates are also material in the wider project. When a fitted center is unused, the decoder remains deterministic, but the path no longer represents two recovered regimes. The adaptive studies retain those fits rather than removing them after performance is observed. Their frequency is another reason to interpret the market results as mechanism evidence rather than proof of a stable two-regime structure.
+
+\section{Discussion}
+
+The arrival model begins from a reasonable idea: a switch should be easier when the destination clearly fits better. The binary recursion shows why implementing that idea with the current loss gap is not innocuous. The same observation changes both the immediate state loss and the switching barrier. On an active branch, its influence can exceed one-for-one.
+
+Lagging is a direct repair. It prevents the current observation from moving its own barrier, and the mechanism study confirms that it removes many short-lived reversals while retaining some early response to persistent changes. Yet the selected strategy is governed by two linked systems: the decoder and the monthly validation rule. Changing the decoder changes the candidate paths, which changes validation Sharpe, which changes the chosen base penalty. The Japanese result shows that this second channel can dominate the first.
+
+Pair balancing addresses a different concern. It prevents the two directional costs from drifting downward together and gives a clear algebraic interpretation. It does not create independent duration control, and the empirical results show that preserving average directional cost is not enough to stabilize the selected strategy.
+
+The safe novelty claim is bounded. The exact objective belongs to the broad family of jump models with generalized transition structures. Related work considers continuous states, feature selection, and other jump-model extensions \citep{aydinhan2024,nystrup2021}. The specific bounded prior-loss-gap regularizers, binary amplification identity, and pair-balanced construction are candidate methodological contributions. The evidence does not establish that they are globally new across every switching-model literature.
+
+\section{Conclusion}
+
+A fixed jump penalty treats weak and strong transition evidence alike. Evidence-adaptive costs offer a transparent way to change that rule without giving up exact dynamic programming. The arrival, lagged, and pair-balanced models all retain $O(TK^2)$ decoding, bounded costs, a training-only scale, and exact nesting of the fixed jump model at zero adaptation.
+
+The two-state recursion reveals the central design issue. Arrival-day evidence can be used twice: once in the observation loss and once by moving the active switching barrier. Lagging removes that direct reuse and materially reduces candidate-path whipsaws. Pair balancing adds an exact two-direction cost identity.
+
+The market evidence is deliberately less tidy. Lagging improves the fixed model's Sharpe ratio in all three proxy markets but clears both economic benchmarks only in Germany and makes the Japanese strategy much more active. Pair balancing does not improve the lagged model overall. A mechanism that cleans up a fixed candidate path can still fail after monthly parameter selection.
+
+The contribution is therefore not a new universal trading rule. It is an exact and auditable set of adaptive jump-model objectives, together with a failure map that distinguishes local path behavior from selected-strategy performance.
+
+\appendix
+
+\section{Proof of the binary recursion}
+
+For two states,
+\begin{align}
+V_t(0)&=L_t(0)+\min\{V_{t-1}(0),V_{t-1}(1)+b_t\},\\
+V_t(1)&=L_t(1)+\min\{V_{t-1}(1),V_{t-1}(0)+a_t\}.
+\end{align}
+Subtracting the first equation from the second and writing $d_{t-1}=V_{t-1}(1)-V_{t-1}(0)$ gives
+\begin{align}
+d_t
+&=g_t+\min\{d_{t-1},a_t\}-\min\{0,d_{t-1}+b_t\}\\
+&=g_t+\clip(d_{t-1},-b_t,a_t).
+\end{align}
+
+\section{Proof of the constant directed-cost identity}
+
+For a binary path, $N_{01}-N_{10}=s_{T-1}-s_0$ and $N_{01}+N_{10}=N_{\mathrm{switch}}$. Solving for the two transition counts and substituting gives Equation~\eqref{eq:directedidentity}.
+
+\section{Reproducibility note}
+
+The retained experiments use frozen study contracts, a through-2023 data cutoff, exact candidate-state generation, monthly selection replays, delayed trade accounting, and independent verification of reported metrics and concrete state-to-trade traces. The adaptive mechanisms were tested with fixed parent scalers and centers, so their differences arise from online transition costs and the monthly choices induced by those paths. These checks establish numerical consistency for the retained experiments; they do not create an untouched holdout or a general performance guarantee.
+
+\begin{thebibliography}{99}
+
+\bibitem[Ayd{\i}nhan et~al.(2024)Ayd{\i}nhan, Kolm, Mulvey, and Shu]{aydinhan2024}
+Ayd{\i}nhan, A.~O., Kolm, P.~N., Mulvey, J.~M., and Shu, Y. (2024).
+Identifying patterns in financial markets: Extending the statistical jump model for regime identification.
+\emph{Annals of Operations Research}.
+
+\bibitem[Bemporad et~al.(2018)Bemporad, Breschi, Piga, and Boyd]{bemporad2018}
+Bemporad, A., Breschi, V., Piga, D., and Boyd, S.~P. (2018).
+Fitting jump models.
+\emph{Automatica}, 96, 11--21.
+
+\bibitem[Nystrup et~al.(2020)Nystrup, Lindstr\"om, and Madsen]{nystrup2020}
+Nystrup, P., Lindstr\"om, E., and Madsen, H. (2020).
+Learning hidden Markov models with persistent states by penalizing jumps.
+\emph{Expert Systems with Applications}, 150, 113307.
+
+\bibitem[Nystrup et~al.(2021)Nystrup, Kolm, and Lindstr\"om]{nystrup2021}
+Nystrup, P., Kolm, P.~N., and Lindstr\"om, E. (2021).
+Feature selection in jump models.
+\emph{Expert Systems with Applications}, 184, 115558.
+
+\bibitem[Shu et~al.(2024)Shu, Yu, and Mulvey]{shu2024}
+Shu, Y., Yu, C., and Mulvey, J.~M. (2024).
+Downside risk reduction using regime-switching signals: A statistical jump model approach.
+\emph{Journal of Asset Management}, 25, 493--507.
+
+\end{thebibliography}
+
+\end{document}

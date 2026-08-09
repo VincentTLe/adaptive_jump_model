@@ -207,9 +207,11 @@ def test_render_writes_two_figures_in_png_svg_and_pdf(tmp_path: Path) -> None:
 
     expected_stems = {
         "us-causal-regimes",
+        "de-causal-regimes",
+        "jp-causal-regimes",
         "shu-style-net-wealth",
     }
-    assert len(outputs) == 6
+    assert len(outputs) == 12
     assert {path.stem for path in outputs} == expected_stems
     assert {path.suffix for path in outputs} == {".png", ".svg", ".pdf"}
     assert all(path.parent == tmp_path / "reports" / run.name for path in outputs)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -13,6 +13,65 @@ PAPER_TURNOVER_DEFINITION = "half_mean_one_way_turnover_times_252"
 LEGACY_TURNOVER_DEFINITION = "mean_one_way_turnover_times_252"
 PAPER_COMPARISON_SAMPLE = "per_market_all_delays_intersection_of_complete_metric_rows"
 LEGACY_COMPARISON_SAMPLE = "per_market_delay_intersection_of_complete_metric_rows"
+# Which wealth path the drawdown is measured on. The paper never states it, and
+# the earlier claim that two published facts pin it down was RETRACTED on
+# 2026-07-29 (docs/audit/2026-07-29-codex-review-verdicts.md section 2): Table
+# 4's buy-and-hold cells only prove the invested leg is a total-return path —
+# buy-and-hold is never in cash, so the two bases agree to every digit there —
+# and Figure 5's caption describes a cumulative EXCESS return axis, which is
+# flat in cash trivially and constrains no drawdown path. The flat-in-cash
+# basis was in fact selected by minimising error against Table 4, i.e. by
+# fitting an unspecified knob. total_wealth is the a-priori default (v9.4 and
+# v10); flat_in_cash remains legal only so sealed v9.1-v9.3 runs replay to
+# their recorded numbers. String values are pinned by sealed configs — rename
+# the Python constants, never the values.
+FLAT_IN_CASH_DRAWDOWN_BASIS = "risky_leg_wealth_flat_in_cash"
+TOTAL_WEALTH_DRAWDOWN_BASIS = "total_wealth"
+
+# The only JM candidate grids a replication contract may carry: the arXiv-v1
+# author grid and the Table-3 grid. Anything else would be a grid we chose,
+# which a replication claim must never smuggle in.
+HISTORICAL_JM_GRIDS = (
+    (0.0, 5.0, 15.0, 35.0, 70.0, 150.0, 300.0, 600.0, 1200.0),
+    (0.0, 5.0, 15.0, 35.0, 70.0, 150.0),
+)
+# Calibration grids adopted by owner decision on 2026-07-31, one per market,
+# from the exhaustive-search chain jm-grid-exhaustive-007/-008 and
+# jm-per-market-grid-009 (registry events + docs/audit/2026-07-31-*.md).
+# They were found BY searching subsets of a sourced lambda menu against the
+# published Table-4/Table-5 cells, so agreement with those cells is by
+# construction: they are calibration artifacts, never "the authors' grid".
+# A contract carrying one must therefore declare claim_label
+# "calibrated baseline"; load_config enforces the coupling both ways.
+CALIBRATED_JM_GRIDS = (
+    (0.0, 21.544346900318832, 70.0),  # v10 us: passes all 14 target cells
+    (150.0, 500.0),  # v10 de: best 13/14, turnover is the blocking cell
+    (10.0, 220.0),  # v10 jp: best 13/14, leverage is the blocking cell
+    # v11 grids, adopted by owner decision 2026-08-08 following
+    # grid-selection-rule-001 (frozen 2026-08-01, completed and
+    # independently verified 2026-08-07): among each market's -009
+    # admissible set, the grid with highest daily agreement with the
+    # AUTHORS' OWN Figure-5 state sequence, tie-broken by fewest members
+    # then smallest max lambda then lexicographic, per the frozen spec's
+    # own rule. v10's grids are LEFT IN PLACE above (not removed) so
+    # sealed v10 runs remain independently reloadable/replayable.
+    (0.0, 0.1, 20.0, 220.0),  # v11 us: agreement 0.9609 (v10 was 0.9476)
+    (0.1, 1.0, 10.0, 21.544346900318832, 26.826957952797247, 40.0, 100.0,
+     500.0),  # v11 de: agreement 0.8951 (v10 was 0.8585, ranked dead last)
+    (1.93069772888325, 20.0, 25.0, 26.826957952797247, 40.0,
+     51.7947467923121, 220.0),  # v11 jp: agreement 0.8516 (v10 was 0.8152)
+)
+
+# hmmlearn's covars_prior default is 0.01, which turns the paper's plain
+# maximum-likelihood HMM — [line 372] "the fitting that yields the highest
+# log-likelihood" — into a MAP fit. On daily-return-scale data the prior is not
+# negligible: measured over 40 US training windows it inflates the fitted
+# conditional volatilities by a median 12% and flips the labelled terminal state
+# on 12.5% of them. Only the v7 study may leave the field implicit: it predates
+# the field, and its bytes are pinned as config_sha256 by six frozen specs and
+# appear inside sealed run IDs, so research.toml cannot be edited without
+# breaking that provenance. Every later study has to say which HMM it wants.
+LEGACY_IMPLICIT_COVARS_PRIOR_CONFIG_ID = "shu-proxy-replication-v7"
 
 
 class ConfigError(ValueError):
@@ -38,6 +97,9 @@ class MarketConfig:
     deviations: tuple[str, ...]
     equity: SourceConfig
     cash: SourceConfig
+    # Optional per-market JM grid override; permitted only inside a
+    # "calibrated baseline" contract and only from CALIBRATED_JM_GRIDS.
+    jm_lambda_grid: tuple[float, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -63,6 +125,8 @@ class ModelProtocol:
     fit_window: int
     risky_label: int
     cash_label: int
+    standardizer: str = "sklearn_standard_scaler_ddof0"
+    standardizer_min_observations: int = 0
 
 
 @dataclass(frozen=True)
@@ -102,6 +166,9 @@ class MetricsProtocol:
     expected_shortfall_quantile: float
     turnover_definition: str = PAPER_TURNOVER_DEFINITION
     comparison_sample: str = PAPER_COMPARISON_SAMPLE
+    # Defaults to total_wealth — both the a-priori convention and what configs
+    # written before this field existed must keep producing.
+    drawdown_basis: str = TOTAL_WEALTH_DRAWDOWN_BASIS
 
     @property
     def turnover_scale(self) -> float:
@@ -134,6 +201,15 @@ class ResearchConfig:
     metrics_protocol: MetricsProtocol
     document: dict[str, Any]
 
+    def jm_protocol_for(self, market_id: str) -> JMProtocol:
+        """The JM protocol governing one market, honoring any grid override."""
+        for market in self.markets:
+            if market.id == market_id:
+                if market.jm_lambda_grid is None:
+                    return self.jm_protocol
+                return replace(self.jm_protocol, lambda_grid=market.jm_lambda_grid)
+        raise ConfigError(f"unknown market: {market_id}")
+
 
 def load_config(path: str | Path) -> ResearchConfig:
     """Parse a TOML config and enforce acquisition safety invariants."""
@@ -146,10 +222,12 @@ def load_config(path: str | Path) -> ResearchConfig:
 
     _require(document.get("schema_version") == 1, "schema_version must be 1")
     study = _table(document, "study")
+    claim_label = study.get("claim_label")
     _require(
-        study.get("claim_label") == "proxy replication",
-        "claim_label must be proxy replication",
+        claim_label in {"proxy replication", "calibrated baseline"},
+        "claim_label must be proxy replication or calibrated baseline",
     )
+    calibrated = claim_label == "calibrated baseline"
     _require(
         study.get("extension_download_enabled") is False,
         "extension download must be disabled",
@@ -160,8 +238,16 @@ def load_config(path: str | Path) -> ResearchConfig:
     )
 
     data_policy = _table(document, "data_policy")
+    splicing = data_policy.get("allow_definition_splicing")
+    if splicing is True:
+        documentation = data_policy.get("splice_documentation")
+        _require(
+            isinstance(documentation, str) and len(documentation.strip()) >= 40,
+            "definition splicing requires substantive splice_documentation",
+        )
+    else:
+        _require(splicing is False, "allow_definition_splicing must be false")
     for key in (
-        "allow_definition_splicing",
         "allow_synthetic_backfill",
         "allow_forward_fill",
         "allow_imputation",
@@ -176,7 +262,20 @@ def load_config(path: str | Path) -> ResearchConfig:
     sample_start = _iso_date(study, "requested_sample_start")
     cutoff = _iso_date(study, "replication_cutoff")
     _require(sample_start <= cutoff, "sample start must not follow cutoff")
-    _require(cutoff <= date(2023, 12, 31), "replication cutoff must not exceed 2023")
+    holdout_extension = study.get("holdout_extension", False)
+    _require(
+        isinstance(holdout_extension, bool),
+        "holdout_extension must be a boolean when present",
+    )
+    if holdout_extension:
+        _require(
+            cutoff <= date(2026, 6, 30),
+            "holdout cutoff must not exceed the audited source window",
+        )
+    else:
+        _require(
+            cutoff <= date(2023, 12, 31), "replication cutoff must not exceed 2023"
+        )
 
     storage = _table(document, "storage")
     raw_root = _safe_relative_path(storage, "raw_root")
@@ -188,7 +287,7 @@ def load_config(path: str | Path) -> ResearchConfig:
         isinstance(market_rows, list) and market_rows,
         "markets must be a non-empty array",
     )
-    markets = tuple(_market(row) for row in market_rows)
+    markets = tuple(_market(row, calibrated) for row in market_rows)
     market_ids = [market.id for market in markets]
     _require(len(set(market_ids)) == len(market_ids), "market IDs must be unique")
 
@@ -205,9 +304,9 @@ def load_config(path: str | Path) -> ResearchConfig:
     features = _feature_protocol(_table(document, "features"))
     backtest = _backtest_protocol(_table(document, "backtest"))
     model = _model_protocol(_table(document, "model"))
-    jm = _jm_protocol(_table(document, "jm"))
-    hmm = _hmm_protocol(_table(document, "hmm"))
-    selection = _selection_protocol(_table(document, "selection"))
+    jm = _jm_protocol(_table(document, "jm"), calibrated)
+    hmm = _hmm_protocol(_table(document, "hmm"), str(document.get("config_id", "")))
+    selection = _selection_protocol(_table(document, "selection"), calibrated)
     metrics = _metrics_protocol(_table(document, "metrics"))
     oos = _table(document, "oos_start")
     fit_window = _integer(oos, "fit_window_observations")
@@ -244,7 +343,7 @@ def load_config(path: str | Path) -> ResearchConfig:
     )
 
 
-def _market(row: Any) -> MarketConfig:
+def _market(row: Any, calibrated: bool = False) -> MarketConfig:
     _require(isinstance(row, dict), "each market must be a table")
     market_id = _text(row, "id")
     classification = _text(row, "classification")
@@ -259,6 +358,17 @@ def _market(row: Any) -> MarketConfig:
         and all(isinstance(item, str) and item for item in deviations),
         f"{market_id}: deviations must be non-empty strings",
     )
+    jm_grid: tuple[float, ...] | None = None
+    if "jm_lambda_grid" in row:
+        _require(
+            calibrated,
+            f"{market_id}: jm_lambda_grid requires claim_label calibrated baseline",
+        )
+        jm_grid = _number_tuple(row, "jm_lambda_grid")
+        _require(
+            jm_grid in HISTORICAL_JM_GRIDS + CALIBRATED_JM_GRIDS,
+            f"{market_id}: jm_lambda_grid is not a registered grid",
+        )
     return MarketConfig(
         id=market_id,
         name=_text(row, "name"),
@@ -267,6 +377,7 @@ def _market(row: Any) -> MarketConfig:
         deviations=tuple(deviations),
         equity=_source(row, "equity", market_id),
         cash=_source(row, "cash", market_id),
+        jm_lambda_grid=jm_grid,
     )
 
 
@@ -274,9 +385,24 @@ def _source(row: dict[str, Any], key: str, market_id: str) -> SourceConfig:
     source = _table(row, key)
     provider = _text(source, "provider")
     _require(
-        provider in {"yahoo", "fred", "boj"},
+        provider in {"yahoo", "fred", "boj", "localfile"},
         f"{market_id}.{key}: unsupported provider {provider}",
     )
+    if provider == "localfile":
+        digest = _text(source, "sha256")
+        _require(
+            len(digest) == 64 and all(c in "0123456789abcdef" for c in digest),
+            f"{market_id}.{key}: localfile sha256 must be 64 lowercase hex chars",
+        )
+        _require(
+            len(_text(source, "construction").strip()) >= 40,
+            f"{market_id}.{key}: localfile requires a substantive construction note",
+        )
+        path = _text(source, "file_path")
+        _require(
+            not path.startswith(("/", "..")) and ".." not in path.split("/"),
+            f"{market_id}.{key}: localfile path must stay inside the repository",
+        )
     frequency = _text(source, "frequency")
     _require(
         frequency in {"daily", "monthly"}, f"{market_id}.{key}: unsupported frequency"
@@ -362,19 +488,49 @@ def _backtest_protocol(row: dict[str, Any]) -> BacktestProtocol:
 
 
 def _model_protocol(row: dict[str, Any]) -> ModelProtocol:
-    _fixed(row, "standardizer", "sklearn_standard_scaler_ddof0")
+    standardizer = _text(row, "standardizer")
+    _require(
+        standardizer
+        in {"sklearn_standard_scaler_ddof0", "expanding_full_history_ddof1"},
+        "standardizer violates the frozen protocol",
+    )
+    min_obs = 0
+    if standardizer == "expanding_full_history_ddof1":
+        min_obs = _integer(row, "standardizer_min_observations")
+        _require(
+            min_obs >= 63,
+            "expanding standardizer needs at least one quarter of warm-up",
+        )
     n_states = _integer(row, "n_states")
     fit_window = _integer(row, "fit_window_observations")
     risky = _integer(row, "state_risky_label")
     cash = _integer(row, "state_cash_label")
     _require(n_states == 2, "model must have two states")
     _require((risky, cash) == (0, 1), "state labels must be risky=0 and cash=1")
-    return ModelProtocol(n_states, fit_window, risky, cash)
+    return ModelProtocol(n_states, fit_window, risky, cash, standardizer, min_obs)
 
 
-def _jm_protocol(row: dict[str, Any]) -> JMProtocol:
+# n_init is locked to 10 for every replication-lineage contract (v7..v9.4,
+# and the original v10/v11 calibrated seals): a fixed, small, unchanged
+# restart count keeps the whole comparability chain on one footing and
+# blocks the ad hoc "raise n_init until it converges nicely" pattern.
+# 60 is allowed ONLY for calibrated-baseline contracts (never replication
+# contracts), and only as a deliberate, symmetric correction: 2026-08-08,
+# the v10/v11 calibrated seals were BOTH resealed at n_init=60 together
+# (not just whichever one hit a local optimum first) after
+# simple-jm-suite-003's DD-only fit hit a coordinate-descent local optimum
+# on v11's new grid at the standard n_init=10 (docs/audit/
+# frequency-ladder-001-audit.md F-1 precedent: 6x restarts). Resealing
+# only the affected side would have reintroduced an uncontrolled variable
+# into the v10-vs-v11 grid comparison already independently verified at
+# matched n_init=10 (docs/audit/2026-08-08-baseline-reseal-v11-receipt.md).
+CALIBRATED_JM_N_INITS = (10, 60)
+
+
+def _jm_protocol(row: dict[str, Any], calibrated: bool = False) -> JMProtocol:
     grid = _number_tuple(row, "lambda_grid")
-    _require(grid == (0, 5, 15, 35, 70, 150, 300, 600, 1200), "invalid JM lambda grid")
+    allowed = HISTORICAL_JM_GRIDS + (CALIBRATED_JM_GRIDS if calibrated else ())
+    _require(grid in allowed, "invalid JM lambda grid")
     _fixed(row, "implementation", "jumpmodels.JumpModel")
     _fixed(row, "sort_by", "cumret")
     _fixed(row, "online_terminal_only", True)
@@ -388,17 +544,29 @@ def _jm_protocol(row: dict[str, Any]) -> JMProtocol:
         _positive_number(row, "tol"),
         tuple(refit),
     )
+    n_inits = CALIBRATED_JM_N_INITS if calibrated else (10,)
     _require(
-        protocol == JMProtocol(grid, 10, 0, 1000, 1e-8, (1, 7)), "invalid JM settings"
+        any(
+            protocol == JMProtocol(grid, n, 0, 1000, 1e-8, (1, 7))
+            for n in n_inits
+        ),
+        "invalid JM settings",
     )
     return protocol
 
 
-def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
+def _hmm_protocol(row: dict[str, Any], config_id: str = "") -> HMMProtocol:
     grid = row.get("smoothing_grid")
     seeds = row.get("seeds")
-    expected_grid = [0, 2, 4, 6, 8, 10, 20, 40, 80, 160, 320, 640, 1280, 2560]
-    _require(grid == expected_grid, "invalid HMM smoothing grid")
+    # Allowlist, not validation. The candidate set is a free parameter (the
+    # paper publishes a selection procedure, never a search space), so an open
+    # field here would let the grid be tuned until the numbers agree with
+    # Table 4. Every entry must carry a reason that is not "it scored better".
+    allowed_grids = (
+        [0, 2, 4, 6, 8, 10, 20, 40, 80, 160, 320, 640, 1280, 2560],
+        [0, 2, 4, 6, 8, 20],
+    )
+    _require(grid in allowed_grids, "invalid HMM smoothing grid")
     _require(seeds == list(range(10)), "HMM seeds must be 0 through 9")
     _require(_integer(row, "n_init") == len(seeds), "HMM n_init must match seeds")
     _fixed(row, "implementation", "hmmlearn.GaussianHMM")
@@ -413,12 +581,26 @@ def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
     _require(
         _integer(row, "median_min_periods") == 1, "HMM median min periods must be 1"
     )
+    if "covars_prior" in row:
+        covars_prior = row["covars_prior"]
+    else:
+        _require(
+            config_id == LEGACY_IMPLICIT_COVARS_PRIOR_CONFIG_ID,
+            "hmm.covars_prior must be declared: omitting it silently applies "
+            "hmmlearn's 0.01 prior instead of the paper's maximum-likelihood fit",
+        )
+        covars_prior = 0.01
+    _require(
+        covars_prior in (0.0, 0.01),
+        "HMM covariance prior must be 0.01 (legacy) or 0.0 (prior-free)",
+    )
     protocol = HMMProtocol(
         tuple(grid),
         tuple(seeds),
         _positive_number(row, "min_covar"),
         _positive_integer(row, "n_iter"),
         _positive_number(row, "tol"),
+        covars_prior=float(covars_prior),
     )
     expected = HMMProtocol(
         tuple(grid),
@@ -427,13 +609,15 @@ def _hmm_protocol(row: dict[str, Any]) -> HMMProtocol:
         1000,
         1e-6,
         kmeans_n_init=10,
-        covars_prior=0.01,
+        covars_prior=float(covars_prior),
     )
     _require(protocol == expected, "invalid HMM settings")
     return protocol
 
 
-def _selection_protocol(row: dict[str, Any]) -> SelectionProtocol:
+def _selection_protocol(
+    row: dict[str, Any], calibrated: bool = False
+) -> SelectionProtocol:
     _fixed(row, "cadence", "monthly_prior_month_last_complete_date")
     _fixed(row, "objective", "annualized_strategy_excess_sharpe")
     _fixed(row, "tie_rule", "lower_smoothing")
@@ -443,8 +627,18 @@ def _selection_protocol(row: dict[str, Any]) -> SelectionProtocol:
         _positive_number(row, "tie_tolerance"),
         _positive_number(row, "upper_boundary_month_fraction_limit"),
     )
+    # A calibrated-baseline contract may disable the upper-boundary stop
+    # (limit 1.0): a 2-3 value calibration grid concentrates at its upper
+    # edge by construction, and the contract never claims the grid brackets
+    # an optimum. The fractions are still computed and reported. A
+    # replication contract keeps the hard 0.05 stop.
+    allowed_limits = (0.05, 1.0) if calibrated else (0.05,)
     _require(
-        protocol == SelectionProtocol(8, 252, 1e-12, 0.05), "invalid selection settings"
+        protocol.validation_years == 8
+        and protocol.minimum_valid_returns == 252
+        and protocol.tie_tolerance == 1e-12
+        and protocol.boundary_fraction_limit in allowed_limits,
+        "invalid selection settings",
     )
     return protocol
 
@@ -471,6 +665,11 @@ def _metrics_protocol(row: dict[str, Any]) -> MetricsProtocol:
         comparison_sample in {PAPER_COMPARISON_SAMPLE, LEGACY_COMPARISON_SAMPLE},
         "invalid metric definition",
     )
+    drawdown_basis = str(row.get("maximum_drawdown", TOTAL_WEALTH_DRAWDOWN_BASIS))
+    _require(
+        drawdown_basis in {FLAT_IN_CASH_DRAWDOWN_BASIS, TOTAL_WEALTH_DRAWDOWN_BASIS},
+        "invalid metric definition",
+    )
     periods = _positive_integer(row, "periods_per_year")
     ddof = _integer(row, "volatility_ddof")
     quantile = _positive_number(row, "expected_shortfall_quantile")
@@ -485,6 +684,7 @@ def _metrics_protocol(row: dict[str, Any]) -> MetricsProtocol:
         quantile,
         turnover_definition,
         comparison_sample,
+        drawdown_basis,
     )
 
 

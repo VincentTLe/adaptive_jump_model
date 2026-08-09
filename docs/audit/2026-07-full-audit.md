@@ -1,0 +1,1729 @@
+# Full audit — code, data, methodology vs Shu (2026-07-25/26)
+
+Scope: every result-critical module, every data series, and a fresh close-read of
+arXiv 2402.05272v3. Findings carry severity (blocker / major / minor / note),
+reproducible evidence, and an affects-sealed-numbers flag. Fixes that would
+change sealed numbers are NOT applied inside the audit; they stop and await
+approval.
+
+Status: IN PROGRESS. Part B (data) largely complete; Part A (code) and Part C
+(paper) running as a multi-agent review with adversarial verification.
+
+---
+
+## Part B — Data audit
+
+### B1. Coverage matrix (canonical, shu-replication-expanding-v8-2)
+
+| series | rows | span | calendar gaps > 7d |
+|---|---|---|---|
+| us_equity | 14,850 | 1965-01-04..2023-12-29 | 0 (max 7d) |
+| us_cash (DTB3, daily) | 14,737 | 1965-01-04..2023-12-29 | 0 |
+| de_equity | 14,852 | 1965-01-04..2023-12-29 | 0 (max 6d) |
+| de_cash (monthly ladder) | 708 | 1965-01..2023-12 | monthly by construction |
+| jp_equity | 14,507 | 1965-01-05..2023-12-29 | 3 (New-Year closures 1985/86, Golden Week 2019 — benign) |
+| jp_cash (monthly ladder) | 700 | 1965-01..2023-12 | 7 single/double-month source holes, see B1-F1 |
+
+Coverage verdict: every phase requirement is met — warm-up 1965–70, training
+1970–90, OOS 1990–2023, delay robustness. Per-market OOS starts recomputed from
+the real series: US 1990-01-02, DE 1990-01-02, JP 1990-01-04.
+
+**B1-F1 (note, cleared).** jp_cash source holes: 1985-06, 1986-06, 2018-08,
+2019-02/03, 2019-06, 2019-12, 2020-12 (IMF and BoJ months genuinely absent at
+source). Verified against the sealed JP frame: the 120-day staleness window
+absorbs every hole — 0 missing feature rows after warm-up; the only NaN-cash
+days are the 35 warm-up head days of 1965 (DE: 39; US: 0). No fix needed;
+documented as a data limitation.
+
+### B2. Integrity & provenance
+
+- sha256 of all five `data/external/*.csv` recomputed → **all match** the pins
+  in research-expanding-v8-2.toml.
+- **B2-F1 (major, provenance — fix planned).** `data/external/inputs/*` (10
+  files) are pinned NOWHERE. Hashes recorded now for the ledger:
+
+| input | sha256 (first 20) | bytes |
+|---|---|---|
+| ff_us_daily.csv (Kenneth French, downloaded 2026-07-25) | f051e37d30c129359c68 | 1,208,053 |
+| stooq_dax_daily.csv (Stooq ^dax, manual download by owner 2026-07-25) | a0ea6e8edcae145d00d0 | 752,609 |
+| n225_price_daily.csv (Yahoo ^N225 via yfinance 2026-07-25) | 93c5b6fcbc0ebfc2487e | 385,792 |
+| n225tr_official_merged.csv (Investing.com N225TR mirror, 2 manual downloads by owner, merged) | 1c2977502af445abeccb | 61,629 |
+| jst_japan_eq.csv (JST Macrohistory R6 slice, 1964–2020) | 519c9c856772aeed7354 | 4,919 |
+| INTGSTJPM193N.csv (FRED/IMF Japan T-bill) | f068a59109a996b265b6 | 17,220 |
+| INTGSTDEM193N.csv (FRED/IMF Germany T-bill) | 8693c22c905abe575a0d | 6,600 |
+| IR3TIB01DEM156N.csv (FRED/OECD DE interbank 3M) | 2b9d26f8dfc56280b1c1 | 24,089 |
+| ecb_3m_aaa.csv (ECB SDW yield-curve 3M AAA) | 4b96c8b50d4ccad6bc88 | 3,130,120 |
+| jp_equity_tr_full.csv (intermediate; superseded by in-builder construction) | f03965755b8789c3b878 | 366,458 |
+
+  Planned fix (Part D): builder verifies input hashes against a pinned manifest;
+  this table becomes the provenance ledger of record.
+- **B2-F2 (minor — fix planned).** Cross-generation dependency: the builder
+  reads `data/processed/shu-proxy-replication-v6-.../jp_cash.csv` (an OLD run's
+  processed output) as the BoJ-call input for the JP cash ladder tail. Promote
+  that series to `data/external/inputs/` with a pinned hash.
+
+### B5. Table 1 anchor (new, never used before this audit)
+
+Daily excess-return statistics 1970–2023 computed from our canonical series
+(12,588 common days) vs the paper:
+
+| pair | ours | paper |
+|---|---|---|
+| corr US–DE | 0.462 | 0.44 |
+| corr US–JP | 0.138 | 0.12 |
+| corr DE–JP | 0.259 | (Table 1 — pending exact transcription) |
+| ann. variance US / DE / JP | 0.0286 / 0.0400 / 0.0425 | (pending) |
+
+Joint validation of all three series at DAILY granularity within +0.02 of the
+published values. Full-matrix comparison lands when the Table 1 transcription
+from the close-read completes.
+
+### B4. "What is still missing" register (answering the owner's question)
+
+1. JP total return before 2012: reconstruction (N225 price + JST annual
+   yields), no free official series exists. Method validated on the 2012–2023
+   overlap (daily corr 0.9977; implied yields within 0.3pp of JST). Claims
+   standing on it: JP rows of the replication tables. Caveat required in the
+   paper: yes (drafted).
+2. JP TR mirror hole 2020-07..2022-05: bridged with both official edges matched
+   exactly (endpoint error 2e-16). Irreducible without paid Nikkei data.
+3. DE equity before 1988: Stehle backcast lineage (single lineage worldwide);
+   validated monthly vs OECD MEI (corr 0.9846 in the 1970s ≈ modern control
+   0.9895). No DAILY independent check exists publicly — irreducible.
+4. DE cash 1965–1975-06: interbank, not T-bill (T-bill series starts 1975-07).
+   Touches warm-up/training only.
+5. JP cash 2017-07..2023: BoJ call splice (NIRP era, joint delta ≈ 0).
+6. Vendor close-time microstructure (Bloomberg 17:30 vs public fixings):
+   irreducible; bounded by the delay-10 result (all Table-5 cells matched or
+   exceeded at two-week delay).
+7. jp_cash source holes (B1-F1): absorbed by staleness policy.
+
+Conclusion: data is SUFFICIENT for every claim in the current paper plan; the
+irreducible gaps are documented limitations, not blockers.
+
+---
+
+## Part A — Code audit (complete)
+
+Six result-critical modules reviewed against a ~130-surface checklist; every
+blocker/major candidate independently verified. **Zero blockers. Zero findings
+that affect sealed numbers.** Confirmed findings and dispositions:
+
+| id | sev | finding | disposition |
+|---|---|---|---|
+| 6.1 | major | `_verify_manifest` set-comparison cannot detect a duplicated (market,kind,source_id) manifest entry | **FIXED**: source-count check added (cli.py) + regression test |
+| CFG-WS40 | minor | 40-char substantive-documentation gates accepted 40 spaces | **FIXED**: `.strip()` before length (config.py) + test |
+| 5.20 | minor | dirty-tree provenance scope omitted `research-expanding-v8*.toml` and `scripts/` | **FIXED**: scope widened (data.py) |
+| 3.2-latent | minor | `apply_signal` label-aligned Series inputs silently misalign (bit twice in scratchpad) | **FIXED**: positional conversion via `np.asarray` + property test |
+| 3.7 | minor | `charge_initial_allocation` inert on the replication path | **FIXED**: threaded through walkforward (behavior unchanged; config value false) |
+| 2.25 | minor | `_IdentityScaler` writes mean=0/scale=1 into jm-refits audit trail | documented (sealed records left as-is; values are truthful for the in-window transform) |
+| B2-F1/F2 | major/minor | builder inputs unpinned + cross-generation dependency on an old run's output | **FIXED**: `INPUT_SHA256` pins (11 inputs) + `verify_inputs()` gate; BoJ call series promoted into inputs; rebuilt outputs byte-identical (5/5 hashes unchanged) |
+| WF-1..6, 1.9, 1.11, 1.14, 3.15, 3.19, 2.18/19, 2.21/22, ART-*, CFG-*, CLI-* | minor/note | selection-calendar min_periods dependence, tie frequency, staleness reference point, EWM warm-up noise, CAGR observation-count convention (~6bp JP), ES interpolation, symmetric HMM convergence monitor, inventory scope boundary, etc. | documented; none affects sealed numbers; candidates for future hardening |
+
+Cleared as CORRECT after adversarial checks (highlights): t+2 delay semantics
+exactly per paper §3.1; all in-repo `apply_signal` callers positionally safe;
+Sharpe/Calmar/turnover/leverage definitions conform to the Table 4 caption
+word-for-word; B&H benchmark sample fairness (identical metric dates across
+models); decision-timing equivalent to the paper's t/t+2 convention; refit
+calendar = first trading days of Jan/Jul + one bootstrap fit (JP: 1978-05-26);
+`_IdentityScaler x observation_loss_scale` exact (sqrt(3) verified); builder
+constructions reproduce independently (US TR max rel diff 3e-16; JP stitch
+points continuous, max |log-ret| 0.022).
+
+## Part A7 — Independent recomputation of every reported headline number
+
+Five fresh implementations (agents barred from reading the original analysis
+code) reproduced from sealed artifacts:
+
+- 9-cell Sharpe table + bootstrap CIs: **all 19 rows match** (points to 0.005,
+  CI endpoints within RNG tolerance 0.02); "all 9 Shu values inside our 95%
+  CIs" re-confirmed 9/9.
+- Delay 1/5/10 table (18 selected cells + 6 fixed-candidate cells): **all
+  match** to 3-4 decimals; DE fixed_jm delay-10 = 0.2937 (rounds to Shu's 0.29).
+- Bear-share-by-era (15 rows): **all match**; the Figure-5 "shifted forward by
+  2 days" convention moves every era share by at most 0.07pp — immaterial.
+- Follow-CV US: composed monthly picks agree with the sealed pipeline **408/408
+  months**; composed daily signal identical on all 8,565 OOS days; Sharpe
+  0.7848/0.7877 vs reported 0.79; turnover 32.37% vs 32.4%; 22 shifts exact.
+- Fixed-lambda sweeps: JP Sharpes reproduce to 0.0002.
+
+**Corrections recorded (reported numbers whose provenance needed tightening):**
+
+1. *Table-3 shift levels.* The sealed v8.2 US states give 3.67/1.10/0.76/0.43/
+   0.33/0.19 shifts/yr for lambda 0..150 — FEWER than both Shu's Table 3
+   (9.7..0.4) and the session's probe variant (which used a different warm-up).
+   The expanding-standardizer identification rests on Table-4 economics,
+   Figure-5 profiles and the 2020-exit signature — NOT on matching Table 3's
+   absolute levels, and the ledger now says so explicitly.
+2. *JP HMM small-k cell.* The reported "0.18 vs Shu 0.19" was computed on
+   v8.1 artifacts (OOS 1991-03). On v8.2 (full window, OOS 1990-01) the same
+   spec gives ~0.15 — the honest statement is "small-k range closes the JP HMM
+   gap from 0.16 (wide grid) to ~0.04, not to 0.01". The small>>wide grid
+   ranking conclusion is unchanged (verified on both runs).
+3. *Run mix.* Reported US/DE numbers come from the v8.1 sealed run, JP from
+   v8.2 (deliberate — JP window fix — now explicit).
+4. *US k-range identification Sharpes.* A second, fully independent recompute
+   of the k-grid table (2026-07-26, fresh implementation validated to 1e-16
+   against the sealed candidate-returns accounting) reproduces DE exactly
+   (0.25/0.25/0.14) and US turnovers exactly, but puts the US Sharpes at
+   0.55/0.56/0.55/0.56 for grids A/B/C/wide — about 0.02 below the previously
+   reported 0.57/0.58/0.58. Grid B (single candidate k=6, no selection step)
+   isolates the discrepancy to the earlier report's US scoring, not to
+   selection logic. The ranking conclusion (small-k >> wide on DE/JP, US flat
+   across grids and near Shu's 0.54/141 with grid A at 0.55/135) is unchanged
+   and re-confirmed on all three markets.
+
+## Part C — Paper close-read (complete)
+
+129 claims transcribed into the register (51 from title/§1/§2 + Table 1, 48
+from §3 + Tables 2-3 + Figures 2-4 + footnotes 10-14, 30 from §4-5 + Tables
+4-5 + Figures 5-6). Notable confirmations against our implementation: the
+paper has NO footnotes after §3.4.3 and no appendix; the delay wording, the
+l=3000 lookback, daily HMM refit, and Table 4/5 metric captions all map to
+audited code surfaces (see Part A cleared list). Table 1 anchor comparison in
+B5. The register lives in the audit workflow transcripts
+(`subagents/workflows/wf_6e931ef8-0eb/journal.jsonl`).
+
+## Part D — Fixes applied (all non-numeric; sealed replay re-verified)
+
+- cli.py: manifest duplicate/missing source detection.
+- config.py: whitespace-proof substantive-documentation gates.
+- data.py: provenance dirty-tree scope covers all root research TOMLs + scripts.
+- backtest.py: positional signal conversion in `apply_signal`.
+- walkforward.py: `charge_initial_allocation` threaded end to end.
+- scripts/build_external_sources.py: 11 input sha256 pins + `verify_inputs()`
+  gate; cross-generation dependency removed (BoJ series promoted to inputs);
+  rebuilt outputs byte-identical to the config pins (5/5).
+- tests/test_audit_hardening.py: 7 new regression tests (manifest dup,
+  whitespace gates, localfile sha/path gates, positional apply_signal,
+  prepare_market expanding branch, v8-2 config anchor).
+- Full suite after changes: 444 passed; the single failure is the pre-existing
+  monitor-environment test (fails on a clean tree identically). Sealed runs
+  re-verified clean via `verify_run`.
+
+## Addendum (2026-07-26) — agent re-verification round
+
+The four audit pieces originally completed solo (after the spend-limit
+interruption) were re-run by independent agents once quota returned.
+
+**models.py full review (agent, independent):** zero blockers, zero findings
+affecting sealed numbers. Three minors, all per-spec but now documented:
+(1) *median-tie direction* — `mean > 0.5` sends exact ties to risky; ties are
+frequent with the even-k grid (55-180 OOS days per market/delay would flip
+under `>=`); frozen and deterministic, flagged for a sensitivity run.
+(2) *min_periods=1 sensitivity* — no OOS-governing decision ever had
+under-windowed days for its SELECTED candidate; a full-window counterfactual
+flips selections only at us 1989-12 (return-neutral), de 1994 d10
+(return-neutral) and jp 1995-05 d10 (22 differing days, +12.3pp cumulative) —
+the JP delay-10 robustness cell is the one spec-sensitive output. The rule is
+also load-bearing: requiring full windows would delay first selection to
+~1995. (3) *HMM resume validation* weaker than the JM path — fixed in
+f727da7 (+ regression test); not triggered in sealed runs (verified clean).
+Notable cleared items: online inference provably equals the paper's l=3000
+prefix-DP; variance relabeling never ambiguous (min hi/lo ratio 3.3, zero
+plausible label swaps); the symmetric convergence monitor is *stricter* than
+stock hmmlearn (stock would accept stop-on-decrease fits; ours vetoes them,
+and accepted terminals are stable at tol=1e-9).
+
+**k-grid identification recompute (agent, fresh implementation):** correction
+4 above; ranking conclusion re-confirmed on all three markets.
+
+**Residual-cell investigation (completed 2026-07-26):**
+
+*DE HMM — RESOLVED (two stacked causes).* (1) hmmlearn's `covars_prior=0.01`
+materially distorts fits on decimal returns (low-state variance +7-40%,
+high-state up to +97% in early windows; probe reproduces sealed fits exactly
+13/13 and shows the `covars_prior=0` and percent-scaled variants agree to 5
+decimals, isolating the prior — `min_covar` inert). (2) The non-paper wide
+smoothing grid (k to 2560) wrecks the selection layer; the small grid used
+here, {0,2,4,8,20}, is our own choice copied from Table 3's illustration, not
+a candidate set the paper discloses. Full-path refit under percent scaling + small grid:
+**DE follow-CV 0.353 / turnover 214% vs Shu 0.35 / 246%**, with Shu's
+fast-decaying delay shape (0.35→0.28→0.18). Cross-checked by the independent
+fixed-k frontier (k=4: 0.327/202%/76.9% lev). US survives the same fix
+(small-grid 0.59 vs Shu 0.54, usual overshoot zone); JP improves slightly
+(0.166, turnover 314% vs Shu 290%). Sealed states differ on 5.5% of DE days;
+state changes 316→350.
+
+*JP JM — mechanism isolated, Shu bracketed, exact recipe unidentified.* New
+Table-3 anchor: our sealed JM paths flip 2.1-2.6x LESS than Shu's published
+shifts/yr at every lambda INCLUDING lambda=0 (penalty-irrelevant), while our
+HMM k-grid flip rates match Shu — localizing the discrepancy to JM feature
+standardization geometry (one-shot expanding windows enter fits off-center
++0.68 sigma and std-compressed 0.73-0.82). The selection layer is exonerated
+(agent replica = sealed choices 100% in all three markets). Intervention arms
+re-running the author library's own per-refit-window recipe (clip +-3sigma +
+StandardScaler frozen at refit): flip rates move to ~1.3x Shu (from 0.4x) —
+crossing Shu, so the true recipe lies inside this family; JP fixed
+lambda=35 hits **0.310 / 68% turnover / 45 shifts vs Shu 0.31 / 72% / 48
+shifts** (leverage still 43% vs 75%); JP selected 0.169→0.219; the arm exits
+correctly during the 1990-94 Nikkei collapse (lambda=5 era Sharpe -0.51→
++0.03). But the same recipe DEGRADES the matched markets (US selected
+0.788→0.460, DE 0.361→0.310) — no single preprocessing variant reproduces
+Table 3 and Table 4 simultaneously; Shu's exact standardization remains the
+one unpublished degree of freedom, with our variants bracketing their JP JM
+row: 0.157/0.169 (expanding) — 0.219 clip / 0.310 fixed-λ35 — 0.260
+cold-start-1970 — 0.263 anchor-1970 — vs Shu 0.31 (all inside the 95% CI).
+Also eliminated: validation-metric raw-vs-excess (raw scores 0.148 vs 0.157,
+choices identical post-2000); literal-1970 cold-start warm-up (+0.03 on the
+matched window 0.260 vs 0.233; the sealed 0.157 vs 0.233 delta is the
+Jan-Aug-1990 crash months).
+
+## v8.3 outcome (2026-07-27, run fixed-baselines-353f037e328e-113bf877f679-3e77b13b7bc0)
+
+The identified spec (expanding standardization anchored at 1970, min_obs 63;
+HMM covars_prior=0 with the smoothing grid {0,2,4,8,20} copied from Table 3's
+illustration (our own choice, not the paper's disclosed search space)) was
+frozen (3e77b13) and run sealed end to end. Verify replays clean. Exploratory
+delay-1 readout vs Shu Table 4, with 95% moving-block bootstrap CIs (block 21):
+
+- us: JM 0.756 / 64% / 76.4% (Shu 0.68/44/80) · HMM 0.662 / 186% / 70.7%
+  (0.54/141/72) · B&H 0.500 (0.48)
+- de: JM 0.416 / 113% / 73.1% (Shu 0.44/170/84) · HMM 0.400 / 216% / 73.3%
+  (0.35/246/73) · B&H 0.301 (0.30)
+- jp: JM 0.260 / 159% / 64.5% (Shu 0.31/72/75) · HMM 0.226 / 325% / 68.2%
+  (0.19/290/74) · B&H 0.189 (0.12; OOS starts 1990-08-31 so the Jan-Aug 1990
+  crash months fall outside the window — flatters all JP cells vs Shu's
+  1990-01 anchor; relative ordering unaffected)
+
+**JM > HMM > B&H reproduces on all three markets — first time in the
+project.** Shu's value sits inside the 95% CI in 9/9 cells. The JP fixed-JM
+lambda-150 boundary concentration is cured (3.7% of months vs 32% under
+v8.2); 8/9 fixed-JM boundary gates pass (DE d10 marginal at 5.9%). All
+remaining gate failures are HMM k=20 upper-boundary concentration — the CV
+parks at the top of our Table-3-derived grid (us d10 39%, jp d1 39%) —
+recorded as a finding about that grid choice's behavior, not the paper's
+(undisclosed) grid design; run status is therefore
+boundary_failed and official metrics remain sealed per protocol (readout
+above is exploratory, computed from the sealed selected-signal files).
+
+## Verdict
+
+The audit found NO defect that changes any sealed or reported number. All
+material findings are provenance/hardening issues, now fixed with tests, plus
+three provenance corrections to previously reported numbers (recorded above).
+Data coverage is sufficient for every claim in the paper plan; irreducible
+gaps are documented limitations.
+
+## Correction: the 95% CI was used as evidence when it carries none (2026-07-27)
+
+Two statements above lean on a bootstrap confidence interval as though covering
+Shu's value supported replication: line 265 ("all inside the 95% CI") and line
+288 ("Shu's value sits inside the 95% CI in 9/9 cells"). Both are arithmetically
+true and evidentially empty. Retract the inference, keep the numbers.
+
+The standard error of a Sharpe ratio over T years is about
+`sqrt((1 + SR^2/2)/T)`, so at the paper's 34-year window any 95% interval is
+roughly 0.70 wide; our measured widths were 0.646-0.681, exactly as expected.
+An independent recomputation (block bootstrap, block in {5,21,63}, seeds 1-5,
+2000 resamples) confirmed the coverage claim and then showed why it is vacuous:
+every cell interval also contains the paper's values for the other two models in
+that market, so the buy-and-hold interval cannot reject "buy-and-hold equals the
+jump model". Reaching a 0.05-wide interval would need on the order of 6,900
+years of data.
+
+There is also no valid significance test to be had. The paper gives one value
+per cell with no standard error, on licensed data we do not hold; there is no
+sampling distribution to test against.
+
+The same recomputation established what the intervals do say, which is less
+comfortable than what was claimed: JM minus HMM contains zero in both markets
+tested (us +0.099, CI [-0.073, +0.278], p2 = 0.270; de +0.018, CI [-0.178,
++0.221], p2 = 0.859), zero inside the interval in 15/15 bootstrap
+configurations. JM minus buy-and-hold clears zero only for the US and only
+marginally (p2 = 0.036, unstable across seeds). So "JM > HMM > B&H reproduces on
+all three markets" is a statement about the ordering of point estimates and must
+be written that way, never as a significant result.
+
+Replication should therefore be judged by point-estimate closeness against a
+tolerance fixed in advance (the owner's standing tolerance: 0.05 absolute
+Sharpe, tightening to 0.03), together with the spread produced by the free
+parameters the paper never fixes. Those parameters and their measured spreads
+are now registered in docs/unspecified-choices.md.
+
+## Correction to the correction, and the v8.4 tally (2026-07-27, later)
+
+The retraction above is right that interval coverage was never evidence, but the
+arithmetic it published to prove the point is itself wrong and is withdrawn. The
+Lo (2002) standard error requires the Sharpe ratio and the sample size to be at
+the same frequency; the table mixed an annualised Sharpe with a sample counted
+in years. Corrected, the width is near 0.672 for every cell rather than varying
+0.679 to 0.750 with the Sharpe, and the "6,900 years" figure should read roughly
+6,150. The reported measured widths of 0.646 to 0.681 could not be traced to any
+script or artifact in the repository; an independent recomputation gave 0.642 to
+0.713 on v8.3, so the upper bound was wrong as well.
+
+Per the owner's instruction, this project no longer reports confidence
+intervals. The reasoning is in docs/unspecified-choices.md. Replication is
+judged by point-estimate closeness against a tolerance fixed in advance, across
+all eight rows of Table 4 rather than the Sharpe row alone.
+
+The v8.4 tally, stated the way it should have been stated the first time
+(delay-1, metrics-exploratory.csv, run 93de627bb755-d65262092c1a-17e1984c1817):
+
+| tolerance | all nine cells | model cells only | model cells also passing their delay-1 boundary gate |
+|---|---|---|---|
+| 0.05 | 7/9 | 4/6 | **1/6** |
+| 0.03 | 5/9 | 2/6 | 1/6 |
+
+Three of the seven passing cells are buy-and-hold, which contains no model and
+therefore measures the data rather than the replication. Of the four model cells
+inside 0.05, three sit on cells whose own boundary gate failed (de fixed_jm
+0.0515, de hmm 0.0637, jp hmm 0.3946). Only us fixed_jm both meets the tolerance
+and clears its gate. Reporting "7/9" without that decomposition repeated the
+inflation this audit was convened to stop.
+
+Turnover, which the paper treats as the identifying property of the jump model,
+does not reproduce: us 103.0% against 44%, jp 140.6% against 72%, de 105.5%
+against 170%. The us jump-model Sharpe matches to 0.018 while trading 2.3 times
+as much, so that cell agrees on the headline number and disagrees on the
+behaviour underneath it.
+
+## HMM anatomy on v8.4, and predictions for v8.5 (2026-07-27)
+
+Written before the v8.5 run finished, so the predictions below cannot be
+rewritten to fit whatever it produces.
+
+### The HMM matches the paper at the model layer
+
+Reported turnover is `0.5 * sum|dposition|` annualised (`backtest.py:124`), and
+a 0/1 strategy moves by exactly 1 at each shift, so turnover is half the shifts
+per year. That makes Table 4's turnover row directly comparable with Table 3's
+shifts-per-year row, which is the only place the paper publishes how its model
+responds to the smoothing window.
+
+Fixed-k shifts per year on the US series, 1982-2023, against Table 3 (line 644):
+
+| k | ours | Shu | ratio |
+|---|---|---|---|
+| 0 | 9.62 | 8.5 | 1.13x |
+| 2 | 7.29 | 6.6 | 1.10x |
+| 4 | 5.05 | 4.9 | 1.03x |
+| 8 | 3.24 | 3.2 | 1.01x |
+| 20 | 2.14 | 2.0 | 1.07x |
+
+With the selector switched off, our smoothed state sequence flips at Shu's rate
+across the whole grid. The selected paths agree too: turnover 184.2% against
+141% (us), 222.7% against 246% (de), 316.7% against 290% (jp) — 1.31x, 0.91x,
+1.09x, scattered around one rather than biased.
+
+This is the opposite of the jump model, whose fixed-lambda flip rates sit at
+0.43-0.93x of Table 3 and whose selected turnover misses by 2.3x. Whatever
+drives the JM deviation, it is not shared by the HMM, even though both models
+consume the same three features from the same frames.
+
+An arithmetic correction, caught here rather than in a report: turnover is half
+the shifts, so shifts are twice the turnover. Inverting that once turned a 1.31x
+gap into a printed "5.23x" before it was checked against Table 3.
+
+### The deviation that remains is the width of the k grid
+
+Out-of-sample Sharpe with k held fixed for the whole period, no selection:
+
+| market | k=0 | k=2 | k=4 | k=8 | k=20 | selected | Shu |
+|---|---|---|---|---|---|---|---|
+| us | 0.594 | 0.524 | 0.580 | **0.676** | 0.595 | 0.638 | 0.54 |
+| de | 0.406 | 0.388 | **0.462** | 0.384 | 0.268 | 0.393 | 0.35 |
+| jp | 0.095 | 0.192 | 0.202 | 0.197 | **0.213** | 0.182 | 0.19 |
+
+Shu's published HMM Sharpe falls inside our own fixed-k range on all three
+markets. The grid alone spans 0.15 (us), 0.19 (de) and 0.12 (jp) — every one of
+those wider than the deviation being investigated. So the HMM deviation is not
+evidence of a defect; it is the size of an unspecified knob, and the paper never
+publishes the candidate set (see docs/unspecified-choices.md #3).
+
+Two further facts about the selector, both from sealed artifacts:
+
+- The selected path scores **below** the best fixed k in all three markets
+  (0.638 vs 0.676, 0.393 vs 0.462, 0.182 vs 0.213). Re-picking k monthly costs
+  more than it earns against simply holding the ex-post best k.
+- The monthly decision is often close: the winner beats the runner-up by less
+  than 0.02 Sharpe in 16.5% (us), 27.2% (de) and 19.6% (jp) of months.
+
+The modal pick coincides with the ex-post best fixed k in all three markets
+(87.6%, 52.2%, 40.3%, against 20% for a uniform pick). Three markets is far too
+few to call that skill rather than coincidence, and it is recorded as an
+observation, not a claim.
+
+### Predictions for v8.5
+
+v8.5 adds k=6 and changes nothing else (`tests/test_audit_hardening.py`
+asserts the two contracts differ in that field alone; the acquisition manifests
+are byte-identical on all six canonical series).
+
+1. **The boundary gate will still fail on the same cells.** k=6 is an interior
+   value and cannot relieve concentration at the top of the grid. Expect jp
+   delay-1 (39.5% at k=20) and us delay-10 (39.0%) to fail again.
+2. **The us HMM Sharpe will fall.** k=6 sits between k=4 (0.580) and k=8
+   (0.676); cross-validation currently parks on k=8 in 87.6% of months, so any
+   months that move to 6 pull the result toward the middle — and toward Shu's
+   0.54, which is below all of it.
+3. **de will fall to roughly 0.354**, from an earlier unsealed probe that put
+   the deviation at +0.004 against Shu's 0.35.
+4. **jp will barely move.** Its picks concentrate at k=20 (40.3%) and k=4
+   (29.0%); k=6 lands between two cells that score 0.202 and 0.197.
+
+If (2) and (3) hold, they are not a success. The grid was corrected because the
+paper names k=6 at line 390, and the direction of the effect was predicted from
+the fixed-k table above rather than discovered by trying it. A change that
+improved agreement for any other reason would have to be reported as tuning.
+
+## The sample-start choice: what it does, and a claim withdrawn (2026-07-27)
+
+### Withdrawn: "the paper's 1990-01-02 anchor"
+
+The v8.4 and v8.5 contracts justify `requested_sample_start = 1969-05-01` by
+saying it puts every market "back on the paper's anchor", naming 1990-01-02.
+**The paper gives no such date.** It says:
+
+> [line 157] "All data spans from the start of 1970 to the end of 2023."
+> [line 713-715] "Since our data begin in 1970, with training windows spanning 12 years and validation windows 8 years, the out-of-sample testing period begins in 1990."
+
+and Table 4 reports "from 1990 to 2023". Every mention of 1990 in the paper is a
+year, never a date. So 1969-05-01 does not restore a paper anchor; it **breaks a
+specified item** (the 1970 data start) to reach a date we invented.
+
+Both config comments are wrong on this point. They are left unedited because
+both have been run and their text is part of what was frozen; the correction
+lives here and in docs/unspecified-choices.md.
+
+### Why the literal 1970 start does not reach 1990
+
+Sessions per year, 1970-1989, and the 3000th session counted from 1970-01-01:
+
+| market | sessions/yr | Saturdays | 3000th session | + 8 years |
+|---|---|---|---|---|
+| us | 252.7 | 0 | 1981-11-13 | 1989-11-13 |
+| de | 250.2 | 0 | 1981-12-29 | 1989-12-29 |
+| jp | 246.8 | 0 | 1982-03-08 | 1990-03-08 |
+
+The US and Germany clear the eight-year mark before 1990 on raw sessions, so
+their out-of-sample start falls back to the requested 1990-01-01; feature warm-up
+then pushes the realised starts to 1990-03-15 and 1990-06-19. Japan does not
+clear it at all, because the Tokyo exchange traded Saturdays until January 1989
+and our `^N225` series contains **zero** Saturday sessions. Missing roughly 25
+sessions a year for nineteen years makes our 3000-session window span about
+eighteen months more calendar time than Shu's.
+
+So the backdated start is **compensation for a data gap**, not fidelity to the
+paper. It should be described that way wherever it is described at all.
+
+### What the choice actually changes
+
+v8.3 and v8.4 differ in this one field, so the two sealed runs isolate it.
+Comparing raw states on the overlapping days:
+
+| market | HMM state days compared | HMM states differing | JM state cells differing |
+|---|---|---|---|
+| us | 10,619 | **0** | 3.71% |
+| de | 10,605 | **0** | 1.10% |
+| jp | 10,282 | **0** | 15.84% |
+
+The HMM is **exactly invariant**. It fits the last 3000 log returns before day t,
+and that set does not depend on where the series began once 3000 observations
+precede t. For the HMM the sample start is purely a reporting-window choice.
+
+The jump model is not invariant, because its features pass through an expanding
+full-history standardiser anchored at the sample start (unspecified-choices.md
+#1). Moving the anchor moves every feature value forever.
+
+### The decision
+
+Keep 1969-05-01. Buy-and-hold contains no model, so it tests the window against
+the paper's own published benchmark rather than any tuned knob:
+
+| B&H Sharpe | 1970-01-01 | 1969-05-01 | Shu |
+|---|---|---|---|
+| us | 0.497 | 0.486 | 0.48 |
+| de | 0.305 | 0.298 | 0.30 |
+| jp | 0.193 | **0.138** | 0.12 |
+
+The backdated window reproduces the period Shu report; the literal one does not,
+decisively so in Japan, where it discards the first nine months of 1990 and with
+them the opening of the Nikkei collapse.
+
+Recorded as a **deviation from line 157**, not as replication. And it is not free
+for the jump model: on the shared window it costs the US JM 0.088 Sharpe while
+moving its turnover from 0.636 to 1.006 against Shu's 0.44 — the wrong direction
+on the row the paper treats as the jump model's identifying property. That
+trade-off must be reopened when the jump model is next frozen, and this entry
+exists so it is not silently inherited.
+
+### Framing correction from the owner
+
+The purpose of this replication is to extend the **jump model**. The HMM and
+buy-and-hold are comparison baselines, as is the paper's own JM. The target is
+therefore agreement with Table 4, not good performance: a cell that beats the
+paper is as wrong as one that trails it, and several of ours currently beat it
+(us HMM +0.098, us MDD -19.7% against -28.9%, us Calmar 0.355 against 0.21).
+
+## v8.5 sealed outcome, and the anchors we had never read (2026-07-28)
+
+Run `fixed-baselines-7b95ec50dece-6bd27647967d-13641890668f`, 105 minutes,
+status `boundary_failed`. One field changed from v8.4: the smoothing grid gains
+k = 6. HMM readout, delay 1, against Table 4:
+
+| metric | us v8.4 | us v8.5 | de v8.4 | de v8.5 | jp v8.4 | jp v8.5 |
+|---|---|---|---|---|---|---|
+| Sharpe | 0.098 | **0.074** | 0.043 | **0.018** | 0.008 | 0.013 |
+| Return | 0.009 | 0.007 | 0.008 | 0.004 | 0.002 | 0.003 |
+| Volatility | 0.003 | 0.002 | 0.000 | 0.000 | 0.000 | 0.000 |
+| MDD | 0.092 | 0.092 | 0.030 | **0.003** | 0.031 | 0.031 |
+| Calmar | 0.145 | 0.134 | 0.027 | **0.008** | 0.004 | 0.005 |
+| ES 5% | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 |
+| Turnover | 0.444 | 0.473 | 0.292 | **0.234** | 0.395 | **0.244** |
+| Leverage | 0.011 | 0.011 | 0.000 | 0.000 | 0.000 | 0.000 |
+
+(cells are absolute deviations). Within 0.05: us 4/8, de 7/8, jp 7/8. Within
+0.03: us 4/8, de 7/8, jp 6/8. Germany improves on seven metrics and degrades on
+none. The US gains on Sharpe and loses on turnover. Japan trades Sharpe for
+turnover.
+
+### The predictions, scored
+
+Logged before the run finished, four claims:
+
+1. **The gates fail on the same cells.** Correct, and exactly: us delay-10
+   38.97% and jp delay-1 39.46%, unchanged to the digit from v8.4. k = 6 is
+   interior and cannot relieve concentration at the top of the grid.
+2. **The us Sharpe falls.** Correct, 0.638 to 0.614.
+3. **Germany lands near 0.354.** **Wrong.** It landed at 0.368. The 0.354 came
+   from an unsealed probe and did not reproduce; direction right, magnitude out
+   by 0.014.
+4. **Japan barely moves.** Correct, 0.182 to 0.177.
+
+The sealed numbers also reproduce an independent preview computed through
+`select_monthly_candidate` on v8.4's raw states to four decimals (0.6139 /
+0.3681 / 0.1771), confirming that the smoothing grid never enters the HMM fit.
+
+### Turnover: CLOSED by the paper's own words
+
+The Table 4 caption does not define turnover, and this project has carried
+`0.5 * sum|d weight|` as an assumption ever since. It is not an assumption. One
+page later the paper states the identity numerically:
+
+> [line 781-783] "turnover of the JM-guided 0/1 strategy applied to the S&P 500 is as low as 44%, meaning that on average, the portfolio manager buys and sells 44% of total allocation (a combined 88% trading) each year"
+
+44% one-way, 88% combined, denominator the whole allocation. That is our
+implementation exactly (`backtest.py:194`). Every alternative convention is
+dead, including the leverage-scaled family, which "of total allocation" rules
+out independently.
+
+### Four published anchors nobody had used
+
+Figures 5 and 6 annotate four cells with a bear share and a **raw count of
+regime shifts**:
+
+> [line 903] "Percentage of Bear Regimes Online Inferred by HMMs for the S&P 500: 27.8%, Number of Regime Shifts: 96"
+> [line 829] "Percentage of Bear Regimes Online Inferred by JMs for the S&P 500: 19.7%, Number of Regime Shifts: 30"
+> [line 851] "Percentage of Bear Regimes Online Inferred by JMs for the DAX: 15.7%, Number of Regime Shifts: 116"
+> [line 873] "Percentage of Bear Regimes Online Inferred by JMs for the Nikkei 225: 25.3%, Number of Regime Shifts: 48"
+
+Converted through our sample lengths, these reproduce Table 4 independently:
+
+| cell | shifts/yr | half that | Table 4 turnover | 1 - bear | Table 4 leverage |
+|---|---|---|---|---|---|
+| S&P HMM | 2.825 | 141.2% | 141% | 72.2% | 72% |
+| S&P JM | 0.883 | 44.1% | 44% | 80.3% | 80% |
+| DAX JM | 3.413 | 170.7% | 170% | 84.3% | 84% |
+| N225 JM | 1.414 | 70.7% | 72% | 74.7% | 75% |
+
+Four confirmations of the turnover identity from the paper alone, and four new
+targets that are counts rather than ratios. Ours against them, HMM, v8.5:
+
+| market | our shifts | Shu | ratio |
+|---|---|---|---|
+| us | 128 | 96 (published) | 1.33 |
+| de | 151 | 167 (from turnover) | 0.90 |
+| jp | 208 | 197 (from turnover) | 1.06 |
+
+The US bear share is 29.1% against 27.8%. **Same exposure budget, a third more
+shifts inside it.** That is the shape of the US deviation: not more time in
+cash, more chopping within the same time.
+
+### What two rounds of parallel investigation eliminated
+
+Round 1 (seven lines, each attacked by an independent refuter) and round 2 (six
+more) eliminated: the data, the reporting window, the training-data start, the
+metric definitions, the selection spec against Section 3.4.3, the unspecified
+HMM fitting choices, the index substitution, a pure persistence account, a
+validation-surface bias, and every alternative turnover convention.
+
+Two findings survived their refuters only in part, and both are recorded as
+open rather than concluded:
+
+- The MDD gap is concentrated rather than spread, but the refuter showed the
+  "index fall is a ceiling" argument false — the sealed delay-10 arm reaches
+  -26.40% over a span in which the index *rose* 16.14%, so whipsaw can exceed
+  the index. It also showed the 2000-02 route reproduces Shu's Sharpe exactly
+  (0.540) while the 2020 route cannot reach the target at all.
+- Inverting Shu's implied flip rates through our own per-market flip curves puts
+  their behaviour at mean k ~ 13 on the US where we sit at 8, k ~ 3.6 on the DAX
+  where we sit at 4, and k ~ 7 on the Nikkei where we sit at 10.8 while still
+  flipping more, because Japan alone carries +0.86 shifts/yr of selection churn.
+  Germany is therefore effectively matched; the US picks too small a k; Japan
+  picks about right and pays for switching. Three markets, three situations —
+  which is why the turnover error changes sign and why no single correction
+  fixes it.
+
+A claim NOT adopted: a pixel reconstruction of Figure 6 put Shu's own US HMM
+drawdown near -22.3% against the printed -28.9%, implying the paper disagrees
+with itself. Table 4 is internally consistent on that cell (0.54 x 11.3 = 6.10,
+0.21 x 28.9 = 6.07), and a max statistic read off a rasterised curve is biased
+shallow. Recorded as unverified. The refutation pass that would have tested it
+died on the account spend limit, along with three other agents.
+
+### The drawdown is computed on the total-return path (2026-07-28)
+
+Tested because the excess reading would have explained the entire US HMM gap on
+its own. It does not survive: buy-and-hold contains no model, so its drawdown
+tests the definition directly, and the total-return reading matches Shu on all
+three markets while the excess readings do not.
+
+| cell | total return (ours) | excess, geometric | excess, arithmetic | Shu |
+|---|---|---|---|---|
+| us B&H | **-54.57%** | -58.98% | -30.29% | -55.2% |
+| de B&H | **-72.68%** | -75.54% | -57.63% | -72.7% |
+| jp B&H | **-77.33%** | -81.70% | -126.18% | -79.1% |
+| us HMM | -19.72% | -21.82% | -23.44% | -28.9% |
+| de HMM | **-40.20%** | -47.37% | -32.43% | -40.5% |
+| jp HMM | **-51.73%** | -55.67% | -70.76% | -48.6% |
+
+Summed absolute deviation over all nine cells: total return **0.237**, excess
+geometric 0.450, excess arithmetic 1.651. The excess reading improves exactly
+one cell -- us HMM, from 0.092 to 0.055 -- and degrades the other eight. That is
+the signature of fitting to the answer, not of finding the definition.
+
+`backtest.py:165-167` computes the drawdown on `cumprod(1 + strategy_return)`,
+where `strategy_return` earns the cash rate while out of the market. Confirmed
+correct.
+
+**A consequence worth keeping.** On all nine cells the total-return drawdown is
+strictly shallower than the excess drawdown, which is mechanical: the risk-free
+rate adds positive drift while the strategy sits in cash. Figures 5 and 6 plot
+CUMULATIVE EXCESS RETURN, so any drawdown read off those figures is the excess
+statistic, not the one Table 4 reports. If a reconstruction of Figure 6 gives an
+excess drawdown near -22%, then Shu's total-return drawdown must be shallower
+than that, and could not be the printed -28.9%. Our own excess drawdown on the
+same cell is -21.82%.
+
+That argument stands or falls on whether the figure can be read accurately at
+all, which is being tested by calibrating the extraction against Figure 5's
+three JM curves, whose drawdowns Table 4 prints (-26.6%, -39.4%, -45.3%). A
+method that cannot reproduce those has no standing to adjudicate a 6-point
+dispute about Figure 6.
+
+## The US HMM deviation, traced (2026-07-28)
+
+Four rounds of parallel investigation eliminated eighteen hypotheses. The cause
+is the one deviation the project had recorded from the beginning and dismissed
+as harmless.
+
+### Retraction first
+
+An earlier reconstruction of Figure 6 put Shu's own drawdown near -22.3%,
+implying the paper contradicted its own Table 4. **That is withdrawn.** The
+figures are vector (`pdfimages -list` returns zero bitmaps on all 22 pages;
+Figures 5 and 6 are matplotlib Form XObjects), so the geometry is exact. Three
+independent inversions give -28.854%, -28.874% and -28.769%, all with peak
+1998-07-17 and trough 2002-04-15, against a printed -28.9%.
+
+The -22.3% was a convention error, and it was reproduced: reading the plotted
+cumulative-excess curve as a wealth index gives -22.81% on that cell, and errs
+by 20.8pp on average across the nine cells whose answer Table 4 prints (S&P
+buy-and-hold -30.77% against a printed -55.2%). The plotted curve is an
+arithmetic cumulative SUM of daily simple excess returns, so recovering a
+drawdown requires differencing it, adding a risk-free series back and
+compounding.
+
+Two corroborations need no injected risk-free series at all: terminal plotted
+excess 209.65% over 33.988 years = 6.168%/yr against Table 4's Sharpe x Vol =
+6.102 (rounding band [6.019, 6.186]); and inverting the printed Calmar gives
+|MDD| in [27.99%, 30.17%], which excludes -22.3% outright. The bear shading
+recovers 27.80% of days and 96 shifts against the 27.8% and 96 printed at line
+903.
+
+The excess-versus-total question was also settled by measurement rather than
+argument: on our own sealed US path the two conventions differ by 2.10pp, and
+the excess reading is DEEPER, not shallower. It cannot manufacture a 9.18pp gap.
+
+### The cause
+
+The equity series. Recorded as a deviation since the first contract:
+
+> [line 153-155] "The data analyzed in this article comprises the daily total return series of three major equity indices: S&P 500, DAX, and Nikkei 225"
+
+Ours is the CRSP value-weighted total market from Kenneth French's daily
+factors, because no free S&P 500 total-return series reaches back to 1970. It
+was treated as harmless because buy-and-hold matches on every metric.
+
+Buy-and-hold only tests 1990-2023. The difference is in 1987.
+
+| 1987-10-19 | simple | log |
+|---|---|---|
+| S&P 500 (Shu) | -20.47% | -0.2290 |
+| CRSP total market (ours) | **-17.41%** | **-0.1913** |
+
+Twenty percent smaller in log magnitude, on the single most extreme day in the
+whole training window; dropping that one day moves the 1978-1990 window's
+annualised standard deviation from 14.81% to 13.79%.
+
+The consequence is structural, switching on and off with whether that day is
+inside the rolling window. Figure 2 publishes the fitted regime parameters, and
+extracted losslessly from the vectors it splits exactly there:
+
+| windows | n | share | our high-state vol minus Shu's |
+|---|---|---|---|
+| containing 1987-10-19 (fit dates to 1999-08-31) | 3000 | 28.3% | **-7.97pp** |
+| 2009-2010 | 504 | 4.8% | +4.85pp |
+| all others | 7084 | **66.9%** | **+0.12pp**, corr 0.995 |
+
+Year by year through the divergent stretch (Shu / ours, annualised): 1990
+43.88/34.65, 1995 44.00/36.69, 1998 41.79/34.12, then 2000 21.31/21.62 once
+1987 leaves the window. Moment-matching their 1990 parameters implies their high
+state holds about 2.7% of training days against our 8.3%.
+
+A lower, broader high-volatility state is entered more readily. So:
+
+| | ours | Shu |
+|---|---|---|
+| 1990-07-16..1990-10-11 drawdown | -19.72% | -19.08% |
+| 1998-07-17..2002-04-15 drawdown | **-16.15%** | **-28.85%** |
+| cash share, 1998 to the dot-com peak | 48.9% | less |
+| cash share, peak to trough | **88.5%** | long into the 2002 bottom |
+
+The two models agree in 1990 and diverge entirely across 1998-2002, which is
+where the whole 9.18pp lives. Taking Figure 6's position path verbatim and
+applying it to OUR returns reproduces seven of eight Table 4 cells within
+rounding, with the trough at 2002-04-11 — so the data and the metrics are fine
+and only the regime calls differ. The two position paths agree on 94.5% of days.
+
+### What was eliminated on the way, and what it cost to be sure
+
+The local-optimum explanation was tested and killed: on eight windows across the
+divergent stretch, the protocol's ten seeds, forty single-pass k-means++ starts,
+and a sweep over 21 mean pairs spanning +-6 sigma ALL converge to the identical
+log-likelihood, volatilities and state shares. Our fit is the global optimum;
+Shu's 43.88% is not a higher-likelihood solution on our data. That is what
+forced the conclusion back onto the input series.
+
+Also eliminated across the four rounds: the reporting window, the training-data
+start, all three metric definitions, the selection spec, every rival turnover
+convention, every smoother micro-convention, switching churn, validation-surface
+bias, and a pure persistence account.
+
+### Why this hid for so long
+
+Three layers. Buy-and-hold matches, but only tests 1990-2023 while the defect is
+in 1987. Round 1's index probe held the SIGNAL fixed and measured only the
+return channel; the real channel is the refit, where a different index gives
+different fitted parameters and only then a different signal — its own refuter
+noted the refit channel was "only partially measured". And the error is
+structural rather than random, switching with window membership, so it vanishes
+from any full-sample average.
+
+It also explains why Germany and Japan match on 7 of 8: those two use the
+paper's own indices. Only the US is substituted.
+
+### Consequence
+
+This is a SPECIFIED-AND-WE-DEVIATE defect, not a free parameter. Fixing it is
+replication. Free daily S&P 500 price is available from 1977 (Yahoo ^GSPC,
+11,850 sessions, verified: 1987-10-19 = -20.47%), the official ^SP500TR from
+1988 (9,070 sessions), and Shiller's monthly dividends from 1871. For the HMM
+the price series suffices: over the 9,070 overlapping sessions the daily
+log-return volatility of price and total return differ by 0.0011pp with
+correlation 0.99960.
+
+## v9 exploratory readout: the S&P 500 substitution, measured (2026-07-28)
+
+HMM arm only, US only, refit on the paper's own index. Germany and Japan are
+untouched by v9 by construction and a test asserts their market definitions are
+byte-identical to v8.5. Scored on v8.5's reported window, 1990-01-02..2023-12-29,
+so the two are compared over exactly the same days; the guard reproduced v8.5's
+sealed metric row to 3.55e-14 before any v9 number was computed. This is
+exploratory: a sealed v9 run derives its comparison sample across the jump model
+too.
+
+| metric | v8.5 (CRSP) | v9 (S&P 500) | Shu | dev v8.5 | dev v9 |
+|---|---|---|---|---|---|
+| Sharpe | 0.6139 | **0.5471** | 0.54 | 0.074 | **0.007** |
+| Return | 9.18% | **8.50%** | 8.5% | 0.007 | **0.000** |
+| Volatility | 11.06% | **11.31%** | 11.3% | 0.002 | **0.000** |
+| MDD | -19.72% | **-23.21%** | -28.9% | 0.092 | **0.057** |
+| Calmar | 0.3442 | **0.2666** | 0.21 | 0.134 | **0.057** |
+| ES 5% | -1.77% | -1.79% | -1.8% | 0.000 | 0.000 |
+| Turnover | 188.3% | **170.7%** | 141% | 0.473 | **0.296** |
+| Leverage | 70.87% | **72.40%** | 72% | 0.011 | **0.004** |
+| regime shifts | 128 | **116** | 96 | 32 | 20 |
+
+**Every one of the eight moves toward the paper, and none moves away.** Four are
+now essentially exact: Return to 0.000, Volatility to 0.000, Leverage to 0.004,
+Sharpe to 0.007. Cells within 0.05 go from 4/8 to 5/8.
+
+The three predictions logged in c6a7889 before the run all hold:
+
+1. the drawdown deepens from -19.72% toward -28.9% — it reached -23.21%,
+   closing 3.49 of the 9.18pp gap;
+2. shifts fall from 128 toward the published 96 — they reached 116, closing 12
+   of 32;
+3. Sharpe falls from 0.614 toward 0.54 — it reached 0.5471, a deviation of
+   0.007 against 0.074.
+
+The selector also moves the way the earlier turnover forensics said it must.
+Inverting Shu's implied flip rate through our own per-market curve had put their
+behaviour at an effective k near 12.7 while ours sat at 6.9. With the correct
+index the picks spread and shift toward persistence:
+
+| | k=0 | k=2 | k=4 | k=6 | k=8 | k=20 |
+|---|---|---|---|---|---|---|
+| v8.5 | 3% | 1% | 2% | 10% | **81%** | 3% |
+| v9 | 9% | 1% | 6% | 21% | 29% | **33%** |
+
+That was not tuned; the grid is unchanged from v8.5 and only the input series
+differs.
+
+### What the substitution does NOT explain
+
+Drawdown and turnover remain outside tolerance: MDD 0.057, Calmar 0.057,
+turnover 0.296. The index accounts for roughly 38% of the drawdown gap and 37%
+of the turnover gap. So the traced cause is real and large, and it is not the
+whole story. Recorded as such rather than declared closed.
+
+## The residual, resolved: two separate defects, not one (2026-07-28)
+
+The v9 readout left the US HMM at 5/8 with drawdown 0.057, Calmar 0.057 and
+turnover 0.296 outside tolerance, and recorded that the index substitution
+accounted for only about 38% of the drawdown gap. Germany and Japan sat at 7/8,
+each failing turnover alone. This section closes both open questions. Every
+number below is rebuilt by a script in `scripts/` and stored under
+`artifacts/hmm-residual/`, with the directory's README naming which script
+produces which file.
+
+### Step 1: the failure common to all three markets is turnover, and its sign is not
+
+Reading one market at a time had hidden the shape of the problem. Across all
+three at once (`artifacts/hmm-residual/01-status/`):
+
+| | ours | Shu | deviation | relative |
+|---|---|---|---|---|
+| S&P 500 (v9) | 170.7% | 141% | 0.296 | +21.1% |
+| DAX (v8.5) | 222.7% | 246% | 0.234 | **-9.5%** |
+| Nikkei (v8.5) | 314.4% | 290% | 0.244 | +8.4% |
+
+We trade MORE than Shu in the US and Japan and LESS in Germany. No account in
+which our smoother is systematically less persistent can produce that, because
+such an account pushes all three the same way. Calmar, meanwhile, is not an
+independent failure at all: the paper defines it as average excess return over
+MDD, and with Sharpe and Volatility already matching, Calmar is our drawdown
+deviation restated. Two questions remained, not four.
+
+### Step 2: Table 3 is the anchor for persistence that contains no selection
+
+Table 4's turnover row mixes how persistent a fixed smoother is with which
+smoother the monthly cross-validation picks. Table 3 publishes the first alone:
+average regime shifts per year, 1982-2023, at k fixed to 0, 2, 4, 8, 20. It
+begins in 1982 because that is 3000 trading days after the 1970 sample start,
+which is where the online states begin.
+
+Shifts per year at fixed k (`artifacts/hmm-residual/03-table3-anchor/`):
+
+| k | Table 3 | us CRSP | **us S&P 500** | de | jp |
+|---|---|---|---|---|---|
+| 0 | 8.5 | 9.62 | **8.48** | 8.10 | 14.01 |
+| 2 | 6.6 | 7.29 | **6.57** | 6.48 | 11.58 |
+| 4 | 4.9 | 5.05 | **4.86** | 4.57 | 7.43 |
+| 8 | 3.2 | 3.24 | **3.10** | 3.43 | 5.00 |
+| 20 | 2.0 | 2.14 | **1.91** | 2.24 | 2.81 |
+| mean abs error | | 7.0% | **1.9%** | 6.5% | 57.7% |
+
+On the paper's own index our fixed-k curve reproduces Table 3 to 1.9%, with the
+first three rows inside 1%. This is a second, wholly independent confirmation of
+the index diagnosis: Table 3 involves no selection, no trading, no metric
+definition and no Table 4 number. It also identifies Table 3's unnamed index as
+the S&P 500, and rules Japan out as its subject — the Nikkei is 40-75% jumpier
+at every k, which is a property of that market, not a defect, since Table 4's
+own Nikkei turnover (290%) is more than twice its S&P 500 turnover (141%).
+
+**Consequence: the smoother and the state sequence are right, so the whole
+turnover deviation lives in the monthly selection.**
+
+### Step 3: Shu's own position paths, recovered from Figures 5 and 6
+
+Figure 5's caption states what its shading means: bear regimes "shifted forward
+by 2 days, when the JM-guided 0/1 strategy is fully invested in the risk-free
+asset, leading to a flat yellow curve". The shading is therefore the traded
+position, not the raw regime call, and Figure 6 defers to that caption.
+
+The figures are matplotlib vector drawings, so the shading is exact rather than
+estimated. Each panel is one path with two y levels, walking left to right along
+the bottom with rectangular teeth to the top; the teeth are the shaded
+intervals. Four paths were recovered, and each carries two annotations that test
+the parse without being able to influence it:
+
+| panel | shaded fraction | annotated | teeth x2 | annotated shifts |
+|---|---|---|---|---|
+| Fig 6 US HMM | 0.2783 | 27.8% | 96 | 96 |
+| Fig 5 US JM | 0.1978 | 19.7% | 30 | 30 |
+| Fig 5 DAX JM | 0.1565 | 15.7% | 116 | 116 |
+| Fig 5 Nikkei JM | 0.2535 | 25.3% | 48 | 48 |
+
+All eight checks pass; the extractor writes nothing otherwise. Stored in
+`artifacts/hmm-residual/04-figure6-path/`.
+
+### Step 4: our turnover metric is right; the candidate set is what differs
+
+Figure 6's path applied to our v9 returns (`artifacts/hmm-residual/05-mdd-anatomy/`):
+
+| | Shu's positions on our returns | Table 4 | deviation |
+|---|---|---|---|
+| Turnover | **1.4123** | 1.410 | **0.002** |
+| regime shifts | **96** | 96 | **0** |
+| Volatility | 0.1129 | 0.113 | 0.000 |
+| Leverage | 0.7217 | 0.720 | 0.002 |
+| ES 5% | -0.0178 | -0.018 | 0.000 |
+| Return | 0.0879 | 0.085 | 0.003 |
+| Sharpe | 0.5719 | 0.540 | 0.032 |
+| MDD | -0.2303 | -0.289 | **0.059** |
+
+Turnover to 0.002 and the shift count exactly. Our turnover definition, our
+returns and our trading-cost accounting are all correct, and the two position
+paths agree on 97.1% of days. What differs is which k the monthly
+cross-validation picks — and the paper specifies a selection procedure while
+never publishing a candidate set. Two causes were tested and killed
+(`artifacts/hmm-residual/02-turnover-anatomy/`):
+
+- **the grid cannot reach it** — false; the fixed-k curve brackets Shu's
+  turnover in all three markets (implied k about 13.4 us, 3.6 de, 6.4 jp);
+- **the selector manufactures flips at month boundaries** — false; of 128, 152
+  and 208 signal flips, only 3, 3 and 2 fall on a day where the candidate
+  changed while the incoming candidate itself did not move, i.e. 1-2%.
+
+What is left is the selection itself, on a free parameter. Our v9 US picks are
+k20 33%, k8 29%, k6 21%, k0 9%, k4 6%; the k=0 months alone, 9% of the sample,
+contribute about 23% of all our trading. **The turnover row is not identified by
+the paper's specification, and this is recorded as unidentified rather than
+closed by choosing a grid.** Searching the candidate set for the version that
+reproduces 141% is exactly the move this project forbids itself.
+
+### Step 5: the drawdown was never a modelling gap
+
+The same substitution that closed turnover to 0.002 left the drawdown at 0.059 —
+almost precisely our own path's 0.057. A deviation that survives replacing our
+regime calls with the paper's is not about regime calls. It is the definition.
+
+Two published facts pin it down, and neither is a fit:
+
+1. **Table 4's buy-and-hold drawdowns** (-55.2% / -72.7% / -79.1%) are
+   reproduced to 0.001 / 0.000 / 0.012 with the equity leg at total return, and
+   missed by 0.045 / 0.028 / 0.031 on any excess-return path. The invested leg
+   is total return.
+2. **Figure 5's caption** says the strategy curve is *flat* while fully invested
+   in the risk-free asset. The cash leg contributes nothing.
+
+Total return when invested, nothing when in cash. For a fully invested portfolio
+that is the same path as before, which is why buy-and-hold — the control we had
+been trusting — cannot distinguish the two: its A and D columns agree to every
+digit. Only a path that actually goes to cash can, and the four figure panels
+are the only cells where the paper's own positions can be run on our returns.
+
+Mean absolute error across those four cells:
+
+| | A total wealth | B excess | C cumulative excess | **D flat in cash** |
+|---|---|---|---|---|
+| MDD | 0.0330 | 0.0405 | 0.1189 | **0.0072** |
+| Calmar | 0.0262 | 0.0125 | 0.0400 | **0.0055** |
+
+Every cell under basis D (`artifacts/hmm-residual/06-mdd-convention/`):
+
+| market | model | path | MDD | Table 4 | dev | Calmar | Table 4 | dev |
+|---|---|---|---|---|---|---|---|---|
+| us | B&H | control | -0.5525 | -0.552 | 0.001 | 0.1587 | 0.16 | 0.001 |
+| de | B&H | control | -0.7268 | -0.727 | 0.000 | 0.0906 | 0.09 | 0.001 |
+| jp | B&H | control | -0.7793 | -0.791 | 0.012 | 0.0392 | 0.04 | 0.001 |
+| us | HMM | ours | -0.2924 | -0.289 | 0.003 | 0.2117 | 0.21 | 0.002 |
+| de | HMM | ours | -0.4385 | -0.405 | 0.034 | 0.1175 | 0.12 | 0.003 |
+| jp | HMM | ours | -0.5101 | -0.486 | 0.024 | 0.0520 | 0.06 | 0.008 |
+| us | HMM | Shu, Fig 6 | -0.2943 | -0.289 | 0.005 | 0.2195 | 0.21 | 0.009 |
+| us | JM | Shu, Fig 5 | -0.2664 | -0.266 | 0.000 | 0.3309 | 0.33 | 0.001 |
+| de | JM | Shu, Fig 5 | -0.4101 | -0.394 | 0.016 | 0.1754 | 0.18 | 0.005 |
+| jp | JM | Shu, Fig 5 | -0.4458 | -0.453 | 0.007 | 0.1272 | 0.12 | 0.007 |
+
+Ten cells, largest drawdown error 0.034 and largest Calmar error 0.009, against
+0.059 and 0.026 on the basis we had been using. One detail stays unresolved:
+whether the drawdown path carries the trading cost. Including it (`E`) gives
+mean errors 0.0116 on MDD and 0.0030 on Calmar — better on one row, worse on the
+other, and the difference is below what Table 4's printed precision can settle.
+Recorded as unresolvable, and `D` is taken because it fits the drawdown row,
+which is the row in question.
+
+This lands as `research-expanding-v9-1.toml`, one field away from v9:
+`[metrics] maximum_drawdown = "risky_leg_wealth_flat_in_cash"`. Selection scores
+candidates on validation Sharpe and never reads a drawdown, so no fitted state
+changes and no run needs repeating. Configs written before the field existed
+default to the old basis, and all three live sealed runs still replay at
+`maximum_metric_absolute_difference` 0.0.
+
+### Where the three markets now stand
+
+HMM, delay 1, on the paper's drawdown basis:
+
+| metric | S&P 500 (v9) | DAX (v8.5) | Nikkei (v8.5) |
+|---|---|---|---|
+| Return | 8.50% / 8.5% | 6.80% / 6.4% | 2.24% / 2.5% |
+| Volatility | 11.31% / 11.3% | 14.00% / 14.0% | 15.98% / 16.0% |
+| Sharpe | 0.5471 / 0.54 | 0.3681 / 0.35 | 0.1771 / 0.19 |
+| MDD | -29.24% / -28.9% | -43.85% / -40.5% | -51.01% / -48.6% |
+| Calmar | 0.2117 / 0.21 | 0.1175 / 0.12 | 0.0555 / 0.06 |
+| ES 5% | -1.79% / -1.8% | -2.20% / -2.2% | -2.51% / -2.5% |
+| Turnover | 170.7% / 141% | 222.7% / 246% | 314.4% / 290% |
+| Leverage | 72.40% / 72% | 72.98% / 73% | 67.96% / 68% |
+| **within 0.05** | **7/8** | **7/8** | **7/8** |
+
+The US goes from 4/8 at v8.4 to 7/8, and every market now fails on turnover and
+nothing else — on a candidate set the paper does not publish.
+
+### What this cost, and the two claims it withdraws
+
+The earlier conclusion that Figure 6's path on our returns "reproduces seven of
+eight Table 4 cells" was measured on the CRSP series, where the 1998-2002
+drawdown is deeper for reasons unrelated to the definition; on the S&P 500 it
+reproduces six of eight, and the cell it loses is the drawdown. That coincidence
+is what let the total-wealth basis look confirmed. **Two claims are withdrawn:**
+that the drawdown basis was settled, and that the index substitution left "about
+38% of the drawdown gap" unexplained — the index explains none of that gap,
+because the gap was never in the index.
+
+### Step 6: the turnover row is not identified, measured rather than asserted
+
+Calling a row "unidentified" is worth nothing without the spread, so eight
+candidate sets were swept in all three markets, none of them adopted
+(`artifacts/hmm-residual/08-grid-identification/`). Six carry a justification
+that could have been written before any number was seen; two exist only to
+answer whether the published value is attainable at all, and are labelled as
+such in the script.
+
+Turnover spread, and where Table 4 sits in it:
+
+| market | spread across the eight sets | Table 4 | inside? |
+|---|---|---|---|
+| S&P 500 | 1.295 .. 2.913 | 1.410 | yes |
+| DAX | 1.816 .. 2.432 | 2.460 | 0.028 above the top; bracketed by the fixed-k curve (k=2 gives 3.25, k=4 gives 2.26) so reachable |
+| Nikkei | 2.751 .. 4.686 | 2.900 | yes |
+
+The spread is several times the deviation being investigated in every market.
+**The turnover row therefore carries no information about the quality of this
+replication in either direction**, and the honest record is that, not a grid
+chosen to close it.
+
+Two further things the sweep shows, both worth stating because they cut against
+any temptation to pick a winner:
+
+**No set reproduces Table 4 in all three markets at once.** Scoring every set on
+all eight metrics rather than on turnover alone, the best any set achieves is
+8/8 on the US (`filtered`, k in {2,4,6,8,20}, total deviation 0.088), 7/8 on the
+DAX and 7/8 on the Nikkei. `filtered` is the set that drops k = 0, and there is
+a real argument for dropping it — the paper says it *applies* a median filter of
+window k, and a window of zero applies none, exactly as Table 3 lists lambda = 0
+beside it while calling that column "equivalent to k-means clustering", a
+reference point rather than a candidate. **That argument is not acted on**,
+for two reasons: it was noticed only after measuring that the 9% of months at
+k = 0 drive about 23% of our trading, and it improves the US while leaving Japan
+unchanged and making Germany slightly worse. A rule that only works in one
+market is not a rule.
+
+**Turnover and Sharpe trade against each other.** On the US, the sets that pull
+turnover toward 1.41 push Sharpe away from 0.54 and back again — `dense_wide`
+reaches turnover 1.295 with Sharpe 0.598, `dense_small` reaches Sharpe 0.541
+with turnover 1.501. There is no setting that is simply "more correct"; there is
+a frontier, and the paper does not say where on it to stand.
+
+### Step 7: Table 5 as an out-of-sample check on the drawdown basis
+
+The basis was settled on Table 4, so Table 4 cannot test it again. Table 5
+publishes Return, Sharpe and Calmar for the HMM at delays 1, 5 and 10 in all
+three markets — nine Calmar values, six of which nothing in this project had
+ever looked at. Each delay reselects k, which is what the paper prescribes at
+line 822-824, and no HMM is refitted because the online state sequence does not
+depend on the trading delay (`artifacts/hmm-residual/07-table5-delays/`).
+
+Mean absolute Calmar error:
+
+| | all nine cells | the six never used before |
+|---|---|---|
+| paper basis (v9.1) | **0.0167** | **0.0235** |
+| previous basis | 0.0294 | 0.0324 |
+
+Better on both, and Return and Sharpe are bit-identical across the two bases, as
+they must be since neither touches a drawdown. This is corroboration rather than
+proof: the US delay-5 and delay-10 rows carry real model error (our Sharpe runs
+0.573 and 0.596 against the published 0.55 and 0.51), so part of what remains
+there is not about the drawdown at all. The proof stays the ten-cell Table 4
+test, four of whose cells use Shu's own positions.
+
+### Where the HMM replication now stands, and what is left
+
+| | v8.4 | v8.5 | v9 | **v9.1** |
+|---|---|---|---|---|
+| S&P 500 | 4/8 | 4/8 | 5/8 | **7/8** |
+| DAX | 7/8 | 7/8 | 7/8 | **7/8** |
+| Nikkei | 7/8 | 7/8 | 7/8 | **7/8** |
+
+Every market fails on turnover and on nothing else, and turnover is the one row
+the paper's specification does not determine. Two defects were found and fixed
+along the way — the substituted equity index and the drawdown basis — and both
+were found by testing our numbers against published quantities that no earlier
+round had used: Figure 2's fitted regime volatilities, Table 3's persistence
+curve, and the position paths drawn in Figures 5 and 6.
+
+Still open, and not touched here because the jump model is out of scope for this
+pass: the JM's own deviations, and whether the sample-start choice of row 6 in
+docs/unspecified-choices.md should be reopened before the next JM freeze.
+
+## Verifying the data itself, including the training era (2026-07-28)
+
+Prompted by a fair objection: the checks so far scored 1990-2023, and the last
+data defect found in this project — the CRSP substitution — did its damage in
+1987, inside the training window where a 1990-2023 check is blind. Table 4's
+buy-and-hold column cannot see the era that produces the fitted regimes.
+
+**Table 1 is the anchor for that era, and it had never been used.** It publishes
+annualised variances, covariances and correlations of daily excess returns
+"from 1970 to 2023" for all three indices, correlations and covariances on
+common trading days:
+
+| cell | ours | Table 1 | deviation |
+|---|---|---|---|
+| volatility, S&P 500 | 0.1721 | 0.172 | 0.0001 |
+| volatility, DAX | 0.2013 | 0.201 | 0.0003 |
+| volatility, Nikkei | 0.2054 | 0.205 | 0.0004 |
+| correlation us-de | 0.4428 | 0.44 | 0.0028 |
+| correlation us-jp | 0.1235 | 0.12 | 0.0035 |
+| correlation de-jp | 0.2593 | 0.26 | 0.0007 |
+| covariance de-us | 0.0153 | 0.015 | 0.0003 |
+| covariance jp-us | 0.0044 | 0.004 | 0.0004 |
+| covariance jp-de | 0.0107 | 0.011 | 0.0003 |
+
+Largest deviation 0.0035, on 12,588 common sessions. This constrains all three
+series jointly, at daily frequency, over a span that includes every training
+window the models ever fit.
+
+**The training era can then be isolated arithmetically.** Table 1 fixes
+1970-2023 and Table 4's buy-and-hold column fixes 1990-2023, so the first half
+is not free: decomposing the variance by observation count gives the volatility
+Shu's own data must carry over 1970-1989.
+
+| | implied by Shu's two tables | ours | deviation |
+|---|---|---|---|
+| S&P 500 | 0.1536 | 0.1546 | 0.0010 |
+| DAX | 0.1609 | 0.1621 | 0.0012 |
+| Nikkei 225 | 0.1432 | 0.1453 | 0.0021 |
+
+So the training era is verified directly rather than by assertion. (Table 4
+reports total-return volatility and Table 1 excess-return volatility; at daily
+frequency the cash rate is nearly constant and the two agree to four decimals,
+which is checked on our own 1990-2023 numbers rather than assumed.)
+
+Three further checks, in `artifacts/data-verification/`:
+
+- **Table 4's buy-and-hold column**, eighteen numbers with no model in them:
+  worst deviation 0.0025 (us), 0.0018 (de), 0.0106 (jp). Japan is the only
+  market with a cell above 0.01, which is where its reconstructed pre-2012 total
+  return would show up if anywhere.
+- **An independent S&P 500 series.** Shiller's monthly level is the average of
+  daily closes and comes from an unrelated pipeline; across 696 months the
+  correlation is 0.99999328 and the median relative error 0.0005%. Exactly two
+  months exceed 1% — 1974-07 and 2023-09 — with neighbouring months agreeing to
+  four decimals and the two errors of opposite sign, so they are isolated bad
+  rows rather than drift. Only the 1974 one touches anything we use, and it
+  moves the index level by 0.016% for a single month inside the training window.
+- **The identity of the extreme sessions.** All twenty of the ten largest daily
+  gains and losses since 1966 fall inside October 1987, 2008-09, COVID or the
+  1997-98 Asian crisis, the worst being 1987-10-19 at -20.47%. A series that is
+  correctly scaled but wrongly dated fails this and passes the moment-based
+  checks.
+
+What this does NOT establish: that our series equal Bloomberg's tick for tick.
+It establishes that they reproduce every distributional statistic the paper
+publishes, over both halves of the sample, to within a few thousandths.
+
+## Full data audit, 1970 onward (2026-07-28)
+
+Eight passes over the series the models actually train on, each aimed at a
+defect that moment-based checks cannot see: an interpolated backcast, a stale
+segment, a discontinuity at a construction joint, a calendar containing days the
+exchange was shut. `scripts/audit_data_1970.py`, output in
+`artifacts/data-audit/`.
+
+### Clean
+
+- **Calendar.** No duplicate dates, all sorted, zero weekend sessions in any
+  market. Sessions per year: us median 252 (248-254), de 252 (248-257), jp 246
+  (241-251). Three Japanese gaps over seven days, all real holidays (New Year
+  1986 and 1987, the ten-day Reiwa accession in May 2019).
+- **Staleness.** Longest run of an unchanged index level is 2 sessions in every
+  market and era. Exact-zero return days: us 0.00-0.07%, jp 0.00-0.02%, de
+  0.93% in 1970-1987 and lower after — the German figure reflects a
+  two-decimal index in the hundreds, not carried-forward values.
+- **Construction joints.** Every splice this project builds prints an
+  unremarkable return: us 1988-01-04 z = -0.13, jp 2011-12-19 z = -1.03, and
+  both edges of the 2020-2022 mirror bridge inside |z| = 0.3.
+- **The US against CRSP.** Correlation 0.9851 over 1970-1989 and 0.9924 over
+  1990-2023 against Kenneth French's daily market return.
+
+### Three suspicions raised and killed
+
+**The 1970s US autocorrelation.** Daily first-order autocorrelation is +0.249 in
+1970-1979, which is the signature a monthly-to-daily interpolation would leave.
+CRSP settles it: French's own data gives **+0.288** over the same decade, higher
+than ours, and both decline monotonically to negative by the 2000s. This is the
+non-synchronous-trading effect of that era, not an artefact. Second-order
+autocorrelation is near zero everywhere, which interpolation could not produce.
+
+**Japan against JST's total return.** Annual returns correlate only 0.685 with
+the JST Macrohistory equity series, with sign disagreements in whole years
+(2009: ours +21.6%, JST -25.0%). Not our defect: the JST file is internally
+consistent to 7e-9 under its own identity, so the extraction is right and JST's
+Japanese equity aggregate is simply a different index. The column we actually
+consume from that file is `eq_dp`, the dividend yield, and that one is validated
+where it can be — implied yields within 0.3pp on the 2012-2023 overlap.
+
+**The Japanese cash series looking frozen.** It changes 6.0 times a year against
+a monthly ladder's expected twelve. That is the history: Japanese short rates
+were administered before the 1980s and pinned near zero from 1999. The level, not
+the change count, is what can be wrong — see below.
+
+### The Japanese reconstruction, finally tested where it matters
+
+Every published validation of our Japanese total return covers 2012-2023, which
+is precisely the stretch where we use the **official** index and the
+reconstruction cannot be wrong. The era that matters had no independent check.
+
+`historyIndex.xls`, sitting unused in `data/external/inputs/manual-verification/`,
+turns out to be MSCI Japan Standard, gross, local currency, daily from
+2000-12-29 — straddling the boundary. That gives a controlled test: measure our
+series against MSCI in both eras, and let the official era define what two
+different Japanese indices look like when both are correct.
+
+| era | our source | daily corr | vol ours | vol MSCI | vol ratio | CAGR ours | CAGR MSCI |
+|---|---|---|---|---|---|---|---|
+| 2001-2011 | **reconstructed** | **0.9710** | 0.2561 | 0.2360 | 1.085 | -2.95% | -3.88% |
+| 2012-2023 | official N225TR | 0.9678 | 0.2036 | 0.1886 | 1.080 | +14.35% | +12.84% |
+
+The reconstructed era matches MSCI **as well as the official era does**, on
+correlation and on the volatility ratio alike. The Nikkei runs about 8% more
+volatile than MSCI Japan in both, which is the index definition — 225 names,
+price-weighted — and not a reconstruction error. The pre-2012 Japanese total
+return is therefore evidenced, not merely assumed.
+
+### PROBLEM 1: the Japanese risk-free rate sits about 2pp too low before 1990
+
+The one independent short-rate series we hold is JST's `bill_rate`. Against it:
+
+| period | ours (IMF IFS T-bill) | JST | mean gap |
+|---|---|---|---|
+| 1970-1979 | 5.25% | 7.27% | **-2.01pp** |
+| 1980-1989 | 4.29% | 6.27% | **-1.98pp** |
+| 1990-1999 | 2.05% | 2.74% | -0.70pp |
+| 2000-2020 | 0.10% | 0.07% | +0.03pp |
+
+Correlation 0.9723, so the shape is right and the level is not. Japan had
+essentially no Treasury bill market before 1986, so both series are proxies:
+JST's tracks the money market (the 1974 peak at 12.5% matches the call rate),
+ours looks like an administered rate. The paper asks for "the 3-month Treasury
+Bill Yield", an instrument that did not exist there for most of the span, and
+buys it from a vendor that made its own choice.
+
+**This is the leading explanation for Japan being the only market with a
+buy-and-hold cell outside 0.01.** Substituting JST's rate moves the Japanese
+buy-and-hold Sharpe from 0.1306 to 0.1228 against the published 0.12 — deviation
+0.0106 down to 0.0028 — because a cash rate that is too low inflates excess
+returns.
+
+**Not switched.** The gain is measured against the target, so adopting it would
+be exactly the fitting this project forbids itself. Recorded as a bounded open
+item in docs/unspecified-choices.md instead; any change needs a reason that
+could have been written before the number was known.
+
+### PROBLEM 2: the source that validated the German backcast is gone
+
+The ledger states the pre-1988 DAX carries the Stehle backcast and cites
+"monthly correlation 0.979-0.985 against the independent OECD MEI share-price
+index". That OECD file is not in `data/external/inputs/`. The claim is therefore
+**currently unreproducible**, and it is the only external evidence for eighteen
+years of German data that feed every training window up to 2000.
+
+What still stands for Germany without it: the series hits exactly 1000.0 on
+1987-12-30, the official DAX base date and value; Table 1's 1970-2023
+volatility reproduces to 0.0003 and the implied 1970-1989 volatility to 0.0012;
+correlation with `^GDAXI` is 1.0000 after 2000. Those are real but none is a
+daily check of the backcast era itself.
+
+Action: re-acquire OECD `SPASTT01DEM661N` and pin it. FRED was not responding
+during this audit, so it is left open rather than silently dropped.
+
+### Japan, followed through: what to actually do (2026-07-28)
+
+**A correction first.** The section above called the risk-free rate "the leading
+explanation" for Japan's buy-and-hold deviation. That overstated it. Decomposing
+the gap properly: our annualised mean excess return is 0.0305 against the 0.0281
+that Table 4's Sharpe times its volatility implies, a gap of **0.245pp/year**.
+Two candidates are of comparable size — our equity CAGR runs 0.20pp above the
+published 0.8%, and substituting JST's bill rate would remove 0.18pp — and they
+sum to more than the gap. **Neither is separately identified**, and claiming
+either as the explanation was wrong.
+
+**The Japanese total-return reconstruction is far better than feared.** The
+Nikkei 225 Total Return Index was first published on 2012-12-03 but is
+calculated retroactively from a base date of **1979-12-28 at 6569.47**. Our
+mirror only carries it from 2011-12-19, so that base value sits 32 years
+upstream of where our reconstruction is anchored and is invisible to every step
+of it. Chained backwards, our series reaches **6,470.24** on that date:
+
+| | value |
+|---|---|
+| official base, 1979-12-28 | 6,569.47 |
+| ours, reconstructed and chained back 32 years | 6,470.24 |
+| cumulative error | **-1.51%** |
+| per year | **-0.048pp** |
+
+Under five basis points a year, over three decades, against an anchor the
+construction never saw. That also settles the dividend question: the +0.21pp
+mean bias measured between JST's yield and the Nikkei's implied yield on the
+nine overlap years is noise — a true bias of that size would have produced a 6.7%
+cumulative gap, and the observed gap is 1.51%.
+
+**The right fix is data, not a patch.** The official index exists from
+1979-12-28; we use it only from 2011-12-19. Acquiring the published history back
+to 1979 would put the **entire reported 1990-2023 period on the official series**
+and delete the reconstruction from the reported window altogether, leaving it
+only in the 1969-1979 warm-up. That is a strictly better move than correcting a
+dividend yield with a nine-observation estimate, and it needs no judgement call.
+
+**The risk-free rate stays open, with a principled route if we act.** Germany
+already uses the OECD 3-month interbank rate for its earliest segment, precisely
+because no bill series reaches that far back. Japan has the same problem and
+worse — the search confirms the gensaki market only became a free short-term
+benchmark in the late 1970s. The symmetric move is OECD's `IR3TIB01JPM156N`,
+which exists on FRED. That justification is a consistency rule across markets
+and does not reference Table 4, so it would be legitimate. It is not acted on
+here because FRED did not respond during this audit, and because the item should
+be decided before the next freeze rather than mid-audit.
+
+**Ordered recommendation for Japan:**
+
+1. Acquire the official N225TR back to 1979-12-28 from Nikkei Indexes. Removes
+   the reconstruction from the reported period entirely.
+2. Re-acquire OECD `IR3TIB01JPM156N` and decide the risk-free question on the
+   Germany-symmetry rule, stated before the numbers are looked at.
+3. Only if neither is obtainable: keep the current series and carry the measured
+   band — roughly 0.008 of Japanese Sharpe from the rate ambiguity.
+
+## PROBLEM 2 closed, and a second data defect found behind it (2026-07-28)
+
+Network access was granted. FRED still refuses this machine on every series and
+every retry, inside and outside the sandbox, so DBnomics is used as a transport
+for the same OECD MEI tables (`scripts/fetch_oecd_reference.py`). That restored
+the German share-price index the ledger cited and could not produce.
+
+### The claim is reproduced — and reveals the real problem
+
+Compared on the same monthly-average basis OECD publishes (an earlier draft
+compared their average against our month-end and got 0.68 for identical data):
+
+| era | our source | corr with OECD | mean return gap |
+|---|---|---|---|
+| 1970-1987 | backcast | 0.9797 | **-0.008%/month** |
+| 1988-1999 | official | 0.9822 | +0.311%/month |
+| 2000-2023 | official | 0.9891 | +0.213%/month |
+
+The correlation claim holds — 0.9797 is inside the ledger's 0.979-0.985, and the
+backcast tracks OECD as well as the official segment does. But the *level* row
+says something the correlation row cannot: OECD's index is a PRICE index, so a
+performance index must run above it by the dividend yield. Ours does, by
++3.02%/yr, from 1988 onward. Before 1988 it runs 0.15%/yr **below**.
+
+**The pre-1988 German series carries no dividends.** The vendor spliced the DAX
+Kursindex backcast onto the performance index; both are 1000.0 on 1987-12-30, so
+the joint leaves no trace. This is the same class of defect as the CRSP
+substitution: invisible on 1990-2023, wrong across the whole training window.
+
+Two independent confirmations:
+
+- **The equity risk premium.** On the unrepaired series German equities return
+  2.67%/yr over 1970-1987 against a 6.63% cash rate — a premium of **-3.96%/yr
+  sustained for eighteen years**. JST Macrohistory reports German equities at
+  6.29%/yr against a 6.26% bill rate for the same window, a premium of +0.02%.
+- **The size of the gap.** Measured from OECD: 3.02%/yr. JST's German dividend
+  yield for 1970-1987: 3.24%/yr. Two sources that know nothing of each other.
+
+### The repair
+
+Same recipe already used and validated for Japan: the official segment as
+published from 1987-12-30, and before it the same price path plus JST annual
+German dividend yields, chained onto the base value.
+`scripts/build_de_total_return.py` writes nothing unless three gates pass:
+
+| gate | result |
+|---|---|
+| repaired era's dividend vs official era's | +3.24% vs +3.02%, difference **0.21pp** |
+| equity premium vs JST's independent figure | -3.98% -> **-0.60%**, JST +0.02%, gap 0.63pp |
+| daily volatility must not move | **0.0042pp** |
+
+The premium gate originally demanded a positive number. JST says the German
+premium really was about zero in that window, so "positive" was a prior of mine
+and not a fact; the gate now tests agreement with the independent figure.
+
+**This cannot be fitting.** Table 4's German column covers 1990-2023, entirely
+inside the untouched official segment, and a smooth dividend drift moves daily
+volatility by 0.004pp so Table 1 cannot see it either. The repair is justified
+by internal consistency alone and is invisible to every number being reproduced.
+Its effect is on the training window, hence on the fitted regimes, hence on the
+German signal — which is exactly why it matters.
+
+Lands as `research-expanding-v9-2.toml`, one field from v9.1. The original file
+is kept and every pre-existing output still rebuilds byte-identically; both live
+sealed runs replay at difference 0.0; 508 tests pass.
+
+### Japan, after the same search
+
+- The official N225TR is calculated retroactively to **1979-12-28 at 6569.47**;
+  our mirror starts 2011-12-19. Acquiring the published history would put the
+  whole reported window on official data. Not obtainable programmatically.
+- The Germany-symmetric risk-free option is **dead**: OECD's Japanese 3-month
+  interbank series (`IR3TIB01JPM156N`) begins 2002-04, and the only Japanese
+  short rate reaching 1970 on OECD is the central bank discount rate, which is
+  administered and so no better than what we have. No free 3-month Japanese
+  market rate covers the training window. That ambiguity is irreducible with
+  free data, and is now recorded as such rather than as an open action.
+
+### What the German repair actually changed: almost nothing
+
+The German HMM refitted on the repaired series, delay 1, scored on the sealed
+window under v9.1's drawdown basis. The guard reproduced v8.5's sealed German
+row at 2.43e-14 first (`artifacts/hmm-residual/v9-2-de-hmm/`):
+
+| metric | v9.1 | v9.2 | Shu | dev before | dev after |
+|---|---|---|---|---|---|
+| Return | 6.80% | 6.78% | 6.4% | 0.004 | 0.004 |
+| Volatility | 14.00% | 14.00% | 14.0% | 0.000 | 0.000 |
+| Sharpe | 0.3681 | 0.3670 | 0.35 | 0.018 | 0.017 |
+| MDD | -43.85% | -43.85% | -40.5% | 0.034 | 0.034 |
+| Calmar | 0.1175 | 0.1171 | 0.12 | 0.003 | 0.003 |
+| ES 5% | -2.20% | -2.20% | -2.2% | 0.000 | 0.000 |
+| Turnover | 222.7% | 225.6% | 246% | 0.234 | **0.204** |
+| Leverage | 72.98% | 72.95% | 73% | 0.000 | 0.001 |
+| shifts | 152 | 154 | | | |
+
+Still 7/8. Eighteen years of training data gained 3.24% a year of drift and the
+German Sharpe moved 0.001.
+
+**That is the finding, and it is worth more than the repair.** This HMM is
+almost indifferent to a drift error and highly sensitive to a volatility error.
+The dividend defect added about 1.3 basis points a day to the mean against a
+daily volatility near 90 — invisible to a model whose states are separated by
+variance. The CRSP substitution, by contrast, changed what happened on
+1987-10-19, and moved the fitted high-state volatility by eight percentage
+points across every window containing that day.
+
+So the two data defects found in this project are not comparable in
+consequence, and the reason is structural rather than accidental: **errors in
+the tails of the training data propagate to the regimes; errors in its drift do
+not.** That is the right prior for auditing the remaining series, and it says
+the Japanese risk-free level -- a drift error of 2pp a year -- is very unlikely
+to be moving the Japanese regimes either, whatever it does to the reported
+Sharpe.
+
+The repair stands on correctness: the series was missing dividends and now is
+not. It is not claimed to improve agreement with the paper, and it does not.
+
+### Japan: the risk-free ambiguity is a yardstick, not a model
+
+The German repair predicted this and the Japanese probe tests it. Refitting the
+Japanese HMM with JST's bill rate in place of the IMF one — a level difference
+of 2pp a year through 1970-1989 and 0.7pp through the 1990s
+(`artifacts/hmm-residual/jp-cash-sensitivity/`):
+
+| | result |
+|---|---|
+| fitted states that differ | **0.00%** of 11,507 shared days |
+| traded positions that differ | 0.04% of the reported window |
+
+**Zero.** Not "small" — the regime sequence is identical, and the 0.04% of
+position days come from the selection layer scoring candidates on a validation
+Sharpe that does move. The strategy Japan runs does not depend on which
+Japanese bill series is used.
+
+The reported metrics do move, because Sharpe, Return and Calmar all touch the
+cash rate directly:
+
+| metric | IMF (ours) | JST | Shu | dev IMF | dev JST |
+|---|---|---|---|---|---|
+| Return | 2.24% | 2.59% | 2.5% | 0.003 | 0.001 |
+| Sharpe | 0.1771 | 0.1874 | 0.19 | 0.013 | 0.003 |
+| Calmar | 0.0555 | 0.0586 | 0.06 | 0.005 | 0.001 |
+| Volatility | 15.98% | 15.96% | 16.0% | 0.000 | 0.000 |
+| MDD | -51.01% | -51.01% | -48.6% | 0.024 | 0.024 |
+| Turnover | 314.4% | 311.4% | 290% | 0.244 | 0.214 |
+
+**Not adopted.** JST's series tracks the Japanese money market — its 1974 peak
+of 12.5% is the call rate — while the paper asks for a Treasury bill yield, and
+switching to the one that happens to land closer to Table 4 is the fitting this
+project forbids. What the probe buys is the band: **the reported Japanese Sharpe
+carries about ±0.010 from a data ambiguity the paper's own specification cannot
+resolve, and the strategy itself is invariant to it.**
+
+### Where Japan stands, all three layers
+
+| layer | status |
+|---|---|
+| equity series | **evidenced.** Reconstruction drifts 0.048pp/yr against the official 1979-12-28 base value across 32 years; the reconstructed 2001-2011 era matches MSCI Japan as well as the official era does (corr 0.9710 vs 0.9678, volatility ratio 1.085 vs 1.080) |
+| risk-free series | **irreducible, and bounded.** No free 3-month Japanese market rate reaches 1970 — OECD's interbank series starts 2002-04 and the only long series is the administered discount rate. Worth ±0.010 of reported Sharpe and 0.00% of the model |
+| HMM vs Table 4 | **7/8**, failing turnover alone — the same cell, for the same unidentified reason, as the US and Germany |
+
+Acquiring the official N225TR back to 1979 would close at most 16% of the
+Japanese return gap (0.031pp of 0.200pp) and is not freely available; the
+risk-free ambiguity is worth six times more and cannot be closed at all. Japan
+is therefore finished at the same level as the other two markets, and the
+remaining work there is not a data problem.
+
+## The selection rule itself reads no stable signal (2026-07-28)
+
+Turnover is the last failing cell in all three markets, everything upstream is
+cleared, and the candidate set has been shown unidentified. This asks the more
+basic question: given a grid, does the rule that picks from it carry signal?
+
+Section 3.4.3 takes the candidate with the highest Sharpe over an 8-year
+validation window. Split each window into its first and second halves, take the
+argmax of each, and count agreement — a rule reading signal picks the same
+candidate from two samples of the same window
+(`artifacts/hmm-residual/09-selection-noise/`):
+
+| market | split-half agreement | chance | median winning margin | months decided by < 0.02 |
+|---|---|---|---|---|
+| S&P 500 | **17.1%** | 16.7% | 0.030 | 33.0% |
+| DAX | **15.1%** | 16.7% | 0.032 | 31.2% |
+| Nikkei 225 | **17.4%** | 16.7% | 0.047 | 27.8% |
+
+> **CORRECTION, 2026-07-29 (external review).** The chance column above is wrong.
+> `1/len(grid)` is the agreement rate for two draws from a *uniform* choice
+> distribution, and the rule's choices are far from uniform. Under independence
+> the rate is the cross-marginal product of the two halves' own argmax
+> distributions, recomputed from the stored candidate returns:
+>
+> | | observed | `1/k` (wrong) | independence baseline |
+> |---|---|---|---|
+> | S&P 500 | 17.1% | 16.7% | **20.2%** |
+> | DAX | 15.1% | 16.7% | **20.8%** |
+> | Nikkei 225 | 17.4% | 16.7% | **22.7%** |
+>
+> Agreement is therefore *below* the independence baseline in all three markets,
+> not equal to it. The rule still shows no stable cross-period preference, but
+> the phrase "17.1% against chance 16.7%" was a coincidence of the wrong
+> baseline and must not be quoted again.
+
+### Three controls, and the two that "failed" are part of the evidence
+
+The test is only worth anything if it can detect a real difference. Three
+attempts, recorded in the order they were made because the first two were
+mine to get wrong:
+
+| control | US | DE | JP |
+|---|---|---|---|
+| always invested vs always cash | 77.1% | 62.6% | **46.4%** |
+| a signal vs its own mirror image | 61.4% | 58.3% | 43.5% |
+| identical paths, one handicapped by a constant drift of 0.1 Sharpe | **100%** | **100%** | **100%** |
+
+The third shows the machinery works: when one candidate is consistently better,
+the split-half test says so every single time, at a handicap of one tenth of a
+Sharpe — an order of magnitude below the 0.16-0.36 spread the real candidates
+show between best and worst.
+
+The first two land near chance, and Japan's first control lands *below* it. That
+is not the instrument failing. It is the same finding arriving from a different
+direction: **over four-year windows, even strategies with wildly different
+long-run Sharpes swap ranks routinely.** Japanese equities really did lose to
+cash across many four-year stretches of 1990-2012. A rule that ranks candidates
+by realised Sharpe over such a window is ranking noise, and that is exactly what
+the paper's selection procedure does.
+
+### What this means for the replication
+
+Turnover is not merely unidentified because the candidate set is unpublished. It
+is unidentified **even with the set fixed**, because the rule that chooses from
+it is not reproducible in principle: two researchers with identical data,
+identical code and identical grids would select different smoothing windows in
+any month whose margin falls inside the noise, which is about a third of them.
+
+This closes the turnover question as far as it can be closed. It is not our
+defect, it is not a missing specification we could ask the authors for, and
+chasing it with a better grid would be chasing a coin flip. The honest report is
+the fixed-k persistence curve, which reproduces Table 3 to 1.9%, plus the
+statement that the selected-k turnover is not an identified quantity.
+
+> **RETRACTED, 2026-07-29 (external review).** The two paragraphs above are
+> withdrawn. Three errors, in increasing order of seriousness.
+>
+> **The reproducibility sentence is a logic error.** The selection rule is
+> deterministic. Two researchers with identical data, identical code and
+> identical grids select the *same* smoothing window in *every* month, always.
+> What the split-half result measures is **sampling reliability** — the choice is
+> unstable with respect to which sample it is estimated on — which is a different
+> and weaker statement. Nothing here makes the rule irreproducible.
+>
+> **The design cannot separate "no signal" from "the optimum genuinely moves".**
+> The two halves of a validation window are two consecutive periods, not two
+> draws from one distribution. If the best smoothing window really does drift
+> with the market, disagreement is signal, not noise. The controls in the table
+> above already demonstrate the confound — always-invested against always-cash
+> agrees only 77/63/46% — and that was read as corroboration when it is equally
+> an indictment of the instrument.
+>
+> **"Chasing it with a better grid would be chasing a coin flip" was wrong, and
+> it stopped a test that should have been run.** The grid is pinned against its
+> own ceiling: the selection picks the largest candidate, k=20, in 33.0% of US
+> months under v9, 9.6% of German months under v9.2, and 39.5% of Japanese months
+> under v8.5 — against the frozen `upper_boundary_month_fraction_limit` of 5%.
+> A binding ceiling means the rule wants more smoothing than the grid offers and
+> is therefore forced to trade more than its own objective would choose, which is
+> the direction of both the US deviation (1.71 against 1.41) and the Japanese one
+> (3.14 against 2.90). Extending the grid until the boundary stops binding is not
+> fitting to Table 4, because the stopping rule is the project's own gate,
+> defined without reference to the paper's numbers. See
+> `docs/audit/2026-07-29-codex-review-verdicts.md` §11.
+
+It also predicts something checkable about the jump model, whose penalty is
+chosen by the same rule over the same window: the same instability should appear
+there, and any JM turnover disagreement should be read in that light before it
+is treated as a modelling defect.
+
+### Provenance of the Yahoo-sourced files, asked and answered (2026-07-28)
+
+The advisor asked how 1970s history came out of Yahoo Finance when its download
+button is a paid feature. The answer is that the button is not what we used: the
+chart endpoint underneath it (`query1.finance.yahoo.com/v8/finance/chart/...`)
+serves the full history as JSON with no account, and that is what
+`scripts/fetch_sp500_inputs.py` calls for `^GSPC` and `^SP500TR`. The Japanese
+price file came through `yfinance`, which reads the same endpoint. Spans as
+delivered: `^GSPC` 14,598 sessions from 1966-01-03, `^SP500TR` 9,070 from
+1988-01-04, `^N225` 14,508 from 1965-01-05.
+
+A stale note in that script claimed the free S&P 500 price history begins in
+1977. That was an estimate written before the fetch ran; the endpoint returns
+data from 1966-01-03. Corrected.
+
+The provenance question is answerable without trusting the vendor, which is the
+better answer and the one given:
+
+| independent source | what it checks | result |
+|---|---|---|
+| Shiller monthly S&P 500 (Yale) | our daily US file, averaged by month, 1966-2023 | 696 months, correlation 0.99999328, median error 0.0005% |
+| Kenneth French daily market (Dartmouth/CRSP) | our daily US price returns | 0.9867 over 1970-1989, 0.9927 over 1990-2023 |
+| Nikkei Inc.'s own 1979-12-28 base value | our Japanese series, chained back 32 years | 6,470.24 against 6,569.47, -0.048pp/yr |
+| Table 1 of the paper | all three series jointly, 1970-2023 | nine cells, worst 0.0035 |
+| the historical record | dating rather than scaling | 20 of 20 extreme sessions in named crises |
+
+Note the French correlations here are against our S&P 500 PRICE series; the
+figures recorded earlier in this ledger (0.9851 / 0.9924) are against the
+total-return series, which is the one the model consumes. Both are reported so
+neither number looks like a correction of the other.

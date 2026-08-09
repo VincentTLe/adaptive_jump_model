@@ -1,0 +1,121 @@
+schema_version = 1
+experiment_id = "simple-jm-suite-002"
+claim_class = "EXPLORATORY"
+frozen_at_utc = "2026-07-31T23:06:43Z"
+status = "FROZEN_BEFORE_RESULTS"
+
+[question]
+text = "Can a prespecified simple JM variant beat both same-sample buy-and-hold and Gaussian HMM against the sealed v10 CALIBRATED baseline on replication-grade data?"
+rationale = "Rerun of the -001 frozen questions: the -001 answers (DD-only supported in the US only) were obtained on the proxy-era pipeline (Yahoo price proxies, 2007-2009 evaluation starts, the 9-value historical grid, a baseline that did not reproduce Shu's ordering). The v10 baseline is sealed, complete, and calibrated per market, so the same questions are re-asked with a clean comparator. The per-market grids are calibration artifacts adopted by owner decision (registry baseline-reseal-v10); no result of this suite inherits any replication claim."
+
+[sources]
+canonical_config = "research-calibrated-v10.toml"
+canonical_run_id = "fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736"
+canonical_run_root = "artifacts/fixed-baselines/fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736"
+lambda50_run_id = "lambda50-donor-36ca1ace131c-f9f3e0a93736"
+lambda50_run_root = "artifacts/lambda50-donor-v10/lambda50-donor-36ca1ace131c-f9f3e0a93736"
+markets = ["us", "de", "jp"]
+cutoff = "2023-12-31"
+post_2023_access = false
+
+[common_protocol]
+states = 2
+fit_window_observations = 3000
+fit_rows = "canonical complete-row mask requiring dd_10, sortino_20, sortino_60, and excess_return for every variant, including DD-only"
+refit_months = [1, 7]
+standardizer = "expanding_full_history_ddof1 with 63-observation warm-up, the sealed v10 standardizer"
+lambda_grid = { us = [0.0, 21.544346900318832, 70.0], de = [150.0, 500.0], jp = [10.0, 220.0] }  # per-market CALIBRATION grids of the v10 contract; calibration artifacts, never the authors' grid
+lambda_selection = "monthly trailing-eight-calendar-year net Sharpe unless the variant explicitly freezes lambda or post-processes the already selected fixed-JM state"
+primary_delay_trading_days = 1
+signal_to_return_offset = 2
+one_way_cost_bps = 10
+turnover = "0.5 * 252 * mean(abs(position change))"
+comparison_dates = "per-market intersection of complete t+2 metric rows across buy-and-hold, HMM, canonical fixed JM, and all five challengers"
+parallelism = "stage A first; stage B second; remaining independent fits may run concurrently by market with BLAS threads limited to one"
+
+[controls]
+buy_and_hold = "sealed canonical cost-free fully invested path"
+hmm = "sealed canonical monthly-selected Gaussian-HMM path"
+fixed_jm = "sealed canonical monthly-selected three-feature fixed-JM path"
+
+[variants.static_lambda50]
+order = 1
+label = "static_lambda50"
+question = "Does removing monthly lambda reselection improve the exact fixed JM?"
+features = ["dd_10", "sortino_20", "sortino_60"]
+objective = "sum_t 0.5*||z_t-theta_s_t||^2 + 50*sum_t I(s_t != s_t-1)"
+lambda = 50
+lambda_provenance = "SOURCE_FIXED: typical illustrative value in Shu et al. Figures 3 and 4; not represented as the undisclosed final paper strategy lambda"
+states_source = "lambda=50 column refit by the sealed v10 machinery on the v10 run's own features (lambda50_run_id donor; hash-pinned inventory)"
+monthly_selection = false
+
+[variants.dd_only]
+order = 2
+label = "dd_only"
+question = "Do the two noisy Sortino features prevent the JM from isolating downside regimes on the proxy sample?"
+features = ["dd_10"]
+objective = "sum_t 0.5*(z_t-theta_s_t)^2 + lambda*sum_t I(s_t != s_t-1)"
+lambda = "INNER_CV over the market's own v10 calibration grid"
+fit = "canonical JumpModel, 10 starts, Jan/Jul, state 0 sorted by higher training cumulative excess return"
+monthly_selection = true
+
+[variants.confirmed_2d]
+order = 3
+label = "confirmed_2d"
+question = "Does one extra observation of confirmation remove costly one-day fixed-JM state noise?"
+raw_state = "sealed canonical monthly-selected fixed-JM state"
+rule = "initialize a at first finite s; thereafter a_t=s_t when s_t=s_(t-1), otherwise a_t=a_(t-1)"
+confirmation_observations = 2
+parameter_provenance = "THEORY: smallest nontrivial confirmation rule"
+monthly_selection = "unchanged sealed canonical fixed-JM choice; confirmation is a causal post-filter"
+
+[variants.return_aware]
+order = 4
+label = "return_aware"
+question = "Should fitted states be coherent in current features and in the t+2 excess return they historically preceded?"
+features = ["dd_10", "sortino_20", "sortino_60"]
+target = "excess return on the full return calendar two trading observations after feature row u"
+target_availability = "at refit cutoff T, include target loss only when the target date is <=T; the final two feature rows retain feature loss but have zero target loss"
+target_standardizer = "mean and population standard deviation of matured targets inside the past-only 3000-row fit window"
+objective = "sum_u 0.5*||z_u-theta_s_u||^2 + gamma*0.5*m_u*(y_u-mu_s_u)^2 + lambda*sum_u I(s_u != s_(u-1))"
+gamma_values = [0, 1]
+gamma_provenance = "PREREGISTERED SCENARIO: zero exact control and one unit standardized outcome coordinate; no gamma search"
+gamma_zero = "route through the sealed canonical fixed-JM candidate states, choices, signals, positions, and returns"
+fit = "10 deterministic feature-center starts; exact DP E-step; mean feature and matured-target M-step; Jan/Jul refits"
+state_label = "higher fitted matured-target mean is state 0/equity"
+online = "decode the trailing feature window with frozen theta and fixed lambda; no target or future return enters inference"
+monthly_selection = true
+
+[variants.robust_l1]
+order = 5
+label = "robust_l1"
+question = "Does reducing squared-loss sensitivity to extreme feature observations improve proxy regimes?"
+features = ["dd_10", "sortino_20", "sortino_60"]
+objective = "sum_t ||z_t-theta_s_t||_1 + lambda*sum_t I(s_t != s_(t-1))"
+lambda = "INNER_CV over the market's own v10 calibration grid; loss-scale compatibility is UNCALIBRATED and upper-candidate concentration must be reported"
+fit = "10 deterministic feature-center starts; exact DP E-step; componentwise-median M-step; Jan/Jul refits; state 0 sorted by higher training cumulative excess return"
+monthly_selection = true
+
+[evaluation]
+primary_gap = "G_m(v) = Sharpe_v,m - max(Sharpe_buy_hold,m, Sharpe_hmm,m)"
+market_pass = "G_m(v) > 0"
+cross_market_support = "the same prespecified variant passes US, DE, and JP"
+primary_metrics = ["sharpe", "maximum_drawdown", "turnover", "cash_fraction", "switch_count"]
+report = ["full precision summary CSV", "monthly choices and CV surface", "candidate states", "selected state/signal/position/trade/cost/return timeline", "fit diagnostics", "concrete trade traces", "source/config/code hashes"]
+interpretation = "Every through-2023 result is repeatedly inspected development evidence. Negative/null results are valid; no alpha, profitability, robustness, replication, or generalization claim is permitted."
+
+[verification]
+required = [
+  "static lambda50 state hash matches sealed source",
+  "DD-only uses the canonical complete-row calendar and prefix-only scaler",
+  "confirmation toy paths and one-observation latency",
+  "return-aware gamma=0 exact fixed-JM control",
+  "return-aware target masks exclude unavailable future returns",
+  "L1 objective and componentwise-median M-step",
+  "brute-force DP equivalence for new losses",
+  "US smoke before three-market fit",
+  "t+2 signal-position-return identity",
+  "10-bps cost and paper turnover identity",
+  "concrete loss/state/signal/position/trade rows",
+  "no date later than 2023-12-31",
+]

@@ -1,0 +1,54 @@
+schema_version = 1
+experiment_id = "grid-selection-rule-001"
+parent_id = "baseline-reseal-v10"
+claim_class = "EXPLORATORY"
+status = "FROZEN_BEFORE_RESULTS"
+frozen_at_utc = "2026-08-01T01:38:56Z"
+
+[question]
+text = "Among the grids already qualified by the published table, which one should the calibrated baseline adopt, chosen by a stated rule rather than by the order they happened to appear in a file?"
+defect_being_repaired = """
+The v10 contract adopted de [150, 500] and jp [10, 220] out of sets of 366 and
+2948 grids that ALL reach 13 of 14 published cells, and us [0, 21.544..., 70]
+out of 36657 that reach 14 of 14. The choice among them had NO STATED RULE: it
+was the first row of the examples file. Measurement after the owner raised the
+question showed this is immaterial for Japan (turnover across passing grids
+spans only 0.695 to 0.756) but material for Germany, where it spans 0.234 to
+0.439 and the adopted grid is the WORST of twelve examples on Sharpe, 0.398
+against 0.457 available with the published target at 0.44. Five mechanisms
+have been tested against, and failed on, that German baseline; those failures
+are therefore conditional on an arbitrary choice and cannot be read as
+properties of the mechanisms until the choice is made by rule.
+"""
+
+[rule]
+criterion = "highest daily agreement between our monthly-selected state sequence and the sequence the AUTHORS themselves ran, over the dates where both are defined"
+authors_sequence = "extracted losslessly from the published Figure 5 matplotlib vectors in jm-effective-lambda-inversion-004 and validated against each panel's printed shift count and bear share (us 30 shifts and 19.7 percent, de 116 and 15.7, jp 48 and 25.3); the shading is the traded position, so the state sequence is (1 - position) shifted back by the two-day execution offset stated in the caption"
+why_this_criterion = "it is published evidence rather than our convenience, it is declarable before any strategy metric is computed, it is the same rule in all three markets, and it targets the object the whole replication is about - their regime sequence - instead of a summary statistic of it"
+eligible_set = "EXACTLY the grids already qualified in jm-per-market-grid-009: 14 of 14 cells for us, 13 of 14 for de and jp. No new search over grids is performed; this rule only orders an admissible set that already exists."
+tie_break = "declared in advance and applied in order: (1) highest agreement; (2) fewest members in the grid; (3) smallest maximum lambda; (4) lexicographic order of the sorted grid"
+
+[honesty]
+still_a_calibration_artifact = "Choosing by agreement with the authors' published path is still fitting to published output. The winner is NOT the authors' grid and no result derived from it may carry a replication claim. What changes is only that the choice becomes principled, stated in advance, and uniform across markets, instead of arbitrary."
+no_metric_peeking = "The rule uses only state-sequence agreement. No Sharpe, drawdown, turnover or any other strategy metric enters the selection."
+
+[reporting]
+required = [
+  "agreement of the CURRENTLY ADOPTED grid and of the winner, per market, so the size of the defect is visible",
+  "the winning grid, its agreement, and how many grids tie with it",
+  "whether the winner differs from the adopted grid in each market",
+  "the distribution of agreement across the admissible set",
+]
+
+[consequence]
+if_winner_differs = "a reseal to a v11 contract is PROPOSED to the owner, not performed automatically, and the five mechanisms already tested (dd-only, static lambda50, arrival beta=log2, scale-free penalty, feature-metric rotation) must be rerun against the new baseline before any statement of the form 'mechanism X fails in market Y' is restated"
+if_winner_matches = "the adopted grid stands, and the five mechanism results stand as reported"
+
+[verification]
+required = [
+  "the eligible set is reproduced from the -008 pass-digest artifacts, not re-derived by a fresh search",
+  "the authors' sequence is read from the -004 artifact unchanged",
+  "agreement is computed on the intersection of defined dates only, and the count of compared days is reported",
+  "no strategy metric is read until after the winner is fixed",
+  "no date later than 2023-12-31",
+]

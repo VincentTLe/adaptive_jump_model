@@ -1,0 +1,71 @@
+Turnover HMM theo bộ ứng viên k — không bộ nào được chọn, đây là phổ biến thiên
+
+=== S&P 500 — Shu: turnover 1.41, Sharpe 0.54, MDD -0.289
+  bộ ứng viên   k                     turnover   |lệch|   Sharpe      MDD  lần đổi  chọn k cao nhất
+  table3        0|2|4|8|20               1.677    0.267    0.555   -0.292      114             33%
+  table3_plus6  0|2|4|6|8|20             1.706    0.296    0.547   -0.292      116             33%
+  filtered      2|4|6|8|20               1.442    0.032    0.572   -0.292       98             35%
+  bulla_only    6                        1.854    0.444    0.501   -0.234      126            100%
+  dense_small   2|4|6|8|10|12            1.501    0.091    0.541   -0.315      102             28%
+  dense_wide    4|8|12|16|20             1.295    0.115    0.598   -0.267       88              2%
+  reach_low     2|4                      2.913    1.503    0.460   -0.251      198             41%
+  reach_no_tail 0|2|4|6                  2.913    1.503    0.470   -0.243      198             51%
+  phổ turnover: 1.295 .. 2.913   Shu 1.410 NẰM TRONG phổ
+  khớp toàn bộ 8 chỉ số: tốt nhất là 'filtered' với 8/8 trong ngưỡng; tổng sai lệch nhỏ nhất là 'filtered' (0.088)
+
+=== DAX — Shu: turnover 2.46, Sharpe 0.35, MDD -0.405
+  bộ ứng viên   k                     turnover   |lệch|   Sharpe      MDD  lần đổi  chọn k cao nhất
+  table3        0|2|4|8|20               2.168    0.292    0.393   -0.413      148              6%
+  table3_plus6  0|2|4|6|8|20             2.226    0.234    0.368   -0.439      152              5%
+  filtered      2|4|6|8|20               2.197    0.263    0.380   -0.439      150              7%
+  bulla_only    6                        1.816    0.644    0.359   -0.448      124            100%
+  dense_small   2|4|6|8|10|12            2.021    0.439    0.371   -0.461      138             11%
+  dense_wide    4|8|12|16|20             1.963    0.497    0.401   -0.398      134              0%
+  reach_low     2|4                      2.432    0.028    0.391   -0.463      166             83%
+  reach_no_tail 0|2|4|6                  2.226    0.234    0.399   -0.448      152             31%
+  phổ turnover: 1.816 .. 2.432   Shu 2.460 nằm NGOÀI phổ
+  khớp toàn bộ 8 chỉ số: tốt nhất là 'table3' với 7/8 trong ngưỡng; tổng sai lệch nhỏ nhất là 'reach_low' (0.139)
+
+=== Nikkei 225 — Shu: turnover 2.90, Sharpe 0.19, MDD -0.486
+  bộ ứng viên   k                     turnover   |lệch|   Sharpe      MDD  lần đổi  chọn k cao nhất
+  table3        0|2|4|8|20               3.295    0.395    0.182   -0.510      218             40%
+  table3_plus6  0|2|4|6|8|20             3.144    0.244    0.177   -0.510      208             40%
+  filtered      2|4|6|8|20               3.144    0.244    0.177   -0.510      208             40%
+  bulla_only    6                        2.993    0.093    0.181   -0.518      198            100%
+  dense_small   2|4|6|8|10|12            3.265    0.365    0.172   -0.532      216             35%
+  dense_wide    4|8|12|16|20             2.751    0.149    0.224   -0.455      182             36%
+  reach_low     2|4                      4.686    1.786    0.206   -0.482      309             51%
+  reach_no_tail 0|2|4|6                  3.900    1.000    0.176   -0.494      258             43%
+  phổ turnover: 2.751 .. 4.686   Shu 2.900 NẰM TRONG phổ
+  khớp toàn bộ 8 chỉ số: tốt nhất là 'table3' với 7/8 trong ngưỡng; tổng sai lệch nhỏ nhất là 'bulla_only' (0.146)
+
+Đánh đổi — bộ nào kéo turnover về phía Shu thì đẩy Sharpe ra xa:
+  thị trường  bộ              |lệch| turnover  |lệch| Sharpe  trong ngưỡng  tổng lệch
+  us          filtered                  0.032          0.032            8/8      0.088
+  us          dense_small               0.091          0.001            7/8      0.139
+  us          dense_wide                0.115          0.058            6/8      0.252
+  us          table3                    0.267          0.015            7/8      0.297
+  us          table3_plus6              0.296          0.007            7/8      0.313
+  us          bulla_only                0.444          0.039            6/8      0.581
+  us          reach_low                 1.503          0.080            6/8      1.648
+  us          reach_no_tail             1.503          0.070            6/8      1.640
+
+  de          reach_low                 0.028          0.041            7/8      0.139
+  de          table3_plus6              0.234          0.018            7/8      0.292
+  de          reach_no_tail             0.234          0.049            7/8      0.340
+  de          filtered                  0.263          0.030            7/8      0.334
+  de          table3                    0.292          0.043            7/8      0.365
+  de          dense_small               0.439          0.021            6/8      0.530
+  de          dense_wide                0.497          0.051            6/8      0.585
+  de          bulla_only                0.644          0.009            7/8      0.708
+
+  jp          bulla_only                0.093          0.009            7/8      0.146
+  jp          dense_wide                0.149          0.034            7/8      0.241
+  jp          filtered                  0.244          0.013            7/8      0.289
+  jp          table3_plus6              0.244          0.013            7/8      0.289
+  jp          dense_small               0.365          0.018            7/8      0.444
+  jp          table3                    0.395          0.008            7/8      0.432
+  jp          reach_no_tail             1.000          0.014            7/8      1.033
+  jp          reach_low                 1.786          0.016            7/8      1.823
+
+Kết luận: bộ ứng viên k là tham số tự do mà paper không công bố. Với mỗi thị trường, phổ turnover sinh ra từ các bộ đều hợp lý này rộng hơn khoảng cách tới Table 4, nên dòng turnover KHÔNG phải bằng chứng về chất lượng tái lập theo bất kì chiều nào — và việc dò tìm bộ nào khớp 141%/246%/290% chính là điều dự án tự cấm mình.

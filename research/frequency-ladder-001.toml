@@ -1,0 +1,131 @@
+schema_version = 1
+experiment_id = "frequency-ladder-001"
+claim_class = "CONFIRMATORY"
+frozen_at_utc = "2026-08-02T02:23:56Z"
+amended_at_utc = "2026-08-02T02:41:00Z"
+amendment = "The arm values were transcribed rounded (1.47, 5.46, 2.83, 8.60) while the derivation returns 1.465348864441625, 5.459611390906074, 2.829145724599095 and 8.59842836500576. The runner refused to start because its re-derivation disagreed with the frozen menu, which is the gate working. Corrected to the exact derived values BEFORE any result existed; the ladder, the arms, the cutoff and the decision rule are untouched."
+status = "FROZEN_BEFORE_RESULTS"
+
+[question]
+text = "If the candidate menu is specified in units of regime frequency chosen a priori, and inverted into a jump penalty separately for each market using only pre-1990 training windows, does the resulting per-market menu reproduce Shu's Table 4?"
+rationale = """
+Every menu this project has used was either calibrated against the published
+table or taken from the authors. The owner has ruled out both: no searching to
+the answer, and no using their published values. What is left is to DERIVE the
+menu, and the derivation has to start from something a person can defend without
+having seen the answer.
+
+The jump penalty is not that thing. It is denominated in squared standardized-
+feature units, so its meaning depends on our own standardisation choice, which
+the paper never states. Measured on our own refits, Germany needs roughly twice
+the US penalty for the same behaviour at every frequency (ratio 1.83 to 2.85).
+So a number of penalties is not a specification of a model.
+
+Regime FREQUENCY is that thing. A two-state bull/bear model on daily equity data
+should be able to express regimes lasting from about six weeks to about four
+years, and nothing outside that is a business cycle. That statement can be
+written down before any data is touched, and it is the only free choice here.
+
+The inversion is exact and free. The objective L(lambda) is a minimum of affine
+functions of lambda with non-negative slopes, so it is concave, piecewise linear
+and non-decreasing, and its slope is the number of jumps at the optimum. The
+recorded refit objectives therefore already give the jump count at every
+penalty, for every training window, with no new fit and with no information from
+outside that window.
+"""
+
+[sources]
+canonical_config = "research-calibrated-v10.toml"
+canonical_run_id = "fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736"
+refit_objectives = "artifacts/jm-residual/01-grid-identification/{market}/union-refits.csv"
+map_script = "scripts/diagnose_penalty_frequency_map.py"
+map_artifact = "artifacts/penalty-frequency/01-map/"
+scorer = "scripts/score_grid.py"
+markets = ["us", "de", "jp"]
+
+[derivation]
+free_choice = "the frequency ladder below, and nothing else"
+ladder_shifts_per_year = [8.0, 4.0, 2.0, 1.0, 0.5, 0.25]
+ladder_justification = "geometric, factor two, spanning about six-week regimes (8 per year) to about four-year regimes (0.25 per year). Six values because the monthly selector cannot resolve neighbours - measured median winner-minus-runner-up is 0.0075 Sharpe - so a finer menu adds variance, not information."
+inversion = "per market, per training window, the smallest penalty at which the objective's local slope divided by 3000/252 falls to or below the target; the representative penalty for an interval is its midpoint, because the jump count is constant across the interval"
+aggregation = "median across training windows whose fit_date is BEFORE 1990-01-01, which is the paper's training and validation era; no window from the 1990-2023 evaluation period contributes to the menu"
+lookahead = "none: the menu is fixed before the evaluation period begins and never updated"
+
+# Both arms are written down now so neither can be chosen after the numbers are
+# seen. They differ in ONE thing: whether the menu is allowed to contain a
+# penalty slow enough to freeze the model.
+[arms.L_full_ladder]
+label = "the whole a priori ladder, 8 down to 0.25 shifts per year"
+us = [0.55, 1.465348864441625, 5.459611390906074, 23.5, 37.5, 65.0]
+de = [0.55, 2.829145724599095, 8.59842836500576, 23.5, 90.0, 185.0]
+jp = [0.55, 2.829145724599095, 8.59842836500576, 17.5, 45.0, 75.0]
+
+[arms.M_no_freeze]
+label = "the ladder truncated at 0.5 shifts per year, so the selector cannot choose a near-frozen model"
+justification = "a two-state regime model that changes state once every four years is not identifying regimes, it is holding an opinion; this arm asks whether excluding that possibility matters"
+us = [0.55, 1.465348864441625, 5.459611390906074, 23.5, 37.5]
+de = [0.55, 2.829145724599095, 8.59842836500576, 23.5, 90.0]
+jp = [0.55, 2.829145724599095, 8.59842836500576, 17.5, 45.0]
+
+[protocol]
+delay_trading_days = 1
+one_way_cost_bps = 10
+selection = "unchanged: monthly reselection by trailing eight-calendar-year Sharpe, the sealed v10 selection protocol"
+states_to_fit = "the union of both arms per market; the state sequence for a penalty does not depend on the menu it sits in"
+cells = ["cagr", "volatility", "sharpe", "maximum_drawdown", "calmar", "expected_shortfall_5pct", "turnover", "leverage"]
+
+# AGENTS.md section 7.1, frozen before any number exists.
+[grading]
+scale = "relative deviation per cell, headline = worst cell"
+A = "<= 2 percent"
+B = "2 to 20 percent"
+C = "20 to 40 percent"
+D = "40 to 60 percent"
+F = "> 60 percent or not finite"
+
+[decision_rule]
+text = """
+Binding whichever way it falls.
+
+1. This menu is DERIVED, not selected. Its grade is therefore a measurement and
+   may be quoted as one, unlike every grid this project has reported before.
+
+2. The comparison that matters is against the sealed v10 calibrated menu, which
+   was fitted to the published table. If the derived menu grades WORSE, that is
+   the honest cost of not fitting to the answer, and it is reported as such.
+   If it grades better, the calibration was not even buying what it cost.
+
+3. Germany is the test case. The v10 German menu reproduces seven of eight cells
+   within 10 percent and misses turnover by 84 percent because its penalties sit
+   in the frozen region. The derived German menu spans 0.55 to 185. If German
+   turnover does not improve, the frequency framing is wrong and must be
+   abandoned rather than tuned.
+
+4. NO SECOND LADDER. If the result is poor, the ladder may not be adjusted and
+   re-run. Adjusting an a priori choice after seeing the answer converts this
+   into the search it was built to replace. A different construction may be
+   proposed, but it must be a different construction with its own derivation,
+   frozen before it runs.
+
+5. The five training windows with a decreasing objective (registry
+   penalty-frequency-map-001) are a known defect of the fit, not of this
+   construction. None of them is before 1990, so none contributes to the menu.
+"""
+
+[preregistered_expectations]
+text = """
+Recorded so the outcome cannot be narrated as expected.
+
+- I expect German turnover to rise substantially from 0.26, because the derived
+  German menu tops out at 185 where the v10 menu was {150, 500} and the CV was
+  choosing 500 and 1000 when offered them. Whether it reaches 1.70 I do not know.
+- I expect the US to get WORSE than its current near-exact match, because the
+  v10 US menu was calibrated to the published table and this one is not.
+- Japan I cannot predict. Its published cells were never reachable by any single
+  penalty on our data, so its match has always come from the monthly mixture.
+- If arm M beats arm L everywhere, the finding is about the selector being
+  allowed to opt out, not about the ladder.
+"""
+
+[audit]
+requirement = "Not reportable until a separate agent, which did not write the map script, this spec or the runner, has independently recomputed the ladder inversion from the refit objectives, checked that no post-1990 window contributes, and re-scored the cells."

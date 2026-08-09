@@ -1,0 +1,14 @@
+{
+  "experiment_id": "jm-disagreement-anatomy-010",
+  "rule": "SUPPORTED iff r_DE >= 1.5 AND r_JP >= 1.5 AND r_DE > r_US(2000 cut) AND r_JP > r_US(2012 cut), where r_market = rate(old-source era) / rate(modern era) and r_US uses the same cut dates as placebo boundaries on the US pair. INVERTED recorded additionally iff both r_DE and r_JP <= 1/1.5. Anything else: NOT SUPPORTED.",
+  "threshold_ratio": 1.5,
+  "r_de": 0.5741102065531858,
+  "r_jp": 0.7637901813054562,
+  "r_us_placebo_2000": 0.3749049902066829,
+  "r_us_placebo_2012": 0.9825966254481479,
+  "supported": false,
+  "inverted": false,
+  "verdict": "NOT SUPPORTED",
+  "computed_utc": "2026-08-07T05:04:42Z",
+  "git_head": "c9b5294c1a03209d81fa22afc8211fe03976e7e5"
+}

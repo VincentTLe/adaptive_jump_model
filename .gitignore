@@ -15,10 +15,40 @@ monitor.env
 build/
 dist/
 
+# Third-party paywalled PDFs the owner downloaded via institutional SSRN
+# access into paper/ for reading -- unlike arXiv preprints, SSRN's terms do
+# not grant redistribution, so these stay local-only. paper/*.pdf that IS
+# this project's own manuscript output (paper/split-v1/, paper/submission/)
+# is unaffected -- this lists exact filenames, not a blanket paper/*.pdf rule.
+paper/s10479-026-07041-z.pdf
+paper/ssrn-4556048.pdf
+paper/ssrn-5235747.pdf
+paper/ssrn-5817083.pdf
+paper/ssrn-6933278.pdf
+
 # Market data and generated outputs
+data/*.tar.zst
 data/raw/*
 data/processed/*
-artifacts/
+artifacts/*
+!artifacts/jm-residual/
+artifacts/jm-residual/*/*-states.csv
+artifacts/jm-residual/*/*/*-states.csv
+artifacts/jm-residual/*/*/union-refits.csv
+artifacts/jm-residual/*/*.npz
+artifacts/jm-residual/*/*.npy
+# Audit evidence: small tables and the scripts that produced them stay
+# investigable; the refitted state matrices are regenerable and stay out.
+!artifacts/audit/
+artifacts/audit/*/states-*.csv
+# lagged-capguard-001: readouts, metrics, choices and trades are committed
+# evidence; regenerable daily state matrices would be the only heavy files
+# and the runner does not persist them.
+!artifacts/lagged-capguard/
+# grid-selection-rule-001: per-market grid rankings are small committed
+# evidence (a few hundred to tens of thousands of text rows); regenerable
+# from the -008/-009 caches, which stay excluded above.
+!artifacts/grid-selection-rule/
 reports/
 *.log
 *.pid
@@ -30,3 +60,23 @@ reports/
 
 # Local notebooks checkpoints
 .ipynb_checkpoints/
+
+# Cold storage for retired minute-era data
+data/legacy-cold/
+data/external/*
+# Exceptions: primary-source paper text/PDFs that are (a) load-bearing for
+# [line NNN] citations elsewhere in the repo (check_paper_claims.py) and/or
+# (b) freely redistributable arXiv preprints -- these must survive a lost
+# local disk, unlike the bulk re-fetchable market-data CSVs this rule exists
+# for. Paywalled/uncertain-license items (SSRN PDFs, the Princeton
+# dissertation, slide decks) stay local-only.
+!data/external/inputs/
+data/external/inputs/*
+!data/external/inputs/shu_paper.txt
+!data/external/inputs/shu-yu-mulvey-2406.09578.pdf
+!data/external/inputs/shu-yu-mulvey-2406.09578.txt
+!data/external/inputs/shu-mulvey-2410.14841.pdf
+!data/external/inputs/shu-mulvey-2410.14841.txt
+
+# Agent worktrees
+.claude/worktrees/

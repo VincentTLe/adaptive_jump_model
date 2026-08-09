@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -17,21 +18,12 @@ from typing import Any
 import pandas as pd
 
 from adaptive_jump import artifacts as _artifacts
-from adaptive_jump.calibration_runner import run_calibration_study
 from adaptive_jump.config import ConfigError, ResearchConfig, load_config
 from adaptive_jump.data import AcquisitionError, acquire, research_git_sha
 from adaptive_jump.features import effective_oos_start, prepare_market
-from adaptive_jump.grid_runner import run_grid_evaluation
-from adaptive_jump.grid_spec import load_grid_spec
 from adaptive_jump.models import FixedJMResult, HMMResult, fixed_jm_states, hmm_states
-from adaptive_jump.monitor import checkpoints as checkpoint_store
-from adaptive_jump.monitor import study_runtime
-from adaptive_jump.monitor.child_events import (
-    ChildEventError,
-    child_observer_from_environment,
-)
-from adaptive_jump.monitor.events import EventObserver, emit_artifact_verified
 from adaptive_jump.reporting import build_report
+from adaptive_jump.runtime import checkpoints as checkpoint_store
 from adaptive_jump.simple_jm_figures import render_figures
 from adaptive_jump.simple_jm_suite import (
     load_dd_loss_scale_spec,
@@ -46,8 +38,6 @@ from adaptive_jump.walkforward import (
     build_baseline_study,
     open_baseline_metrics,
 )
-from adaptive_jump.window_runner import run_window_sensitivity
-from adaptive_jump.window_spec import load_window_spec
 
 RunError = _artifacts.ArtifactError
 
@@ -65,7 +55,31 @@ class MarketInput:
     oos_start: date
 
 
-HMM_WORKERS, MODEL_CHECKPOINT_DAYS = 16, 50
+def _model_workers() -> int:
+    """Worker count for the HMM and fixed-JM day loops.
+
+    Fitting one window is independent of every other window, and every JM
+    inference day is independent given its governing biannual refit, so this is
+    a scheduling knob and never changes a result. It was pinned at 16 while the
+    machine had 32 cores, which left half of them idle. ADAPTIVE_JUMP_N_JOBS
+    (set by scripts/run_fast.sh) overrides it; otherwise leave two cores for the
+    parent process and the rest of the machine.
+    """
+    override = os.environ.get("ADAPTIVE_JUMP_N_JOBS")
+    if override:
+        try:
+            value = int(override)
+        except ValueError:
+            raise ConfigError(
+                f"ADAPTIVE_JUMP_N_JOBS must be an integer, got {override!r}"
+            ) from None
+        if value < 1:
+            raise ConfigError("ADAPTIVE_JUMP_N_JOBS must be at least 1")
+        return value
+    return max(1, (os.cpu_count() or 4) - 2)
+
+
+MODEL_CHECKPOINT_DAYS = 50
 
 
 def load_frozen_data(
@@ -134,10 +148,13 @@ def _verify_manifest(
     expected = {
         (market.id, "equity", market.equity.source_id) for market in config.markets
     } | {(market.id, "cash", market.cash.source_id) for market in config.markets}
+    source_rows = document.get("sources", [])
     actual = {
         (source.get("market"), source.get("kind"), source.get("source_id"))
-        for source in document.get("sources", [])
+        for source in source_rows
     }
+    if len(source_rows) != len(expected):
+        raise RunError("data manifest has a duplicated or missing source entry")
     if (
         document.get("config_id") != config.config_id
         or document.get("config_sha256") != config.sha256
@@ -171,9 +188,7 @@ def _verify_manifest(
             raise RunError(f"invalid canonical values: {path}")
 
 
-def run_replication(
-    config: ResearchConfig, frozen: FrozenData, observer: EventObserver | None = None
-) -> Path:
+def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
     """Run or exactly resume the sealed three-market baseline study."""
     root = config.path.parent
     git_sha = research_git_sha(root)
@@ -187,7 +202,7 @@ def run_replication(
         for key in ("config_sha256", "data_manifest_sha256", "git_sha")
     )
     run_dir = root / config.artifact_root / "fixed-baselines" / run_id
-    checkpoint_root = root / config.artifact_root / ".monitor" / "checkpoints" / run_id
+    checkpoint_root = root / config.artifact_root / ".runtime" / "checkpoints" / run_id
     metadata_path = run_dir / "run.json"
     if metadata_path.exists():
         metadata = _artifacts.read_json(metadata_path)
@@ -211,7 +226,7 @@ def run_replication(
                 "schema_version": 1,
                 "run_id": run_id,
                 "status": "running",
-                "claim_label": "proxy replication",
+                "claim_label": config.document["study"]["claim_label"],
                 "metrics_opened": False,
                 "created_at_utc": datetime.now(UTC).isoformat(),
                 "packages": _package_versions(),
@@ -261,12 +276,9 @@ def run_replication(
                 config.model_protocol,
                 config.hmm_protocol,
                 initial=initial_hmm,
-                n_jobs=HMM_WORKERS,
+                n_jobs=_model_workers(),
                 checkpoint_every=MODEL_CHECKPOINT_DAYS,
                 progress=save_hmm_progress,
-                observer=study_runtime.model_observer(
-                    observer, market.id, "hmm", market_input.frame
-                ),
             )
             initial_jm = _load_cache(
                 checkpoint_dir / "jm-progress", "fixed_jm", identity, FixedJMResult
@@ -294,33 +306,29 @@ def run_replication(
             fitted_jm = fixed_jm_states(
                 market_input.frame,
                 config.model_protocol,
-                config.jm_protocol,
+                config.jm_protocol_for(market.id),
                 initial=initial_jm,
+                n_jobs=_model_workers(),
                 checkpoint_every=MODEL_CHECKPOINT_DAYS,
                 progress=save_jm_progress,
-                observer=study_runtime.model_observer(
-                    observer, market.id, "fixed_jm", market_input.frame
-                ),
             )
 
             checkpoint = build_baseline_study(
                 market_input.frame,
                 config,
                 oos_start=market_input.oos_start,
+                jm_protocol=config.jm_protocol_for(market.id),
                 precomputed_jm=fitted_jm,
                 precomputed_hmm=fitted_hmm,
                 selection_initial=partial(_load_selection, checkpoint_dir, identity),
-                selection_progress=study_runtime.baseline_selection_recorder(
-                    partial(_save_selection, checkpoint_dir, identity),
-                    observer,
-                    market.id,
-                ),
+                # The monitor's event plumbing used to wrap this saver. With the
+                # monitor gone the wrapper returned the saver unchanged, so the
+                # checkpoint write is passed straight through.
+                selection_progress=partial(_save_selection, checkpoint_dir, identity),
             )
         elif checkpoint.oos_start != market_input.oos_start:
             raise RunError(f"{market.id}: checkpoint OOS start mismatch")
-        study_runtime.emit_selected_signals(observer, checkpoint.selections, market.id)
         _write_checkpoint(market_dir, market_input.frame, checkpoint)
-        study_runtime.emit_boundary_rows(observer, checkpoint.boundaries, market.id)
         _write_cache(
             checkpoint_dir / "baseline-study", checkpoint, "baseline_study", identity
         )
@@ -339,6 +347,20 @@ def run_replication(
     )
     boundaries.to_csv(run_dir / "boundaries.csv", index=False)
     if not boundaries["passed"].all():
+        # Official metrics stay sealed, but write the same table once, under the
+        # frozen comparison-sample convention, so the run has a reproducible
+        # number set instead of leaving every reader to recompute it by hand.
+        exploratory_frames = []
+        for market_id, study in studies.items():
+            market_input = inputs[market_id]
+            exploratory_frames.append(
+                open_baseline_metrics(
+                    market_input.frame, study, config, exploratory=True
+                ).assign(market=market_id)
+            )
+        pd.concat(exploratory_frames, ignore_index=True).to_csv(
+            run_dir / "metrics-exploratory.csv", index=False
+        )
         _artifacts.write_inventory(run_dir)
         _finish_run(
             metadata_path,
@@ -360,7 +382,11 @@ def run_replication(
                 path.to_csv(trades / f"{model_name}-delay-{delay}.csv", index=False)
     metrics = pd.concat(metric_frames, ignore_index=True)
     metrics.to_csv(run_dir / "metrics.csv", index=False)
-    gate = _artifacts.directional_gate(metrics, config.backtest_protocol.primary_delay)
+    gate = _artifacts.directional_gate(
+        metrics,
+        config.backtest_protocol.primary_delay,
+        config.document["study"]["claim_label"],
+    )
     _artifacts.write_json(run_dir / "claim.json", gate)
     _artifacts.write_inventory(run_dir)
     _finish_run(
@@ -454,9 +480,6 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         choices=[
             "replication",
-            "train-window-sensitivity",
-            "persistence-calibration",
-            "persistence-grid-evaluation",
             "simple-jm-suite",
             "dd-loss-scale",
         ],
@@ -472,7 +495,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     figures.add_argument("--run", required=True, help="path to one run directory")
     figures.add_argument("--output-root", help="base output directory")
-    commands.add_parser("monitor").add_argument("--config", required=True)
     return parser
 
 
@@ -486,38 +508,23 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if arguments.command == "run":
             config = load_config(arguments.config)
-            observer = child_observer_from_environment()
             research = config.path.parent / "research"
             if arguments.study == "replication":
                 frozen = load_frozen_data(config, arguments.manifest)
-                artifact = run_replication(config, frozen, observer)
+                artifact = run_replication(config, frozen)
             elif arguments.manifest:
                 raise RunError("--manifest is only valid for replication")
-            elif arguments.study == "train-window-sensitivity":
-                spec = load_window_spec(
-                    research / "jm-train-window-sensitivity.toml", config
-                )
-                artifact = run_window_sensitivity(config, spec, observer)
-            elif arguments.study == "persistence-grid-evaluation":
-                spec = load_grid_spec(
-                    research / "persistence-grid-evaluation.toml", config
-                )
-                artifact = run_grid_evaluation(config, spec, observer)
             elif arguments.study == "simple-jm-suite":
                 spec = load_simple_jm_spec(
-                    research / "simple-jm-suite-001.toml", config
+                    research / "simple-jm-suite-002.toml", config
                 )
-                artifact = run_simple_jm_study(config, spec, observer)
+                artifact = run_simple_jm_study(config, spec)
             elif arguments.study == "dd-loss-scale":
                 spec = load_dd_loss_scale_spec(
-                    research / "dd-loss-scale-001.toml", config
+                    research / "dd-loss-scale-002.toml", config
                 )
-                artifact = run_dd_loss_scale_study(config, spec, observer)
-            else:
-                artifact = run_calibration_study(
-                    config, research / "persistence-calibrated-search.toml"
-                )
-            emit_artifact_verified(observer, _artifacts.verify_run(artifact))
+                artifact = run_dd_loss_scale_study(config, spec)
+            _artifacts.verify_run(artifact)
             print(artifact)
             return 0
         if arguments.command == "verify":
@@ -530,13 +537,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             for output in render_figures(arguments.run, arguments.output_root):
                 print(output)
             return 0
-        if arguments.command == "monitor":
-            from adaptive_jump.monitor.server import run_monitor_server
-
-            return run_monitor_server(arguments.config)
     except (
         AcquisitionError,
-        ChildEventError,
         ConfigError,
         RunError,
         FileNotFoundError,

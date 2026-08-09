@@ -1,0 +1,48 @@
+schema_version = 1
+experiment_id = "jm-standardizer-geometry-003"
+frozen_at_utc = "2026-07-31T02:35:00Z"
+claim_class = "EXPLORATORY"
+analysis_label = "JM STANDARDIZER GEOMETRY, THIRD A-PRIORI VARIANT: FROZEN-INITIAL SCALER"
+hypothesis = "A scaler fitted once on the FIRST 3000-day training window and frozen thereafter places the US Table-3 persistence curve between the -002 bracket endpoints, and closer to the published values than either."
+primary_estimand = "same instruments as -002 (I1 curve, I2 anchors, I3 Table-4 cells) for one added variant"
+extension_access = false
+adaptive_experiment = true
+
+# SEQUENTIAL-TESTING DECLARATION. This spec is frozen AFTER seeing -002's
+# result (the published curve lies between the expanding and per-refit-window
+# geometries). The variant itself is NOT invented from that result: its
+# a-priori source predates -002 — the author's example fits the clipper and
+# scaler ONCE on the training split and only transforms afterwards
+# ("Both classes are first fitted on the training data and subsequently used
+# to transform the test data", sweep-verified 2-0 on 2026-07-31), which maps
+# onto the paper's rolling protocol as a scaler fitted on the initial
+# training window and frozen. The risk that this is a third draw from a
+# geometry family until one fits is real and is mitigated by: (a) the family
+# is now EXHAUSTED — expanding, per-refit, frozen-initial are the only
+# scaler-fitting cadences expressible in the author's artifacts; (b) the
+# decision rule below closes the axis after this run regardless of outcome;
+# (c) nothing is adopted regardless of outcome.
+prior_art = "jm-standardizer-geometry-002 (bracket result)"
+family_exhaustion = "after this run the geometry family from author artifacts is fully enumerated; no further geometry variant may be run without a new primary source"
+
+[parent]
+config_path = "research-expanding-v9-4.toml"
+run_id = "fixed-baselines-34e51cd7a388-967806b961b4-e690dbe396f3"
+inputs = "sealed per-market features.csv; lambda grid [0,5,15,35,70,150] -- Table 3's illustrative values (paper lines ~620-646), used here as -002's inherited registered choice, not a disclosed paper production grid; raw features masked to sealed availability as in -002"
+
+[variants]
+V3_frozen_initial = "raw features; ONE StandardScaler (no clip — -002 showed clip immaterial) fitted on the FIRST 3000-day complete window, frozen for the entire sample; model refits keep the sealed biannual schedule"
+gate = "reuse of the -002 probe-local loop, which passed its src-parity gate in all three markets; V3 uses the same loop with a constant scaler"
+
+[decision]
+winner_selection_allowed = false
+config_changes_allowed = false
+registered_interpretations = [
+  "if V3 lands within the registered I1 rule (>= 5 of 6 lambdas within 0.15), the geometry is IDENTIFIED as frozen-initial in the mechanism sense; adoption remains a separate owner decision",
+  "if V3 misses I1, the geometry axis CLOSES as bracketed-but-unidentifiable from public artifacts, and the JM residual attribution moves to data/vintage differences, mirroring the HMM turnover closure",
+]
+no_further_geometry_variants = true
+
+[storage]
+artifact_subdir = "artifacts/jm-residual/03-frozen-initial-scaler"
+required_outputs = ["table3-curve.csv", "anchors.csv", "table4-cells.csv", "report.txt"]

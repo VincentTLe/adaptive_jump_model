@@ -121,6 +121,27 @@ def make_features(
     return features.replace([np.inf, -np.inf], np.nan)
 
 
+def standardize_expanding(
+    features: pd.DataFrame, min_observations: int
+) -> pd.DataFrame:
+    """Causally standardize each feature on its expanding history (ddof=1).
+
+    At day t the z-score uses only observations up to and including t, so no
+    future data leaks backward. The first min_observations rows are dropped
+    from the OUTPUT as statistical warm-up, but they remain inside the
+    expanding mean and std forever — EWM warm-up values computed from a
+    handful of observations permanently contaminate the statistics (measured:
+    US sortino_60 expanding std +43% at row 3063 versus a 63-row burn-in).
+    See docs/unspecified-choices.md row 13 before changing this.
+    """
+    if min_observations < 63:
+        raise FeatureError("expanding standardizer needs >= 63 warm-up rows")
+    mean = features.expanding(min_periods=min_observations).mean()
+    std = features.expanding(min_periods=min_observations).std(ddof=1)
+    scaled = (features - mean) / std.where(std > 0)
+    return scaled.replace([np.inf, -np.inf], np.nan)
+
+
 def prepare_market(
     equity: pd.DataFrame,
     cash: pd.DataFrame,
@@ -142,6 +163,9 @@ def prepare_market(
         adjust=protocol.ewm_adjust,
         ignore_na=protocol.ewm_ignore_na,
     )
+    model = config.model_protocol
+    if model.standardizer == "expanding_full_history_ddof1":
+        features = standardize_expanding(features, model.standardizer_min_observations)
     return pd.concat([frame, features], axis=1)
 
 

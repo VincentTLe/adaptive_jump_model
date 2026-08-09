@@ -1,0 +1,51 @@
+schema_version = 1
+experiment_id = "jm-grid-exhaustive-007"
+frozen_at_utc = "2026-07-31T03:23:06Z"
+timestamp_source = "date -u at write time"
+claim_class = "EXPLORATORY"
+analysis_label = "TARGET-CONDITIONED EXHAUSTIVE GRID SEARCH — OWNER-INSTRUCTED"
+hypothesis = "Somewhere in the subset lattice of our 29-lambda family there exists a grid whose monthly-CV path lands all eight US Table-4 JM cells simultaneously; for DE and JP the -004 expressibility bound predicts the search comes back empty or lands only by numerically-coincident paths."
+primary_estimand = "the complete solution set of grids reaching 8/8 per market, plus the reachable within_tol frontier"
+extension_access = false
+adaptive_experiment = true
+
+# HONESTY LABEL, the load-bearing part of this spec. This experiment is a
+# SEARCH OF OUR KNOB AGAINST THE TARGET TABLE — exactly the operation
+# CLAUDE.md forbids as a replication move. The owner explicitly instructed it
+# ("toi can dong thoi, thu lai di, va thu ca DE/JP nua", 2026-07-31) and it is
+# run under these registered terms: (1) any solution grid is a CALIBRATION
+# artifact, never evidence about the authors' grid and never a replication
+# claim; (2) the scientific content is the EXISTENCE map — whether Table 4's
+# JM row is reachable at all under our pipeline, and how large/shaped the
+# solution set is (empty = impossibility proof; huge = weak identification;
+# small = sharp calibration); (3) the -006 inferred band [10,100] serves as an
+# independent cross-check: solutions inside it are coherent with the authors'
+# path, solutions only outside it are pure overfit signal; (4) nothing is
+# adopted here; adoption is an owner reseal decision carrying this label.
+owner_instruction = "find grids hitting Sharpe and turnover simultaneously, and try DE/JP even if unidentifiable"
+prior_art = "jm-grid-identification-001 (8 named grids), jm-inferred-grid-005/-006, jm-effective-lambda-inversion-004"
+
+[search_space]
+menu = "the 29-lambda union of -001 (states already computed and parity-gated)"
+subset_sizes = "2 through 8 inclusive (6,474,511 subsets per market; published grids in the wild have 5-11 members, v1 has 7; the 8-cap is a declared scope bound, with the 8 named grids of -001 covering the larger shapes)"
+geometry = "V0 sealed expanding only (the sealed contract's geometry; -002/-003 closed the geometry axis)"
+equivalence = "subsets sharing the same monthly choice vector are one outcome; evaluation is per unique choice vector through the contract's own apply_signal and performance_metrics"
+
+[evaluator]
+selection = "one select_monthly_candidate pass on the full 29-lambda union per market; per-subset choices reconstructed from its surface (per-candidate scores are set-independent), replicating eligibility, tie_tolerance 1e-12 and the lower-lambda tie rule; subsets producing a no-eligible decision after selection start are invalid"
+scoring = "compose the selected signal exactly as _compose_selected_signal (ffill from decision dates), then the real apply_signal (delay 1, 10bp) and the real performance_metrics (total_wealth basis, sealed metric protocol), windowed to the sealed run's OOS rows"
+parity_gate = "the evaluator must reproduce the -001 grids.csv eight-metric rows for all eight named grids in all three markets to 1e-9 before any search result is read"
+
+[decision]
+tolerance = 0.05
+winner_selection_allowed = false
+config_changes_allowed = false
+solutions_are = "calibration artifacts under the honesty label above"
+registered_interpretations = [
+  "US: solutions exist and overlap the -006 band -> the row is reachable and coherent with the authors' path; solutions exist only outside the band -> reachable only by overfit; no solutions -> the US row is unreachable under our pipeline and the -004 path-level closure extends to the table level",
+  "DE/JP: any nonempty solution set contradicts nothing in -004 (table cells can coincide without path agreement) but must be reported with the band cross-check; empty solution sets make the impossibility proof, closing the owner's question definitively",
+]
+
+[storage]
+artifact_subdir = "artifacts/jm-residual/07-exhaustive-search"
+required_outputs = ["parity-note.txt", "frontier.csv", "solutions.csv", "report.txt"]

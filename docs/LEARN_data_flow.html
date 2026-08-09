@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dòng chảy dữ liệu — adaptive_jump_model</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1117; --bg2:#161922; --bg3:#1f2330; --fg:#e7ecef; --fg-dim:#9aa5b1;
+  --accent:#7bdcb5; --cyan:#7bf0ff; --magenta:#ff8aff; --tool:#7bff7b;
+  --result:#ffd966; --red:#ff7b7b; --border:#2a3040; --shadow:0 4px 24px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 Inter,system-ui,sans-serif}
+code,pre{font-family:"JetBrains Mono",monospace;font-size:.86em}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:250px;background:var(--bg2);
+  border-right:1px solid var(--border);padding:22px 14px;overflow-y:auto}
+.sidebar h2{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-dim);margin:0 0 12px}
+#toc a{display:block;padding:7px 10px;border-radius:8px;color:var(--fg-dim);font-size:.88rem;margin-bottom:2px}
+#toc a:hover{background:var(--bg3);color:var(--fg);text-decoration:none}
+#toc a.active{background:var(--bg3);color:var(--accent);font-weight:600}
+.progress{position:fixed;top:0;left:0;right:0;height:3px;z-index:50;background:transparent}
+#pbar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--cyan))}
+main{margin-left:250px;padding:34px 44px 90px;max-width:980px}
+.hero{padding:36px 0 8px}
+.hero h1{font-size:2rem;font-weight:800;margin:0 0 8px}
+.hero p.tag{color:var(--fg-dim);font-size:1.05rem;margin:0 0 14px}
+.hero .meta{font-size:.82rem;color:var(--fg-dim);border-top:1px solid var(--border);padding-top:10px}
+.section{margin-top:52px;padding-top:12px}
+.chapter-tag{display:inline-flex;align-items:center;gap:8px;font-size:.75rem;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--fg-dim)}
+.diff{padding:2px 8px;border-radius:999px;font-weight:600;font-size:.68rem;letter-spacing:.06em}
+.d1{background:#12351f;color:var(--tool)} .d2{background:#33301a;color:var(--result)}
+.d3{background:#3a1f26;color:var(--red)} .d4{background:#33203a;color:var(--magenta)}
+.section h2{font-size:1.5rem;margin:8px 0 6px}
+.section h2 .n{color:var(--accent);margin-right:10px;font-family:"JetBrains Mono",monospace}
+p.lead{color:var(--fg-dim);font-size:1.02rem;margin-top:0}
+h3.steph{display:flex;align-items:center;gap:10px;font-size:1.05rem;margin:26px 0 8px}
+.stepnum{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;
+  border-radius:50%;background:var(--bg3);color:var(--accent);font:600 .8rem "JetBrains Mono",monospace;flex:none}
+.diagram{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;background:var(--bg2);
+  border:1px solid var(--border);border-radius:14px;padding:16px;margin:14px 0;box-shadow:var(--shadow)}
+.dcol{display:flex;flex-direction:column;gap:10px;flex:1;min-width:130px}
+.dbox{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:9px 12px;
+  font-size:.84rem;line-height:1.4;flex:1;min-width:120px;display:flex;flex-direction:column;justify-content:center}
+.dbox .s{display:block;color:var(--fg-dim);font-size:.74rem;margin-top:3px}
+.dbox.hl{border-color:var(--accent)} .dbox.act{border-color:var(--tool)}
+.dbox.obs{border-color:var(--result)} .dbox.bad{border-color:var(--red)}
+.darrow{align-self:center;color:var(--fg-dim);font-size:1.1rem;flex:none}
+.callout{border-left:3px solid var(--accent);background:var(--bg2);border-radius:0 10px 10px 0;
+  padding:10px 14px;margin:14px 0;font-size:.95rem}
+.callout .lbl{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--accent);font-weight:600;margin-bottom:3px}
+.callout.warn{border-color:var(--result)} .callout.warn .lbl{color:var(--result)}
+.callout.key{border-color:var(--magenta)} .callout.key .lbl{color:var(--magenta)}
+details.more{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin:14px 0}
+details.more summary{cursor:pointer;padding:10px 14px;font-weight:600;font-size:.92rem;color:var(--cyan)}
+details.more .inner{padding:2px 16px 12px;border-top:1px solid var(--border)}
+.recap{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--tool);
+  border-radius:0 10px 10px 0;padding:12px 16px;margin:22px 0 0;font-size:.93rem}
+.recap .lbl{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--tool);font-weight:600;margin-bottom:5px}
+.recap ul{margin:4px 0 8px;padding-left:20px}
+.recap .next{color:var(--fg-dim);margin:6px 0 0}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.87rem}
+th,td{border:1px solid var(--border);padding:6px 10px;text-align:left}
+th{background:var(--bg3);font-weight:600}
+td.num,th.num{text-align:right;font-family:"JetBrains Mono",monospace;font-size:.82rem}
+.ok{color:var(--tool)} .no{color:var(--red)} .dim{color:var(--fg-dim)}
+pre[class*=language-]{border-radius:10px;border:1px solid var(--border);margin:12px 0;font-size:.8rem}
+.reveal{animation:rise .5s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+footer{margin-top:70px;color:var(--fg-dim);font-size:.8rem;border-top:1px solid var(--border);padding-top:14px}
+@media (max-width:900px){.sidebar{display:none}main{margin-left:0;padding:20px}}
+</style>
+</head>
+<body>
+<div class="progress"><div id="pbar"></div></div>
+<nav class="sidebar"><h2>Mục lục</h2><div id="toc">
+<a href="#top">Mở đầu</a>
+<a href="#ch1">01 · Bức tranh lớn</a>
+<a href="#ch2">02 · Nguồn &amp; hợp đồng</a>
+<a href="#ch3">03 · Giá → đặc trưng</a>
+<a href="#ch4">04 · HMM mỗi ngày</a>
+<a href="#ch5">05 · Chọn k mỗi tháng</a>
+<a href="#ch6">06 · Giao dịch &amp; chấm điểm</a>
+<a href="#ch7">07 · Niêm phong &amp; tái lập</a>
+<a href="#ch8">08 · Kết quả &amp; review</a>
+<a href="#appendix">Phụ lục · Thuật ngữ</a>
+</div></nav>
+<main>
+
+<div class="hero" id="top">
+<h1>Dòng chảy dữ liệu của adaptive_jump_model</h1>
+<p class="tag">Từ sáu chuỗi giá công khai đến một run niêm phong tái lập được ở sai số 0.0 —
+mỗi bước đi qua đâu, ai canh gác, và hôm nay review lại thấy gì.</p>
+<div class="meta">Cập nhật 2026-07-30 · nhánh <code>cleanup/research-protocol</code> ·
+run niêm phong <code>v9.4 = 34e51cd7…</code> · 341 test pass · mọi snippet lấy từ mã nguồn hiện tại.
+Cách đọc: chương xếp từ dễ đến khó; khối <b>Đi sâu</b> gập lại được, bỏ qua vẫn hiểu mạch chính.</div>
+</div>
+
+<!-- ================= CH 1 ================= -->
+<section id="ch1" class="section reveal">
+<span class="chapter-tag">Chương 1 · Toàn cảnh <span class="diff d1">DỄ</span></span>
+<h2><span class="n">01</span>Bức tranh lớn: chín trạm, một chiều</h2>
+<p class="lead">Dữ liệu chỉ chảy một chiều, và ở mỗi trạm đều có một cổng kiểm tra
+từ chối đi tiếp khi có gì đó sai. Đây là toàn bộ đường ống.</p>
+
+<div class="diagram">
+  <div class="dcol">
+    <div class="dbox">6 nguồn công khai<span class="s">Yahoo · Stooq · FRED · JST · Shiller · Nikkei</span></div>
+  </div>
+  <div class="darrow">→</div>
+  <div class="dcol">
+    <div class="dbox act">acquire<span class="s">tải + cắt [1969-05-01, 2023-12-31] + hash</span></div>
+  </div>
+  <div class="darrow">→</div>
+  <div class="dcol">
+    <div class="dbox obs">data/raw + manifest<span class="s">bất biến, sha256 từng file</span></div>
+  </div>
+  <div class="darrow">→</div>
+  <div class="dcol">
+    <div class="dbox">prepare_market<span class="s">returns · cash as-of · features</span></div>
+  </div>
+</div>
+<div class="diagram">
+  <div class="dcol">
+    <div class="dbox hl">HMM hằng ngày<span class="s">cửa sổ trượt 3000 phiên, trạng thái ngày cuối</span></div>
+  </div>
+  <div class="darrow">→</div>
+  <div class="dcol">
+    <div class="dbox">bộ lọc k<span class="s">rolling mean &gt; 0.5 → gấu</span></div>
+  </div>
+  <div class="darrow">→</div>
+  <div class="dcol">
+    <div class="dbox hl">chọn k mỗi tháng<span class="s">Sharpe validation 8 năm</span></div>
+  </div>
+  <div class="darrow">→</div>
+  <div class="dcol">
+    <div class="dbox act">giao dịch t+2<span class="s">phí 10bp một chiều</span></div>
+  </div>
+  <div class="darrow">→</div>
+  <div class="dcol">
+    <div class="dbox obs">metrics + niêm phong<span class="s">verify replay = 0.0</span></div>
+  </div>
+</div>
+
+<div class="callout"><span class="lbl">Ý chính</span>
+Không trạm nào được "sửa giúp" dữ liệu: nguồn lộn xộn thì <em>fail to tiếng</em>
+chứ không được sort ngầm, hash lệch thì dừng, cây git bẩn thì không cho niêm phong.</div>
+
+<div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+<ul><li>Một chiều: nguồn → raw → frame → model → selection → backtest → artifact.</li>
+<li>Mỗi trạm có cổng riêng; lỗi dừng tại chỗ, không lan xuống hạ nguồn.</li></ul>
+<p class="next"><b>Tiếp theo →</b> trạm đầu tiên: sáu chuỗi đầu vào và bản hợp đồng đóng băng chúng.</p></div>
+</section>
+
+<!-- ================= CH 2 ================= -->
+<section id="ch2" class="section reveal">
+<span class="chapter-tag">Chương 2 · Đầu vào <span class="diff d1">DỄ</span></span>
+<h2><span class="n">02</span>Nguồn dữ liệu &amp; hợp đồng đóng băng</h2>
+<p class="lead">Mỗi thị trường cần hai chân: cổ phiếu tổng lợi suất và lãi suất phi rủi ro.
+File TOML hợp đồng ghim từng chân bằng sha256 — đổi một byte là cả pipeline từ chối chạy.</p>
+
+<table>
+<tr><th></th><th>Chân cổ phiếu</th><th>Chân tiền mặt</th></tr>
+<tr><td><b>Mỹ</b></td><td>^GSPC + cổ tức Shiller (1966–87) nối ^SP500TR chính thức (1988–)</td><td>FRED DTB3, tải sống khi acquire</td></tr>
+<tr><td><b>Đức</b></td><td>Stooq DAX + cổ tức JST trước 1988 (bản đã vá)</td><td>thang ghép interbank→Bund, file local</td></tr>
+<tr><td><b>Nhật</b></td><td>^N225 + cổ tức JST, neo 2011 chaining ngược</td><td>thang ghép BoJ→call rate, file local</td></tr>
+</table>
+
+<h3 class="steph"><span class="stepnum">1</span>Ba mã định danh khoá một run</h3>
+<div class="diagram">
+  <div class="dbox">config_sha256<span class="s">hash của chính file hợp đồng</span></div>
+  <div class="darrow">+</div>
+  <div class="dbox">data_manifest_sha256<span class="s">hash manifest acquire</span></div>
+  <div class="darrow">+</div>
+  <div class="dbox">git_sha<span class="s">commit của mã nguồn</span></div>
+  <div class="darrow">=</div>
+  <div class="dbox hl">tên run<span class="s">fixed-baselines-34e51cd7-967806b9-e690dbe3</span></div>
+</div>
+<p>Vì tên run <em>là</em> ba hash đó, câu "kết quả này chạy bằng code nào, dữ liệu nào"
+luôn có câu trả lời — và <code>data.py</code> từ chối acquire khi
+<code>src/ tests/ scripts/ research-*.toml</code> khác HEAD:</p>
+<pre><code class="language-python">tracked = subprocess.run(
+    ["git", "diff", "--quiet", "HEAD", "--", *scope], cwd=root, check=False
+)
+if tracked.returncode == 1:
+    raise AcquisitionError("result-affecting tracked files are dirty")</code></pre>
+
+<details class="more"><summary>Đi sâu: cổng làm sạch giá trị trong _canonical</summary>
+<div class="inner"><p>Mọi chuỗi tải về đi qua một phễu duy nhất: dấu chấm/NA/null của FRED thành
+missing thật, ký tự lạ nổ lỗi ngay, ngày trùng nổ lỗi, giá trị ngoài khoảng đóng băng nổ lỗi.
+Đáng chú ý là nó <b>không sort</b> — nguồn không tăng dần sẽ chết ở cổng sau
+(<code>_require_ordered_unique</code>) thay vì được âm thầm sửa.</p>
+<pre><code class="language-python">raw_values = pd.Series(values).replace({"": None, ".": None, "NA": None, "null": None})
+numeric = pd.to_numeric(raw_values, errors="coerce")
+invalid = raw_values.notna() &amp; numeric.isna()
+if invalid.any():
+    raise AcquisitionError(f"{source.source_id}: non-numeric value {token!r}")</code></pre></div>
+</details>
+
+<div class="callout warn"><span class="lbl">Bài học trả giá</span>
+Ba lỗi dữ liệu từng lọt qua đây đều <em>vô hình trong mẫu 1990–2023</em> và chỉ sai ở vùng training:
+CRSP thay S&amp;P 500 (lệch −20.47% vs −17.41% ngày 19/10/1987), DAX thiếu cổ tức trước 1988,
+và mối nối S&amp;P xoá mất phiên +3.59% ngày 04/01/1988. Cả ba đã vá, mỗi cái kèm test/gate chặn tái phát.</div>
+
+<div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+<ul><li>Sáu chân dữ liệu, mỗi chân ghim sha256 trong hợp đồng TOML.</li>
+<li>Tên run = 3 hash → truy vết trọn vẹn; cây bẩn thì không acquire được.</li></ul>
+<p class="next"><b>Tiếp theo →</b> biến giá thành thứ mô hình ăn được — mà không nhìn trộm tương lai.</p></div>
+</section>
+
+<!-- ================= CH 3 ================= -->
+<section id="ch3" class="section reveal">
+<span class="chapter-tag">Chương 3 · Đặc trưng <span class="diff d2">VỪA</span></span>
+<h2><span class="n">03</span>Giá → lợi suất → đặc trưng, tất cả đều nhân-quả</h2>
+<p class="lead">features.py trả lời một câu hỏi duy nhất: tại cuối ngày t, nhà đầu tư
+<em>thực sự biết gì</em>? Mọi phép tính đều bị ràng vào câu trả lời đó.</p>
+
+<h3 class="steph"><span class="stepnum">1</span>Lãi suất chỉ được dùng khi đã công bố</h3>
+<p>Lãi suất quan sát ngày nào không có nghĩa là biết ngày đó. Mỗi nguồn khai độ trễ công bố,
+và phép nối là <code>merge_asof backward</code> theo <b>ngày khả dụng</b>, kèm trần độ cũ:</p>
+<div class="diagram">
+  <div class="dbox">quan sát<span class="s">cash_observation_date</span></div>
+  <div class="darrow">+ lag</div>
+  <div class="dbox act">khả dụng<span class="s">cash_available_date</span></div>
+  <div class="darrow">merge_asof ←</div>
+  <div class="dbox hl">ngày giao dịch t<span class="s">lấy bản ghi khả dụng gần nhất</span></div>
+  <div class="darrow">→</div>
+  <div class="dbox bad">quá hạn?<span class="s">cash_age &gt; max_staleness → NaN</span></div>
+</div>
+
+<h3 class="steph"><span class="stepnum">2</span>Ba đặc trưng của paper, rồi chuẩn hoá expanding</h3>
+<pre><code class="language-python">negative_squared = excess.clip(upper=0).pow(2)          # âm giữ, dương về 0 — không vứt
+features[f"dd_{hl}"] = np.sqrt(negative_squared.ewm(halflife=hl, ...).mean())
+features[f"sortino_{hl}"] = mean.div(denominator.where(denominator &gt; 0))  # chặn chia 0
+
+# chuẩn hoá: ngày t chỉ dùng lịch sử đến hết chính ngày t
+mean = features.expanding(min_periods=min_observations).mean()
+std  = features.expanding(min_periods=min_observations).std(ddof=1)</code></pre>
+<p>Kết quả là frame 13 cột / thị trường. <b>Lưu ý phạm vi:</b> HMM chỉ ăn
+<code>equity_log</code> một chiều — ba đặc trưng và bộ chuẩn hoá này phục vụ Jump Model,
+không tham gia vào các con số HMM.</p>
+
+<details class="more"><summary>Đi sâu: OOS bắt đầu từ đâu, và vì sao là 1990</summary>
+<div class="inner"><p>Quy tắc trong <code>effective_oos_start</code>: lấy ngày thứ 3000 có đủ đặc trưng
+(hết cửa sổ fit đầu tiên), cộng 8 năm validation, rồi max với mốc 1990-01-01 mà paper yêu cầu.
+Dữ liệu bắt đầu 1969-05 → fit đủ khoảng 1981 → +8 năm ≈ 1989 → mốc 1990 thắng. Đúng câu
+của paper: "Since our data begin in 1970, with training windows spanning 12 years and
+validation windows 8 years, the out-of-sample testing period begins in 1990."</p></div>
+</details>
+
+<div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+<ul><li>Cash nối theo ngày <em>khả dụng</em> chứ không phải ngày quan sát, có trần độ cũ.</li>
+<li>Chuẩn hoá expanding không nhìn tương lai; HMM không dùng đặc trưng — chỉ dùng equity_log.</li></ul>
+<p class="next"><b>Tiếp theo →</b> trái tim của baseline: mỗi ngày khớp lại HMM một lần.</p></div>
+</section>
+
+<!-- ================= CH 4 ================= -->
+<section id="ch4" class="section reveal">
+<span class="chapter-tag">Chương 4 · Mô hình <span class="diff d2">VỪA</span></span>
+<h2><span class="n">04</span>HMM: mỗi ngày một lần khớp, chỉ giữ trạng thái ngày cuối</h2>
+<p class="lead">Không có "một mô hình" — có ~10.700 mô hình, mỗi phiên giao dịch một cái,
+khớp trên đúng 3000 lợi suất gần nhất, và chỉ trạng thái của <em>ngày cuối cửa sổ</em> được giữ lại.</p>
+
+<div class="diagram">
+  <div class="dbox">cửa sổ [t−2999, t]<span class="s">3000 giá trị equity_log</span></div>
+  <div class="darrow">→</div>
+  <div class="dbox act">10 seed<span class="s">KMeans init → GaussianHMM fit</span></div>
+  <div class="darrow">→</div>
+  <div class="dbox bad">cổng hội tụ chặt<span class="s">|Δloglik| &lt; tol, không thì loại seed</span></div>
+  <div class="darrow">→</div>
+  <div class="dbox">chọn loglik cao nhất<span class="s">nhãn theo phương sai: thấp=0, cao=1</span></div>
+  <div class="darrow">→</div>
+  <div class="dbox hl">state(t)<span class="s">Viterbi, phần tử cuối</span></div>
+</div>
+
+<h3 class="steph"><span class="stepnum">1</span>Bộ lọc của Bulla, đúng như paper viết</h3>
+<pre><code class="language-python">mean = values.rolling(window=k, min_periods=required).mean()
+candidates[k] = (mean &gt; threshold).astype(float).where(mean.notna())  # threshold = 0.5, CHẶT</code></pre>
+<p>Paper: <em>"only signal a high volatility regime when the rolling mean <b>exceeds</b> 0.5"</em>.
+Deep-research 29/07 xác nhận thêm từ chính Bulla (2011): filter gốc là floor(median) trên nhãn rời rạc,
+hoà 3-3 nghiêng về trạng thái <em>đầu tư</em> — dấu <code>&gt;</code> chặt của ta cho đúng chiều đó.</p>
+
+<div class="callout key"><span class="lbl">Bất biến</span>
+Trạng thái tại ngày t chỉ phụ thuộc 3000 quan sát kết thúc tại t. Thêm dữ liệu tương lai
+không đổi được trạng thái đã phát — có test riêng ghim tính prefix-invariant này.</div>
+
+<details class="more"><summary>Đi sâu: vì sao phải có cổng hội tụ chặt</summary>
+<div class="inner"><p>Monitor mặc định của hmmlearn chấp nhận cả bước loglik <em>giảm</em> —
+audit tháng 7 (bề mặt 2.18/2.19) bắt được điều này. <code>_SymmetricConvergenceMonitor</code>
+thay thế nó và <code>_require_strict_hmm_convergence</code> đòi |Δ| &lt; tol thật sự; seed
+không đạt bị loại và ghi vào <code>failed_starts</code> trong hmm-fits.csv thay vì được lờ đi.
+Phương sai hai trạng thái bằng nhau cũng bị loại — nhãn "thấp/cao" phải xác định được.</p></div>
+</details>
+
+<div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+<ul><li>Khớp lại hằng ngày trên cửa sổ trượt 3000; chỉ giữ trạng thái ngày cuối.</li>
+<li>Lọc k: rolling mean với ngưỡng &gt; 0.5 chặt — khớp cả Shu lẫn Bulla gốc.</li></ul>
+<p class="next"><b>Tiếp theo →</b> tầng gây nhiều rắc rối nhất: mỗi tháng chọn lại k.</p></div>
+</section>
+
+<!-- ================= CH 5 ================= -->
+<section id="ch5" class="section reveal">
+<span class="chapter-tag">Chương 5 · Selection <span class="diff d3">KHÓ</span></span>
+<h2><span class="n">05</span>Mỗi tháng chọn lại k bằng Sharpe validation 8 năm</h2>
+<p class="lead">Cuối tháng, đứng tại ngày giao dịch cuối cùng D: với từng ứng viên k,
+mô phỏng chiến lược trên 8 năm vừa qua — cùng delay, cùng phí như giao dịch thật —
+rồi lấy k có Sharpe cao nhất dùng cho tháng sau.</p>
+
+<div class="diagram">
+  <div class="dbox">cửa sổ validation<span class="s">(D − 8 năm, D] — hở trái, đóng phải</span></div>
+  <div class="darrow">→</div>
+  <div class="dbox act">mỗi ứng viên k<span class="s">apply_signal cùng delay + 10bp</span></div>
+  <div class="darrow">→</div>
+  <div class="dbox">Sharpe vượt trội<span class="s">≥ 252 lợi suất hợp lệ mới được dự thi</span></div>
+  <div class="darrow">→</div>
+  <div class="dbox hl">argmax<span class="s">hoà trong 1e-12 → k nhỏ hơn</span></div>
+  <div class="darrow">→</div>
+  <div class="dbox obs">k̂ áp từ D<span class="s">vào lệnh từ D+2 (shift delay+1)</span></div>
+</div>
+
+<pre><code class="language-python">candidate_returns[candidate] = apply_signal(
+    prepared, risky_signal, delay_trading_days=delay_trading_days,
+    one_way_cost_bps=one_way_cost_bps, ...)["strategy_return"]
+# validation dùng ĐÚNG con đường giao dịch thật — paper: "the validation period
+# [is aligned] with the out-of-sample testing period by assuming the same delay"</code></pre>
+
+<div class="callout warn"><span class="lbl">Đây là knob mở duy nhất còn quan trọng</span>
+Paper không công bố bộ ứng viên k (deep-research 29/07 rà cạn nguồn sơ cấp: gói PyPI, repo GitHub,
+mọi phiên bản arXiv — không đâu có). Đã chứng minh trên run niêm phong: <b>không bộ nào khớp
+turnover quá 1/3 thị trường</b> — Mỹ đòi lưới dài, Đức đòi lưới ngắn. Chi tiết ở chương 8.</div>
+
+<details class="more"><summary>Đi sâu: boundary_diagnostic — mô tả, không phải cổng của paper</summary>
+<div class="inner"><p>Pipeline đếm số tháng OOS chọn đúng ứng viên đỉnh lưới; quá 5% thì run
+tự ghi <code>boundary_failed</code> và không mở OOS metrics. Ngưỡng 5% là <b>của dự án tự đặt</b>
+(commit 71a46d6) — paper không có cổng nào như vậy, và đã chứng minh nó thoả được bằng cách
+độn ứng viên không ai chọn. Từ 29/07 nó được đọc là <em>mô tả</em> mức kết tụ đỉnh lưới
+(Mỹ 22.1%, Đức 5.4%, Nhật 39.5%) chứ không phải tiêu chí replication.</p></div>
+</details>
+
+<div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+<ul><li>Validation mô phỏng đúng điều kiện giao dịch thật (delay + phí), đúng nguyên văn paper.</li>
+<li>Bộ ứng viên k là lựa chọn của ta — paper im lặng, và đó là gốc của ô turnover.</li></ul>
+<p class="next"><b>Tiếp theo →</b> tín hiệu thành tiền: t+2, 10bp, và hai cách đọc drawdown.</p></div>
+</section>
+
+<!-- ================= CH 6 ================= -->
+<section id="ch6" class="section reveal">
+<span class="chapter-tag">Chương 6 · Backtest <span class="diff d2">VỪA</span></span>
+<h2><span class="n">06</span>Giao dịch t+2 và tám con số của Table 4</h2>
+<p class="lead">backtest.py là nơi mọi quy ước tiền bạc sống: tín hiệu cuối ngày t
+chỉ được ăn lợi suất từ ngày t+2, mỗi lần đổi vị thế trả 10bp.</p>
+
+<pre><code class="language-python">result["position"] = signal_values.shift(delay_trading_days + 1)   # t+2 với delay 1
+result["gross_return"] = (position * equity_simple + (1 - position) * cash_return)
+turnover = (position - position.ffill().shift(1)).abs()            # 10bp × mỗi bước đổi</code></pre>
+
+<h3 class="steph"><span class="stepnum">1</span>Một cột số, hai đường tài sản</h3>
+<div class="diagram">
+  <div class="dcol">
+    <div class="dbox hl">total_wealth<span class="s">cumprod(1 + strategy_return) — mặc định trung thực, hợp đồng v9.4 khai</span></div>
+    <div class="dbox">flat_in_cash<span class="s">chân cash = 0 — từng bị chọn vì khớp Table 4, đã rút 29/07</span></div>
+  </div>
+  <div class="darrow">→</div>
+  <div class="dcol">
+    <div class="dbox obs">MDD + Calmar<span class="s">hai chỉ số duy nhất phụ thuộc lựa chọn này</span></div>
+    <div class="dbox act">6 chỉ số còn lại<span class="s">bất biến giữa hai quy ước</span></div>
+  </div>
+</div>
+<p>Phán quyết mọi ô của cả ba thị trường <b>giống nhau dưới cả hai quy ước</b> ở ngưỡng 0.05 —
+nên việc rút quy ước đã fit không tốn một ô nào. Đó là lý do duy nhất việc rút được làm không do dự.</p>
+
+<div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+<ul><li>signal(t) → position(t+2); turnover năm hoá = 0.5 × Σ|Δpos| × 252, đúng hệ thức paper mô tả.</li>
+<li>Chỉ MDD/Calmar phụ thuộc quy ước drawdown, và phán quyết không đổi giữa hai quy ước.</li></ul>
+<p class="next"><b>Tiếp theo →</b> làm sao biết chắc một run cũ vẫn nói thật: niêm phong và replay.</p></div>
+</section>
+
+<!-- ================= CH 7 ================= -->
+<section id="ch7" class="section reveal">
+<span class="chapter-tag">Chương 7 · Tái lập <span class="diff d3">KHÓ</span></span>
+<h2><span class="n">07</span>Niêm phong, checkpoint, và replay ở sai số 0.0</h2>
+<p class="lead">Một kết quả chỉ đáng tin nếu người khác — hoặc chính mình sáu tháng sau —
+chạy lại ra đúng từng chữ số. Ba cơ chế bảo đảm điều đó.</p>
+
+<h3 class="steph"><span class="stepnum">1</span>Checkpoint phải là prefix nhân-quả</h3>
+<p>Run dài hàng giờ nên được phép ngắt giữa chừng — nhưng bản resume bị kiểm rất gắt:
+ngày khớp phải liên tục từ đầu, trạng thái ngoài prefix phải rỗng, lệch một ngày là từ chối:</p>
+<pre><code class="language-python">if not fit_dates.equals(expected) or initial.states.loc[fit_dates].isna().any():
+    raise ModelError("HMM checkpoint is not a contiguous causal prefix")
+if initial.states.drop(fit_dates).notna().any():
+    raise ModelError("HMM checkpoint contains states outside its prefix")</code></pre>
+
+<h3 class="steph"><span class="stepnum">2</span>verify = tính lại từ artifact, không tin run.json</h3>
+<div class="diagram">
+  <div class="dbox">inventory.json<span class="s">rehash 97 file</span></div>
+  <div class="darrow">→</div>
+  <div class="dbox">config.lock<span class="s">so identity 3 hash</span></div>
+  <div class="darrow">→</div>
+  <div class="dbox act">tính lại metrics<span class="s">từ states + signal đã lưu</span></div>
+  <div class="darrow">→</div>
+  <div class="dbox hl">max |lệch| = 0.0<span class="s">cả v9.3 lẫn v9.4</span></div>
+</div>
+
+<h3 class="steph"><span class="stepnum">3</span>Phép thử mạnh nhất: hai run độc lập chỉ được khác đúng chỗ khai</h3>
+<p>v9.3 và v9.4 khác nhau <em>một dòng hợp đồng</em> (quy ước drawdown). Hai lần acquire riêng,
+hai lần chạy trọn ~1h20 mỗi lần:</p>
+<table>
+<tr><th>chỉ số</th><th class="num">max |v9.4 − v9.3|</th></tr>
+<tr><td>Return · Volatility · Sharpe · ES · Turnover · Leverage</td><td class="num ok">0.00e+00</td></tr>
+<tr><td>MDD · Calmar (đúng nội dung thay đổi)</td><td class="num">6.2e-02 · 5.3e-02</td></tr>
+</table>
+<div class="callout"><span class="lbl">Ý chính</span>
+Sáu chỉ số trùng từng bit qua hai lần chạy đầy đủ độc lập — nếu sửa hợp đồng lỡ đụng thứ khác,
+bảng này là nơi nó lộ mặt.</div>
+
+<div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+<ul><li>Resume chỉ nhận prefix nhân-quả nguyên vẹn; verify tính lại chứ không đọc lại.</li>
+<li>Hai sealed run độc lập đồng ý 0.00e+00 ở mọi chỗ phải đồng ý.</li></ul>
+<p class="next"><b>Tiếp theo →</b> cao trào: bảng kết quả, ô còn lệch, và review hôm nay thấy gì.</p></div>
+</section>
+
+<!-- ================= CH 8 ================= -->
+<section id="ch8" class="section reveal">
+<span class="chapter-tag">Chương 8 · Hiện trạng <span class="diff d4">KHÓ · CAO TRÀO</span></span>
+<h2><span class="n">08</span>Kết quả, ô turnover, và review code 30/07</h2>
+<p class="lead">Sau khi vá ba lỗi dữ liệu và rút một quy ước đã fit: 7/8 ô khớp
+ở cả ba thị trường tại delay 1, trên run niêm phong replay được. Còn đúng một ô.</p>
+
+<h3 class="steph"><span class="stepnum">1</span>HMM vs Table 4 (sealed v9.4, delay 1, total_wealth)</h3>
+<table>
+<tr><th>chỉ số</th><th class="num">S&amp;P 500</th><th class="num">Shu</th><th class="num">DAX</th><th class="num">Shu</th><th class="num">Nikkei</th><th class="num">Shu</th></tr>
+<tr><td>Return</td><td class="num">8.20%</td><td class="num dim">8.5%</td><td class="num">6.78%</td><td class="num dim">6.4%</td><td class="num">2.24%</td><td class="num dim">2.5%</td></tr>
+<tr><td>Volatility</td><td class="num">11.24%</td><td class="num dim">11.3%</td><td class="num">14.00%</td><td class="num dim">14.0%</td><td class="num">15.98%</td><td class="num dim">16.0%</td></tr>
+<tr><td>Sharpe</td><td class="num">0.526</td><td class="num dim">0.54</td><td class="num">0.367</td><td class="num dim">0.35</td><td class="num">0.177</td><td class="num dim">0.19</td></tr>
+<tr><td>MDD</td><td class="num">−25.2%</td><td class="num dim">−28.9%</td><td class="num">−40.2%</td><td class="num dim">−40.5%</td><td class="num">−51.7%</td><td class="num dim">−48.6%</td></tr>
+<tr><td>Calmar</td><td class="num">0.234</td><td class="num dim">0.21</td><td class="num">0.128</td><td class="num dim">0.12</td><td class="num">0.055</td><td class="num dim">0.06</td></tr>
+<tr><td>ES 5%</td><td class="num">−1.79%</td><td class="num dim">−1.8%</td><td class="num">−2.20%</td><td class="num dim">−2.2%</td><td class="num">−2.51%</td><td class="num dim">−2.5%</td></tr>
+<tr><td><b>Turnover</b></td><td class="num no">1.79</td><td class="num dim">1.41</td><td class="num no">2.26</td><td class="num dim">2.46</td><td class="num no">3.14</td><td class="num dim">2.90</td></tr>
+<tr><td>Leverage</td><td class="num">72.0%</td><td class="num dim">72%</td><td class="num">73.0%</td><td class="num dim">73%</td><td class="num">68.0%</td><td class="num dim">68%</td></tr>
+<tr><td><b>trong ngưỡng</b></td><td class="num ok" colspan="2">7/8</td><td class="num ok" colspan="2">7/8</td><td class="num ok" colspan="2">7/8</td></tr>
+</table>
+
+<h3 class="steph"><span class="stepnum">2</span>Vì sao ô turnover đóng không được — bằng phép thử, không phải phỏng đoán</h3>
+<div class="diagram">
+  <div class="dcol">
+    <div class="dbox bad">Nới lưới đến khi cổng qua<span class="s">§13 — làm khớp XẤU đi (DE 7/8→4/8), tự bác</span></div>
+    <div class="dbox bad">Cổng 5% chặn kết quả<span class="s">§14 — cổng của ta tự đặt, thoả được bằng cách độn</span></div>
+  </div>
+  <div class="dcol">
+    <div class="dbox hl">Ràng buộc mâu thuẫn<span class="s">§15 — Mỹ chỉ khớp với lưới dài 4|8|12|16|20, Đức chỉ với 2|4; một bộ chung không thoả cả hai</span></div>
+    <div class="dbox act">Cơ chế cụ thể<span class="s">tháng chọn k=0 chiếm 9.5% số ngày nhưng 23% turnover; 10 đợt gấu chớp nhoáng ≤5 phiên</span></div>
+  </div>
+</div>
+<p>Trong khi đó, chạy <em>đường vị thế do chính Shu công bố</em> (Figure 6) trên lợi suất của ta
+tái lập turnover của họ tới <b>0.002</b> — số học đúng, khác biệt nằm ở chuỗi trạng thái,
+và phần dư chỉ về phía dữ liệu (vintage Bloomberg; chuỗi Nhật trước 1980 không tồn tại công khai,
+kể cả cho chính tác giả — NKYTR chỉ backcast tới 28/12/1979).</p>
+
+<h3 class="steph"><span class="stepnum">3</span>Review code 30/07 — kết quả</h3>
+<table>
+<tr><th>hạng mục</th><th>kết quả</th></tr>
+<tr><td>Import treo tới 8.900 dòng đã xoá</td><td class="ok">không còn — verify dispatch import lười đúng module sống, study kind lạ fail to tiếng</td></tr>
+<tr><td>features.py (căn chỉnh nhân-quả, chuẩn hoá)</td><td class="ok">sạch; merge_asof theo ngày khả dụng + trần staleness</td></tr>
+<tr><td>models.py (HMM, hội tụ, bộ lọc)</td><td class="ok">sạch; cổng hội tụ chặt, tie phương sai bị loại</td></tr>
+<tr><td>walkforward.py (selection, resume, boundary)</td><td class="ok">sạch; validation cùng delay+phí như giao dịch thật</td></tr>
+<tr><td>backtest.py / data.py</td><td class="ok">sạch; _canonical fail-loud, không sort ngầm</td></tr>
+<tr><td>Điểm mềm <em>đã biết, đã tài liệu hoá</em></td><td class="dim">min_periods=1 trong smoother (không chạm mẫu chấm); quyết định cuối-tháng-trước vs "beginning of month" (tương đương, có ghi); cửa sổ validation đóng-phải (nhân-quả, có ghi)</td></tr>
+</table>
+
+<div class="callout key"><span class="lbl">Trạng thái cuối</span>
+Mọi thứ sửa được đã sửa và có run niêm phong đóng dấu. Ô turnover còn lại có cơ chế đo được,
+chứng minh không-đóng-được-bằng-tham-số, echo độc lập bên ngoài (Li et al. 2025 cũng kẹt đỉnh lưới
+trên cả 12 tài sản), và phần dư thuộc về dữ liệu không công khai. Việc còn lại là câu chữ báo cáo.</div>
+
+<div class="recap"><span class="lbl">✓ Đã hiểu tới đây</span>
+<ul><li>7/8 × 3 thị trường trên sealed run; turnover là ô mở duy nhất, đã hiểu tận cơ chế.</li>
+<li>Review 30/07: lõi sạch sau đợt dọn; điểm mềm đều là lựa chọn đã tài liệu hoá, không phải bug.</li></ul>
+<p class="next"><b>Hết —</b> phụ lục bên dưới nếu cần tra thuật ngữ.</p></div>
+</section>
+
+<!-- ================= APPENDIX ================= -->
+<section id="appendix" class="section reveal">
+<span class="chapter-tag">Phụ lục <span class="diff d1">TRA CỨU</span></span>
+<h2><span class="n">A</span>Thuật ngữ</h2>
+<table>
+<tr><th>thuật ngữ</th><th>nghĩa trong dự án này</th></tr>
+<tr><td>sealed run</td><td>run có manifest + config.lock + inventory, tên = 3 hash, verify tính lại được ở sai số 0.0</td></tr>
+<tr><td>terminal state</td><td>trạng thái Viterbi của ngày cuối cửa sổ fit — thứ duy nhất được giữ mỗi ngày</td></tr>
+<tr><td>k (smoothing window)</td><td>độ dài cửa sổ rolling-mean lọc chuỗi trạng thái; gấu khi mean &gt; 0.5</td></tr>
+<tr><td>delay t+2</td><td>tín hiệu chốt cuối ngày t → vị thế ăn lợi suất ngày t+2 (shift delay+1)</td></tr>
+<tr><td>turnover</td><td>0.5 × mean(|Δposition|) × 252 — "44% nghĩa là tổng giao dịch hai chiều 88%/năm"</td></tr>
+<tr><td>boundary fraction</td><td>tỉ lệ tháng OOS chọn ứng viên đỉnh lưới — từ 29/07 chỉ mang tính mô tả</td></tr>
+<tr><td>knob mở</td><td>tham số paper không công bố mà ta phải tự đặt — sổ docs/unspecified-choices.md</td></tr>
+</table>
+<p class="dim">Nguồn đối chiếu chính: sổ phán quyết <code>docs/audit/2026-07-29-codex-review-verdicts.md</code>,
+tự kiểm <code>docs/audit/2026-07-30-self-audit.md</code>, sổ knob <code>docs/unspecified-choices.md</code>.</p>
+</section>
+
+<footer>Dựng theo format teach-html của dự án · mọi snippet đối chiếu mã nguồn tại commit hiện hành ·
+số liệu lấy từ artifacts của sealed run v9.3/v9.4 · 2026-07-30</footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<script>
+(function () {
+  var sections = Array.prototype.slice.call(document.querySelectorAll('main .section'));
+  var links = {};
+  document.querySelectorAll('#toc a').forEach(function (a) {
+    links[a.getAttribute('href').slice(1)] = a;
+  });
+  var activeObs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      var a = links[e.target.id];
+      if (!a) return;
+      if (e.isIntersecting) {
+        Object.keys(links).forEach(function (k) { links[k].classList.remove('active'); });
+        a.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-45% 0px -50% 0px' });
+  sections.forEach(function (s) { activeObs.observe(s); });
+  var bar = document.getElementById('pbar');
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  document.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>

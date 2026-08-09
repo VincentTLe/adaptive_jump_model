@@ -1,0 +1,14 @@
+{
+  "what": "HMM arm only, Germany only, v9.3 config; NOT a sealed run",
+  "config": "research-expanding-v9-3.toml",
+  "config_sha256": "9aec0f58a8bf84c0c5ca4a177a3e03a1be2dd5b4c5d1cf1a863c8876addce8e9",
+  "guard": "reproduces the stored v9.2 German metric column, on the flat-in-cash drawdown basis v9.2 declared",
+  "guard_max_drift": 6.938893903907228e-17,
+  "scoring_window": [
+    "1990-01-02",
+    "2023-12-29"
+  ],
+  "delay_trading_days": 1,
+  "one_way_cost_bps": 10.0,
+  "written_utc": "2026-07-29T07:29:37+00:00"
+}

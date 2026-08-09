@@ -1,0 +1,60 @@
+schema_version = 1
+experiment_id = "cjm-interior-census-001"
+parent_id = "baseline-reseal-v10"
+claim_class = "EXPLORATORY"
+status = "FROZEN_BEFORE_RESULTS"
+frozen_at_utc = "2026-08-01T01:03:01Z"
+
+[question]
+text = "On our sealed walk-forward calendar, how often does the CONTINUOUS jump model place its state weight strictly inside the simplex rather than at a corner, and is that interior mass transition-local?"
+why_it_gates = """
+The continuous jump model (CJM) is the published successor of the discrete
+model: the state becomes a point on the simplex and the penalty becomes a
+squared total variation. Two candidate extensions rest on the SAME premise -
+that the discrete argmax throws away usable ranking information, so a
+fractional exposure read off the simplex weight would carry signal the 0/1
+signal cannot. That premise is testable WITHOUT a backtest: if the fitted
+weight sits at a corner on almost every day, there is no ranking to throw
+away, and both candidates close before any code touches the trading path.
+Reading this first is worth 10 core-minutes because the alternative is a
+public-API change: fractional exposure would require relaxing the 0/1
+position invariant asserted in apply_signal, performance_metrics and seven
+further isin([0.0, 1.0]) checks across the codebase.
+"""
+
+[hypothesis]
+h1 = "Interior mass is transition-local: it scales with the discrete model's switch count at roughly 2 to 5 days per switch, and does not exceed 6 percent of online days at any sealed lambda in any market."
+mechanism = "The CJM objective is LINEAR in the state weight vector, so an interior simplex point is never preferred on its own merits; it can only be used as a stepping stone that buys down the squared-variation penalty between two corners. If that account is right, interior days cluster around transitions and are rare elsewhere."
+falsifier = "Interior days far in excess of 5 per switch, or interior runs longer than 10 consecutive days, refute the stepping-stone account and reopen the information-extraction reading."
+
+[method]
+model = "jumpmodels.JumpModel(n_components=2, cont=True, grid_size=0.01, mode_loss=True, n_init=10, random_state=0, max_iter=1000, tol=1e-8)"
+grid_size_provenance = "SOURCE_FIXED: the K=2 simplex grid used in the author's own continuous-model work; 101 grid points. Not searched."
+calendar = "the sealed v10 refit calendar and fit windows, unchanged: trailing 3000 complete observations, refits in January and July"
+features = "the sealed v10 per-market features.csv, byte-identical inputs; no reconstruction"
+penalties = "each market's own sealed calibrated lambda grid, unchanged"
+online = "predict_proba_online on the trailing window governed by each refit, taking the terminal row, exactly as the discrete path takes its terminal state"
+interior_threshold = 0.99
+
+[estimand]
+primary = "f_interior = share of online decision days whose maximum state weight is strictly below 0.99, per market and per lambda"
+secondary = "f_interior * T / switch_count, the interior days per discrete switch"
+tertiary = "longest run of consecutive interior days"
+comparison = "the sealed discrete-JM state path on identical windows (fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736)"
+
+[decision_rule]
+declared_before_running = true
+close = "if the median f_interior is below 0.02 across the sealed lambdas in ALL three markets, the fractional-exposure candidate and the CJM-decoder candidate are CLOSED without a backtest, on the ground that the object they would exploit is absent from our data"
+unblock = "if f_interior is at or above 0.05 in ANY market at a lambda the monthly cross-validation actually selects, the fractional-exposure candidate unblocks and must then be frozen separately, with the public-API change requested from the owner before implementation"
+neither = "any intermediate outcome is reported as measured, with no candidate closed and none unblocked"
+
+[claim_restriction]
+text = "Descriptive census. No pass/fail on returns, no strategy is run, no position is formed. The paper asserts at [line 490] that the discrete and continuous models show no significant difference in strategy performance for 0/1 weighting; this census does not test that assertion, it measures the object the assertion is about."
+
+[verification]
+required = [
+  "the discrete states recomputed alongside the CJM on the same windows must equal the sealed jm-states.csv exactly, or the run stops",
+  "every fit and every online window uses past-only observations",
+  "interior counts come from the weight vectors, never inferred from the discrete path",
+  "no date later than 2023-12-31",
+]

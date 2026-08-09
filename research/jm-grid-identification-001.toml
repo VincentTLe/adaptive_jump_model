@@ -1,0 +1,81 @@
+schema_version = 1
+experiment_id = "jm-grid-identification-001"
+frozen_at_utc = "2026-07-30T23:05:23Z"
+claim_class = "EXPLORATORY"
+analysis_label = "JM LAMBDA-GRID IDENTIFICATION AND PUBLISHED-ANCHOR CHECK"
+hypothesis = "No single pre-named lambda candidate grid places the sealed-v9.4 JM Table-4 row inside the 0.05 tolerance in all three markets at delay 1; and the per-lambda fixed online path reproduces the paper's published Table-3 persistence curve within its printed precision."
+primary_estimand = "per_grid_per_market_table4_deviations_and_per_lambda_shift_curve"
+extension_access = false
+adaptive_experiment = false
+model_refitting = true
+
+# Prior art and changed premises. The v7-era audit
+# (fixed-baseline-assumption-audit-001, frozen 2026-07-17) measured JM grid
+# SENSITIVITY on the v7 proxy data and found the local conclusion
+# grid-dependent. Premises changed since: the US index substitution (v9), the
+# S&P splice repair (v9.3), the drawdown basis (v9.4), the sealed 7/8 HMM
+# closure, and three source sweeps (2026-07-29/30) establishing that no author
+# artifact publishes the lambda grid while two third parties published their
+# own. This study asks the HMM-Section-15 question of the JM: IDENTIFICATION
+# against Table 4, not sensitivity of a local gate.
+prior_art = "fixed-baseline-assumption-audit-001"
+premise_changes = ["sealed v9.4 data and contract", "Table-4 identification framing", "published wild grids from 2026-07-30 sweeps", "author-source exhaustion documented in docs/audit/2026-07-30-jm-deep-research.md"]
+
+[source]
+paper = "Shu, Yu, and Mulvey (2024), arXiv:2402.05272v3"
+table3_lambdas = [0.0, 5.0, 15.0, 35.0, 70.0, 150.0]
+table3_shifts_per_year = [9.7, 2.7, 1.7, 0.8, 0.5, 0.4]
+table3_window = "1982 to 2023, US, fixed hyperparameters, online inferred sequence"
+slide_anchor_us_jm = { shifts = 30, bear_share = 0.197, window = "US test period, authors' Wolfe 2024-10-23 deck, sha256 archived in docs/data-provenance.md" }
+grid_disclosed_anywhere = false
+
+[parent]
+experiment_id = "fixed-baselines-v9-4"
+config_path = "research-expanding-v9-4.toml"
+config_sha256 = "34e51cd7a3880ea47067c346b1fc4c6a9c88cff8cac7b67a63d18d0ccea820ad"
+run_id = "fixed-baselines-34e51cd7a388-967806b961b4-e690dbe396f3"
+data_manifest_sha256 = "967806b961b40f3342224cd7f70f604bf849a9248d0231b03d3afa55c192fa04"
+artifact_git_sha = "e690dbe396f395af2f56785f6fe5db028d222d8e"
+inputs = "the sealed run's per-market features.csv only; no re-acquisition"
+
+# Candidate grids, all named BEFORE any new lambda is fitted, each with the
+# source that existed before this spec. The two companion instantiations are
+# OUR construction (the companion paper states only endpoints 0-100
+# log-spaced with count unstated); the formula is recorded so the choice is
+# reproducible, and no instantiation may be promoted to "the paper's grid".
+[grids]
+table3_sealed = [0.0, 5.0, 15.0, 35.0, 70.0, 150.0]
+v1_author_withdrawn = [10.0, 22.0, 50.0, 100.0, 220.0, 500.0, 1000.0]
+li2025_citing = [0.0, 5.0, 10.0, 25.0, 50.0, 100.0]
+bocconi_wild = [0.0, 5.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 80.0, 100.0, 150.0]
+hackmd_wild = [0.0, 0.1, 1.0, 10.0, 100.0]
+companion_log5 = "0 prepended to numpy.logspace(0, 2, 4)"
+companion_log9 = "0 prepended to numpy.logspace(0, 2, 8)"
+typical_range = [50.0, 70.0, 100.0]
+typical_range_source = "paper text: at a typical value between 50.0 to 100.0 (line 638)"
+union_rule = "sorted union of every value above; one fixed_jm_states pass per market on the union grid; per-grid selection replays on column subsets"
+expand_after_results = false
+
+[controls]
+parity_gate = "the union run's state columns at the six sealed lambdas must equal the sealed jm-states.csv exactly (NaN masks and filled values); on any difference stop and diagnose before reading anything else"
+selection_machinery = "select_monthly_candidate plus apply_signal from the sealed contract's own modules, delay 1, 10bp, tie to lower lambda"
+table4_scoring = "all eight metrics, total_wealth drawdown basis, per-market OOS window from the sealed run's metrics rows"
+
+[decision]
+tolerance = 0.05
+identified_in_market = "a grid places all eight JM Table-4 cells of that market inside tolerance"
+turnover_identified_in_market = "a grid places the turnover cell inside tolerance"
+registered_interpretations = [
+  "if no grid works in all three markets, the JM row is UNIDENTIFIED exactly like the HMM row in verdicts Section 15",
+  "if the Table-3 curve reproduces but Table 4 does not, the residual lives in selection or data, not in the lambda scale",
+  "if the Table-3 curve does NOT reproduce, the lambda scale or standardizer geometry differs and that becomes the next frozen question BEFORE any grid conclusion is read",
+]
+winner_selection_allowed = false
+confirmatory_claims_allowed = false
+config_changes_allowed = false
+no_sensitivity_claim = "results bound only the tested grids; the paper's actual grid remains undisclosed"
+
+[storage]
+artifact_subdir = "artifacts/jm-residual/01-grid-identification"
+required_outputs = ["union-states parity note", "table3-curve.csv", "selected-anchors.csv", "grids.csv", "report.txt"]
+report_language = "Vietnamese summary plus English tables, consistent with hmm-residual reports"

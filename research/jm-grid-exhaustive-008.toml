@@ -1,0 +1,51 @@
+schema_version = 1
+experiment_id = "jm-grid-exhaustive-008"
+frozen_at_utc = "2026-07-31T04:34:01Z"
+timestamp_source = "date -u at write time"
+claim_class = "EXPLORATORY"
+analysis_label = "EXHAUSTIVE SEARCH, NINE ARMS: COMMON GRID ACROSS MARKETS AND DELAYS"
+hypothesis = "Grids reaching all eight US Table-4 cells exist (shown by -007's partial run); the owner's question is whether ONE grid does it for all three markets simultaneously, and whether it survives delays 5 and 10 against the paper's own Table-5 JM cells."
+primary_estimand = "per-arm pass sets over the full subset lattice, their cross-market and cross-delay intersections, and example grids from every nonempty intersection"
+extension_access = false
+adaptive_experiment = true
+
+# Inherits -007's honesty label verbatim: this is an owner-instructed
+# target-conditioned search; solutions are CALIBRATION artifacts, never the
+# authors' grid; the scientific content is the existence/intersection map;
+# the -006 inferred band [10, 100] is the coherence cross-check; adoption is
+# an owner reseal decision. Supersedes -007 mid-run because intersections
+# need complete per-arm pass sets, which -007 did not persist.
+owner_instruction = "one common grid for all three markets if it exists, and check delays 5 and 10, not just delay 1"
+prior_art = "jm-grid-exhaustive-007 (US: 109,400 of 3,950,116 vectors reach 8/8 at delay 1)"
+
+[arms]
+markets = ["us", "de", "jp"]
+delays = [1, 5, 10]
+delay_in_cv = "the paper's Table-5 caption: a corresponding trading delay is also applied in the cross-validation — matched by passing the delay to select_monthly_candidate, as the sealed runs do"
+
+[targets]
+delay_1 = "all eight Table-4 JM cells, tolerance 0.05"
+delay_5_10 = "the three JM cells the paper publishes in Table 5 (Return, Sharpe, Calmar), tolerance 0.05, total_wealth basis"
+
+[search_space]
+menu = "the same 29-lambda sourced union as -007; subset sizes 2 through 8"
+equivalence = "per-arm unique choice vectors, evaluated by a BATCHED numpy evaluator that mirrors apply_signal and performance_metrics formula-for-formula"
+
+[gates]
+parity_named = "per delay-1 arm: reproduce the eight -001 grids.csv rows to 1e-9; per delay-5/10 arm: reproduce the sealed run's fixed_jm metrics-exploratory row for the sealed grid to 1e-9"
+parity_sample = "per arm: 50 random unique vectors re-scored through the real apply_signal + performance_metrics, agreement to 1e-9"
+both_are_hard_stops = true
+
+[decision]
+tolerance = 0.05
+winner_selection_allowed = false
+config_changes_allowed = false
+registered_interpretations = [
+  "a nonempty three-market delay-1 intersection answers the owner's question YES with example grids and the band cross-check",
+  "if the intersection is empty while per-market sets are not, the markets demand incompatible grids even under full calibration freedom — the Section-15 contradictory-constraints shape at exhaustive scale",
+  "the grand intersection (three markets AND three delays) is the strongest survivable criterion; its emptiness or shape is reported as-is",
+]
+
+[storage]
+artifact_subdir = "artifacts/jm-residual/08-exhaustive-nine-arms"
+required_outputs = ["parity-note.txt", "per-arm npz results", "intersections.csv", "solutions.csv", "report.txt"]

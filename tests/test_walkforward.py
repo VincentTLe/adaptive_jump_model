@@ -354,6 +354,10 @@ def test_baseline_integration_keeps_metrics_sealed_until_boundaries_pass(
     sealed = replace(study, boundaries=study.boundaries.assign(passed=False))
     with pytest.raises(WalkForwardError, match="metrics are sealed"):
         open_baseline_metrics(frame, sealed, config)
+    # A gated run must still be able to record one reproducible number set,
+    # explicitly labelled exploratory, without unsealing the official metrics.
+    exploratory = open_baseline_metrics(frame, sealed, config, exploratory=True)
+    pd.testing.assert_frame_equal(exploratory, metrics)
     paths = baseline_paths(frame, study, config)
     for models in paths.values():
         dates = [path["date"].reset_index(drop=True) for path in models.values()]

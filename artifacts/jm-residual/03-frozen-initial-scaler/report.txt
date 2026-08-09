@@ -1,0 +1,17 @@
+jm-standardizer-geometry-003 — V3 frozen-initial scaler
+
+I1. Đường cong Table 3 (US, 1982-2023, shifts/năm):
+   λ=     0  V3  5.88  vs Shu  9.7
+   λ=     5  V3  2.21  vs Shu  2.7
+   λ=    15  V3  1.36  vs Shu  1.7
+   λ=    35  V3  0.69  vs Shu  0.8
+   λ=    70  V3  0.55  vs Shu  0.5
+   λ=   150  V3  0.38  vs Shu  0.4
+   => 3/6 trong ngưỡng I1 đăng ký (0.15), 2/6 trong nửa đơn vị in (0.05); I1 KHÔNG ĐẠT
+
+I2. US path CV-chọn: 32 shifts, bear 19.4% (slide: 30, 19.7%)
+
+I3. Ô Table 4 trong ngưỡng:
+   us: 6/8 (sharpe 0.78, turnover 0.47)
+   de: 4/8 (sharpe 0.30, turnover 1.03)
+   jp: 5/8 (sharpe 0.24, turnover 1.33)

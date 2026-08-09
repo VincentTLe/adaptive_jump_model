@@ -1,0 +1,40 @@
+{
+  "gates": [
+    "us: union parity PASSED on 32169 sealed cells",
+    "de: union parity PASSED on 21342 sealed cells",
+    "jp: union parity PASSED on 20684 sealed cells"
+  ],
+  "generated_utc": "2026-08-07T19:58:02Z",
+  "git_head": "3b69e77e6e2c9dc6ecd624441b4c65ce2ce3475d",
+  "inputs": {
+    "artifacts/fixed-baselines/fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736/metrics.csv": "14ae8438774bb16bf2b2c4863154fc90681c7dc54ceb61b5c429e3a2b0d9d9d8",
+    "artifacts/hmm-residual/04-figure6-path/position-path.csv": "7df1fc79ead708869ff125879aab9e6e834ba9681df775fd63ca2d1e213b9f3d",
+    "artifacts/jm-residual/01-grid-identification/selected-anchors.csv": "6a9c61f0f3e3f116ac7a833311b3f9e16b16f3e132280aa5fab7adbf0ace5a8e",
+    "artifacts/jm-residual/01-grid-identification/table3-curve.csv": "9e454ba86189fe8362951bef300c4978a26b99e84d877529fd4a5ce7050003f6",
+    "artifacts/jm-residual/02-standardizer-geometry/table3-curves.csv": "1c64cdbf427373f6fa37f1123f142b240a9877141fe0a5b6921c43021fe1ef3c",
+    "artifacts/jm-residual/04-effective-lambda-inversion/accounting.csv": "ff16800fd71e8dd8a6f57ddf40451f80ab72469309a71c83b46f7c60fb01062e",
+    "artifacts/jm-residual/04-effective-lambda-inversion/ceiling.csv": "b72832f1fee638044601977a440955df8a886bd86a50f82f175d546a751ed007",
+    "artifacts/jm-residual/06-inferred-grid-shift-months/support.csv": "280e702b554690eaa118c5ce4ce0595ce8e66a900621617667ed555095a0c98d",
+    "artifacts/jm-residual/09-per-market-grids/frontier.csv": "2b9dbb444f97da6570308c9984d627f404d535e6ef5c7c38c4911dcac3eb9cf8",
+    "fig5-de": "d64a2f801c3956a4160f01d1f07b26b4e419f713668dbda833bb60e797b78ac2",
+    "fig5-jp": "56dc4f73f8f1dd83c1bd2fbb3b97f3cb5891dfecfba8e120c2b95085fedefa56",
+    "fig5-us": "1e9483a3373513baa8509e5c859482ca88c093066cacb820d2fda7330ac6f0f4",
+    "union-states-de": "564b26159fd75c95dc4b67629bddc86e90d9eac64a7009f5b4aa4c89c2ac2413",
+    "union-states-jp": "c42f75e0df3cdca9638bd2b41dbfaad941d9c69df921e6b596f1449b72e365d2",
+    "union-states-us": "da8a1a7ef615c52d41a2308b37719a8485309616fe8ce983dfa1efaffae2839b",
+    "v10-de-features.csv": "4caaf6dece3f6256c8b011a72b8021a5c6e1163977300a115f5d78a96aea0da4",
+    "v10-de-jm-states.csv": "d39f9c70fe638e8be063f66fba24d020ec8cbda8299febdbad76f2abb816f525",
+    "v10-de-selected-signal": "e044a1c27481800455573e0a3773989156e52bc457ab3dd126a5403744497464",
+    "v10-de-trades-fixed_jm": "af29d8455a64329664d79f0f693fa0db7c0cfcb776a864fd8aa06aac393cb005",
+    "v10-jp-features.csv": "bab721f4018331cf6a13ddbedb46e78867c037e1ba065df62cd12bfb308e5754",
+    "v10-jp-jm-states.csv": "8901b3110a740835be27f8e5c748d548882a499d7fc771e1559f5c4146b2b3aa",
+    "v10-jp-selected-signal": "4d976981cf2d965f9859983dee6d0bd43b824da998fdc590290298173af1d46f",
+    "v10-jp-trades-fixed_jm": "4fe4415cdca7d36951635cd329857bcc82c9a410e96a97fd9dafb29b63f4eda2",
+    "v10-us-features.csv": "ab8253350ba71f697fa83f768a7dd1483a16d42fc7d3c8c9a240d51f59ee896b",
+    "v10-us-hmm-selected-signal": "c94256f5ce746c76d6a0921ebd5370646fd9db17d226c69e509126a4e7e2b1d8",
+    "v10-us-jm-states.csv": "7c90e2a0b25c5cc79407f07c1c96fd4201b1ebd52da37a8fb6b7e59032902320",
+    "v10-us-selected-signal": "2964475438151c92bc9c3991de54f33f3beeb68f3d8300c93dbf7fd87e1c699e",
+    "v10-us-trades-fixed_jm": "f6811dfb9455327d684f0ea4c4b219b4c12dc586237bb94d7c89e4f42eeae2ae",
+    "v10-us-trades-hmm": "5623a70f7961a20f54d6ef8d8285a6c1b071c858c4af7cef5257e9a4472a47c9"
+  }
+}

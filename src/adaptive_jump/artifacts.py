@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -70,6 +71,14 @@ def write_json(path: Path, document: dict[str, Any]) -> None:
     )
 
 
+def finish_run_metadata(path: Path, **updates: Any) -> None:
+    """Stamp run metadata with final fields and the finish timestamp."""
+    metadata = read_json(path)
+    metadata.update(updates)
+    metadata["finished_at_utc"] = datetime.now(UTC).isoformat()
+    write_json(path, metadata)
+
+
 def _inventory_files(run_dir: Path) -> dict[str, str]:
     return {
         str(path.relative_to(run_dir)): sha256_file(path)
@@ -96,7 +105,11 @@ def verify_inventory(run_dir: Path) -> None:
         raise ArtifactError("artifact inventory mismatch")
 
 
-def directional_gate(metrics: pd.DataFrame, primary_delay: int) -> dict[str, Any]:
+def directional_gate(
+    metrics: pd.DataFrame,
+    primary_delay: int,
+    claim_label: str = "proxy replication",
+) -> dict[str, Any]:
     """Evaluate the frozen three-condition replication gate."""
     rows = []
     primary = metrics.loc[metrics["delay"] == primary_delay]
@@ -117,16 +130,27 @@ def directional_gate(metrics: pd.DataFrame, primary_delay: int) -> dict[str, Any
         }
         rows.append({"market": market, **checks, "passed": all(checks.values())})
     passed = len(rows) == 3 and all(row["passed"] for row in rows)
-    return {
-        "claim_label": "proxy replication",
-        "primary_delay": primary_delay,
-        "markets": rows,
-        "passed": passed,
-        "conclusion": (
+    if claim_label == "calibrated baseline":
+        # Never phrase a calibrated run as replication: with grids searched
+        # against the published targets, passing this gate is expected, not
+        # evidence.
+        conclusion = (
+            "directional gate passed on the calibrated baseline"
+            if passed
+            else "directional gate failed on the calibrated baseline"
+        )
+    else:
+        conclusion = (
             "directional proxy replication"
             if passed
             else "non-replication; adaptive work remains blocked"
-        ),
+        )
+    return {
+        "claim_label": claim_label,
+        "primary_delay": primary_delay,
+        "markets": rows,
+        "passed": passed,
+        "conclusion": conclusion,
     }
 
 
@@ -137,24 +161,12 @@ def verify_run(run: str | Path) -> dict[str, Any]:
         raise ArtifactError(f"run directory does not exist: {run_dir}")
     metadata = read_json(run_dir / "run.json")
     study_kind = metadata.get("study_kind")
-    if study_kind == "jm_train_window_sensitivity":
-        from adaptive_jump.window_verifier import verify_window_run
-
-        return verify_window_run(run_dir)
-    if study_kind == "persistence_calibration":
-        from adaptive_jump.calibration_runner import verify_calibration_run
-
-        return verify_calibration_run(run_dir)
-    if study_kind == "persistence_grid_evaluation":
-        from adaptive_jump.grid_runner import verify_grid_run
-
-        return verify_grid_run(run_dir)
-    if study_kind == "simple-jm-suite-001":
-        from adaptive_jump.simple_jm_suite import verify_simple_jm_run
+    if isinstance(study_kind, str) and study_kind.startswith("simple-jm-suite-"):
+        from adaptive_jump.simple_jm_verifier import verify_simple_jm_run
 
         return verify_simple_jm_run(run_dir)
-    if study_kind == "dd-loss-scale-001":
-        from adaptive_jump.simple_jm_suite import verify_dd_loss_scale_run
+    if isinstance(study_kind, str) and study_kind.startswith("dd-loss-scale-"):
+        from adaptive_jump.simple_jm_verifier import verify_dd_loss_scale_run
 
         return verify_dd_loss_scale_run(run_dir)
     if study_kind is not None:
@@ -171,7 +183,9 @@ def verify_run(run: str | Path) -> dict[str, Any]:
         metrics, maximum_difference = _verify_metrics(run_dir, config)
         claim = read_json(run_dir / "claim.json")
         expected_claim = directional_gate(
-            metrics, config.backtest_protocol.primary_delay
+            metrics,
+            config.backtest_protocol.primary_delay,
+            config.document["study"]["claim_label"],
         )
         if claim != expected_claim:
             raise ArtifactError("claim does not match recomputed primary metrics")
@@ -266,10 +280,11 @@ def _verify_boundaries(
         raise ArtifactError("boundary market/model/delay coverage is invalid")
     if not frame["passed"].isin([True, False]).all():
         raise ArtifactError("boundary pass flags are invalid")
-    upper = {
-        "fixed_jm": max(config.jm_protocol.lambda_grid),
-        "hmm": max(config.hmm_protocol.smoothing_grid),
-    }
+    def upper_candidate(model: str, market: str) -> float:
+        if model == "fixed_jm":
+            return max(config.jm_protocol_for(market).lambda_grid)
+        return max(config.hmm_protocol.smoothing_grid)
+
     for row in frame.itertuples(index=False):
         total = int(row.total_months)
         selected = int(row.selected_months)
@@ -288,7 +303,7 @@ def _verify_boundaries(
         if (
             not math.isclose(
                 float(row.upper_candidate),
-                float(upper[row.model]),
+                upper_candidate(str(row.model), str(row.market)),
                 rel_tol=0,
                 abs_tol=1e-12,
             )
@@ -375,6 +390,7 @@ def _verify_metrics(
                         config.metrics_protocol.expected_shortfall_quantile
                     ),
                     turnover_scale=config.metrics_protocol.turnover_scale,
+                    drawdown_basis=config.metrics_protocol.drawdown_basis,
                 )
                 row = metrics.loc[
                     (metrics["market"] == market.id)

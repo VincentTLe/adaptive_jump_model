@@ -1,0 +1,27 @@
+jm-per-market-grid-009 — kết quả
+(phạm vi MỌI phát biểu: tập con cỡ 2-8 của menu 29 λ có nguồn; nghiệm = lưới hiệu chuẩn; reseal là quyết định owner)
+
+Q1. Lưới riêng từng thị trường đạt CẢ d1 (8 ô) + d5 + d10 (3 ô mỗi delay):
+   us: 36657 lưới trong menu
+   de: 0 lưới trong menu
+   jp: 0 lưới trong menu
+
+Q2. Biên chặn tại delay-1 cho DE/JP (ô nào chặn, cách bao xa):
+   de: tốt nhất 7/8 ô (139917 vector đạt mức đó)
+      cagr                     đích    0.086 | phổ lattice [   0.033,    0.097] | tỉ lệ đạt 100.00% | lệch nhỏ nhất khi 7 ô kia đạt: nan (0 vector)
+      volatility               đích    0.164 | phổ lattice [   0.136,    0.213] | tỉ lệ đạt 100.00% | lệch nhỏ nhất khi 7 ô kia đạt: nan (0 vector)
+      sharpe                   đích    0.440 | phổ lattice [   0.130,    0.494] | tỉ lệ đạt  21.40% | lệch nhỏ nhất khi 7 ô kia đạt: 0.09072293959197902 (4 vector)
+      maximum_drawdown         đích   -0.394 | phổ lattice [  -0.713,   -0.280] | tỉ lệ đạt  23.73% | lệch nhỏ nhất khi 7 ô kia đạt: nan (0 vector)
+      calmar                   đích    0.180 | phổ lattice [   0.032,    0.249] | tỉ lệ đạt  37.34% | lệch nhỏ nhất khi 7 ô kia đạt: nan (0 vector)
+      expected_shortfall_5pct  đích   -0.025 | phổ lattice [  -0.032,   -0.022] | tỉ lệ đạt 100.00% | lệch nhỏ nhất khi 7 ô kia đạt: nan (0 vector)
+      turnover                 đích    1.700 | phổ lattice [   0.029,    4.629] | tỉ lệ đạt   0.02% | lệch nhỏ nhất khi 7 ô kia đạt: 0.23522436642641242 (139911 vector)  <-- Ô CHẶN
+      leverage                 đích    0.840 | phổ lattice [   0.684,    0.943] | tỉ lệ đạt  46.38% | lệch nhỏ nhất khi 7 ô kia đạt: 0.11191350848639847 (2 vector)
+   jp: tốt nhất 7/8 ô (2668 vector đạt mức đó)
+      cagr                     đích    0.047 | phổ lattice [  -0.016,    0.052] | tỉ lệ đạt  99.82% | lệch nhỏ nhất khi 7 ô kia đạt: nan (0 vector)
+      volatility               đích    0.171 | phổ lattice [   0.132,    0.198] | tỉ lệ đạt 100.00% | lệch nhỏ nhất khi 7 ô kia đạt: nan (0 vector)
+      sharpe                   đích    0.310 | phổ lattice [  -0.072,    0.353] | tỉ lệ đạt   2.42% | lệch nhỏ nhất khi 7 ô kia đạt: nan (0 vector)
+      maximum_drawdown         đích   -0.453 | phổ lattice [  -0.869,   -0.288] | tỉ lệ đạt  18.13% | lệch nhỏ nhất khi 7 ô kia đạt: nan (0 vector)
+      calmar                   đích    0.120 | phổ lattice [  -0.013,    0.183] | tỉ lệ đạt  12.48% | lệch nhỏ nhất khi 7 ô kia đạt: nan (0 vector)
+      expected_shortfall_5pct  đích   -0.026 | phổ lattice [  -0.031,   -0.022] | tỉ lệ đạt 100.00% | lệch nhỏ nhất khi 7 ô kia đạt: nan (0 vector)
+      turnover                 đích    0.720 | phổ lattice [   0.091,    6.696] | tỉ lệ đạt   2.32% | lệch nhỏ nhất khi 7 ô kia đạt: nan (0 vector)
+      leverage                 đích    0.750 | phổ lattice [   0.497,    0.737] | tỉ lệ đạt   0.00% | lệch nhỏ nhất khi 7 ô kia đạt: 0.11396353166986561 (2668 vector)  <-- Ô CHẶN

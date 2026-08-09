@@ -7,6 +7,11 @@ import math
 import numpy as np
 import pandas as pd
 
+from adaptive_jump.config import (
+    FLAT_IN_CASH_DRAWDOWN_BASIS,
+    TOTAL_WEALTH_DRAWDOWN_BASIS,
+)
+
 
 class BacktestError(ValueError):
     """Raised when a signal or return frame violates the accounting contract."""
@@ -32,7 +37,11 @@ def apply_signal(
     if not math.isfinite(one_way_cost_bps) or one_way_cost_bps < 0:
         raise BacktestError("one_way_cost_bps must be finite and non-negative")
 
-    signal_values = pd.Series(signal, index=returns.index, dtype=float)
+    # positional conversion: every caller passes a signal aligned by row order,
+    # and label-based reindexing silently misaligns shifted or datetime indexes
+    signal_values = pd.Series(
+        np.asarray(signal, dtype=float), index=returns.index, dtype=float
+    )
     valid_signal = signal_values.dropna()
     if not valid_signal.isin([0.0, 1.0]).all():
         raise BacktestError("signal values must be 0, 1, or missing")
@@ -118,6 +127,7 @@ def performance_metrics(
     volatility_ddof: int = 1,
     expected_shortfall_quantile: float = 0.05,
     turnover_scale: float = 0.5,
+    drawdown_basis: str = TOTAL_WEALTH_DRAWDOWN_BASIS,
 ) -> dict[str, float | int | str]:
     """Calculate metrics, reporting paper turnover unless explicitly overridden."""
     required = [
@@ -127,6 +137,12 @@ def performance_metrics(
         "one_way_turnover",
         "strategy_return",
     ]
+    if drawdown_basis == FLAT_IN_CASH_DRAWDOWN_BASIS:
+        # The drawdown is measured on the risky leg alone, so the equity return
+        # is needed and the cash leg is deliberately not.
+        required.append("equity_simple")
+    elif drawdown_basis != TOTAL_WEALTH_DRAWDOWN_BASIS:
+        raise BacktestError(f"unknown drawdown basis: {drawdown_basis}")
     missing = [column for column in required if column not in result]
     if missing:
         raise BacktestError(f"missing metric columns: {missing}")
@@ -157,10 +173,24 @@ def performance_metrics(
 
     observations = len(frame)
     wealth = np.cumprod(1.0 + values)
-    peaks = np.maximum.accumulate(np.r_[1.0, wealth])
-    drawdowns = np.r_[1.0, wealth] / peaks - 1.0
-    maximum_drawdown = float(drawdowns.min())
     cagr = float(wealth[-1] ** (periods_per_year / observations) - 1.0)
+
+    # Under the flat-in-cash basis, return and drawdown are read off different
+    # paths. The old comment here claimed the paper pins this basis; that was
+    # RETRACTED 2026-07-29 (see the constant's note in config.py) — the paper is
+    # silent, the basis was chosen by fitting Table 4, and the current contracts
+    # use total_wealth. The branch survives only so sealed v9.1-v9.3 runs replay
+    # to their recorded numbers.
+    if drawdown_basis == FLAT_IN_CASH_DRAWDOWN_BASIS:
+        risky = (frame["position"] * frame["equity_simple"]).to_numpy(dtype=float)
+        if not np.isfinite(risky).all() or (risky <= -1).any():
+            raise BacktestError("equity returns must be finite and above -1")
+        drawdown_wealth = np.cumprod(1.0 + risky)
+    else:
+        drawdown_wealth = wealth
+    peaks = np.maximum.accumulate(np.r_[1.0, drawdown_wealth])
+    drawdowns = np.r_[1.0, drawdown_wealth] / peaks - 1.0
+    maximum_drawdown = float(drawdowns.min())
     volatility = float(
         frame["strategy_return"].std(ddof=volatility_ddof) * math.sqrt(periods_per_year)
     )

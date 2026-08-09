@@ -1,0 +1,42 @@
+schema_version = 1
+experiment_id = "jm-per-market-grid-009"
+frozen_at_utc = "2026-07-31T18:54:47Z"
+timestamp_source = "date -u at write time"
+claim_class = "EXPLORATORY"
+analysis_label = "PER-MARKET GRIDS SURVIVING ALL THREE DELAYS, PLUS THE BLOCKING-CELL FRONTIER"
+hypothesis = "Within the 29-lambda menu, US grids exist that satisfy all fourteen published cells (eight Table-4 at delay 1, three Table-5 at each of delays 5 and 10); for DE and JP the delay-1 emptiness persists, and the frontier scan identifies WHICH cells block and by how much, so the within-menu scope of every emptiness statement is quantified rather than asserted."
+primary_estimand = "per_market_d1_and_d5_and_d10_solution_sets_plus_per_cell_frontiers"
+extension_access = false
+adaptive_experiment = true
+
+# Owner instructions incorporated verbatim: (1) never state nonexistence
+# without the menu scope — all statements below are scoped to subsets (sizes
+# 2-8) of the 29-lambda sourced union, and the frontier scan measures how far
+# outside tolerance the blocking cells sit, which is the evidence for or
+# against a menu extension; (2) the target is per-market grids matching Shu
+# at delays 1, 5 AND 10 simultaneously; (3) verification agents use small
+# models (sonnet), not the session model. Inherits the -007/-008 honesty
+# label: solutions are calibration artifacts; adoption (reseal) is a separate
+# owner decision.
+owner_instruction = "per-market grids meeting Shu's numbers at d1, d5, d10; no unscoped nonexistence claims; small models for agents"
+prior_art = "jm-grid-exhaustive-008 (persisted per-arm pass sets and metric arrays)"
+
+[inputs]
+per_arm_results = "artifacts/jm-residual/08-exhaustive-nine-arms/{arm}-results.npz and {arm}-pass-digests.npy (complete, adversarially verified with exact mask recomputation)"
+caches = "the nine {arm}-cache.npz surfaces (for the subset -> choice-vector sweep)"
+
+[questions]
+Q1_per_market = "for each market, the full-lattice count of subsets passing d1 AND d5 AND d10 (14 cells for the market), with up to 20 examples; expected nonempty for US, empty within the menu for DE/JP (forced by their d1 zeros)"
+Q2_frontier = "for de-d1 and jp-d1: the best reachable within_tol count over all unique vectors; per-cell pass rates; and for each cell, the extremal value reachable over the whole lattice (e.g. the maximum CV-selected DE turnover any subset attains) — quantifying whether the emptiness is a single-cell range problem or a joint constraint"
+Q3_us_winners = "re-validate up to three US 14-cell winners through the real unaccelerated pipeline on all three delays before reporting them as reseal candidates"
+
+[decision]
+tolerance = 0.05
+winner_selection_allowed = false
+config_changes_allowed = false
+scoping_rule = "every nonexistence statement carries 'within subsets (sizes 2-8) of the 29-lambda sourced menu'; the Q2 frontier distances are the registered evidence for whether a menu extension could plausibly change the answer"
+reseal_note = "if Q3 validates US winners, they become owner-decision reseal candidates carrying the calibration label and this derivation chain"
+
+[storage]
+artifact_subdir = "artifacts/jm-residual/09-per-market-grids"
+required_outputs = ["per-market-intersections.csv", "frontier.csv", "us-winners-validation.txt", "report.txt"]

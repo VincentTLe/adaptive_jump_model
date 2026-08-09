@@ -1,0 +1,3 @@
+us: parity gate PASSED on 64338 sealed cells (zero NaN-mask and zero value differences; cached union-states.csv)
+de: parity gate PASSED on 64026 sealed cells (zero NaN-mask and zero value differences; cached union-states.csv)
+jp: parity gate PASSED on 62052 sealed cells (zero NaN-mask and zero value differences; cached union-states.csv)

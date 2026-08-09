@@ -1,0 +1,5 @@
+panel,market,model,paper_line,file,axis_bear_fraction,annotated_bear,spans,annotated_shifts,trading_day_cash_share,trading_day_shifts
+fig6-us-hmm,us,hmm,903,position-path.csv,0.27825783167063584,0.278,48,96,0.2783420899007589,96
+fig5-us-jm,us,fixed_jm,829,position-fig5-us-jm.csv,0.1977649150396441,0.197,15,30,0.19731465265615877,30
+fig5-de-jm,de,fixed_jm,851,position-fig5-de-jm.csv,0.15649571547608926,0.157,58,116,0.15635898628225994,114
+fig5-jp-jm,jp,fixed_jm,873,position-fig5-jp-jm.csv,0.25352650143427147,0.253,24,48,0.2526959022286125,48

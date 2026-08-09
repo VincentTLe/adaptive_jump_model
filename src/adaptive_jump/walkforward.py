@@ -20,6 +20,7 @@ from adaptive_jump.backtest import (
 from adaptive_jump.config import (
     LEGACY_COMPARISON_SAMPLE,
     PAPER_COMPARISON_SAMPLE,
+    JMProtocol,
     ResearchConfig,
     SelectionProtocol,
 )
@@ -91,10 +92,13 @@ def build_baseline_study(
     precomputed_hmm: HMMResult | None = None,
     selection_initial: SelectionLoader | None = None,
     selection_progress: SelectionSaver | None = None,
+    jm_protocol: JMProtocol | None = None,
 ) -> BaselineStudy:
     """Build all baseline choices and boundary checks without OOS metrics."""
+    if jm_protocol is None:
+        jm_protocol = config.jm_protocol
     jm = precomputed_jm or fixed_jm_states(
-        frame, config.model_protocol, config.jm_protocol
+        frame, config.model_protocol, jm_protocol
     )
     hmm = precomputed_hmm or hmm_states(
         frame, config.model_protocol, config.hmm_protocol
@@ -105,7 +109,7 @@ def build_baseline_study(
     boundary_rows: list[dict[str, object]] = []
     candidates = {"fixed_jm": jm.states, "hmm": hmm_candidates}
     grids = {
-        "fixed_jm": config.jm_protocol.lambda_grid,
+        "fixed_jm": jm_protocol.lambda_grid,
         "hmm": tuple(float(value) for value in config.hmm_protocol.smoothing_grid),
     }
     backtest = config.backtest_protocol
@@ -126,6 +130,7 @@ def build_baseline_study(
                 config.selection_protocol,
                 delay_trading_days=delay,
                 one_way_cost_bps=backtest.one_way_cost_bps,
+                charge_initial_allocation=backtest.charge_initial_allocation,
                 periods_per_year=metrics.periods_per_year,
                 volatility_ddof=metrics.volatility_ddof,
                 initial=initial,
@@ -156,14 +161,28 @@ def build_baseline_study(
 
 
 def open_baseline_metrics(
-    frame: pd.DataFrame, study: BaselineStudy, config: ResearchConfig
+    frame: pd.DataFrame,
+    study: BaselineStudy,
+    config: ResearchConfig,
+    *,
+    exploratory: bool = False,
 ) -> pd.DataFrame:
-    """Open OOS metrics only after every preregistered boundary check passes."""
-    if study.boundaries.empty or not study.boundaries["passed"].all():
+    """Open OOS metrics only after every preregistered boundary check passes.
+
+    Set ``exploratory`` to compute the same table when a boundary check has
+    failed. The caller must then record it as exploratory: a boundary failure
+    still seals the official metrics. This exists so a gated run leaves one
+    reproducible number set with a known sample convention behind, instead of
+    forcing every reader to recompute the figures by hand.
+    """
+    if not exploratory and (
+        study.boundaries.empty or not study.boundaries["passed"].all()
+    ):
         raise WalkForwardError("OOS metrics are sealed until all boundary checks pass")
     metrics_protocol = config.metrics_protocol
     rows: list[dict[str, object]] = []
-    for delay, paths in baseline_paths(frame, study, config).items():
+    paths_by_delay = baseline_paths(frame, study, config, exploratory=exploratory)
+    for delay, paths in paths_by_delay.items():
         for model_name, path in paths.items():
             values = performance_metrics(
                 path,
@@ -173,16 +192,27 @@ def open_baseline_metrics(
                     metrics_protocol.expected_shortfall_quantile
                 ),
                 turnover_scale=metrics_protocol.turnover_scale,
+                drawdown_basis=metrics_protocol.drawdown_basis,
             )
             rows.append({"model": model_name, "delay": delay, **values})
     return pd.DataFrame.from_records(rows)
 
 
 def baseline_paths(
-    frame: pd.DataFrame, study: BaselineStudy, config: ResearchConfig
+    frame: pd.DataFrame,
+    study: BaselineStudy,
+    config: ResearchConfig,
+    *,
+    exploratory: bool = False,
 ) -> dict[int, dict[str, pd.DataFrame]]:
-    """Return OOS accounting paths only after every boundary passes."""
-    if study.boundaries.empty or not study.boundaries["passed"].all():
+    """Return OOS accounting paths only after every boundary passes.
+
+    ``exploratory`` mirrors :func:`open_baseline_metrics`: it computes the same
+    paths for a gated run so the failure still leaves reproducible evidence.
+    """
+    if not exploratory and (
+        study.boundaries.empty or not study.boundaries["passed"].all()
+    ):
         raise WalkForwardError("OOS paths are sealed until all boundary checks pass")
     returns = frame[["date", "equity_simple", "cash_return"]]
     dates = pd.to_datetime(returns["date"], errors="raise")
@@ -197,6 +227,9 @@ def baseline_paths(
                 selection.signal.reset_index(drop=True),
                 delay_trading_days=delay,
                 one_way_cost_bps=config.backtest_protocol.one_way_cost_bps,
+                charge_initial_allocation=(
+                    config.backtest_protocol.charge_initial_allocation
+                ),
             )
         unaligned[delay] = {
             model_name: path.loc[oos].reset_index(drop=True)
@@ -253,6 +286,7 @@ def select_monthly_candidate(
     *,
     delay_trading_days: int,
     one_way_cost_bps: float,
+    charge_initial_allocation: bool = False,
     periods_per_year: int = 252,
     volatility_ddof: int = 1,
     initial: SelectionProgress | None = None,
@@ -279,6 +313,7 @@ def select_monthly_candidate(
             risky_signal.reset_index(drop=True),
             delay_trading_days=delay_trading_days,
             one_way_cost_bps=one_way_cost_bps,
+            charge_initial_allocation=charge_initial_allocation,
         )
         candidate_returns[candidate] = path["strategy_return"].to_numpy()
 

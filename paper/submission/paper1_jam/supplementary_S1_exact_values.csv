@@ -1,0 +1,37 @@
+table,market,model,sharpe_net,max_drawdown_pct,turnover_pct,cash_fraction_pct,switches,benchmark_gap
+main,US,Buy&Hold,0.512964,-53.963,0.000,0.000,0,
+main,US,Gaussian HMM,0.653725,-19.363,143.253,24.221,46,
+main,US,Standard three-feature JM,0.569865,-33.857,65.398,21.157,21,
+main,US,DD-only JM,0.907547,-19.364,34.256,13.569,11,
+main,US,Three-times DD JM,0.884130,-19.531,46.713,14.137,15,
+main,Germany,Buy&Hold,0.289638,-53.876,0.000,0.000,0,
+main,Germany,Gaussian HMM,0.007599,-54.590,105.543,11.949,34,
+main,Germany,Standard three-feature JM,0.166440,-38.779,99.335,18.280,32,
+main,Germany,DD-only JM,0.226442,-42.833,80.710,11.358,26,
+main,Germany,Three-times DD JM,0.195916,-44.517,49.667,11.210,16,
+main,Japan,Buy&Hold,0.544589,-31.799,0.000,0.000,0,
+main,Japan,Gaussian HMM,0.398539,-34.656,130.006,5.633,37,
+main,Japan,Standard three-feature JM,0.329270,-32.162,45.678,27.886,13,
+main,Japan,DD-only JM,0.423891,-43.241,66.760,8.728,19,
+main,Japan,Three-times DD JM,0.428050,-34.529,80.814,13.887,23,
+suite,US,Static lambda=50,0.586183,,,,,-0.067542
+suite,US,DD-only,0.907547,,,,,0.253822
+suite,US,Two-observation confirmation,0.619291,,,,,-0.034433
+suite,US,Return-aware training loss,0.559865,,,,,-0.093860
+suite,US,Robust L1 loss,0.372797,,,,,-0.280928
+suite,Germany,Static lambda=50,0.156219,,,,,-0.133419
+suite,Germany,DD-only,0.226442,,,,,-0.063196
+suite,Germany,Two-observation confirmation,0.149925,,,,,-0.139713
+suite,Germany,Return-aware training loss,0.149742,,,,,-0.139896
+suite,Germany,Robust L1 loss,0.173382,,,,,-0.116256
+suite,Japan,Static lambda=50,0.183934,,,,,-0.360656
+suite,Japan,DD-only,0.423891,,,,,-0.120698
+suite,Japan,Two-observation confirmation,0.297227,,,,,-0.247362
+suite,Japan,Return-aware training loss,0.329270,,,,,-0.215320
+suite,Japan,Robust L1 loss,0.361360,,,,,-0.183230
+parent_proxy,US,BH/HMM/JM proxy,0.512964,,,,,
+parent_proxy,Germany,BH/HMM/JM proxy,0.289638,,,,,
+parent_proxy,Japan,BH/HMM/JM proxy,0.544589,,,,,
+scale_control,US,scaled-minus-ordinary DD Sharpe,-0.023417,,,,,
+scale_control,Germany,scaled-minus-ordinary DD Sharpe,-0.030526,,,,,
+scale_control,Japan,scaled-minus-ordinary DD Sharpe,0.004159,,,,,

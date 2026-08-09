@@ -1,0 +1,6 @@
+us/v10-ninit60: parity gate PASSED on 32169 cells (zero NaN-mask and zero value differences vs the sealed n_init=60 baseline)
+us/v11-ninit60: parity gate PASSED on 42892 cells (zero NaN-mask and zero value differences vs the sealed n_init=60 baseline)
+de/v10-ninit60: parity gate PASSED on 21342 cells (zero NaN-mask and zero value differences vs the sealed n_init=60 baseline)
+de/v11-ninit60: parity gate PASSED on 85368 cells (zero NaN-mask and zero value differences vs the sealed n_init=60 baseline)
+jp/v10-ninit60: parity gate PASSED on 20684 cells (zero NaN-mask and zero value differences vs the sealed n_init=60 baseline)
+jp/v11-ninit60: parity gate PASSED on 72394 cells (zero NaN-mask and zero value differences vs the sealed n_init=60 baseline)

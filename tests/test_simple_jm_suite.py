@@ -1,10 +1,8 @@
 import hashlib
 import json
-import subprocess
 import tomllib
 from dataclasses import replace
 from pathlib import Path
-from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -13,7 +11,6 @@ import pytest
 import adaptive_jump.simple_jm_suite as suite
 from adaptive_jump.artifacts import TRADE_COLUMNS, ArtifactError
 from adaptive_jump.config import load_config
-from adaptive_jump.walkforward import SelectionResult
 
 
 def test_implementation_hashes_cover_result_code_and_environment_lock() -> None:
@@ -29,6 +26,7 @@ def test_implementation_hashes_cover_result_code_and_environment_lock() -> None:
         "src/adaptive_jump/simple_jm_l1.py",
         "src/adaptive_jump/simple_jm_return.py",
         "src/adaptive_jump/simple_jm_suite.py",
+        "src/adaptive_jump/simple_jm_verifier.py",
         "src/adaptive_jump/walkforward.py",
         "pyproject.toml",
         "uv.lock",
@@ -110,11 +108,11 @@ def test_trade_route_equal_tolerates_only_csv_scale_continuous_noise() -> None:
     )
     round_tripped.loc[1, list(continuous)] += 5e-16
 
-    assert suite._trade_route_equal(reference, round_tripped)
+    assert suite.trade_route_equal(reference, round_tripped)
 
     changed = reference.copy()
     changed.loc[1, "strategy_return"] += 1e-10
-    assert not suite._trade_route_equal(reference, changed)
+    assert not suite.trade_route_equal(reference, changed)
 
 
 @pytest.mark.parametrize("column", ["date", "signal", "position", "one_way_turnover"])
@@ -131,7 +129,7 @@ def test_trade_route_equal_requires_exact_discrete_route(column: str) -> None:
     else:
         changed.loc[1, column] = 1.0 - changed.loc[1, column]
 
-    assert not suite._trade_route_equal(reference, changed)
+    assert not suite.trade_route_equal(reference, changed)
 
 
 def test_metric_rows_use_paper_turnover_and_count_switches() -> None:
@@ -148,7 +146,7 @@ def test_metric_rows_use_paper_turnover_and_count_switches() -> None:
         "static_lambda50": path,
     }
 
-    rows = suite._metric_rows("us", paths, load_config(ROOT / "research.toml"))
+    rows = suite.metric_rows("us", paths, load_config(ROOT / "research.toml"))
     static = next(row for row in rows if row["model"] == "static_lambda50")
 
     assert suite.PAPER_TURNOVER_SCALE == 0.5
@@ -191,10 +189,10 @@ def test_decision_requires_strict_positive_gap_in_every_market(monkeypatch) -> N
             model: _trade_frame(dates, strategy_return=[sharpe] * len(dates))
             for model, sharpe in sharpes.items()
         }
-        rows.extend(suite._metric_rows(market, paths, config))
+        rows.extend(suite.metric_rows(market, paths, config))
 
     summary = pd.DataFrame.from_records(rows)
-    decision = suite._decision(summary)
+    decision = suite.build_decision(summary)
     by_variant = {row["variant"]: row for row in decision["variants"]}
 
     jp_dd = summary.loc[
@@ -219,7 +217,7 @@ def test_math_contract_receipt_covers_nested_and_brute_force_checks() -> None:
 
 
 def test_loss_scale_math_receipt_covers_every_toy_path() -> None:
-    assert suite._verify_loss_scale_math() == {
+    assert suite.verify_loss_scale_math() == {
         "loss_scale_three_formula": True,
         "every_toy_path_objective_identity": True,
         "lambda_one_third_path_equivalence": True,
@@ -238,7 +236,7 @@ def test_loss_scale_math_checks_dp_objective_against_brute_force(
 
     monkeypatch.setattr(suite, "dp", wrong_objective)
     with pytest.raises(suite.SimpleJMSuiteError, match="mathematical identity"):
-        suite._verify_loss_scale_math()
+        suite.verify_loss_scale_math()
 
 
 def _valid_trace(**overrides: object) -> pd.DataFrame:
@@ -272,7 +270,7 @@ def _valid_trace(**overrides: object) -> pd.DataFrame:
 
 
 def test_validate_traces_accepts_complete_loss_to_t_plus_2_chain() -> None:
-    suite._validate_traces(_valid_trace())
+    suite.validate_traces(_valid_trace())
 
 
 @pytest.mark.parametrize(
@@ -296,7 +294,7 @@ def test_validate_traces_rejects_incomplete_or_inconsistent_evidence(
     message: str,
 ) -> None:
     with pytest.raises(suite.SimpleJMSuiteError, match=message):
-        suite._validate_traces(_valid_trace(**{column: value}))
+        suite.validate_traces(_valid_trace(**{column: value}))
 
 
 def test_validate_traces_allows_confirmed_state_to_differ_from_raw_state() -> None:
@@ -310,7 +308,7 @@ def test_validate_traces_allows_confirmed_state_to_differ_from_raw_state() -> No
         position=1.0,
     )
 
-    suite._validate_traces(trace)
+    suite.validate_traces(trace)
 
 
 def test_validate_traces_allows_only_unreachable_collapsed_loss_inf() -> None:
@@ -321,54 +319,12 @@ def test_validate_traces_allows_only_unreachable_collapsed_loss_inf() -> None:
         collapsed_to_one_state=True,
     )
 
-    suite._validate_traces(collapsed)
+    suite.validate_traces(collapsed)
 
     reachable_inf = collapsed.copy()
     reachable_inf.loc[0, "loss_state_0"] = np.inf
     with pytest.raises(suite.SimpleJMSuiteError, match="reachable.*loss"):
-        suite._validate_traces(reachable_inf)
-
-
-def test_trace_trade_rows_are_linked_to_verified_accounting(tmp_path: Path) -> None:
-    dates = pd.bdate_range("2023-01-02", periods=6)
-    signal = np.asarray([0.0, 1.0, 0.0, 1.0, 0.0, 1.0])
-    position = np.asarray([0.0, 0.0, 0.0, 1.0, 0.0, 1.0])
-    turnover = np.asarray([0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
-    equity = np.full(6, 0.02)
-    cash = np.zeros(6)
-    gross = position * equity
-    cost = turnover * 0.001
-    trades = pd.DataFrame(
-        {
-            "date": dates,
-            "equity_simple": equity,
-            "cash_return": cash,
-            "signal": signal,
-            "position": position,
-            "gross_return": gross,
-            "one_way_turnover": turnover,
-            "transaction_cost": cost,
-            "strategy_return": gross - cost,
-        }
-    )
-    target = tmp_path / "us" / "dd_only"
-    target.mkdir(parents=True)
-    trades.to_csv(target / "trades.csv", index=False, float_format="%.17g")
-    selected = trades.iloc[3]
-    trace = _valid_trace(
-        trade_date=selected["date"],
-        position=selected["position"],
-        one_way_turnover=selected["one_way_turnover"],
-        transaction_cost=selected["transaction_cost"],
-        gross_return=selected["gross_return"],
-        strategy_return=selected["strategy_return"],
-    )
-
-    suite._verify_trace_trade_rows(tmp_path, trace)
-
-    trace.loc[0, "strategy_return"] += 0.01
-    with pytest.raises(suite.SimpleJMSuiteError, match="strategy_return"):
-        suite._verify_trace_trade_rows(tmp_path, trace)
+        suite.validate_traces(reachable_inf)
 
 
 def _write_suite_contract(repo: Path, *, registered_hash: str | None = None) -> Path:
@@ -376,10 +332,10 @@ def _write_suite_contract(repo: Path, *, registered_hash: str | None = None) -> 
     research.mkdir()
     (repo / "canonical").mkdir()
     (repo / "lambda50").mkdir()
-    spec = research / "simple-jm-suite-001.toml"
+    spec = research / f"{suite.EXPERIMENT_ID}.toml"
     spec.write_text(
-        """schema_version = 1
-experiment_id = "simple-jm-suite-001"
+        f"""schema_version = 1
+experiment_id = "{suite.EXPERIMENT_ID}"
 status = "FROZEN_BEFORE_RESULTS"
 claim_class = "EXPLORATORY"
 
@@ -438,8 +394,14 @@ def test_load_simple_jm_spec_rejects_registry_hash_mismatch(tmp_path: Path) -> N
 def test_load_dd_loss_scale_spec_accepts_frozen_contract(tmp_path: Path) -> None:
     research = tmp_path / "research"
     research.mkdir()
-    spec_path = research / "dd-loss-scale-001.toml"
-    spec_path.write_bytes((ROOT / "research/dd-loss-scale-001.toml").read_bytes())
+    spec_path = research / f"{suite.LOSS_SCALE_EXPERIMENT_ID}.toml"
+    spec_path.write_text(
+        (ROOT / "research/dd-loss-scale-001.toml")
+        .read_text(encoding="utf-8")
+        .replace("dd-loss-scale-001", suite.LOSS_SCALE_EXPERIMENT_ID)
+        .replace("simple-jm-suite-001", suite.EXPERIMENT_ID),
+        encoding="utf-8",
+    )
     document = tomllib.loads(spec_path.read_text(encoding="utf-8"))
     for field in ("canonical_run_root", "dd_parent_run_root"):
         (tmp_path / document["sources"][field]).mkdir(parents=True)
@@ -520,7 +482,7 @@ def test_parent_dd_control_replays_signal_on_exact_canonical_returns(
         .reset_index()
         .loc[:, suite.TRADE_COLUMNS]
     )
-    assert suite._trade_route_equal(
+    assert suite.trade_route_equal(
         suite.read_trade_path(target / "trades.csv", 1, 10),
         routed,
     )
@@ -579,90 +541,14 @@ def test_loss_scale_contrast_and_single_variant_decision() -> None:
             )
     summary = pd.DataFrame.from_records(rows)
 
-    contrast = suite._loss_scale_contrasts(summary)
-    decision = suite._decision(summary, (suite.SCALED_DD_VARIANT,))
+    contrast = suite.loss_scale_contrasts(summary)
+    decision = suite.build_decision(summary, (suite.SCALED_DD_VARIANT,))
 
     assert contrast["delta_sharpe"].tolist() == [1.0, 1.0, 1.0]
     assert contrast["delta_switch_count"].tolist() == [-2.0, -2.0, -2.0]
     assert contrast["market_pass"].tolist() == [True, True, True]
     assert [row["variant"] for row in decision["variants"]] == [suite.SCALED_DD_VARIANT]
     assert decision["supported_variants"] == [suite.SCALED_DD_VARIANT]
-
-
-def test_replay_scaled_selector_uses_choices_signal_and_t_plus_2(
-    tmp_path: Path,
-) -> None:
-    config = load_config(ROOT / "research.toml")
-    dates = pd.bdate_range("2010-01-04", "2019-03-29", name="date")
-    row = np.arange(len(dates))
-    features = pd.DataFrame(
-        {
-            "date": dates,
-            "equity_simple": 0.0002 + 0.01 * np.sin(row / 13),
-            "cash_return": np.zeros(len(dates)),
-        }
-    )
-    states = pd.DataFrame(
-        {
-            penalty: ((row // (20 + number)) % 2).astype(float)
-            for number, penalty in enumerate(config.jm_protocol.lambda_grid)
-        },
-        index=dates,
-    )
-    selection = suite.select_monthly_candidate(
-        features,
-        states,
-        config.selection_protocol,
-        delay_trading_days=1,
-        one_way_cost_bps=10,
-        periods_per_year=252,
-        volatility_ddof=1,
-    )
-    trades = suite.apply_signal(
-        features,
-        selection.signal.reset_index(drop=True),
-        delay_trading_days=1,
-        one_way_cost_bps=10,
-    )
-    complete = trades.loc[:, suite.METRIC_REQUIRED].notna().all(axis=1)
-    trades = trades.loc[complete, suite.TRADE_COLUMNS].reset_index(drop=True)
-    target = tmp_path / "us" / suite.SCALED_DD_VARIANT
-    target.mkdir(parents=True)
-    states.reset_index().to_csv(target / "candidate-states.csv", index=False)
-    selection.choices.to_csv(target / "choices.csv", index=False)
-    selection.signal.rename("selected_signal").reset_index().to_csv(
-        target / "selected-signal.csv", index=False
-    )
-    pd.DataFrame(columns=suite.REFIT_COLUMNS).to_csv(target / "refits.csv", index=False)
-    suite.write_json(target / "boundary.json", {})
-    trades.to_csv(target / "trades.csv", index=False, float_format="%.17g")
-    stored = suite.read_trade_path(target / "trades.csv", 1, 10)
-    source = suite.LossScaleMarketSource("us", features, {})
-
-    suite._replay_scaled_selector(
-        tmp_path,
-        "us",
-        source,
-        stored["date"],
-        stored,
-        config,
-    )
-
-    signal = pd.read_csv(target / "selected-signal.csv")
-    changed = signal["selected_signal"].notna().idxmax()
-    signal.loc[changed, "selected_signal"] = (
-        1.0 - signal.loc[changed, "selected_signal"]
-    )
-    signal.to_csv(target / "selected-signal.csv", index=False)
-    with pytest.raises(suite.SimpleJMSuiteError, match="selector replay changed"):
-        suite._replay_scaled_selector(
-            tmp_path,
-            "us",
-            source,
-            stored["date"],
-            stored,
-            config,
-        )
 
 
 @pytest.mark.parametrize(
@@ -692,13 +578,9 @@ def test_load_simple_jm_spec_rejects_non_table_sections(tmp_path: Path) -> None:
         load_config(ROOT / "research.toml"), path=tmp_path / "research.toml"
     )
     spec_path.write_text(
-        """schema_version = 1
-experiment_id = "simple-jm-suite-001"
-status = "FROZEN_BEFORE_RESULTS"
-claim_class = "EXPLORATORY"
-sources = "invalid"
-variants = {}
-""",
+        f'schema_version = 1\nexperiment_id = "{suite.EXPERIMENT_ID}"\n'
+        'status = "FROZEN_BEFORE_RESULTS"\nclaim_class = "EXPLORATORY"\n'
+        'sources = "invalid"\nvariants = {}\n',
         encoding="utf-8",
     )
 
@@ -737,182 +619,3 @@ def test_run_metadata_uses_running_then_complete_lifecycle(
     assert complete["created_at_utc"] == running["created_at_utc"]
     with pytest.raises(suite.SimpleJMSuiteError, match="running state"):
         suite._finish_run(metadata_path, "not_supported", started=10.0)
-
-
-def test_parallel_fit_emits_monotonic_parent_progress(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    class ImmediateFuture:
-        def __init__(self, value: object) -> None:
-            self.value = value
-
-        def result(self) -> object:
-            return self.value
-
-    class InlineExecutor:
-        def __init__(self, **_: object) -> None:
-            pass
-
-        def __enter__(self) -> "InlineExecutor":
-            return self
-
-        def __exit__(self, *_: object) -> None:
-            pass
-
-        def submit(self, function, task) -> ImmediateFuture:
-            return ImmediateFuture(function(task))
-
-    monkeypatch.setattr(suite, "ProcessPoolExecutor", InlineExecutor)
-    monkeypatch.setattr(suite, "as_completed", lambda futures: futures)
-    monkeypatch.setattr(
-        suite,
-        "_fit_market_task",
-        lambda task: (task[1], task[2]),
-    )
-    events = []
-
-    output = suite._parallel_fit(
-        SimpleNamespace(canonical_root=tmp_path),
-        object(),
-        ("dd_only",),
-        workers=3,
-        observer=events.append,
-        progress_offset=3,
-        progress_total=6,
-    )
-
-    assert set(output) == {(market, "dd_only") for market in suite.MARKETS}
-    assert [event.completed for event in events] == [4, 5, 6]
-    assert all(event.total == 6 for event in events)
-    assert [event.market for event in events] == list(suite.MARKETS)
-    assert {event.kind for event in events} == {"variant_completed"}
-    assert {event.stage for event in events} == {"fixed_jm"}
-    assert {event.model for event in events} == {"dd_only"}
-
-
-def test_runner_events_use_existing_contract_without_stdout(capsys) -> None:
-    events = []
-    suite._emit_stage(events.append, "stage_started", "fixed_jm", completed=0, total=15)
-    suite._emit_stage(
-        events.append, "stage_completed", "fixed_jm", completed=15, total=15
-    )
-    suite._emit_stage(events.append, "stage_started", "selection", completed=0, total=9)
-    dates = pd.bdate_range("2023-01-02", periods=2)
-    signal = pd.Series([0.0, 1.0], index=dates, name="selected_signal")
-    selection = SelectionResult(
-        signal=signal,
-        choices=pd.DataFrame({"decision_date": [dates[-1]], "selected": [35.0]}),
-        surface=pd.DataFrame(),
-        candidate_returns=pd.DataFrame(),
-    )
-    output = suite.VariantOutput(
-        market="us",
-        variant="dd_only",
-        states=pd.DataFrame(),
-        refits=pd.DataFrame(),
-        selection=selection,
-        selected_state=1.0 - signal,
-        signal=signal,
-        full_trades=pd.DataFrame(),
-        boundary={
-            "upper_candidate": 1200.0,
-            "selected_months": 1,
-            "total_months": 2,
-            "fraction": 0.5,
-            "limit": 0.05,
-            "passed": False,
-            "descriptive_only": True,
-        },
-    )
-
-    suite._emit_variant_events(events.append, {("us", "dd_only"): output})
-    suite._emit_stage(
-        events.append, "stage_completed", "selection", completed=9, total=9
-    )
-
-    assert [event.kind for event in events] == [
-        "stage_started",
-        "stage_completed",
-        "stage_started",
-        "selected_signal",
-        "boundary_diagnostic",
-        "stage_completed",
-    ]
-    assert [event.stage for event in events] == [
-        "fixed_jm",
-        "fixed_jm",
-        "selection",
-        "selection",
-        "selection",
-        "selection",
-    ]
-    assert events[3].market == events[4].market == "us"
-    assert events[3].model == events[4].model == "dd_only"
-    assert capsys.readouterr().out == ""
-
-
-def _git(repo: Path, *args: str) -> str:
-    result = subprocess.run(
-        ["git", *args],
-        cwd=repo,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return result.stdout.strip()
-
-
-def test_implementation_source_requires_one_complete_historical_snapshot(
-    tmp_path: Path,
-) -> None:
-    _git(tmp_path, "init", "-q")
-    first = tmp_path / "first.py"
-    second = tmp_path / "second.py"
-    first.write_text("first-old\n", encoding="utf-8")
-    second.write_text("second-old\n", encoding="utf-8")
-    _git(tmp_path, "add", "first.py", "second.py")
-    _git(
-        tmp_path,
-        "-c",
-        "user.name=Test",
-        "-c",
-        "user.email=test@example.com",
-        "commit",
-        "-qm",
-        "first",
-    )
-    first_commit = _git(tmp_path, "rev-parse", "HEAD")
-    old_mapping = {
-        "first.py": hashlib.sha256(first.read_bytes()).hexdigest(),
-        "second.py": hashlib.sha256(second.read_bytes()).hexdigest(),
-    }
-
-    first.write_text("first-new\n", encoding="utf-8")
-    second.write_text("second-new\n", encoding="utf-8")
-    _git(tmp_path, "add", "first.py", "second.py")
-    _git(
-        tmp_path,
-        "-c",
-        "user.name=Test",
-        "-c",
-        "user.email=test@example.com",
-        "commit",
-        "-qm",
-        "second",
-    )
-    mixed_mapping = {
-        "first.py": old_mapping["first.py"],
-        "second.py": hashlib.sha256(second.read_bytes()).hexdigest(),
-    }
-
-    assert suite._implementation_source_commit(tmp_path, old_mapping) == first_commit
-    with pytest.raises(suite.SimpleJMSuiteError, match="no single Git commit"):
-        suite._implementation_source_commit(tmp_path, mixed_mapping)
-
-
-def test_implementation_source_accepts_matching_non_git_export(tmp_path: Path) -> None:
-    source = tmp_path / "runner.py"
-    source.write_text("exact source\n", encoding="utf-8")
-    mapping = {"runner.py": hashlib.sha256(source.read_bytes()).hexdigest()}
-
-    assert suite._implementation_source_commit(tmp_path, mapping) is None

@@ -1,0 +1,43 @@
+jm-grid-identification-001 — kết quả
+(sealed v9.4, delay 1, ngưỡng 0.05; * = trong ngưỡng)
+
+A. Cổng parity: PASSED cả ba thị trường — chi tiết trong parity-note.txt cùng thư mục.
+
+B1. Đường cong Table 3 (US, 1982-2023, shifts/năm;
+    ≈ = trong nửa đơn vị in 0.05, quy ước repo):
+   λ=     0  ta 7.24 (theo 252d: 7.24)  vs Shu 9.7  ≠
+   λ=     5  ta 2.00 (theo 252d: 2.00)  vs Shu 2.7  ≠
+   λ=    15  ta 1.33 (theo 252d: 1.33)  vs Shu 1.7  ≠
+   λ=    35  ta 0.57 (theo 252d: 0.57)  vs Shu 0.8  ≠
+   λ=    70  ta 0.48 (theo 252d: 0.48)  vs Shu 0.5  ≈
+   λ=   150  ta 0.29 (theo 252d: 0.29)  vs Shu 0.4  ≠
+   => đường cong KHÔNG tái tạo: 1/6 λ trong độ chính xác in.
+
+DIỄN GIẢI ĐÃ ĐĂNG KÝ (spec [decision], vẽ trước khi đọc C):
+   Table 3 không tái tạo — theo registered_interpretations[2],
+   hình học chuẩn hoá/thang λ trở thành câu hỏi đông cứng kế
+   tiếp (jm-standardizer-geometry-002), và toàn bộ mục C dưới
+   đây chỉ được đọc như kết quả CÓ ĐIỀU KIỆN trên hình học
+   hiện tại của ta, không phải bằng chứng chọn lưới.
+
+B2. Path CV-chọn (sealed, US, OOS): 34 shifts, bear 21.9%  vs slide: 30 shifts, bear 19.7%
+    de: 80 shifts, bear 25.7% (không có anchor công bố)
+    jp: 93 shifts, bear 41.7% (không có anchor công bố)
+
+C. Một lưới λ duy nhất có khớp Table 4 (JM) ở cả ba thị trường không?
+lưới            λ                                 S&P 500          DAX   Nikkei 225  8 chỉ số
+table3_sealed   0|5|15|35|70|150               0.50/0.75    1.17/0.30    1.41/0.20      4/3/3
+v1_author_withdrawn10|22|50|100|220|500|1000      0.32/0.77    0.59/0.37    0.76/0.16      4/6/4
+li2025_citing   0|5|10|25|50|100               0.53/0.71    1.03/0.29    1.59/0.13      7/4/3
+bocconi_wild    0|5|10|20|30|40|50|60|80|10    0.53/0.71    0.94/0.27    1.38/0.13      5/3/3
+hackmd_wild     0|0.1|1|10|100                 0.82/0.64    1.11/0.31    1.71/0.22      5/4/5
+companion_log5  0|1|4.64159|21.5443|100        0.68/0.64    1.08/0.30    1.86/0.12      6/4/3
+companion_log9  0|1|1.9307|3.72759|7.19686|    0.74/0.72    1.05/0.32    1.68/0.16      7/4/4
+typical_range   50|70|100                      0.24/0.76    0.50/0.32    0.59/0.16      5/4/3
+   (mỗi ô: turnover/sharpe; * = cả hai trong ngưỡng)
+  S&P 500     8/8 với: không lưới nào | turnover phổ 0.235..0.824 (Shu 0.44)
+              riêng ô turnover trong ngưỡng (tiêu chí turnover_identified_in_market của spec): không lưới nào
+  DAX         8/8 với: không lưới nào | turnover phổ 0.498..1.172 (Shu 1.70)
+              riêng ô turnover trong ngưỡng (tiêu chí turnover_identified_in_market của spec): không lưới nào
+  Nikkei 225  8/8 với: không lưới nào | turnover phổ 0.589..1.859 (Shu 0.72)
+              riêng ô turnover trong ngưỡng (tiêu chí turnover_identified_in_market của spec): v1_author_withdrawn

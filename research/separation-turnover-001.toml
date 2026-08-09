@@ -1,0 +1,67 @@
+schema_version = 1
+experiment_id = "separation-turnover-001"
+parent_experiment_id = "dd-loss-scale-001"
+frozen_at_utc = "2026-07-22T09:05:00Z"
+claim_class = "EXPLORATORY"
+stage = "DEVELOPMENT_SAMPLE_MECHANISM_DIAGNOSTIC"
+question = "Does decision-time fitted regime separation of the scaled-DD JM forecast the next selection month's switching intensity of the scaled-DD strategy?"
+hypothesis = "A wider standardized center separation at the decision date indicates a cleaner two-regime fit, so the strategy switches less and turns over less during the following selection month."
+performance_claim_allowed = false
+new_model_claim_allowed = false
+refit_or_state_regeneration = false
+post_2023_access = false
+
+[source]
+experiment_id = "dd-loss-scale-001"
+spec_sha256 = "e1e84ddbbdda749f832a2d5a17e3fd8d8d064b6315f74f7c68dec9826d3f7feb"
+run_id = "dd-loss-scale-e1e84ddbbdda-65ccb507abba-20260722T045053128156Z"
+run_inventory_sha256 = "fd256dd65562bbdb2fc19b84ee79c0e2996be304d7034402c9985609c0b247d4"
+variant = "dd_scaled_3x"
+allowed_market_files = ["refits.csv", "choices.csv", "trades.csv"]
+markets = ["us", "de", "jp"]
+outer_start = { us = "2007-12-04", de = "2008-01-03", jp = "2009-05-07" }
+outer_end = "2023-12-29"
+
+[separation]
+unit = "market x monthly decision date"
+selected_lambda = "choices.csv selected value at the decision date"
+active_refit = "refits.csv row with the largest fit_date <= decision_date and lambda equal to the selected lambda; the join must be one-to-one and complete"
+feature_space = "stored per-refit StandardScaler transform of the single DD feature"
+metric = "S = absolute difference of the two stored standardized state centers"
+collapsed_rule = "if active_state_count < 2 then S = 0.0; the row stays in the analysis and the collapsed count is reported"
+relation_to_ledger = "S is the center-distance numerator D of the adaptive-separation-001 reliability R_train, specialized to one feature; stored artifacts do not retain training rows, so state radii are not recomputable without refitting"
+
+[outcome]
+window = "trading days t with decision_date < t <= next decision_date; the final decision extends to the last trade date; windows must partition all trade dates after the first decision exactly"
+switches_next = "count of position changes across consecutive trading days inside the window, including the change from the last position at or before the decision date to the first window position"
+turnover_next = "sum of one_way_turnover inside the window"
+boundary_note = "sealed t+2 accounting means roughly the first two window days can still carry the prior selection; accepted as-is for this exploratory"
+descriptive_previous_window = "the same quantities on the window ending at the decision date are recorded for direction-of-change description only"
+
+[association]
+primary = "per-market Spearman rank correlation between S and switches_next"
+secondary = "per-market Spearman rank correlation between S and turnover_next"
+direction = "negative under the hypothesis"
+significance = "one-sided permutation test permuting S within market, 10000 draws, numpy seed 20260722, p = fraction of permuted correlations <= observed"
+tie_handling = "average ranks"
+
+[decision]
+supported = "primary correlation < 0 in all three markets and permutation p < 0.05 in at least two"
+not_supported = "primary correlation >= 0 in at least two markets"
+inconclusive = "all other patterns"
+next_step_if_supported = "freeze a separate gate-formula study; no gate is fit, tuned, or tested here"
+
+[verification]
+source_inventory_hash_checked = true
+join_one_to_one_and_complete = true
+all_dates_through_2023 = true
+window_partition_exact = true
+switch_total_consistency = "sum of switches_next over windows equals total position changes after the first decision date"
+collapsed_rows_reported = true
+
+[storage]
+artifact_subdir = "separation-turnover-001"
+table_csv = "separation-turnover.csv"
+summary_json = "summary.json"
+chart = "separation-turnover.png"
+generated_outputs_tracked = false
