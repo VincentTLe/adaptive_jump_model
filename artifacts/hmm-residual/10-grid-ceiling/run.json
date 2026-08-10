@@ -1,0 +1,22 @@
+{
+  "what": "HMM smoothing-grid ceiling probe, all three markets, v9.3",
+  "rule_fixed_before_results": true,
+  "stopping_criterion": "first nested grid with top-candidate month fraction <= upper_boundary_month_fraction_limit",
+  "boundary_limit": 0.05,
+  "base_grid": [
+    0,
+    2,
+    4,
+    6,
+    8,
+    20
+  ],
+  "extensions": [
+    40,
+    80,
+    160,
+    320
+  ],
+  "table4_consulted_for_grid_choice": false,
+  "written_utc": "2026-07-29T07:31:48+00:00"
+}

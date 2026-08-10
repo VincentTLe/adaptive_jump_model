@@ -1,0 +1,26 @@
+Một bộ ứng viên k có khớp được turnover ở CẢ BA thị trường không?
+(sealed v9.3, delay 1, ngưỡng 0.05; * = trong ngưỡng)
+
+bộ ứng viên    k                       S&P 500          DAX   Nikkei 225   khớp  8 chỉ số
+table3         0|2|4|8|20               1.765        2.197        3.295     0/3     7/7/7
+table3_plus6   0|2|4|6|8|20             1.795        2.256        3.144     0/3     7/7/7
+filtered       2|4|6|8|20               1.530        2.226        3.144     0/3     7/7/7
+bulla_only     6                        1.854        1.816        2.993     0/3     6/7/7
+dense_small    2|4|6|8|10|12            1.471        2.080        3.265     0/3     5/7/6
+dense_wide     4|8|12|16|20             1.412*       1.992        2.751     1/3     8/6/7
+reach_low      2|4                      2.942        2.432*       4.686     1/3     5/8/7
+reach_no_tail  0|2|4|6                  3.236        2.256        3.900     0/3     5/7/6
+
+Tối đa 1/3 thị trường khớp turnover bằng MỘT bộ duy nhất.
+
+  S&P 500     Shu 1.41 | phổ 1.412..3.236 | bộ khớp: dense_wide
+  DAX         Shu 2.46 | phổ 1.816..2.432 | bộ khớp: reach_low
+  Nikkei 225  Shu 2.90 | phổ 2.751..4.686 | bộ khớp: không có
+
+Các thị trường đòi hỏi NGƯỢC NHAU: bộ nào kéo một thị trường vào
+ngưỡng thì đẩy thị trường khác ra xa. Vì paper dùng chung một bộ cho
+cả ba, không lựa chọn lưới nào tái lập được dòng turnover của Table 4.
+Turnover không phải chưa xác định vì phổ rộng — mà vì các ràng buộc
+mâu thuẫn nhau.
+
+Bảy chỉ số còn lại, trên toàn bộ 24 ô: lệch lớn nhất 0.091

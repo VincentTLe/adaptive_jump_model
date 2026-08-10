@@ -1,0 +1,25 @@
+HÌNH DẠNG ĐỢT CHẾ ĐỘ — của ta vs của chính Shu (Figure 6), S&P 500 HMM
+cùng 8565 phiên, 1990-01-02..2023-12-29
+
+                                          của ta               Shu
+tỉ lệ ngày ở gấu                          27.95%            27.83%
+số lần đổi chế độ                            122                96
+số đợt gấu                                    61                48
+độ dài đợt gấu, trung vị              13.0 phiên        16.5 phiên
+độ dài đợt gấu, trung bình            39.2 phiên        49.7 phiên
+đợt gấu dài nhất                       339 phiên         346 phiên
+đợt gấu <= 5 phiên                         26.2%             12.5%
+độ dài đợt tăng, trung vị             28.5 phiên        28.0 phiên
+
+Đối chiếu với chú thích in trong Figure 6:
+  tỉ lệ gấu   ta 27.95%   trích Figure 6 27.8%   đường trích xuất 27.83%
+  số lần đổi  ta 122   trích Figure 6 96   đường trích xuất 96
+
+Phần dư nằm ở đâu (phân rã, KHÔNG phải đề xuất sửa):
+  đợt gấu thừa: 13   trong đó ngắn <= 5 phiên: 10 (77%)
+  mỗi đợt thừa tốn 2 lần đổi -> 26 lần, đúng bằng chênh lệch 122 - 96 = 26
+  các đợt ngắn của ta chiếm 36/2394 phiên gấu = 1.5% thời gian, nên tỉ lệ gấu gần như không đổi
+
+Đọc kết quả:
+  Đợt gấu của ta NGẮN HƠN và NHIỀU HƠN ở cùng tổng thời gian — đúng chữ ký của một chuỗi nhiễu hơn đi qua cùng một ngưỡng, chứ không phải của một ngưỡng đặt sai.
+  Tỉ lệ đợt gấu rất ngắn (<= 5 phiên): ta 26.2%, Shu 12.5%.

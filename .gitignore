@@ -58,6 +58,11 @@ artifacts/audit/*/states-*.csv
 artifacts/optimizer-fidelity/fit-cache/
 # confirmed_2d episode-level evidence: 27/55/49 one-row-per-episode tables.
 !artifacts/confirmed2d-episodes/
+# Track lightweight HMM audit evidence; keep state matrices and numerical caches local.
+!artifacts/hmm-residual/
+artifacts/hmm-residual/**/*states*.csv
+artifacts/hmm-residual/**/*.npz
+artifacts/hmm-residual/**/*.npy
 reports/
 *.log
 *.pid
