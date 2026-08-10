@@ -95,7 +95,7 @@ def spec() -> dict:
 
 @pytest.fixture(scope="module")
 def runner():
-    return _module("experiments/run_frequency_ladder")
+    return _module("run_frequency_ladder")
 
 
 def _refits(market: str) -> pd.DataFrame:
