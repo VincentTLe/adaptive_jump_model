@@ -35,7 +35,7 @@ Usage
     uv run python scripts/check_paper_claims.py --paper /tmp/shu.txt
 
 Regenerate the paper text with:
-    pdftotext -layout 2402.05272v3.pdf /tmp/shu.txt
+    pdftotext -layout data/external/inputs/2402.05272v3.pdf /tmp/shu.txt
 """
 
 from __future__ import annotations
@@ -109,7 +109,7 @@ def load_paper(path: Path) -> tuple[list[str], str]:
     # data/external/ is deliberately ignored. Rebuild it from the local PDF
     # instead, so the hash pin below still anchors every line number.
     if not path.exists() and path == DEFAULT_PAPER:
-        pdf = REPO / "2402.05272v3.pdf"
+        pdf = REPO / "data" / "external" / "inputs" / "2402.05272v3.pdf"
         if pdf.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
             subprocess.run(["pdftotext", "-layout", str(pdf), str(path)], check=True)
@@ -117,7 +117,7 @@ def load_paper(path: Path) -> tuple[list[str], str]:
     if not path.exists():
         sys.exit(
             f"paper text not found: {path}\nregenerate with:\n"
-            f"  pdftotext -layout {REPO}/2402.05272v3.pdf {path}"
+            f"  pdftotext -layout {REPO}/data/external/inputs/2402.05272v3.pdf {path}"
         )
     raw = path.read_bytes()
     digest = hashlib.sha256(raw).hexdigest()
