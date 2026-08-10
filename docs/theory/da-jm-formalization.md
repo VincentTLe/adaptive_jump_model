@@ -50,16 +50,33 @@ papers read we did not find an implemented duration/hazard penalty; across
 51 forward citations and the 2025-2026 SJM-lineage papers whose penalty
 form we verified in text, the constant per-transition lambda is unmodified.
 
-**One important qualification (added 2026-08-09, owner-caught).** Deep
-Statistical Jump Models explicitly notes that its generic state-loss
-framework `L_state` can encode prior beliefs such as accumulating a penalty
-when the model stays in one state for too long. So the *idea* of
-duration-dependent state regularization is already present in the lineage
-and is **not** claimed here as novel. What we have not found implemented is
-the specific construction below: an explicit regime-age state `d`, a
-duration distribution with an explicit hazard `h(d)`, the discrete-Weibull
-law, the augmented `(state, age)` dynamic program, the `beta = 1` nesting,
-and a duration-aware SJM empirical experiment.
+**One important qualification (added 2026-08-09, owner-caught; source
+checked directly the same day).** Deep Statistical Jump Models (Yu, Mulvey
+& Kolm, 2025-11-27; SSRN 5817083, local copy `paper/ssrn-5817083.pdf`),
+**§2.1 Formulation, p. 6**:
+
+> "Finally, L_state encodes the users' prior belief about the latent state.
+> For example one can penalize the model for being in a single state for
+> too long by accumulating penalty for periods of time the model stays in a
+> single state without switching."
+
+So the *idea* of duration-dependent state regularization is already present
+in this lineage and is **not** claimed here as novel.
+
+What that paper does not provide — verified by reading it, not inferred —
+is the construction below: an explicit regime-age state `d`, a duration
+distribution with an explicit hazard `h(d)`, the discrete-Weibull law, the
+augmented `(state, age)` dynamic program, the `beta = 1` nesting, or a
+duration-aware SJM empirical experiment. The quoted sentence is an
+illustrative example of what a user *could* encode; the only two `L_state`
+forms the paper writes down are the total-variation penalty (Eq. 5, p. 6)
+and a first-order Markov transition kernel (Proposition 1), neither
+age-dependent, and the words *duration, dwell, sojourn, semi-Markov,
+hazard, Weibull, regime-age, survival* do not appear in its 28 pages.
+
+The honest reading is that DA-JM makes explicit and solvable a possibility
+this lineage already names in passing. That is a smaller claim than the
+one this document previously made, and it is the one the source supports.
 
 **Frozen novelty wording (owner instruction, 2026-08-09).** The only
 claim permitted is the narrow intersection one:
@@ -75,13 +92,14 @@ Explicitly forbidden phrasings: "we are the first duration-aware regime
 model" (false — Sichel 1991, Durland & McCurdy 1994, Bulla & Bulla 2006);
 "no duration-aware Jump Model exists" (too strong for the coverage
 achieved); "no duration/semi-Markov/dwell-time/hazard modification exists
-in the SJM lineage" (false as stated — Deep SJM's generic state loss can
-already express a stay-too-long penalty); "DA-JM is novel" (too vague).
-The novelty is the intersection SJM penalized clustering + explicit
-duration hazard + augmented DP. Because 9 citing works were unreachable,
-Google Scholar is not crawlable, and Deep Statistical Jump Models was
-assessed at abstract level only in the 2026-07-30 sweep (it was gated then;
-a local copy now exists at `paper/ssrn-5817083.pdf`), the manuscript must
+in the SJM lineage" (false as stated — Deep SJM p. 6 names a stay-too-long
+penalty as an example its generic state loss can express); "DA-JM is novel"
+(too vague). The novelty is the intersection SJM penalized clustering +
+explicit duration hazard + augmented DP. Because 9 citing works were
+unreachable and Google Scholar is not crawlable — and because Deep
+Statistical Jump Models was assessed at abstract level only in the
+2026-07-30 sweep, which is exactly how the earlier categorical claim
+survived until it was read directly on 2026-08-09 — the manuscript must
 say "in the literature reviewed so far, we have not found", never a
 categorical non-existence claim. **A literature search cannot prove
 non-existence, and the novelty position must never be described as

@@ -176,27 +176,43 @@ novelty position rests on a bounded literature search and is stated as such.
    reviewed so far we have not found an *implemented* Statistical Jump Model
    with an explicit hazard-parameterized or semi-Markov duration law solved
    through an augmented-state dynamic program. However, Deep Statistical Jump
-   Models explicitly notes that its generic state-loss framework can encode
-   prior beliefs such as penalizing remaining in one state for too long.
+   Models (Yu, Mulvey & Kolm, 2025-11-27; SSRN 5817083, local copy
+   `paper/ssrn-5817083.pdf`) explicitly notes that its generic state-loss
+   framework can encode prior beliefs such as penalizing remaining in one state
+   for too long — **§2.1 Formulation, p. 6**, verified by reading the paper on
+   2026-08-09:
+
+   > "Finally, L_state encodes the users' prior belief about the latent state.
+   > For example one can penalize the model for being in a single state for too
+   > long by accumulating penalty for periods of time the model stays in a
+   > single state without switching."
+
    **Generic duration-dependent state regularization is therefore NOT claimed
    as novel.** Duration dependence in regime models is itself decades old
    (Sichel 1991; Durland & McCurdy 1994; Bulla & Bulla 2006).
 
-   What Deep SJM does not appear to provide — and what DA-JM proposes — is an
-   explicit regime-age state `d`, a duration distribution, an explicit hazard
-   `h(d)`, a discrete-Weibull duration law, an augmented `(state, age)` dynamic
-   program, the `beta = 1` nesting construction, or a duration-aware SJM
-   empirical experiment.
+   What that paper does NOT provide — and what DA-JM proposes — is an explicit
+   regime-age state `d`, a duration distribution, an explicit hazard `h(d)`, a
+   discrete-Weibull duration law, an augmented `(state, age)` dynamic program,
+   the `beta = 1` nesting construction, or a duration-aware SJM empirical
+   experiment. That is a direct reading of this one paper, not an inference:
+   the sentence above is an illustrative example of what a user *could* encode,
+   and the only two `L_state` forms the paper actually writes down are the
+   total-variation penalty (Eq. 5, p. 6) and a first-order Markov transition
+   kernel `-log s_0 - sum_t log K(s_t | s_{t-1})` (Proposition 1), neither of
+   which depends on regime age. The words *duration, dwell, sojourn,
+   semi-Markov, hazard, Weibull, regime-age* and *survival* do not occur
+   anywhere in its 28 pages.
 
-   Scope and limits of the search (two passes,
-   `da-jm-novelty-sweep-2026-08-08` and `da-jm-novelty-second-pass-2026-08-09`;
-   51 forward citations, an arXiv sweep with the penalty form verified in text,
-   ~7 targeted phrasings): 9 citing works were reachable at title level only,
-   Google Scholar is not crawlable, and Deep Statistical Jump Models
-   (SSRN 5817083, local copy `paper/ssrn-5817083.pdf`) was assessed at abstract
-   level only in the 2026-07-30 sweep because it was gated at the time. **A
-   literature search cannot prove non-existence**, so nothing here may be
-   written as a categorical claim about the field.
+   Scope and limits (two passes, `da-jm-novelty-sweep-2026-08-08` and
+   `da-jm-novelty-second-pass-2026-08-09`; 51 forward citations, an arXiv sweep
+   with the penalty form verified in text, ~7 targeted phrasings): 9 citing
+   works were reachable at title level only and Google Scholar is not
+   crawlable. Deep SJM was assessed at abstract level only in the 2026-07-30
+   sweep because it was gated at the time, which is how the earlier categorical
+   claim survived; it has since been read directly for the statement above, but
+   only for that statement. **A literature search cannot prove non-existence**,
+   so nothing here may be written as a categorical claim about the field.
 2. **Formalization** — `docs/theory/da-jm-formalization.md` plus receipt
    `docs/audit/2026-08-08-da-jm-formalization-receipt.md`: discrete-Weibull
    duration family, hazard-decomposed augmented-state DP `V_t(k,d)`, reduction
