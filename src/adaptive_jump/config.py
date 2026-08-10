@@ -74,8 +74,32 @@ CALIBRATED_JM_GRIDS = (
 LEGACY_IMPLICIT_COVARS_PRIOR_CONFIG_ID = "shu-proxy-replication-v7"
 
 
+# The file that marks the top of this repository. Repository root used to be
+# taken as "the directory holding the config", which was only ever right by
+# accident: every protocol config happened to sit at the root. Walking up to
+# this marker instead means a config may live anywhere in the tree and still
+# resolve the same root, so configs can be moved without redirecting artifacts,
+# data, or the experiment registry into the config's own directory.
+REPO_ROOT_MARKER = "pyproject.toml"
+
+
 class ConfigError(ValueError):
     """Raised when a research configuration violates a frozen contract."""
+
+
+def resolve_repo_root(config_path: str | Path) -> Path:
+    """The repository containing ``config_path``.
+
+    Walks upward to the nearest ancestor holding the root marker; nearest wins,
+    so a stray marker further up cannot capture a config inside a repository.
+    A config with no marker above it -- a temporary TOML written by a test --
+    keeps the historical answer, the directory holding the config.
+    """
+    path = Path(config_path).resolve()
+    for directory in path.parents:
+        if (directory / REPO_ROOT_MARKER).is_file():
+            return directory
+    return path.parent
 
 
 @dataclass(frozen=True)
@@ -200,6 +224,16 @@ class ResearchConfig:
     selection_protocol: SelectionProtocol
     metrics_protocol: MetricsProtocol
     document: dict[str, Any]
+
+    @property
+    def repo_root(self) -> Path:
+        """The repository this config belongs to, not the folder holding it.
+
+        Derived execution context, never a research parameter: it is computed
+        from ``path`` on access (so ``replace(config, path=...)`` retargets it)
+        and never serialized into a config file.
+        """
+        return resolve_repo_root(self.path)
 
     def jm_protocol_for(self, market_id: str) -> JMProtocol:
         """The JM protocol governing one market, honoring any grid override."""

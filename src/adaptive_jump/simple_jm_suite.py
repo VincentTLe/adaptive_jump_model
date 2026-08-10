@@ -168,7 +168,7 @@ class VariantOutput:
 
 def load_simple_jm_spec(path: str | Path, config: ResearchConfig) -> SuiteSpec:
     """Load the immutable study contract and prove it was registered frozen."""
-    repo_root = config.path.parent.resolve()
+    repo_root = config.repo_root
     candidate = Path(path)
     if not candidate.is_absolute():
         candidate = repo_root / candidate
@@ -210,7 +210,7 @@ def load_simple_jm_spec(path: str | Path, config: ResearchConfig) -> SuiteSpec:
 
 def load_dd_loss_scale_spec(path: str | Path, config: ResearchConfig) -> LossScaleSpec:
     """Load the registered frozen DD loss-scale control."""
-    repo_root = config.path.parent.resolve()
+    repo_root = config.repo_root
     candidate = Path(path)
     resolved = (
         repo_root / candidate if not candidate.is_absolute() else candidate
@@ -304,7 +304,7 @@ def _require_frozen_registration(
 
 def run_simple_jm_study(config: ResearchConfig, spec: SuiteSpec) -> Path:
     """Run A, then DD-only, then the remaining frozen variants end to end."""
-    repo_root = config.path.parent.resolve()
+    repo_root = config.repo_root
     verify_inventory(spec.canonical_root)
     lambda_inventory = _verify_custom_inventory(spec.lambda50_root)
     canonical_inventory = read_json(spec.canonical_root / "inventory.json")["files"]
@@ -441,7 +441,7 @@ def run_simple_jm_study(config: ResearchConfig, spec: SuiteSpec) -> Path:
 
 def run_dd_loss_scale_study(config: ResearchConfig, spec: LossScaleSpec) -> Path:
     """Run US smoke, then the frozen three-market scale-three DD control."""
-    repo_root = config.path.parent.resolve()
+    repo_root = config.repo_root
     validate_loss_scale_protocol(config, spec)
     sources = load_loss_scale_sources(spec, config)
     code_hashes = _implementation_hashes(repo_root)
