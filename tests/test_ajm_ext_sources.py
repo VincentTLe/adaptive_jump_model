@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from adaptive_jump.ajm_ext_sources import (
+from adaptive_jump.experiments.ajm_ext.ajm_ext_sources import (
     ExtSourceError,
     load_data_lock,
     load_ext_contract,
@@ -49,7 +49,7 @@ def _fixture_lock_and_dir(tmp_path: Path, csv_text: str = FF_CSV):
 
 
 def _entry(role, region, raw, csv_name):
-    from adaptive_jump.ajm_ext_sources import LockedSource
+    from adaptive_jump.experiments.ajm_ext.ajm_ext_sources import LockedSource
 
     return LockedSource(
         role=role,

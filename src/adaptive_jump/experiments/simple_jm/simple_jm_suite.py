@@ -20,7 +20,31 @@ import pandas as pd
 from jumpmodels.jump import dp, jump_penalty_to_mx
 from threadpoolctl import threadpool_limits
 
-from adaptive_jump.artifacts import (
+from adaptive_jump.backtest import apply_signal, performance_metrics
+from adaptive_jump.config import ResearchConfig
+from adaptive_jump.experiments.simple_jm.simple_jm_controls import (
+    ControlPath,
+    build_confirmed_control_path,
+    build_control_path,
+    build_static_lambda50_path,
+)
+from adaptive_jump.experiments.simple_jm.simple_jm_fitting import (
+    canonical_complete_mask,
+    custom_variant_states,
+    dd_only_states,
+    fixed_jm_trace_receipt,
+    run_us_prefix_smoke,
+)
+from adaptive_jump.experiments.simple_jm.simple_jm_l1 import (
+    l1_loss_matrix,
+    solve_l1_path,
+)
+from adaptive_jump.experiments.simple_jm.simple_jm_return import (
+    dp_return_aware,
+    feature_loss_matrix,
+    return_aware_loss_matrix,
+)
+from adaptive_jump.infrastructure.artifacts import (
     TRADE_COLUMNS,
     ArtifactError,
     read_json,
@@ -29,27 +53,6 @@ from adaptive_jump.artifacts import (
     verify_inventory,
     write_inventory,
     write_json,
-)
-from adaptive_jump.backtest import apply_signal, performance_metrics
-from adaptive_jump.config import ResearchConfig
-from adaptive_jump.simple_jm_controls import (
-    ControlPath,
-    build_confirmed_control_path,
-    build_control_path,
-    build_static_lambda50_path,
-)
-from adaptive_jump.simple_jm_fitting import (
-    canonical_complete_mask,
-    custom_variant_states,
-    dd_only_states,
-    fixed_jm_trace_receipt,
-    run_us_prefix_smoke,
-)
-from adaptive_jump.simple_jm_l1 import l1_loss_matrix, solve_l1_path
-from adaptive_jump.simple_jm_return import (
-    dp_return_aware,
-    feature_loss_matrix,
-    return_aware_loss_matrix,
 )
 from adaptive_jump.walkforward import (
     SelectionResult,
@@ -433,7 +436,9 @@ def run_simple_jm_study(config: ResearchConfig, spec: SuiteSpec) -> Path:
     )
     write_inventory(run_dir)
     _finish_run(run_dir / "run.json", decisions["conclusion"], started)
-    from adaptive_jump.simple_jm_verifier import verify_simple_jm_run
+    from adaptive_jump.experiments.simple_jm.simple_jm_verifier import (
+        verify_simple_jm_run,
+    )
 
     verify_simple_jm_run(run_dir)
     return run_dir
@@ -532,7 +537,9 @@ def run_dd_loss_scale_study(config: ResearchConfig, spec: LossScaleSpec) -> Path
     )
     write_inventory(run_dir)
     _finish_run(run_dir / "run.json", decision["conclusion"], started)
-    from adaptive_jump.simple_jm_verifier import verify_dd_loss_scale_run
+    from adaptive_jump.experiments.simple_jm.simple_jm_verifier import (
+        verify_dd_loss_scale_run,
+    )
 
     verify_dd_loss_scale_run(run_dir)
     return run_dir
@@ -987,17 +994,17 @@ def _read_refit_source(path: Path) -> pd.DataFrame:
 
 def _implementation_hashes(repo_root: Path) -> dict[str, str]:
     paths = (
-        "src/adaptive_jump/simple_jm_controls.py",
-        "src/adaptive_jump/simple_jm_l1.py",
-        "src/adaptive_jump/simple_jm_return.py",
-        "src/adaptive_jump/simple_jm_fitting.py",
+        "src/adaptive_jump/experiments/simple_jm/simple_jm_controls.py",
+        "src/adaptive_jump/experiments/simple_jm/simple_jm_l1.py",
+        "src/adaptive_jump/experiments/simple_jm/simple_jm_return.py",
+        "src/adaptive_jump/experiments/simple_jm/simple_jm_fitting.py",
         "src/adaptive_jump/models.py",
-        "src/adaptive_jump/artifacts.py",
+        "src/adaptive_jump/infrastructure/artifacts.py",
         "src/adaptive_jump/backtest.py",
         "src/adaptive_jump/config.py",
         "src/adaptive_jump/walkforward.py",
-        "src/adaptive_jump/simple_jm_suite.py",
-        "src/adaptive_jump/simple_jm_verifier.py",
+        "src/adaptive_jump/experiments/simple_jm/simple_jm_suite.py",
+        "src/adaptive_jump/experiments/simple_jm/simple_jm_verifier.py",
         "pyproject.toml",
         "uv.lock",
     )

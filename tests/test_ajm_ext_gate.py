@@ -1,6 +1,6 @@
 import pytest
 
-from adaptive_jump.ajm_ext_gate import (
+from adaptive_jump.experiments.ajm_ext.ajm_ext_gate import (
     GateError,
     SpecPair,
     evaluate_transport_gate,

@@ -17,7 +17,7 @@ from matplotlib.lines import Line2D  # noqa: E402
 from matplotlib.patches import Patch  # noqa: E402
 from matplotlib.ticker import PercentFormatter  # noqa: E402
 
-from adaptive_jump.artifacts import (  # noqa: E402
+from adaptive_jump.infrastructure.artifacts import (  # noqa: E402
     ArtifactError,
     read_json,
     read_trade_path,

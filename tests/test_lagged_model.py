@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from adaptive_jump.lagged_model import (
+from adaptive_jump.experiments.lagged.lagged_model import (
     LockedModelError,
     generate_locked_candidates,
 )

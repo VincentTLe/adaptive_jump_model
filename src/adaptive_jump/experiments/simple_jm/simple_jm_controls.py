@@ -11,8 +11,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from adaptive_jump.artifacts import sha256_file
 from adaptive_jump.backtest import BacktestError, apply_signal
+from adaptive_jump.infrastructure.artifacts import sha256_file
 
 DEVELOPMENT_CUTOFF = date(2023, 12, 31)
 LAMBDA50_COLUMN = "50.0"

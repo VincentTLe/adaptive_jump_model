@@ -11,15 +11,22 @@ import numpy as np
 import pandas as pd
 
 from adaptive_jump.config import ResearchConfig
-from adaptive_jump.lagged_model import (
+from adaptive_jump.experiments.lagged.lagged_model import (
     LockedModelError,
     PenaltyBuilder,
     _decode_array,
     generate_locked_candidates,
 )
-from adaptive_jump.lagged_study import LaggedMechanismSpec, LaggedStudyError, beta_label
+from adaptive_jump.experiments.lagged.lagged_study import (
+    LaggedMechanismSpec,
+    LaggedStudyError,
+    beta_label,
+)
+from adaptive_jump.experiments.separation.separation_analysis import (
+    MarketInputs,
+    _refit_for_date,
+)
 from adaptive_jump.models import FEATURE_COLUMNS
-from adaptive_jump.separation_analysis import MarketInputs, _refit_for_date
 from adaptive_jump.tv_jump import dp_tv, lam_to_penalty_seq, loss_matrix
 
 EXPECTED_TOY_PATHS = {

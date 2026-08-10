@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from adaptive_jump.artifacts import read_json
+from adaptive_jump.infrastructure.artifacts import read_json
 
 
 @dataclass(frozen=True)

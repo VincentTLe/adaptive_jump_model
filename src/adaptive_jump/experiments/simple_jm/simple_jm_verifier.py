@@ -13,17 +13,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from adaptive_jump.artifacts import (
-    TRADE_COLUMNS,
-    read_json,
-    read_trade_path,
-    sha256_file,
-    verify_inventory,
-)
 from adaptive_jump.backtest import apply_signal
 from adaptive_jump.config import ResearchConfig, load_config
-from adaptive_jump.simple_jm_controls import ControlPath
-from adaptive_jump.simple_jm_suite import (
+from adaptive_jump.experiments.simple_jm.simple_jm_controls import ControlPath
+from adaptive_jump.experiments.simple_jm.simple_jm_suite import (
     ALL_MODELS,
     CONTROLS,
     DD_OBSERVATION_LOSS_SCALE,
@@ -49,6 +42,13 @@ from adaptive_jump.simple_jm_suite import (
     validate_loss_scale_protocol,
     validate_traces,
     verify_loss_scale_math,
+)
+from adaptive_jump.infrastructure.artifacts import (
+    TRADE_COLUMNS,
+    read_json,
+    read_trade_path,
+    sha256_file,
+    verify_inventory,
 )
 from adaptive_jump.walkforward import select_monthly_candidate
 

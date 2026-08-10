@@ -10,8 +10,8 @@ from typing import Any
 
 import pandas as pd
 
-from adaptive_jump.artifacts import read_json, verify_run
 from adaptive_jump.config import ResearchConfig, load_config
+from adaptive_jump.infrastructure.artifacts import read_json, verify_run
 
 MODEL_NAMES = {
     "buy_and_hold": "Buy and hold",
