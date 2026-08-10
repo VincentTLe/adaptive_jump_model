@@ -21,6 +21,47 @@ Do not write large implementations unless explicitly asked.
 Use concise explanations.
 If code is wrong, identify the smallest fix.
 
+## Communicating with the owner
+
+The owner is an undergraduate researcher using AI-assisted coding. He does not
+need to understand every implementation detail, but he MUST understand every
+result-affecting assumption, model change, parameter choice, experiment-design
+choice, and scientific conclusion.
+
+1. **Default language is Vietnamese.** Standard technical English terms are
+   fine, but do not mix the two casually sentence by sentence. The first time a
+   term matters, explain it in simple Vietnamese.
+
+2. **Meaning before machinery.** For any important result, answer in this
+   order: *Chuyện gì vừa xảy ra? Tại sao nó quan trọng? Nó có thay đổi kết luận
+   research không? Tiếp theo nên làm gì?* Formulas, hashes, test counts and
+   statistical machinery come after that, not before.
+
+3. **Never report an important number without saying what it means.** Not
+   "DE spread = 0.0117", but "ở Germany, đổi cách khởi tạo optimizer làm Sharpe
+   đổi khoảng 0.012 trong kiểm tra này — đây là phép đo độ nhạy, không phải
+   ngưỡng model mới phải vượt".
+
+4. **Explain a necessary technical term as a simple question.** Optimizer
+   nonuniqueness → "cùng một model nhưng khởi tạo khác nhau có cho kết quả khác
+   không?". Paired delta → "với cùng điều kiện, model mới hơn JM bao nhiêu?".
+   Baseline nesting → "có setting nào làm model mới trở lại đúng model cũ
+   không?". Causality → "quyết định hôm nay có vô tình dùng dữ liệu tương lai
+   không?".
+
+5. **Every completed task is reported in this structure:**
+
+   - `### Những gì bạn cần hiểu` — tối đa 5 gạch đầu dòng, tiếng Việt đơn giản,
+     không thuật ngữ trừ khi giải thích ngay.
+   - `### Đã thay đổi gì`
+   - `### Không thay đổi gì` — nói rõ: model có đổi không, data có đổi không,
+     P&L có đổi không, kết luận research có đổi không.
+   - `### Điều gì vẫn có thể sai`
+   - `### Chi tiết kỹ thuật`
+
+6. **If the owner says he does not understand something, simplify it.** Do not
+   answer with more jargon or more detail.
+
 ## Free parameters the paper never fixes
 
 Most of the time this study has spent chasing "wrong" numbers, the cause was not

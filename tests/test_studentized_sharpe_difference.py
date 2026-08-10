@@ -10,9 +10,10 @@ project would reproduce:
   ``ddof=1`` volatility, not an asymptotically equivalent approximation of it
   (the defect this file was written to close);
 * the analytic gradient must be the gradient of the function actually used;
-* the repo's 5-moment extension must collapse onto Ledoit-Wolf Eq. (4) when
-  the cash leg is zero, or it is a different method rather than a
-  generalization;
+* the repo's 5-moment extension must collapse onto ddof_scale(T) times
+  Ledoit-Wolf Eq. (4) when the cash leg is zero -- a scaled relationship, not
+  equality, and only under that condition -- or it is a different method
+  rather than a generalization;
 * the block-sum variance estimator must reduce to the i.i.d. delta method at
   block length 1, which is the reduction their footnote 9 requires;
 * the resamplers must stay inside the sample and wrap only where the circular
@@ -188,10 +189,12 @@ def _zero_cash_series(module):
 def test_repo_gradient_collapses_onto_ledoit_wolf_with_a_zero_cash_leg(module):
     """At k = 0 the two gradients differ by the Bessel constant and nothing else.
 
-    They are NOT equal, and asserting equality would be asserting that the
-    canonical estimator carries the repo's ddof=1 convention -- which it must
-    not, or it stops being Ledoit-Wolf Eq. (1)-(2). The relationship is what
-    makes the repo form a scaled generalization rather than a different method.
+    Note the SCOPE: this is the k = 0 case only. The two are never exactly
+    equal -- asserting equality here would be asserting that the canonical
+    estimator carries the repo's ddof=1 convention, which it must not. At
+    k != 0 the relation below does not hold either, because the two also use
+    different denominators; that case is covered by the report's own numbers,
+    not by this test.
     """
     series = _zero_cash_series(module)
     observations = series.observations
@@ -235,7 +238,11 @@ def test_delta_at_zero_cash_is_the_canonical_delta_times_the_bessel_factor(modul
 
 
 def test_canonical_estimator_carries_no_bessel_correction(module):
-    """lw_excess must be Eq. (1)-(2): its scale is sqrt(252) and nothing else."""
+    """lw_excess carries the annualization and NOT the Bessel factor.
+
+    Its scale must be sqrt(252) alone: the Eq. (1)-(2) functional form plus
+    this repo's reporting annualization, with no ddof=1 correction.
+    """
     for observations in (50, 500, 8565):
         assert module.estimator_scale("lw_excess", observations) == pytest.approx(
             math.sqrt(module.ANNUALIZATION), rel=1e-15, abs=0

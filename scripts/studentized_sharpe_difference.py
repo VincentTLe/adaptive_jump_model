@@ -109,17 +109,27 @@ WHAT IS IMPLEMENTED
 
     The factor is applied to the `repo` estimator ONLY (correction, 2026-08-09,
     owner-caught in review).  It was first applied to both, which was wrong:
-    `lw_excess` is Ledoit-Wolf Eq. (1)-(2) verbatim, whose denominators ARE the
-    population sds implied by the uncentered moments, and Eq. (4) is the
-    gradient of precisely that function.  Rescaling it would have left this
-    script with two Bessel-corrected estimators and no canonical one, so the
-    "cross-check against the published estimator" would have been checking the
-    repo convention against itself.  The two therefore differ by construction:
+    `lw_excess` uses the Ledoit-Wolf Eq. (1)-(2) FUNCTIONAL FORM, with this
+    repo's annualization factor sqrt(252) applied afterwards for reporting
+    (their Eq. (1)-(2) is unannualized, so "verbatim" would be too strong).
+    Its denominators ARE the population sds implied by the uncentered moments,
+    and Eq. (4) is the gradient of that functional form.  Rescaling it by the
+    Bessel factor would have left this script with two Bessel-corrected
+    estimators and no canonical one, so the "cross-check against the published
+    estimator" would have been checking the repo convention against itself.
 
-        Delta_repo = ddof_scale(T) * Delta_lw   (at a zero cash leg),
-        grad_repo[:4] = ddof_scale(T) * grad_lw (same condition),
+    The two estimators are NEVER exactly equal.  Under a ZERO cash leg they
+    differ by the Bessel factor and nothing else:
 
-    which is asserted as a RELATIONSHIP in the tests, not as equality.
+        Delta_repo    = ddof_scale(T) * Delta_lw      (cash == 0),
+        grad_repo[:4] = ddof_scale(T) * grad_lw       (cash == 0).
+
+    Under a NONZERO cash leg they differ by that factor AND by their
+    denominators -- repo divides by sd_ddof1 of the strategy return, lw by the
+    population sd of the excess return -- so the zero-cash relation above does
+    NOT carry over, and on this data the denominator term is the larger of the
+    two and its sign is not fixed across markets.  Both statements are asserted
+    as RELATIONSHIPS in the tests, never as equality.
 
     Because the constant multiplies Delta_hat, Delta*, s(Delta_hat) and
     s(Delta*) alike, and every resample has the same length T, the studentized
@@ -323,12 +333,14 @@ def estimator_scale(estimator: str, observations: int) -> float:
     `repo` must BE `performance_metrics`, which divides by `std(ddof=1)`, so it
     carries the Bessel factor.
 
-    `lw_excess` must NOT. Its f is Ledoit-Wolf (2008) Eq. (1)-(2) --
-    f(a,b,c,d) = a/sqrt(c - a^2) - b/sqrt(d - b^2), whose denominators are the
-    population standard deviations implied by the uncentered moments, and Eq.
-    (4) is the gradient of exactly that function. (Their Eq. (1)-(2) is
-    unannualized; sqrt(252) is this repo's reporting convention applied on top,
-    and it cancels out of every studentized quantity.) Scaling f by
+    `lw_excess` must NOT. Its f is the Ledoit-Wolf (2008) Eq. (1)-(2)
+    functional form -- f(a,b,c,d) = a/sqrt(c - a^2) - b/sqrt(d - b^2), whose
+    denominators are the population standard deviations implied by the
+    uncentered moments -- with this repo's annualization factor sqrt(252)
+    applied afterwards for reporting, since their Eq. (1)-(2) is unannualized.
+    Eq. (4) is the gradient of that functional form. The annualization cancels
+    out of every studentized quantity, so it does not affect any p-value.
+    Scaling f by
     sqrt((T-1)/T) would silently make it a different estimator from the one the
     citation names, which defeats its only purpose here: an independent
     cross-check that the repo's 5-moment extension is not doing the work.
@@ -371,7 +383,7 @@ def _gradient_repo(v: np.ndarray, root: float) -> np.ndarray:
 
 
 def _gradient_lw(v: np.ndarray, root: float) -> np.ndarray:
-    """Ledoit-Wolf (2008) Eq. (4), verbatim, times the leading constant."""
+    """Ledoit-Wolf (2008) Eq. (4) functional form, times the leading constant."""
     a, b, c, d = (v[..., i] for i in range(4))
     first = _sigma(a, c) ** 3
     second = _sigma(b, d) ** 3
@@ -1104,11 +1116,17 @@ def _report(
             f"      the SMALLER part of the gap: observed ratio"
             f" {canonical.delta / result.delta:.6f} vs"
             f" {1.0 / ddof_scale(result.observations):.6f}",
-            "      from the ddof convention alone. The two agree exactly only when the",
-            "      cash leg is zero; on real data the difference in"
-            " denominators dominates,",
-            "      and its SIGN is not fixed across markets. The studentized"
-            " statistic and",
+            "      from the ddof convention alone. The two are NEVER exactly"
+            " equal: at a",
+            "      zero cash leg they still differ by the ddof/Bessel factor"
+            " ddof_scale(T),",
+            "      i.e. Delta_repo = ddof_scale(T) * Delta_lw; with a nonzero"
+            " cash leg they",
+            "      differ by that factor AND by their denominator definitions,"
+            " and on this",
+            "      data the denominator term dominates and its SIGN is not"
+            " fixed across",
+            "      markets. The studentized statistic and",
             "      the p-value are invariant to any constant rescaling, which"
             " is what keeps",
             "      the two comparable as a cross-check.)",

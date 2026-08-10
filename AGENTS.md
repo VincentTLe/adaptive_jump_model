@@ -6,6 +6,9 @@ This repository studies daily market-regime models based on Shu, Yu, and Mulvey
 **MUST** and **MUST NOT** are non-negotiable. **SHOULD** requires a recorded
 reason to deviate.
 
+**AI confidence is not evidence.** Fluent, assured prose is not a substitute
+for a check that was actually run. If the check was not run, say so.
+
 ## 0. Scientific objective
 
 **The unit of progress is a scientific question answered.**
@@ -67,6 +70,48 @@ are the smallest blocker to observing or validating the active experiment.
 Every handoff `goal` starts by saying which scientific question moved. When
 the owner explicitly requested infrastructure, say that no scientific question
 moved instead of disguising engineering work as research progress.
+
+## Anti-overclaim rules
+
+These exist because the same failure has now happened several times: a
+relationship is proved or tested under one special condition, and the prose
+then silently drops the condition. Example on record — `Delta_repo =
+ddof_scale(T) * Delta_lw` holds at a ZERO cash leg; it was written into a
+report as if it held on the real data, where it is wrong by 4-21x and has the
+wrong sign in one market.
+
+1. **Special cases are not general results.** If a result was shown only under
+   a condition — cash = 0, beta = 1, one market, one seed, equal volatility,
+   one synthetic example — that condition MUST appear in the conclusion.
+   Before generalizing, ask: *what changes when this condition is removed?*
+
+2. **No absolute claims without scope.** Before writing *exactly, always,
+   never, identical, equivalent, guarantees, proves, impossible, by
+   construction, must, cannot*, ask: *under exactly what assumptions is this
+   true?* If assumptions exist, state them inside the claim.
+
+3. **Separate three kinds of statement.** FACT — directly observed from code
+   or data. DERIVATION — follows mathematically under stated assumptions.
+   INTERPRETATION — what we think it means. Never present an interpretation as
+   a fact, and never present a conditional derivation as unconditional.
+
+4. **For every load-bearing claim, ask for the simplest counterexample** that
+   would make it false, and test that counterexample when practical.
+
+5. **Important tests need a negative case.** Ask: *if this relationship were
+   broken in a plausible way, would this test fail?* If not, the test does not
+   validate the relationship. An assertion that cannot fail is not evidence.
+
+6. **Confidence comes from evidence, not from stronger wording.** Prefer:
+   checked directly against source; derived under these assumptions; matched
+   an independent implementation; passed these adversarial cases; observed
+   only on this market/sample; not independently verified. Do not replace
+   missing evidence with confident prose.
+
+7. **Every important result must answer "what could make this conclusion
+   wrong?"** Keep the answer concrete.
+
+8. **Prefer a narrow correct statement over a broad impressive one.**
 
 ## 1. Authorization and orientation
 

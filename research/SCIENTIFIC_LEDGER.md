@@ -1235,11 +1235,13 @@ fix had two defects of its own, and both are the same kind of mistake as the
 original: a correction applied wider than the thing it corrects.
 
 I scaled *both* estimators by `sqrt((T−1)/T)`. Only `repo` should carry it.
-`lw_excess` is Ledoit & Wolf Eq. (1)–(2) verbatim, whose denominators *are* the
-population sds; scaling it left the script with two Bessel-corrected estimators
-and no canonical one, so the "cross-check against the published estimator" was
-checking the repo convention against itself. Scaling is now estimator-specific
-and the zero-cash collapse is asserted as a *relationship*,
+`lw_excess` uses the Ledoit & Wolf Eq. (1)–(2) *functional form* (with the
+repo's `sqrt(252)` applied afterwards for reporting — their equation is
+unannualized, so "verbatim" would be too strong), and its denominators *are*
+the population sds. Scaling it left the script with two Bessel-corrected
+estimators and no canonical one, so the "cross-check against the published
+estimator" was checking the repo convention against itself. Scaling is now
+estimator-specific and the zero-cash collapse is asserted as a *relationship*,
 `grad_repo[:4] = ddof_scale(T) · grad_lw`, not as equality.
 
 And one of the tests I wrote to prevent exactly this class of error was itself
@@ -1290,3 +1292,17 @@ The lesson is not "write more tests". It is that a test suite's value is not
 visible from reading it — every assertion here looked purposeful — and the only
 cheap way to find out is to break the code on purpose and see whether anything
 notices.
+
+**Fourth instance, same pattern (owner-caught in PR review).** The report said
+"the two agree exactly only when the cash leg is zero". Also false: at zero cash
+they still differ by `ddof_scale(T)` — which is what the test on that very line
+asserts. So the prose contradicted the test sitting next to it. Fixed at the
+source that generates the report, and every "Eq. (1)–(2) verbatim" softened to
+"functional form, with the repo's annualization applied for reporting" (their
+equation is unannualized).
+
+Four occurrences is a pattern, not four accidents, so the response is a rule
+rather than another fix: `AGENTS.md` now carries an **Anti-overclaim rules**
+section and the principle *AI confidence is not evidence*. The operative one
+here is the first: if a result was shown under a condition — cash = 0, beta = 1,
+one market, one seed — that condition must appear in the conclusion.
