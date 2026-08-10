@@ -4,8 +4,8 @@
     "de: union parity PASSED on 21342 sealed cells",
     "jp: union parity PASSED on 20684 sealed cells"
   ],
-  "generated_utc": "2026-08-10T19:38:32Z",
-  "git_head": "634d879613ec7ee20c05ed3834225f77651f402e",
+  "generated_utc": "2026-08-07T19:58:02Z",
+  "git_head": "3b69e77e6e2c9dc6ecd624441b4c65ce2ce3475d",
   "inputs": {
     "artifacts/fixed-baselines/fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736/metrics.csv": "14ae8438774bb16bf2b2c4863154fc90681c7dc54ceb61b5c429e3a2b0d9d9d8",
     "artifacts/hmm-residual/04-figure6-path/position-path.csv": "7df1fc79ead708869ff125879aab9e6e834ba9681df775fd63ca2d1e213b9f3d",
