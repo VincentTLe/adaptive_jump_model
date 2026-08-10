@@ -37,7 +37,7 @@ BASE = (
     ROOT / "artifacts/fixed-baselines/"
     "fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736"
 )
-SPEC = ROOT / "research/heldout-delay-001.toml"
+SPEC = ROOT / "research/contracts/heldout-delay-001.toml"
 OUT = ROOT / "artifacts/heldout-delay/02-audit"
 
 # Table 5, JM block, read off data/external/inputs/shu_paper.txt lines 963-975 by

@@ -42,21 +42,59 @@ Development data stops at 2023-12-31.
    repository with an AI coding agent. They are behavior rules for agents, not
    documentation of results.
 
-`TASK.md`, `research/experiment_registry.jsonl`,
+`research/TASK.md`, `research/experiment_registry.jsonl`,
 `research/SCIENTIFIC_LEDGER.md`, `docs/audit/`, and `artifacts/` are the
 detailed provenance and audit trail. They are the authority when a specific
 number is in dispute, but you do not need to read them to understand the
 project.
 
+Following one to its contract: the binding is the hash, not the filename. A row
+carries `frozen_spec_hash`, or `spec_sha256` on the `heldout-delay-001` and
+`frequency-ladder-001` rows; hashing a candidate file and matching that value is
+what proves you have the right contract. Contracts live in
+`research/contracts/`, usually as `<experiment-id>.toml`, with three deviations:
+`endpoint-grid-audit-001` is `endpoint-grid-audit.toml`,
+`fixed-baseline-assumption-audit-001` is `hyperparameter-grid-attribution.toml`,
+and `frequency-ladder-001` stays pinned at `research/frequency-ladder-001.toml`.
+Except for that pinned contract, a `research/<name>.toml` path written before
+the move now reads as `research/contracts/<name>.toml`. Such paths survive in
+registry rows' descriptive `spec` field, in audit receipts, and inside one
+frozen contract's own prose: `ajm-ext-001` states that every protocol field it
+does not list — selection tie rule, minimum valid returns, metric definitions,
+turnover formula, degenerate-fit handling — is inherited verbatim from
+`research/lagged-evidence-performance-001.toml`, now
+`research/contracts/lagged-evidence-performance-001.toml`. None of those
+strings can be rewritten: a sealed contract's bytes are its identity, and
+editing them makes its own loader refuse to run it. The move changed no
+contract's bytes.
+
+The same reading applies to the replication atlas. Its figures, its HTML, and
+the renderer that produced them cite
+`research/jm-effective-lambda-inversion-004.toml` — the path that was correct
+when that certified deliverable was generated, and now
+`research/contracts/jm-effective-lambda-inversion-004.toml`. The deliverable
+and its verifier receipt are left as they were certified rather than
+re-rendered against the new layout.
+
+Hashing does not resolve every row, and that is not a symptom of the move. Of
+the 43 experiment ids carrying a registered hash, 32 match a contract on disk.
+Eight name specs no longer present. Three — `jm-standardizer-geometry-002`,
+`jm-standardizer-geometry-003` and `lagged-capguard-001` — have a contract of
+that name whose current bytes match no hash ever registered for them, so the
+bytes those results were run against are recoverable only from Git history.
+Each of the three is byte-identical to its pre-move version; the divergence
+predates this layout and is recorded as an open question, not as a resolution
+rule.
+
 ## What is in the repository
 
 ```text
 CURRENT.md                 human-facing current research state  <- start here
-TASK.md                    detailed / legacy research state
 src/adaptive_jump/         the pipeline: data -> features -> models -> selection -> P&L
 tests/                     behavioral and audit regression tests
 scripts/                   historical builders, diagnostics, and audit programs
-research/                  frozen experiment contracts (*.toml), registry, ledger
+research/                  TASK.md (detailed research state), registry, ledger
+research/contracts/        frozen experiment contracts (*.toml)
 docs/theory/               mathematical formalizations (including DA-JM)
 docs/audit/                independent verification receipts
 docs/atlas/                the replication atlas
@@ -97,8 +135,11 @@ adaptive-jump verify --run artifacts/<run_id>   # re-verify a sealed run
 ```
 
 Do not launch a new data fetch or a new experiment without its frozen contract
-in `research/*.toml` and a declared data role. Raw data and runtime outputs stay
-untracked under `data/` and `artifacts/`.
+in `research/contracts/*.toml` and a declared data role. One contract stays
+outside that directory — `research/frequency-ladder-001.toml` — because the
+sealed audit of that experiment opens both it and
+`scripts/run_frequency_ladder.py` by exact path. Raw data and runtime outputs
+stay untracked under `data/` and `artifacts/`.
 
 ## Cold archive
 

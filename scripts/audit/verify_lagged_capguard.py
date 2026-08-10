@@ -2,8 +2,8 @@
 
 House rule: this script was written by a separate verifier agent that never read
 scripts/experiments/run_lagged_capguard.py. Everything below is recomputed from
-  - the frozen spec research/lagged-capguard-001.toml (sha256 pinned by the
-    FROZEN row of research/experiment_registry.jsonl),
+  - the frozen spec research/contracts/lagged-capguard-001.toml (sha256 pinned
+    by the FROZEN row of research/experiment_registry.jsonl),
   - the committed artifacts in artifacts/lagged-capguard/01-us/,
   - the sealed v10 baseline and the v9.4 selected-path anchors,
 using the shared scorer adaptive_jump.backtest.performance_metrics under the
@@ -56,7 +56,7 @@ SEALED = (
     / "fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736"
 )
 ANCHORS = ROOT / "artifacts" / "jm-residual" / "01-grid-identification" / "selected-anchors.csv"
-SPEC = ROOT / "research" / "lagged-capguard-001.toml"
+SPEC = ROOT / "research" / "contracts" / "lagged-capguard-001.toml"
 REGISTRY = ROOT / "research" / "experiment_registry.jsonl"
 
 GRID_CONFIG = {

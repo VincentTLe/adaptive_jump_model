@@ -1,7 +1,7 @@
 """jm-disagreement-anatomy-010: where the ours-vs-Fig5 disagreement lives.
 
-Frozen spec: research/jm-disagreement-anatomy-010.toml (hash pinned in the
-registry FROZEN row; this probe refuses to run on hash drift). Question: does
+Frozen spec: research/contracts/jm-disagreement-anatomy-010.toml (hash pinned in
+the registry FROZEN row; this probe refuses to run on hash drift). Question: does
 the daily disagreement between our replication-contract CV path (v9.4-recon,
 anchor-gated) and the authors' Figure-5 paths concentrate in the eras where
 our equity data rests on a different source than theirs — JP reconstructed TR
@@ -53,7 +53,7 @@ from adaptive_jump.regime_comparison import (  # noqa: E402
 )
 from experiments.probe_jm_effective_lambda_inversion import load_fig5  # noqa: E402
 
-SPEC = ROOT / "research" / "jm-disagreement-anatomy-010.toml"
+SPEC = ROOT / "research" / "contracts" / "jm-disagreement-anatomy-010.toml"
 REGISTRY = ROOT / "research" / "experiment_registry.jsonl"
 RECON = ROOT / "artifacts" / "jm-residual" / "atlas" / "v94-recon-selected-signal.csv"
 ANCHORS = ROOT / "artifacts" / "jm-residual" / "01-grid-identification" / (

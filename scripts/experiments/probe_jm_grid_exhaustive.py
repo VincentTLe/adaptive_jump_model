@@ -1,7 +1,7 @@
 """jm-grid-exhaustive-007: owner-instructed target-conditioned exhaustive search.
 
-Frozen spec: research/jm-grid-exhaustive-007.toml — read its honesty label
-first: solutions are CALIBRATION artifacts, never evidence about the authors'
+Frozen spec: research/contracts/jm-grid-exhaustive-007.toml — read its honesty
+label first: solutions are CALIBRATION artifacts, never evidence about the authors'
 grid; the scientific content is the existence map.
 
 Machinery: one select_monthly_candidate pass per market on the 29-lambda

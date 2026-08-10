@@ -33,7 +33,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 PAPER = ROOT / "data/external/inputs/shu_paper.txt"
-SPEC = ROOT / "research/heldout-delay-001.toml"
+SPEC = ROOT / "research/contracts/heldout-delay-001.toml"
 REGISTRY = ROOT / "research/experiment_registry.jsonl"
 MARKET_HEADER = {"S&P 500": "us", "DAX": "de", "Nikkei 225": "jp"}
 ROW_LABEL = {"Return": "cagr", "Sharpe": "sharpe", "Calmar": "calmar"}

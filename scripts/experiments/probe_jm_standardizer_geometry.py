@@ -1,7 +1,8 @@
 """jm-standardizer-geometry-002: does per-refit window scaling move the Table-3 curve?
 
-Frozen spec: research/jm-standardizer-geometry-002.toml (registered before any
-variant was computed). Prior art and the revisit declaration live in the spec.
+Frozen spec: research/contracts/jm-standardizer-geometry-002.toml (registered
+before any variant was computed). Prior art and the revisit declaration live in
+the spec.
 
 Variants (lambda grid fixed at the sealed [0, 5, 15, 35, 70, 150] throughout):
   V0 sealed control     — expanding-standardized features + IdentityScaler;

@@ -1,7 +1,7 @@
 """jm-grid-exhaustive-008: nine-arm exhaustive search (3 markets x 3 delays).
 
-Frozen spec: research/jm-grid-exhaustive-008.toml — the honesty label there
-governs everything: owner-instructed target-conditioned search; solutions are
+Frozen spec: research/contracts/jm-grid-exhaustive-008.toml — the honesty label
+there governs everything: owner-instructed target-conditioned search; solutions are
 calibration artifacts; the content is the existence/intersection map.
 
 Design: per arm, one select_monthly_candidate pass gives the per-(decision,

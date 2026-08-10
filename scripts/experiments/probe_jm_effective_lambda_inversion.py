@@ -1,7 +1,7 @@
 """jm-effective-lambda-inversion-004: read the authors' JM choices out of Figure 5.
 
-Frozen spec: research/jm-effective-lambda-inversion-004.toml. The inversion the
-owner asked for, done the legitimate way: the authors' own position paths
+Frozen spec: research/contracts/jm-effective-lambda-inversion-004.toml. The
+inversion the owner asked for, done the legitimate way: the authors' own position paths
 (lossless vector extraction, validated below against the annotations they
 printed) are the data; our per-lambda online paths are the measuring stick.
 Effective lambdas are DESCRIPTIVE of their path — never grid candidates.

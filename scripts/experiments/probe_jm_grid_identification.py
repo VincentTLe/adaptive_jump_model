@@ -1,7 +1,7 @@
 """jm-grid-identification-001: can ANY pre-named lambda grid reproduce Table 4's JM row?
 
-Frozen spec: research/jm-grid-identification-001.toml (registered before any
-new lambda was fitted). Prior art: fixed-baseline-assumption-audit-001 on v7.
+Frozen spec: research/contracts/jm-grid-identification-001.toml (registered
+before any new lambda was fitted). Prior art: fixed-baseline-assumption-audit-001 on v7.
 
 Three phases, in the spec's order:
   A. one union-grid fixed_jm_states pass per market on the sealed v9.4
