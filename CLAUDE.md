@@ -21,6 +21,58 @@ Do not write large implementations unless explicitly asked.
 Use concise explanations.
 If code is wrong, identify the smallest fix.
 
+## Communicating research results
+
+The owner is an undergraduate researcher using AI-assisted coding.
+
+The owner does not need to understand every implementation detail, but must be
+able to understand every result-affecting assumption, model change, parameter
+choice, experiment-design choice, and scientific conclusion.
+
+Use plain English. All project material is English-only; see the language rule
+in `AGENTS.md`.
+
+Avoid jargon when simpler language is available. When a technical term is
+necessary, explain what question it answers before using it heavily —
+*optimizer nonuniqueness*: does the same model give a different answer when it
+starts from a different initialization? *paired delta*: under identical
+conditions, how much better than the JM is the new model? *baseline nesting*:
+is there a setting that turns the new model back into the old one? *causality*:
+does today's decision accidentally use future data?
+
+Never report an important number without saying what it means. Not
+"DE spread = 0.0117", but "in Germany, changing optimizer initialization moved
+the measured Sharpe by about 0.012 in this diagnostic. This is a sensitivity
+measurement, not a threshold that a future model must exceed."
+
+Every completed research task begins with:
+
+### What you need to understand
+
+Maximum five bullets. Plain English. No unexplained jargon.
+
+Then:
+
+### What changed
+
+### What did not change
+
+Explicitly state whether the model changed, the data changed, P&L changed, and
+the scientific conclusion changed.
+
+### What could still be wrong
+
+### Technical details
+
+Meaning must come before machinery. Do not lead with hashes, test counts,
+implementation internals, statistical terminology, or long formulas. First
+answer: (1) What happened? (2) Why does it matter? (3) Does it change the
+scientific conclusion? (4) What should happen next? Only then give technical
+details.
+
+If the owner says he does not understand something, simplify it. Do not answer
+with more jargon or more detail.
+
 ## Free parameters the paper never fixes
 
 Most of the time this study has spent chasing "wrong" numbers, the cause was not

@@ -84,6 +84,13 @@ window 1990-01-02 .. 2023-12-29  (8565 in-window days, sealed count asserted)
    a description of episode-level consistency, nothing more)
    17 positive of 27 non-zero episodes (27 total), two-sided binomial p = 0.2478 under p=0.5
    DIAGNOSTIC, cost-complete closed episodes: 14 positive of 27, p = 1.0000
+   HOW TO READ IT (owner wording, 2026-08-09): the closed-episode sign
+   counts are approximately balanced and do not reject a 50/50 sign
+   model under the descriptive sign-test assumptions (episodes treated
+   as independent Bernoulli trials, zero deltas dropped). That is all
+   the statistic says. A non-significant sign test does NOT prove the
+   sign process is a coin flip: at these counts the test has little
+   power, and failing to reject is not evidence for the null.
 
 SECONDARY (robustness only): episodes padded +/-5 trading days, merged
    merged episodes 22   days 266 (3.11% of window)   positive 11 / negative 11
@@ -170,6 +177,13 @@ window 1990-01-02 .. 2023-12-29  (8602 in-window days, sealed count asserted)
    a description of episode-level consistency, nothing more)
    30 positive of 55 non-zero episodes (55 total), two-sided binomial p = 0.5901 under p=0.5
    DIAGNOSTIC, cost-complete closed episodes: 28 positive of 55, p = 1.0000
+   HOW TO READ IT (owner wording, 2026-08-09): the closed-episode sign
+   counts are approximately balanced and do not reject a 50/50 sign
+   model under the descriptive sign-test assumptions (episodes treated
+   as independent Bernoulli trials, zero deltas dropped). That is all
+   the statistic says. A non-significant sign test does NOT prove the
+   sign process is a coin flip: at these counts the test has little
+   power, and failing to reject is not evidence for the null.
 
 SECONDARY (robustness only): episodes padded +/-5 trading days, merged
    merged episodes 47   days 566 (6.58% of window)   positive 28 / negative 19
@@ -256,6 +270,13 @@ window 1990-01-19 .. 2023-12-29  (8336 in-window days, sealed count asserted)
    a description of episode-level consistency, nothing more)
    29 positive of 49 non-zero episodes (49 total), two-sided binomial p = 0.2529 under p=0.5
    DIAGNOSTIC, cost-complete closed episodes: 27 positive of 49, p = 0.5682
+   HOW TO READ IT (owner wording, 2026-08-09): the closed-episode sign
+   counts are approximately balanced and do not reject a 50/50 sign
+   model under the descriptive sign-test assumptions (episodes treated
+   as independent Bernoulli trials, zero deltas dropped). That is all
+   the statistic says. A non-significant sign test does NOT prove the
+   sign process is a coin flip: at these counts the test has little
+   power, and failing to reject is not evidence for the null.
 
 SECONDARY (robustness only): episodes padded +/-5 trading days, merged
    merged episodes 45   days 520 (6.24% of window)   positive 26 / negative 19

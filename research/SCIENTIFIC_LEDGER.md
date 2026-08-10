@@ -1195,3 +1195,134 @@ written into `docs/theory/da-jm-formalization.md` item 6): effect size →
 cross-market transport → mechanism consistency → robustness → external
 transport → resampling evidence last and descriptive only. Neither
 "interval contains 0" nor "interval excludes 0" decides success.
+
+## 2026-08-09 — the Sharpe I bootstrapped was not the Sharpe this repo reports
+
+**Defect (mine), found and fixed in the same patch.**
+`scripts/studentized_sharpe_difference.py` re-derives the Sharpe from
+uncentered moments so the difference is a smooth function of means (the
+Ledoit–Wolf construction). I wrote the denominator as
+`sqrt(second_moment − mean²)` — the **population** standard deviation — while
+every other Sharpe in this repository comes from `performance_metrics` with
+`volatility_ddof=1`, the **sample** standard deviation. The two are different
+estimators, so the Δ I reported was a number no other artifact here could
+reproduce. Nothing flagged it: the intervals looked reasonable, and a
+plausible-looking number is exactly what this failure mode produces.
+
+The fix is exact matching, not a renaming. By the Bessel identity
+`(1/(T−1))Σ(r−m)² = (T/(T−1))(g − m²)`, the whole correction is one constant,
+`sqrt((T−1)/T)`, applied to Δ and to `grad f`. Because it multiplies `Δ̂`,
+`Δ*`, `s(Δ̂)` and `s(Δ*)` alike and every resample has length T, **the
+studentized statistic and both p-values are invariant under multiplication by
+a positive nonzero constant** — and `sqrt((T−1)/T) > 0` for every `T > 1`, so
+the condition holds here. Only Δ and the
+endpoints move, by 5.8e-5 relative (us 0.004391656 → 0.004391400). So the
+published reading never changed. That is the uncomfortable part: an estimator
+mismatch that happens to be immaterial here would have been material for any
+statistic that does not divide it back out, and I had no test that would have
+caught either case.
+
+There is now a hard gate in `main()` (`SystemExit` if the moment form and
+`performance_metrics` disagree by more than 1e-12) and a regression suite that
+pins the estimand on each arm separately, not only on the difference — a
+difference can match by cancelling two equal errors. Fault injection confirms
+the test can fail.
+
+**Not independently verified.** Written and checked by the same agent, against
+the separate-verifier rule, because the session was scoped to a wording patch
+with no new experiment. Owed before any DA-JM decision cites these intervals.
+
+**Review correction to the above (owner-caught, same day, before merge).** The
+fix had two defects of its own, and both are the same kind of mistake as the
+original: a correction applied wider than the thing it corrects.
+
+I scaled *both* estimators by `sqrt((T−1)/T)`. Only `repo` should carry it.
+`lw_excess` uses the Ledoit & Wolf Eq. (1)–(2) *functional form* (with the
+repo's `sqrt(252)` applied afterwards for reporting — their equation is
+unannualized, so "verbatim" would be too strong), and its denominators *are*
+the population sds. Scaling it left the script with two Bessel-corrected
+estimators and no canonical one, so the "cross-check against the published
+estimator" was checking the repo convention against itself. Scaling is now
+estimator-specific and the zero-cash collapse is asserted as a *relationship*,
+`grad_repo[:4] = ddof_scale(T) · grad_lw`, not as equality.
+
+And one of the tests I wrote to prevent exactly this class of error was itself
+vacuous: `assert x == approx(0.0, abs=1e-9) or x != 0.0` is true for every
+finite value. The cash derivative is `sqrt(252)·sqrt((T−1)/T)·(1/σ₂ − 1/σ₁)`,
+which vanishes only when the two arms have equal volatility; on the fixture it
+is **+2.59**. The tautology was tolerating a coordinate three orders of
+magnitude from the zero it pretended to allow. The lesson worth keeping is that
+a test containing `or` between "is zero" and "is not zero" asserts nothing, and
+that writing tests to pin an estimand does not help if the assertions are not
+themselves falsifiable. Every new test here was fault-injected before it was
+believed.
+
+The regeneration is measurable: the 15 `repo` rows are bit-identical, the 3
+`lw_excess` rows move by exactly `1/sqrt((T−1)/T)` to 12 decimals, and every
+p-value is unchanged to the last digit — the invariance claim confirmed rather
+than argued.
+
+**Independent verification (separate agent) — found defects, now fixed.** The
+verification I recorded as owed came back with two things worth keeping.
+
+The first is a defect I introduced *while fixing the previous one*. The report
+told the reader that the canonical Ledoit–Wolf Δ is "larger than the repo Δ by
+`1/ddof_scale(T)`, by construction". That is the **zero-cash** identity, printed
+next to data with a nonzero cash leg. Its own numbers refute it: the claim is
+off by 4–21×, and for Japan the canonical Δ is *smaller*, the opposite of what
+it asserts. The real cause is that the two estimators use different
+denominators — `sd_ddof1(strategy)` versus `sd_pop(strategy − cash)` — and the
+ddof constant is the smaller part of the gap. Three commits in a row, the same
+failure mode: stating a clean relationship that holds in a special case as if it
+held in general.
+
+The second is that my regression suite was much weaker than it looked. A
+mutation battery killed only **7 of 18** deliberate faults. Survivors included:
+`lw_excess` dropping the cash subtraction entirely, the confidence quantile
+becoming the median, the p-value tail flipped, the equal-tailed endpoints
+swapped, the HAC variance divided by *T−1*, the block sum normalised by *b*
+instead of √*b*, and the circular bootstrap silently becoming a moving block —
+i.e. nearly every quantity that sets the width of the interval we publish.
+Eight assertions were vacuous, one spectacularly so: it defined
+`population := corrected/ddof_scale` and then asserted their ratio equals
+`ddof_scale`, which is true for *any* estimator whatsoever.
+
+The rebuilt suite kills **12 of 12**. `prewhitened_psi`'s VAR(1) recoloring
+remains untested and is recorded as a known gap rather than quietly left.
+
+The lesson is not "write more tests". It is that a test suite's value is not
+visible from reading it — every assertion here looked purposeful — and the only
+cheap way to find out is to break the code on purpose and see whether anything
+notices.
+
+**Fourth instance, same pattern (owner-caught in PR review).** The report said
+"the two agree exactly only when the cash leg is zero". Also false: at zero cash
+they still differ by `ddof_scale(T)` — which is what the test on that very line
+asserts. So the prose contradicted the test sitting next to it. Fixed at the
+source that generates the report, and every "Eq. (1)–(2) verbatim" softened to
+"functional form, with the repo's annualization applied for reporting" (their
+equation is unannualized).
+
+Four occurrences is a pattern, not four accidents, so the response is a rule
+rather than another fix: `AGENTS.md` now carries an **Anti-overclaim rules**
+section and the principle *AI confidence is not evidence*. The operative one
+here is the first: if a result was shown under a condition — cash = 0, beta = 1,
+one market, one seed — that condition must appear in the conclusion.
+
+**Fifth instance — the correction itself overcorrected (owner-caught, same
+review).** Fixing the above, I wrote "the two estimators are NEVER exactly
+equal". That swaps one absolute for another. The defensible statement is that
+they are **not identical functions**; two non-identical functions can still
+agree numerically in special cases, and here they do — at `Δ_lw = 0` the
+zero-cash relation gives `Δ_repo = 0` too. Two further scope slips in the same
+sentence: "invariant to any constant rescaling" should be *positive nonzero*
+constant (at `c = 0` the studentized ratio is undefined; a negative `c` flips
+the signed draws and the equal-tailed endpoints), and the DA-JM novelty claim
+asserted that no duration/semi-Markov/hazard modification *exists* in the SJM
+lineage — a literature search cannot establish non-existence, and Deep
+Statistical Jump Models already notes its generic state loss can penalize
+staying in a state too long.
+
+The pattern underneath all five is one habit: reaching for the strongest
+sentence the evidence almost supports. The fix is not more caution in tone but
+naming the scope in the sentence itself.

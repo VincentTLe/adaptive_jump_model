@@ -21,8 +21,10 @@ METHOD
               v = (mu1, mu2, gamma1, gamma2) with gradient Eq. (4) for the
               canonical LW estimator on excess returns; v is extended to
               (m1, m2, g1, g2, k) with k = E[cash] for the repo's Sharpe,
-              which nets a stochastic cash leg in the numerator only. The
-              5-vector gradient collapses onto Eq. (4) exactly at k = 0.
+              which nets a stochastic cash leg in the numerator only. At
+              k = 0 the 5-vector gradient collapses onto ddof_scale(T)
+              times Eq. (4) -- the two estimators differ by that constant,
+              and at k != 0 by their denominators as well.
   (b) Student the bootstrap statistic is (Delta*_b - Delta_hat)/s(Delta*_b),
               with s(Delta*_b) RECOMPUTED on each resample from the
               block-sum estimator Psi* = (1/l) sum_j zeta_j zeta_j',
@@ -45,10 +47,10 @@ METHOD
               the superseded check so only the method changes.
 
 SANITY CHECKS
-  analytic vs central-difference gradient, max relative error: 8.06e-08
-  us: T = 8565; performance_metrics Delta +0.004391 vs moment-form Delta +0.004392 (ddof 1 vs 0, difference 2.56e-07)
-  de: T = 8602; performance_metrics Delta +0.022057 vs moment-form Delta +0.022058 (ddof 1 vs 0, difference 1.28e-06)
-  jp: T = 8336; performance_metrics Delta +0.009276 vs moment-form Delta +0.009276 (ddof 1 vs 0, difference 5.56e-07)
+  analytic vs central-difference gradient, max relative error: 8.05e-08
+  us: T = 8565; performance_metrics Delta +0.004391400 vs moment-form Delta +0.004391400 (same ddof=1 estimator, agreement 3.23e-15)
+  de: T = 8602; performance_metrics Delta +0.022056974 vs moment-form Delta +0.022056974 (same ddof=1 estimator, agreement 1.50e-15)
+  jp: T = 8336; performance_metrics Delta +0.009275779 vs moment-form Delta +0.009275779 (same ddof=1 estimator, agreement 1.56e-16)
 
 OLD (plain percentile) vs NEW (Ledoit-Wolf studentized), block = 63 days
 
@@ -64,17 +66,17 @@ jp       +0.00928   0.01672        [-0.0190, +0.0377]        [-0.0233, +0.0418] 
         draws are in studentized-ci.csv.
 
 Published percentile numbers from the L4 receipt, for provenance:
-  us: receipt [-0.0267, +0.0397] frac+ 0.62 | recomputed [-0.0271, +0.0396] frac+ 0.62 (Monte Carlo difference only; seeds were not recorded)
-  de: receipt [-0.0214, +0.0684] frac+ 0.84 | recomputed [-0.0254, +0.0707] frac+ 0.84 (Monte Carlo difference only; seeds were not recorded)
-  jp: receipt [-0.0201, +0.0404] frac+ 0.74 | recomputed [-0.0190, +0.0377] frac+ 0.72 (Monte Carlo difference only; seeds were not recorded)
+  us: receipt [-0.0267, +0.0397] frac+ 0.62 | recomputed [-0.0271, +0.0396] frac+ 0.62 (differs by Monte Carlo -- seeds were not recorded -- and by the ddof=1 correction, a factor sqrt((T-1)/T) ~ 1 - 6e-5)
+  de: receipt [-0.0214, +0.0684] frac+ 0.84 | recomputed [-0.0254, +0.0707] frac+ 0.84 (differs by Monte Carlo -- seeds were not recorded -- and by the ddof=1 correction, a factor sqrt((T-1)/T) ~ 1 - 6e-5)
+  jp: receipt [-0.0201, +0.0404] frac+ 0.74 | recomputed [-0.0190, +0.0377] frac+ 0.72 (differs by Monte Carlo -- seeds were not recorded -- and by the ddof=1 correction, a factor sqrt((T-1)/T) ~ 1 - 6e-5)
 
 FULL PER-MARKET DETAIL (circular block bootstrap, repo Sharpe)
 
-US  T = 8565, Delta = +0.004392
+US  T = 8565, Delta = +0.004391
   days on which the two arms' returns differ at all: 54 / 8565 (0.63%)
-  HAC standard error (prewhitened Parzen)   0.019057
-  median bootstrap standard error s(Delta*) 0.016960
-  same block estimator on the ORIGINAL sample              0.017440   (+9.3% vs kernel HAC)
+  HAC standard error (prewhitened Parzen)   0.019056
+  median bootstrap standard error s(Delta*) 0.016959
+  same block estimator on the ORIGINAL sample              0.017439   (+9.3% vs kernel HAC)
   studentized symmetric 95%    [-0.03395, +0.04274]  contains 0
   studentized equal-tailed 95% [-0.03285, +0.04395]  contains 0
   OLD percentile 95%           [-0.02714, +0.03963]  contains 0
@@ -85,31 +87,65 @@ US  T = 8565, Delta = +0.004392
       P(true delta > 0) and must never be written that way.)
   robustness, stationary bootstrap L = 63: [-0.03270, +0.04148], p 0.8318
   cross-check, canonical LW 4-moment excess-return Sharpe: Delta +0.004397, SE 0.019063, [-0.03421, +0.04300], p 0.8318
+     (This is a DIFFERENT estimator, not a rescaling of the one above. It
+      standardizes by the population sd of the EXCESS return sd_pop(r - k),
+      where the repo standardizes by sd_ddof1(r) of the strategy return and
+      nets cash in the numerator only. It also carries no ddof=1 correction,
+      because Ledoit-Wolf's f uses the population sd -- but that constant is
+      the SMALLER part of the gap: observed ratio 1.001248 vs 1.000058
+      from the ddof convention alone. The two are NOT identical functions. With a
+      zero cash leg their outputs are related by the ddof/Bessel factor,
+      Delta_repo = ddof_scale(T) * Delta_lw. With a nonzero cash leg their
+      denominator definitions also differ, and on this data that term is the
+      larger of the two and its SIGN is not fixed across markets. (Non-identical
+      functions can still agree numerically in special cases -- at Delta_lw = 0
+      both are 0 -- so this is a statement about the functions, not a claim that
+      equality never occurs.) The studentized statistic and
+      the p-value are invariant under multiplication by a POSITIVE NONZERO
+      constant -- ddof_scale(T) > 0, so that holds here -- which is what keeps
+      the two comparable as a cross-check.)
 
-DE  T = 8602, Delta = +0.022058
+DE  T = 8602, Delta = +0.022057
   days on which the two arms' returns differ at all: 110 / 8602 (1.28%)
-  HAC standard error (prewhitened Parzen)   0.025734
-  median bootstrap standard error s(Delta*) 0.023055
-  same block estimator on the ORIGINAL sample              0.023132   (+11.2% vs kernel HAC)
-  studentized symmetric 95%    [-0.02961, +0.07373]  contains 0
-  studentized equal-tailed 95% [-0.02698, +0.07625]  contains 0
-  OLD percentile 95%           [-0.02544, +0.07075]  contains 0
+  HAC standard error (prewhitened Parzen)   0.025733
+  median bootstrap standard error s(Delta*) 0.023053
+  same block estimator on the ORIGINAL sample              0.023131   (+11.2% vs kernel HAC)
+  studentized symmetric 95%    [-0.02961, +0.07372]  contains 0
+  studentized equal-tailed 95% [-0.02698, +0.07624]  contains 0
+  OLD percentile 95%           [-0.02544, +0.07074]  contains 0
   two-sided p-value, studentized distribution (LW Eq. 9)  0.4000
   two-sided p-value, equal-tailed studentized             0.3848
   fraction of bootstrap replicates with positive delta     0.828
      (this is a property of the resampling distribution. It is NOT
       P(true delta > 0) and must never be written that way.)
-  robustness, stationary bootstrap L = 63: [-0.03072, +0.07484], p 0.4214
+  robustness, stationary bootstrap L = 63: [-0.03072, +0.07483], p 0.4214
   cross-check, canonical LW 4-moment excess-return Sharpe: Delta +0.022065, SE 0.025730, [-0.02880, +0.07293], p 0.3948
+     (This is a DIFFERENT estimator, not a rescaling of the one above. It
+      standardizes by the population sd of the EXCESS return sd_pop(r - k),
+      where the repo standardizes by sd_ddof1(r) of the strategy return and
+      nets cash in the numerator only. It also carries no ddof=1 correction,
+      because Ledoit-Wolf's f uses the population sd -- but that constant is
+      the SMALLER part of the gap: observed ratio 1.000363 vs 1.000058
+      from the ddof convention alone. The two are NOT identical functions. With a
+      zero cash leg their outputs are related by the ddof/Bessel factor,
+      Delta_repo = ddof_scale(T) * Delta_lw. With a nonzero cash leg their
+      denominator definitions also differ, and on this data that term is the
+      larger of the two and its SIGN is not fixed across markets. (Non-identical
+      functions can still agree numerically in special cases -- at Delta_lw = 0
+      both are 0 -- so this is a statement about the functions, not a claim that
+      equality never occurs.) The studentized statistic and
+      the p-value are invariant under multiplication by a POSITIVE NONZERO
+      constant -- ddof_scale(T) > 0, so that holds here -- which is what keeps
+      the two comparable as a cross-check.)
 
 JP  T = 8336, Delta = +0.009276
   days on which the two arms' returns differ at all: 98 / 8336 (1.18%)
-  HAC standard error (prewhitened Parzen)   0.016719
-  median bootstrap standard error s(Delta*) 0.014934
-  same block estimator on the ORIGINAL sample              0.016161   (+3.5% vs kernel HAC)
-  studentized symmetric 95%    [-0.02326, +0.04182]  contains 0
-  studentized equal-tailed 95% [-0.02143, +0.04373]  contains 0
-  OLD percentile 95%           [-0.01898, +0.03775]  contains 0
+  HAC standard error (prewhitened Parzen)   0.016718
+  median bootstrap standard error s(Delta*) 0.014933
+  same block estimator on the ORIGINAL sample              0.016160   (+3.5% vs kernel HAC)
+  studentized symmetric 95%    [-0.02326, +0.04181]  contains 0
+  studentized equal-tailed 95% [-0.02143, +0.04372]  contains 0
+  OLD percentile 95%           [-0.01898, +0.03774]  contains 0
   two-sided p-value, studentized distribution (LW Eq. 9)  0.5772
   two-sided p-value, equal-tailed studentized             0.5712
   fraction of bootstrap replicates with positive delta     0.734
@@ -117,15 +153,32 @@ JP  T = 8336, Delta = +0.009276
       P(true delta > 0) and must never be written that way.)
   robustness, stationary bootstrap L = 63: [-0.02293, +0.04148], p 0.5742
   cross-check, canonical LW 4-moment excess-return Sharpe: Delta +0.009274, SE 0.016711, [-0.02343, +0.04198], p 0.5840
+     (This is a DIFFERENT estimator, not a rescaling of the one above. It
+      standardizes by the population sd of the EXCESS return sd_pop(r - k),
+      where the repo standardizes by sd_ddof1(r) of the strategy return and
+      nets cash in the numerator only. It also carries no ddof=1 correction,
+      because Ledoit-Wolf's f uses the population sd -- but that constant is
+      the SMALLER part of the gap: observed ratio 0.999771 vs 1.000060
+      from the ddof convention alone. The two are NOT identical functions. With a
+      zero cash leg their outputs are related by the ddof/Bessel factor,
+      Delta_repo = ddof_scale(T) * Delta_lw. With a nonzero cash leg their
+      denominator definitions also differ, and on this data that term is the
+      larger of the two and its SIGN is not fixed across markets. (Non-identical
+      functions can still agree numerically in special cases -- at Delta_lw = 0
+      both are 0 -- so this is a statement about the functions, not a claim that
+      equality never occurs.) The studentized statistic and
+      the p-value are invariant under multiplication by a POSITIVE NONZERO
+      constant -- ddof_scale(T) > 0, so that holds here -- which is what keeps
+      the two comparable as a cross-check.)
 
 BLOCK-LENGTH SENSITIVITY (studentized symmetric interval, circular block)
 
 market   block    HAC SE           studentized 95%   p (LW)   frac +  zero
 us          21   0.01906        [-0.0326, +0.0414]    0.827    0.598  contains 0
 us          63   0.01906        [-0.0340, +0.0427]    0.836    0.600  contains 0
-us         126   0.01906        [-0.0350, +0.0438]    0.832    0.609  contains 0
+us         126   0.01906        [-0.0350, +0.0437]    0.832    0.609  contains 0
 us         252   0.01906        [-0.0372, +0.0460]    0.832    0.630  contains 0
-de          21   0.02573        [-0.0275, +0.0717]    0.397    0.819  contains 0
+de          21   0.02573        [-0.0275, +0.0716]    0.397    0.819  contains 0
 de          63   0.02573        [-0.0296, +0.0737]    0.400    0.828  contains 0
 de         126   0.02573        [-0.0300, +0.0741]    0.415    0.820  contains 0
 de         252   0.02573        [-0.0298, +0.0739]    0.418    0.798  contains 0
@@ -165,8 +218,12 @@ HOW TO READ THE OLD-vs-NEW CHANGE
    across block lengths 21 to 252. The reason is visible above: the two
    arms hold identical positions on ~99% of days, so the difference is
    carried by a few dozen isolated days that are not serially clustered.
-   The corollary is uncomfortable and stands regardless of procedure --
-   the effective sample for this comparison is tens of switching
-   episodes, not ~8,500 daily observations, and no choice of bootstrap
-   repairs that.
+   State this carefully. A block bootstrap does NOT assume the ~8,500
+   daily observations are independent -- that is exactly what blocking
+   exists to avoid, and saying otherwise would misdescribe the method.
+   The limitation is about the estimand, not the resampler: the
+   daily-return Sharpe difference is dominated by only tens of
+   transition-related observations, so an episode-level analysis is the
+   more mechanism-relevant unit of analysis here, and no choice of
+   bootstrap changes which observations carry the signal.
 

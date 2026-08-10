@@ -120,6 +120,22 @@ reported as a description of uncertainty, **not** as a verdict that the
 effect is absent. Recorded as an observation; explicitly not evidence that
 the margin is real, and equally not evidence that it is zero.
 
+**Superseded 2026-08-09 by the episode-level analysis** (registry
+`confirmed2d-episode-analysis-2026-08-09`), which is the companion
+measurement limitation (4) below calls for. Its verdict: **confirmed_2d is
+CLOSED and NOT SUPPORTED as a mechanism.** Its aggregate advantage is a small
+residual of two heavy tails, concentrated in one to five single days (the US
+episode of 2011-08-11 alone is 177.3% of the entire 34-year net), and partly a
+deferred transaction-cost artifact — every one-day episode carries a
+mechanical +10 bps because the window books the fixed JM's transition cost but
+defers confirmed_2d's to the next day. Under cost-complete accounting the
+episode sign counts (us 14/27, de 28/55, jp 27/49) are approximately balanced
+and do not reject a 50/50 sign model under the descriptive sign-test
+assumptions; that is a failure to reject, not evidence that the sign process
+is a coin flip. The optimizer-robustness statement above still stands as
+stated — it was always a statement about optimizer noise only, and it never
+established a mechanism.
+
 ## Retraction: the CI half-width is not a "noise floor"
 
 Owner correction, 2026-08-09. This receipt originally concluded that "the
@@ -160,19 +176,35 @@ decision gate was the error.
    2022 rate cycle under a rolling-refit model. Insensitivity across block
    lengths 21/63/126/252 shows the conclusion does not depend on those four
    choices; it does not establish that stationarity holds.
-4. **Wrong unit of analysis for this challenger.** The two arms hold
-   identical positions on 99.4–99.7% of days, and the US top-5 days
-   contribute 267% of the net difference. The effective information is a
-   small number of switching episodes, not 8,500 daily observations — so an
-   episode-level analysis is the appropriate companion measurement.
+4. **Wrong unit of analysis for this challenger.** This limitation is about
+   the ESTIMAND, not about the resampler: a block bootstrap does not assume
+   the daily observations are independent — resampling blocks rather than
+   rows is precisely how it preserves serial dependence, and nothing here
+   should be read as saying it treats ~8,500 days as independent draws. The
+   point is different. The two arms hold identical positions on 99.4–99.7% of
+   days, and the US top-5 days contribute 267% of the net difference, so the
+   daily-return estimand is dominated by only tens of transition-related
+   observations. An episode-level analysis is therefore the more
+   mechanism-relevant unit of analysis for this challenger, whatever the
+   resampler assumes.
 
 ### Procedure defect, confirmed by reading the code
 
 The interval above is a plain **percentile** bootstrap — the verifying
 agent's script computes `np.percentile(deltas, [2.5, 97.5])` — not the
-studentized bootstrap-*t* interval Ledoit & Wolf recommend. A correct
-studentized implementation is being produced for comparison; these numbers
+studentized bootstrap-*t* interval Ledoit & Wolf recommend. These numbers
 stand only as what the shortcut gave.
+
+**Closed 2026-08-09** (registry `studentized-sharpe-difference-2026-08-09`):
+`scripts/studentized_sharpe_difference.py` implements the studentized
+bootstrap-*t* properly — HAC delta-method standard error over the moment
+vector, each replicate studentized as `(Δ_b − Δ̂)/SE_b`, on a
+dependence-preserving time-series bootstrap. The studentized intervals are
+slightly WIDER than the percentile shortcut and every one still contains
+zero: us +0.00439 [−0.0340, +0.0427] p 0.836; de +0.02206 [−0.0296, +0.0737]
+p 0.400; jp +0.00928 [−0.0233, +0.0418] p 0.577. The qualitative reading is
+unchanged; it is now produced by the procedure the literature prescribes.
+Per the frozen hierarchy this is descriptive uncertainty, not a gate.
 
 ## Consequence for the DA-JM experiment design
 

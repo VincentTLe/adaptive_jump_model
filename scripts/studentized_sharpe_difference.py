@@ -23,7 +23,13 @@ The output describes conditional return-sampling uncertainty for one frozen
 decision path, nothing more; the four limitations recorded in
 `docs/audit/2026-08-09-optimizer-fidelity-l4-receipt.md` (data snooping,
 conditioning on a fixed fitted path, stationarity, wrong unit of analysis)
-apply unchanged to the studentized interval.
+apply unchanged to the studentized interval. State the fourth precisely: a
+block bootstrap does NOT treat the ~8,500 daily observations as independent
+draws -- blocking exists to avoid exactly that. The limitation is in the
+estimand, not the resampler. The daily-return Sharpe difference is dominated by
+only tens of transition-related observations, which is why the episode-level
+analysis (`scripts/probe_confirmed2d_episodes.py`) is the more
+mechanism-relevant unit of analysis for this challenger.
 
 WHAT IS IMPLEMENTED
 -------------------
@@ -78,10 +84,71 @@ WHAT IS IMPLEMENTED
         d/dg_2 = +sqrt(A) (m_2 - k) / (2 sig_2^3)
         d/dk   =  sqrt(A) (1/sig_2 - 1/sig_1).
 
-    Setting k == 0 and A == 1 collapses this exactly onto Ledoit-Wolf Eq. (4),
-    so the extension is a strict generalization, not a different method.  The
-    canonical 4-moment Ledoit-Wolf estimator on excess returns is ALSO run, as
-    a cross-check that the extension is not doing the work.
+    Setting k == 0 and A == 1 collapses this onto Ledoit-Wolf Eq. (4) up to the
+    Bessel constant below, so the extension is a strict generalization of their
+    function, not a different method.  The canonical 4-moment Ledoit-Wolf
+    estimator on excess returns is ALSO run, as a cross-check that the
+    extension is not doing the work.
+
+    ddof=1, NOT ddof=0 (correction, 2026-08-09).  A moment vector of uncentered
+    moments yields the POPULATION standard deviation sqrt(g - m^2), whereas
+    `performance_metrics`/`annualized_excess_sharpe` divide by
+    `Series.std(ddof=1)`.  Written as it was first, this script therefore
+    estimated a slightly different quantity from the one every other number in
+    this repository reports -- small (a relative gap of 1/(2T) ~ 6e-5 at
+    T ~ 8,500) but a different estimand, and "asymptotically equivalent" is not
+    the standard this repo applies to a headline comparator.  Because
+    (1/(T-1)) sum (r - m)^2 = (T/(T-1)) (g - m^2), the Bessel correction enters
+    the Sharpe difference as the single multiplicative constant
+
+        ddof_scale(T) = sqrt((T - 1) / T),
+
+    applied to Delta and hence to its gradient.  The repo estimator now equals
+    `performance_metrics`' Sharpe difference exactly (asserted in `main` to
+    1e-12, and in `tests/test_studentized_sharpe_difference.py`).
+
+    The factor is applied to the `repo` estimator ONLY (correction, 2026-08-09,
+    owner-caught in review).  It was first applied to both, which was wrong:
+    `lw_excess` uses the Ledoit-Wolf Eq. (1)-(2) FUNCTIONAL FORM, with this
+    repo's annualization factor sqrt(252) applied afterwards for reporting
+    (their Eq. (1)-(2) is unannualized, so "verbatim" would be too strong).
+    Its denominators ARE the population sds implied by the uncentered moments,
+    and Eq. (4) is the gradient of that functional form.  Rescaling it by the
+    Bessel factor would have left this script with two Bessel-corrected
+    estimators and no canonical one, so the "cross-check against the published
+    estimator" would have been checking the repo convention against itself.
+
+    The two are NOT IDENTICAL FUNCTIONS.  Under a ZERO cash leg their outputs
+    are related by the Bessel factor and nothing else:
+
+        Delta_repo    = ddof_scale(T) * Delta_lw      (cash == 0),
+        grad_repo[:4] = ddof_scale(T) * grad_lw       (cash == 0).
+
+    Under a NONZERO cash leg their denominator definitions also differ -- repo
+    divides by sd_ddof1 of the strategy return, lw by the population sd of the
+    excess return -- so the zero-cash relation above does NOT carry over, and
+    on this data the denominator term is the larger of the two and its sign is
+    not fixed across markets.  Both statements are asserted as RELATIONSHIPS in
+    the tests, never as equality.
+
+    Note the distinction, which the wording above deliberately preserves: two
+    functions being non-identical does NOT mean their numerical outputs can
+    never coincide.  At Delta_lw == 0 the zero-cash relation gives Delta_repo
+    == 0 as well, so the outputs do coincide there.  "Not identical" is a
+    statement about the functions, not a claim that equality never occurs.
+
+    Because the constant multiplies Delta_hat, Delta*, s(Delta_hat) and
+    s(Delta*) alike, and every resample has the same length T, the studentized
+    statistic and both p-values are invariant under multiplication by a
+    POSITIVE NONZERO constant; only the reported Delta and interval endpoints
+    move, by that same 6e-5 relative factor.  The positivity matters: at c == 0
+    the studentized ratio is undefined, and a negative c would flip the sign of
+    the signed studentized draws (the symmetric statistic uses |.| and would
+    survive, the equal-tailed endpoints would not).  ddof_scale(T) > 0 for
+    every T > 1, so the condition holds throughout this script.  That
+    invariance is what makes it safe for the two estimators to carry different
+    positive constants: they remain directly comparable on the studentized
+    scale.
 
 (b) Studentization.  The bootstrap statistic is the studentized/centered
     (Delta*_b - Delta_hat) / s(Delta*_b), NOT Delta*_b itself, and s(Delta*_b)
@@ -157,6 +224,7 @@ Diagnostic only: no refit, no adoption, no config change.
 
 from __future__ import annotations
 
+import math
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
@@ -189,6 +257,9 @@ SEED = 0
 DELAY = 1
 
 ANNUALIZATION = 252.0
+# performance_metrics(..., volatility_ddof=1) is this repo's Sharpe convention;
+# the moment form must match it exactly, not asymptotically.
+VOLATILITY_DDOF = 1
 CONFIDENCE = 0.95
 REPLICATIONS = 4999  # Ledoit-Wolf use M = 4999 in their empirical applications
 BLOCK_LENGTHS = (21, 63, 126, 252)
@@ -248,32 +319,69 @@ def moment_matrix(series: Series, estimator: str) -> np.ndarray:
 
 
 def _sigma(mean: np.ndarray, second: np.ndarray) -> np.ndarray:
+    """POPULATION sd implied by the moment vector; Bessel is applied by scale()."""
     variance = second - mean**2
     if np.any(variance <= 0):
         raise ValueError("moment vector implies a non-positive variance")
     return np.sqrt(variance)
 
 
-def sharpe_difference(v: np.ndarray, estimator: str) -> np.ndarray:
+def ddof_scale(observations: int) -> float:
+    """sqrt((T - 1)/T): the exact Bessel correction of `performance_metrics`.
+
+    sqrt(g - m^2) is the ddof=0 sd; the repo divides by `std(ddof=1)`, and
+    (1/(T-1)) sum (r-m)^2 = (T/(T-1)) (g - m^2). Dividing by the larger sd
+    scales the whole Sharpe difference by sqrt((T-1)/T), so this is not an
+    approximation: it makes the moment form identical to the repo's estimator.
+    """
+    if observations <= VOLATILITY_DDOF:
+        raise ValueError("need more observations than the volatility ddof")
+    return math.sqrt((observations - VOLATILITY_DDOF) / observations)
+
+
+def estimator_scale(estimator: str, observations: int) -> float:
+    """The leading constant of Delta = f(v). It is ESTIMATOR-SPECIFIC.
+
+    `repo` must BE `performance_metrics`, which divides by `std(ddof=1)`, so it
+    carries the Bessel factor.
+
+    `lw_excess` must NOT. Its f is the Ledoit-Wolf (2008) Eq. (1)-(2)
+    functional form -- f(a,b,c,d) = a/sqrt(c - a^2) - b/sqrt(d - b^2), whose
+    denominators are the population standard deviations implied by the
+    uncentered moments -- with this repo's annualization factor sqrt(252)
+    applied afterwards for reporting, since their Eq. (1)-(2) is unannualized.
+    Eq. (4) is the gradient of that functional form. The annualization cancels
+    out of every studentized quantity, so it does not affect any p-value.
+    Scaling f by
+    sqrt((T-1)/T) would silently make it a different estimator from the one the
+    citation names, which defeats its only purpose here: an independent
+    cross-check that the repo's 5-moment extension is not doing the work.
+    """
+    if estimator == "repo":
+        return math.sqrt(ANNUALIZATION) * ddof_scale(observations)
+    if estimator == "lw_excess":
+        return math.sqrt(ANNUALIZATION)
+    raise ValueError(f"unknown estimator: {estimator}")
+
+
+def sharpe_difference(v: np.ndarray, estimator: str, observations: int) -> np.ndarray:
     """Delta = f(v); v is (..., p) so bootstrap chunks evaluate in one call."""
     v = np.asarray(v, dtype=float)
-    root = np.sqrt(ANNUALIZATION)
+    root = estimator_scale(estimator, observations)
     if estimator == "repo":
         m1, m2, g1, g2, k = (v[..., i] for i in range(5))
         s1 = _sigma(m1, g1)
         s2 = _sigma(m2, g2)
         return root * ((m1 - k) / s1 - (m2 - k) / s2)
-    if estimator == "lw_excess":
-        a, b, c, d = (v[..., i] for i in range(4))
-        return root * (a / _sigma(a, c) - b / _sigma(b, d))
-    raise ValueError(f"unknown estimator: {estimator}")
+    # no trailing raise: estimator_scale() above already rejects unknown names
+    a, b, c, d = (v[..., i] for i in range(4))
+    return root * (a / _sigma(a, c) - b / _sigma(b, d))
 
 
-def _gradient_repo(v: np.ndarray) -> np.ndarray:
+def _gradient_repo(v: np.ndarray, root: float) -> np.ndarray:
     m1, m2, g1, g2, k = (v[..., i] for i in range(5))
     s1 = _sigma(m1, g1)
     s2 = _sigma(m2, g2)
-    root = np.sqrt(ANNUALIZATION)
     return root * np.stack(
         [
             (g1 - m1 * k) / s1**3,
@@ -286,24 +394,23 @@ def _gradient_repo(v: np.ndarray) -> np.ndarray:
     )
 
 
-def _gradient_lw(v: np.ndarray) -> np.ndarray:
-    """Ledoit-Wolf (2008) Eq. (4), verbatim, times the annualization factor."""
+def _gradient_lw(v: np.ndarray, root: float) -> np.ndarray:
+    """Ledoit-Wolf (2008) Eq. (4) functional form, times the leading constant."""
     a, b, c, d = (v[..., i] for i in range(4))
     first = _sigma(a, c) ** 3
     second = _sigma(b, d) ** 3
-    root = np.sqrt(ANNUALIZATION)
     return root * np.stack(
         [c / first, -d / second, -0.5 * a / first, 0.5 * b / second], axis=-1
     )
 
 
-def gradient(v: np.ndarray, estimator: str) -> np.ndarray:
+def gradient(v: np.ndarray, estimator: str, observations: int) -> np.ndarray:
     v = np.asarray(v, dtype=float)
+    root = estimator_scale(estimator, observations)
     if estimator == "repo":
-        return _gradient_repo(v)
-    if estimator == "lw_excess":
-        return _gradient_lw(v)
-    raise ValueError(f"unknown estimator: {estimator}")
+        return _gradient_repo(v, root)
+    # no trailing raise: estimator_scale() above already rejects unknown names
+    return _gradient_lw(v, root)
 
 
 # --------------------------------------------------------------------------
@@ -382,14 +489,19 @@ def hac_standard_error(
     moments: np.ndarray, estimator: str
 ) -> tuple[float, float, bool]:
     """Ledoit-Wolf Eq. (5) with the prewhitened Parzen Psi_hat."""
+    observations = moments.shape[0]
     v = moments.mean(axis=0)
     y = moments - v
     psi, prewhitened = prewhitened_psi(y)
-    grad = gradient(v, estimator)
-    variance = float(grad @ psi @ grad / moments.shape[0])
+    grad = gradient(v, estimator, observations)
+    variance = float(grad @ psi @ grad / observations)
     if not np.isfinite(variance) or variance <= 0:
         raise ValueError("HAC variance is not positive")
-    return float(sharpe_difference(v, estimator)), float(np.sqrt(variance)), prewhitened
+    return (
+        float(sharpe_difference(v, estimator, observations)),
+        float(np.sqrt(variance)),
+        prewhitened,
+    )
 
 
 # --------------------------------------------------------------------------
@@ -453,8 +565,8 @@ def _bootstrap_standard_errors(
     if blocks < width:
         raise ValueError("too few complete blocks for a full-rank Psi_hat*")
     v = sampled.mean(axis=1)
-    deltas = sharpe_difference(v, estimator)
-    grad = gradient(v, estimator)
+    deltas = sharpe_difference(v, estimator, observations)
+    grad = gradient(v, estimator, observations)
     centred = sampled - v[:, None, :]
     zeta = centred[:, : blocks * block, :].reshape(
         replications, blocks, block, width
@@ -605,7 +717,7 @@ def percentile_bootstrap(
         size = min(CHUNK, replications - done)
         indices = moving_block_indices(observations, size, block, rng)
         draws[done : done + size] = sharpe_difference(
-            moments[indices].mean(axis=1), "repo"
+            moments[indices].mean(axis=1), "repo", observations
         )
         done += size
     alpha = 1.0 - CONFIDENCE
@@ -614,7 +726,7 @@ def percentile_bootstrap(
         market=series.market,
         block=block,
         replications=replications,
-        delta=float(sharpe_difference(moments.mean(axis=0), "repo")),
+        delta=float(sharpe_difference(moments.mean(axis=0), "repo", observations)),
         low=float(low),
         high=float(high),
         positive_fraction=float(np.mean(draws > 0.0)),
@@ -684,8 +796,9 @@ def build_series(market: str) -> Series:
 def check_gradient(series: Series, estimator: str) -> float:
     """Central finite difference against the analytic gradient, relative error."""
     moments = moment_matrix(series, estimator)
+    observations = moments.shape[0]
     v = moments.mean(axis=0)
-    analytic = gradient(v, estimator)
+    analytic = gradient(v, estimator, observations)
     numeric = np.empty_like(analytic)
     for index in range(v.size):
         step = max(abs(v[index]), 1e-8) * 1e-6
@@ -693,7 +806,8 @@ def check_gradient(series: Series, estimator: str) -> float:
         up[index] += step
         down[index] -= step
         numeric[index] = (
-            sharpe_difference(up, estimator) - sharpe_difference(down, estimator)
+            sharpe_difference(up, estimator, observations)
+            - sharpe_difference(down, estimator, observations)
         ) / (2.0 * step)
     scale = np.maximum(np.abs(analytic), 1e-12)
     return float(np.max(np.abs(analytic - numeric) / scale))
@@ -750,6 +864,22 @@ def main() -> int:
         raise SystemExit(
             f"analytic gradient disagrees with finite difference: {worst_gradient:.2e}"
         )
+
+    # The moment form must BE performance_metrics' estimator, not an
+    # asymptotically equivalent one. Fail loudly rather than report a Delta
+    # that no other number in this repository would reproduce.
+    for market in MARKETS:
+        item = series[market]
+        moments = moment_matrix(item, "repo")
+        moment_delta = float(
+            sharpe_difference(moments.mean(axis=0), "repo", moments.shape[0])
+        )
+        repo_delta = item.challenger_sharpe - item.baseline_sharpe
+        if abs(repo_delta - moment_delta) > 1e-12:
+            raise SystemExit(
+                f"{market}: moment-form Delta {moment_delta:.12f} does not match "
+                f"performance_metrics {repo_delta:.12f}"
+            )
 
     jobs: list[tuple[Series, str, str, int]] = []
     for market in MARKETS:
@@ -858,8 +988,10 @@ def _report(
         "              v = (mu1, mu2, gamma1, gamma2) with gradient Eq. (4) for the",
         "              canonical LW estimator on excess returns; v is extended to",
         "              (m1, m2, g1, g2, k) with k = E[cash] for the repo's Sharpe,",
-        "              which nets a stochastic cash leg in the numerator only. The",
-        "              5-vector gradient collapses onto Eq. (4) exactly at k = 0.",
+        "              which nets a stochastic cash leg in the numerator only. At",
+        "              k = 0 the 5-vector gradient collapses onto ddof_scale(T)",
+        "              times Eq. (4) -- the two estimators differ by that constant,",
+        "              and at k != 0 by their denominators as well.",
         "  (b) Student the bootstrap statistic is (Delta*_b - Delta_hat)/s(Delta*_b),",
         "              with s(Delta*_b) RECOMPUTED on each resample from the",
         "              block-sum estimator Psi* = (1/l) sum_j zeta_j zeta_j',",
@@ -887,14 +1019,15 @@ def _report(
     ]
     for market in MARKETS:
         item = series[market]
+        moments = moment_matrix(item, "repo")
         moment_delta = float(
-            sharpe_difference(moment_matrix(item, "repo").mean(axis=0), "repo")
+            sharpe_difference(moments.mean(axis=0), "repo", moments.shape[0])
         )
         repo_delta = item.challenger_sharpe - item.baseline_sharpe
         lines.append(
             f"  {market}: T = {item.observations}; performance_metrics Delta "
-            f"{repo_delta:+.6f} vs moment-form Delta {moment_delta:+.6f} "
-            f"(ddof 1 vs 0, difference {abs(repo_delta - moment_delta):.2e})"
+            f"{repo_delta:+.9f} vs moment-form Delta {moment_delta:+.9f} "
+            f"(same ddof=1 estimator, agreement {abs(repo_delta - moment_delta):.2e})"
         )
     lines += [
         "",
@@ -930,7 +1063,8 @@ def _report(
             f"  {market}: receipt [{low:+.4f}, {high:+.4f}] frac+ {fraction:.2f} | "
             f"recomputed [{reference.low:+.4f}, {reference.high:+.4f}] "
             f"frac+ {reference.positive_fraction:.2f} "
-            f"(Monte Carlo difference only; seeds were not recorded)"
+            f"(differs by Monte Carlo -- seeds were not recorded -- and by the "
+            f"ddof=1 correction, a factor sqrt((T-1)/T) ~ 1 - 6e-5)"
         )
     lines += [
         "",
@@ -948,8 +1082,7 @@ def _report(
         )
         gap = 100.0 * (result.standard_error / result.block_se_original_sample - 1.0)
         lines += [
-            f"{market.upper()}  T = {result.observations}, "
-            f"Delta = {result.delta:+.6f}",
+            f"{market.upper()}  T = {result.observations}, Delta = {result.delta:+.6f}",
             f"  days on which the two arms' returns differ at all: {differing}"
             f" / {result.observations} "
             f"({100 * differing / result.observations:.2f}%)",
@@ -983,6 +1116,37 @@ def _report(
             f"Delta {canonical.delta:+.6f}, SE {canonical.standard_error:.6f}, "
             f"[{canonical.symmetric_low:+.5f}, {canonical.symmetric_high:+.5f}], "
             f"p {canonical.p_value_symmetric:.4f}",
+            "     (This is a DIFFERENT estimator, not a rescaling of the one above. It",
+            "      standardizes by the population sd of the EXCESS return"
+            " sd_pop(r - k),",
+            "      where the repo standardizes by sd_ddof1(r) of the strategy"
+            " return and",
+            "      nets cash in the numerator only. It also carries no ddof=1"
+            " correction,",
+            "      because Ledoit-Wolf's f uses the population sd -- but that"
+            " constant is",
+            f"      the SMALLER part of the gap: observed ratio"
+            f" {canonical.delta / result.delta:.6f} vs"
+            f" {1.0 / ddof_scale(result.observations):.6f}",
+            "      from the ddof convention alone. The two are NOT identical"
+            " functions. With a",
+            "      zero cash leg their outputs are related by the ddof/Bessel factor,",
+            "      Delta_repo = ddof_scale(T) * Delta_lw. With a nonzero cash"
+            " leg their",
+            "      denominator definitions also differ, and on this data that"
+            " term is the",
+            "      larger of the two and its SIGN is not fixed across markets."
+            " (Non-identical",
+            "      functions can still agree numerically in special cases --"
+            " at Delta_lw = 0",
+            "      both are 0 -- so this is a statement about the functions,"
+            " not a claim that",
+            "      equality never occurs.) The studentized statistic and",
+            "      the p-value are invariant under multiplication by a POSITIVE"
+            " NONZERO",
+            "      constant -- ddof_scale(T) > 0, so that holds here -- which is"
+            " what keeps",
+            "      the two comparable as a cross-check.)",
             "",
         ]
     lines += [
@@ -1044,10 +1208,14 @@ def _report(
         "   across block lengths 21 to 252. The reason is visible above: the two",
         "   arms hold identical positions on ~99% of days, so the difference is",
         "   carried by a few dozen isolated days that are not serially clustered.",
-        "   The corollary is uncomfortable and stands regardless of procedure --",
-        "   the effective sample for this comparison is tens of switching",
-        "   episodes, not ~8,500 daily observations, and no choice of bootstrap",
-        "   repairs that.",
+        "   State this carefully. A block bootstrap does NOT assume the ~8,500",
+        "   daily observations are independent -- that is exactly what blocking",
+        "   exists to avoid, and saying otherwise would misdescribe the method.",
+        "   The limitation is about the estimand, not the resampler: the",
+        "   daily-return Sharpe difference is dominated by only tens of",
+        "   transition-related observations, so an episode-level analysis is the",
+        "   more mechanism-relevant unit of analysis here, and no choice of",
+        "   bootstrap changes which observations carry the signal.",
         "",
     ]
     return "\n".join(lines) + "\n"

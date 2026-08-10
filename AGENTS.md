@@ -6,6 +6,9 @@ This repository studies daily market-regime models based on Shu, Yu, and Mulvey
 **MUST** and **MUST NOT** are non-negotiable. **SHOULD** requires a recorded
 reason to deviate.
 
+**AI confidence is not evidence.** Fluent, assured prose is not a substitute
+for a check that was actually run. If the check was not run, say so.
+
 ## 0. Scientific objective
 
 **The unit of progress is a scientific question answered.**
@@ -17,20 +20,41 @@ reason to deviate.
 There are two distinct levels of evidence. A mathematical extension has local
 value when it changes the fixed-JM objective in a verified, causal, identifiable
 way or improves a declared mechanism metric. It has economic value only when
-the resulting strategy beats both same-sample benchmarks. For market `m`, the
-primary economic gap for prespecified variant `v` is:
+the resulting strategy beats the benchmarks under the same protocol.
 
-`G_m(v) = Sharpe_v,m - max(Sharpe_BuyHold,m, Sharpe_HMM,m)`.
+**The primary estimand for a structural challenger is the paired delta against
+the fixed JM.** For market `m` and prespecified variant `v`:
 
-The cross-market target is `G_m(v) > 0` for the same `v` in every declared
-market. Maximum drawdown,
-turnover, cash fraction, and switch count are secondary guardrails. Exact
-numbers reported by Shu, Yu, and Mulvey are context, not a replication target,
-because this repository uses a later public proxy sample.
+`Delta_m(v) = Sharpe_v,m - Sharpe_fixedJM,m`.
 
-The sealed v7 proxy study is the current development baseline, not permanent
-proof and not a reason to forbid new exploratory work. Data limitations are
-reported separately from model behavior.
+The fixed JM is the arm the extension claims to improve, so it is the arm the
+extension must beat. The cross-market target is `Delta_m(v) > 0` for the same
+frozen `v` in every declared market, with non-trivial magnitude. Pairing is not
+cosmetic: a perturbation that moves both arms together contributes a common
+component that cancels in the difference, which is why the paired delta is
+measured directly rather than inferred from each arm's separate spread.
+
+The **stronger economic criterion**, which a variant must also satisfy before it
+is claimed to be economically useful, is:
+
+`Sharpe_v,m > max(Sharpe_fixedJM,m, Sharpe_HMM,m, Sharpe_BuyHold,m)`.
+
+**Beating HMM and buy-and-hold while losing to the fixed JM is NOT evidence that
+an extension improved the JM.** It only shows the JM family beats those
+benchmarks, which is already the established baseline result. Any variant that
+loses to fixed JM in a market has failed in that market regardless of how it
+scores against HMM or B&H, and must be reported that way.
+
+Maximum drawdown, turnover, cash fraction, and switch count are secondary
+guardrails. Exact numbers reported by Shu, Yu, and Mulvey are context, not a
+replication target, because this repository uses a later public proxy sample.
+
+The canonical baseline for downstream work is whichever fixed-baselines config
+is currently sealed and recorded as canonical in `TASK.md` and the registry —
+today v11-ninit60 (`5b12efa2…`), with its known DE defect disclosed. A sealed
+baseline is a fixed comparator, not permanent proof, and not a reason to forbid
+new exploratory work. Data limitations are reported separately from model
+behavior.
 
 Priority is:
 
@@ -46,6 +70,83 @@ are the smallest blocker to observing or validating the active experiment.
 Every handoff `goal` starts by saying which scientific question moved. When
 the owner explicitly requested infrastructure, say that no scientific question
 moved instead of disguising engineering work as research progress.
+
+## Anti-overclaim rules
+
+These exist because the same failure has now happened several times: a
+relationship is proved or tested under one special condition, and the prose
+then silently drops the condition. Example on record — `Delta_repo =
+ddof_scale(T) * Delta_lw` holds at a ZERO cash leg; it was written into a
+report as if it held on the real data, where it is wrong by 4-21x and has the
+wrong sign in one market.
+
+1. **Special cases are not general results.** If a result was shown only under
+   a condition — cash = 0, beta = 1, one market, one seed, equal volatility,
+   one synthetic example — that condition MUST appear in the conclusion.
+   Before generalizing, ask: *what changes when this condition is removed?*
+
+2. **No absolute claims without scope.** Before writing *exactly, always,
+   never, identical, equivalent, guarantees, proves, impossible, by
+   construction, must, cannot*, ask: *under exactly what assumptions is this
+   true?* If assumptions exist, state them inside the claim.
+
+3. **Separate three kinds of statement.** FACT — directly observed from code
+   or data. DERIVATION — follows mathematically under stated assumptions.
+   INTERPRETATION — what we think it means. Never present an interpretation as
+   a fact, and never present a conditional derivation as unconditional.
+
+4. **For every load-bearing claim, ask for the simplest counterexample** that
+   would make it false, and test that counterexample when practical.
+
+5. **Important tests need a negative case.** Ask: *if this relationship were
+   broken in a plausible way, would this test fail?* If not, the test does not
+   validate the relationship. An assertion that cannot fail is not evidence.
+
+6. **Confidence comes from evidence, not from stronger wording.** Prefer:
+   checked directly against source; derived under these assumptions; matched
+   an independent implementation; passed these adversarial cases; observed
+   only on this market/sample; not independently verified. Do not replace
+   missing evidence with confident prose.
+
+7. **Every important result must answer "what could make this conclusion
+   wrong?"** Keep the answer concrete.
+
+8. **Prefer a narrow correct statement over a broad impressive one.**
+
+Worked examples on record, all caught in review of one PR: `Delta_repo =
+ddof_scale(T) * Delta_lw` holds at a ZERO cash leg and was written as if it
+held on the real data (wrong by 4-21x, wrong sign in one market); "the two are
+NEVER exactly equal" replaced one absolute with another (they are not identical
+FUNCTIONS; their outputs still coincide at `Delta_lw = 0`); "invariant to any
+constant rescaling" should be *positive nonzero* constant; and a bounded
+literature search was written as proof that no duration-aware Statistical Jump
+Model exists.
+
+## Project language: English only
+
+All persistent project material is written in English. This is permanent, and
+its purpose is to remove the ambiguity that comes from mixing languages in
+scientific wording, terminology, and durable records.
+
+Applies to: `README.md`, `CURRENT.md`/`TASK.md`, `AGENTS.md`, `CLAUDE.md`,
+everything under `docs/` and `research/`, the manuscript, experiment specs,
+audit receipts, the scientific ledger, registry entries, generated
+human-readable reports, source comments, docstrings, test names and comments,
+project-facing CLI messages, commit messages, and GitHub PR titles, PR bodies,
+review comments and issue text written by an agent.
+
+Do NOT translate: third-party source documents, quoted text from papers, raw
+external data, proper names, or literal strings whose exact original form is
+part of provenance. When quoting non-English primary material, preserve the
+original and add an English explanation separately.
+
+Do not write durable prose that mixes languages sentence by sentence. Standard
+technical identifiers that cannot reasonably be translated are fine inside
+English sentences.
+
+This rule governs new and modified text. Do not mass-translate historical
+files, and never edit an append-only registry entry merely because of its
+language — if such an entry is factually wrong, append a correction instead.
 
 ## 1. Authorization and orientation
 
