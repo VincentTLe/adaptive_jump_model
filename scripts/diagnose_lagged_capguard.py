@@ -29,7 +29,7 @@ from matplotlib.lines import Line2D  # noqa: E402
 from matplotlib.patches import Patch  # noqa: E402
 from matplotlib.ticker import PercentFormatter  # noqa: E402
 
-from adaptive_jump.simple_jm_figures import (  # noqa: E402
+from adaptive_jump.experiments.simple_jm.simple_jm_figures import (  # noqa: E402
     BEAR_ALPHA,
     BEAR_FILL,
     COLORS,

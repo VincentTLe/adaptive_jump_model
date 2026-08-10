@@ -23,8 +23,8 @@ from typing import Any, Protocol
 import numpy as np
 import pandas as pd
 
+from adaptive_jump.experiments.separation.separation_study import SeparationStudyError
 from adaptive_jump.models import FEATURE_COLUMNS
-from adaptive_jump.separation_study import SeparationStudyError
 
 BETA_FILES = {
     0.0: "candidate-states-beta-0.csv",

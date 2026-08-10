@@ -13,6 +13,12 @@ from jumpmodels.jump import dp, jump_penalty_to_mx
 from sklearn.preprocessing import StandardScaler
 
 from adaptive_jump.config import JMProtocol, ModelProtocol
+from adaptive_jump.experiments.simple_jm.simple_jm_l1 import L1JumpModel
+from adaptive_jump.experiments.simple_jm.simple_jm_return import (
+    ReturnAwareJumpModel,
+    align_matured_targets,
+    feature_loss_matrix,
+)
 from adaptive_jump.models import (
     FEATURE_COLUMNS,
     FixedJMResult,
@@ -21,12 +27,6 @@ from adaptive_jump.models import (
     fixed_jm_states,
     terminal_online_state,
     window_scaler,
-)
-from adaptive_jump.simple_jm_l1 import L1JumpModel
-from adaptive_jump.simple_jm_return import (
-    ReturnAwareJumpModel,
-    align_matured_targets,
-    feature_loss_matrix,
 )
 
 VariantKind = Literal["robust_l1", "return_aware"]

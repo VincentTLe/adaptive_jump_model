@@ -17,20 +17,20 @@ from typing import Any
 
 import pandas as pd
 
-from adaptive_jump import artifacts as _artifacts
 from adaptive_jump.config import ConfigError, ResearchConfig, load_config
 from adaptive_jump.data import AcquisitionError, acquire, research_git_sha
-from adaptive_jump.features import effective_oos_start, prepare_market
-from adaptive_jump.models import FixedJMResult, HMMResult, fixed_jm_states, hmm_states
-from adaptive_jump.reporting import build_report
-from adaptive_jump.runtime import checkpoints as checkpoint_store
-from adaptive_jump.simple_jm_figures import render_figures
-from adaptive_jump.simple_jm_suite import (
+from adaptive_jump.experiments.simple_jm.simple_jm_figures import render_figures
+from adaptive_jump.experiments.simple_jm.simple_jm_suite import (
     load_dd_loss_scale_spec,
     load_simple_jm_spec,
     run_dd_loss_scale_study,
     run_simple_jm_study,
 )
+from adaptive_jump.features import effective_oos_start, prepare_market
+from adaptive_jump.infrastructure import artifacts as _artifacts
+from adaptive_jump.infrastructure.reporting import build_report
+from adaptive_jump.infrastructure.runtime import checkpoints as checkpoint_store
+from adaptive_jump.models import FixedJMResult, HMMResult, fixed_jm_states, hmm_states
 from adaptive_jump.walkforward import (
     BaselineStudy,
     SelectionProgress,

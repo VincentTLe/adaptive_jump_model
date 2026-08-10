@@ -25,9 +25,11 @@ sys.path.insert(0, str(ROOT / "src"))
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
-from adaptive_jump.ajm_ext_arms import challenger_states  # noqa: E402
 from adaptive_jump.backtest import apply_signal, performance_metrics  # noqa: E402
 from adaptive_jump.config import load_config  # noqa: E402
+from adaptive_jump.experiments.ajm_ext.ajm_ext_arms import (  # noqa: E402
+    challenger_states,
+)
 from adaptive_jump.models import fixed_jm_states  # noqa: E402
 from adaptive_jump.walkforward import select_monthly_candidate  # noqa: E402
 

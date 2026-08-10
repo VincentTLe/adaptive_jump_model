@@ -17,11 +17,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from adaptive_jump.config import load_config  # noqa: E402
-from adaptive_jump.simple_jm_suite import (  # noqa: E402
+from adaptive_jump.experiments.simple_jm.simple_jm_suite import (  # noqa: E402
     load_simple_jm_spec,
     run_simple_jm_study,
 )
-from adaptive_jump import artifacts as _artifacts  # noqa: E402
+from adaptive_jump.infrastructure import artifacts as _artifacts  # noqa: E402
 
 
 def main() -> int:

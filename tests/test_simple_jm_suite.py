@@ -8,25 +8,25 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import adaptive_jump.simple_jm_suite as suite
-from adaptive_jump.artifacts import TRADE_COLUMNS, ArtifactError
+import adaptive_jump.experiments.simple_jm.simple_jm_suite as suite
 from adaptive_jump.config import load_config
+from adaptive_jump.infrastructure.artifacts import TRADE_COLUMNS, ArtifactError
 
 
 def test_implementation_hashes_cover_result_code_and_environment_lock() -> None:
     hashes = suite._implementation_hashes(ROOT)
 
     assert {
-        "src/adaptive_jump/artifacts.py",
         "src/adaptive_jump/backtest.py",
         "src/adaptive_jump/config.py",
+        "src/adaptive_jump/experiments/simple_jm/simple_jm_controls.py",
+        "src/adaptive_jump/experiments/simple_jm/simple_jm_fitting.py",
+        "src/adaptive_jump/experiments/simple_jm/simple_jm_l1.py",
+        "src/adaptive_jump/experiments/simple_jm/simple_jm_return.py",
+        "src/adaptive_jump/experiments/simple_jm/simple_jm_suite.py",
+        "src/adaptive_jump/experiments/simple_jm/simple_jm_verifier.py",
+        "src/adaptive_jump/infrastructure/artifacts.py",
         "src/adaptive_jump/models.py",
-        "src/adaptive_jump/simple_jm_controls.py",
-        "src/adaptive_jump/simple_jm_fitting.py",
-        "src/adaptive_jump/simple_jm_l1.py",
-        "src/adaptive_jump/simple_jm_return.py",
-        "src/adaptive_jump/simple_jm_suite.py",
-        "src/adaptive_jump/simple_jm_verifier.py",
         "src/adaptive_jump/walkforward.py",
         "pyproject.toml",
         "uv.lock",

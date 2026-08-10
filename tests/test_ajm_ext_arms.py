@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from adaptive_jump.ajm_ext_arms import (
+from adaptive_jump.config import JMProtocol, ModelProtocol
+from adaptive_jump.experiments.ajm_ext.ajm_ext_arms import (
     EXPANDING,
     TRAILING,
     ArmError,
@@ -13,7 +14,6 @@ from adaptive_jump.ajm_ext_arms import (
     challenger_states,
     model_protocol_for,
 )
-from adaptive_jump.config import JMProtocol, ModelProtocol
 from adaptive_jump.models import fixed_jm_states
 
 FIT_WINDOW = 8

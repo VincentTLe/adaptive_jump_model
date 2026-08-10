@@ -28,9 +28,9 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from adaptive_jump.artifacts import sha256_file  # noqa: E402
 from adaptive_jump.cli import _model_workers, research_git_sha  # noqa: E402
 from adaptive_jump.config import load_config  # noqa: E402
+from adaptive_jump.infrastructure.artifacts import sha256_file  # noqa: E402
 from adaptive_jump.models import fixed_jm_states  # noqa: E402
 
 MARKETS = ("us", "de", "jp")

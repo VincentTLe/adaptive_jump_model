@@ -5,8 +5,7 @@ import pandas as pd
 import pytest
 
 from adaptive_jump.config import JMProtocol, ModelProtocol
-from adaptive_jump.models import ModelError
-from adaptive_jump.simple_jm_fitting import (
+from adaptive_jump.experiments.simple_jm.simple_jm_fitting import (
     SimpleJMFitError,
     canonical_complete_mask,
     custom_variant_states,
@@ -14,6 +13,7 @@ from adaptive_jump.simple_jm_fitting import (
     fixed_jm_trace_receipt,
     run_us_prefix_smoke,
 )
+from adaptive_jump.models import ModelError
 
 
 def _model_protocol(fit_window: int) -> ModelProtocol:

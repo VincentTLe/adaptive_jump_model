@@ -19,23 +19,26 @@ from pathlib import Path
 
 import pandas as pd
 
-from adaptive_jump.ajm_ext_arms import (
+from adaptive_jump.backtest import apply_signal, buy_and_hold, performance_metrics
+from adaptive_jump.config import HMMProtocol, JMProtocol, SelectionProtocol
+from adaptive_jump.data import research_git_sha
+from adaptive_jump.experiments.ajm_ext.ajm_ext_arms import (
     ArmStates,
     build_arm,
     build_spec_frame,
     model_protocol_for,
 )
-from adaptive_jump.ajm_ext_gate import SpecPair, evaluate_transport_gate
-from adaptive_jump.ajm_ext_sources import (
+from adaptive_jump.experiments.ajm_ext.ajm_ext_gate import (
+    SpecPair,
+    evaluate_transport_gate,
+)
+from adaptive_jump.experiments.ajm_ext.ajm_ext_sources import (
     ExtContract,
     load_data_lock,
     load_ext_contract,
     load_region_frame,
 )
-from adaptive_jump.artifacts import write_inventory, write_json
-from adaptive_jump.backtest import apply_signal, buy_and_hold, performance_metrics
-from adaptive_jump.config import HMMProtocol, JMProtocol, SelectionProtocol
-from adaptive_jump.data import research_git_sha
+from adaptive_jump.infrastructure.artifacts import write_inventory, write_json
 from adaptive_jump.models import hmm_states, smoothed_hmm_states
 from adaptive_jump.walkforward import select_monthly_candidate
 

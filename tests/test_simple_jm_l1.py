@@ -7,14 +7,14 @@ import pandas as pd
 import pytest
 from jumpmodels.jump import JumpModel
 
-from adaptive_jump.models import ModelError
-from adaptive_jump.simple_jm_l1 import (
+from adaptive_jump.experiments.simple_jm.simple_jm_l1 import (
     L1JumpModel,
     L1JumpModelError,
     componentwise_median_centers,
     l1_loss_matrix,
     solve_l1_path,
 )
+from adaptive_jump.models import ModelError
 
 
 def _path_objective(loss: np.ndarray, labels: np.ndarray, jump_penalty: float) -> float:

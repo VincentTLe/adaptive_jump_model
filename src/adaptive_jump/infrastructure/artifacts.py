@@ -162,11 +162,15 @@ def verify_run(run: str | Path) -> dict[str, Any]:
     metadata = read_json(run_dir / "run.json")
     study_kind = metadata.get("study_kind")
     if isinstance(study_kind, str) and study_kind.startswith("simple-jm-suite-"):
-        from adaptive_jump.simple_jm_verifier import verify_simple_jm_run
+        from adaptive_jump.experiments.simple_jm.simple_jm_verifier import (
+            verify_simple_jm_run,
+        )
 
         return verify_simple_jm_run(run_dir)
     if isinstance(study_kind, str) and study_kind.startswith("dd-loss-scale-"):
-        from adaptive_jump.simple_jm_verifier import verify_dd_loss_scale_run
+        from adaptive_jump.experiments.simple_jm.simple_jm_verifier import (
+            verify_dd_loss_scale_run,
+        )
 
         return verify_dd_loss_scale_run(run_dir)
     if study_kind is not None:

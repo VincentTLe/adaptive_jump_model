@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from adaptive_jump.config import ResearchConfig
-from adaptive_jump.lagged_study import LaggedMechanismSpec
+from adaptive_jump.experiments.lagged.lagged_study import LaggedMechanismSpec
 from adaptive_jump.models import FEATURE_COLUMNS
 from adaptive_jump.tv_jump import dp_tv, lam_to_penalty_seq, loss_matrix
 

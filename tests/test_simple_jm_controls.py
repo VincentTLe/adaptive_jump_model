@@ -5,9 +5,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from adaptive_jump.artifacts import sha256_file
 from adaptive_jump.backtest import BacktestError
-from adaptive_jump.simple_jm_controls import (
+from adaptive_jump.experiments.simple_jm.simple_jm_controls import (
     SIGNAL_TO_RETURN_OFFSET,
     SimpleJMControlError,
     build_confirmed_control_path,
@@ -18,6 +17,7 @@ from adaptive_jump.simple_jm_controls import (
     signal_from_states,
     states_from_signal,
 )
+from adaptive_jump.infrastructure.artifacts import sha256_file
 
 
 @pytest.mark.parametrize(

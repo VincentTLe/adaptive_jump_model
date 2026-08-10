@@ -42,9 +42,9 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from probe_jm_effective_lambda_inversion import load_fig5  # noqa: E402
 
-from adaptive_jump.artifacts import verify_run  # noqa: E402
 from adaptive_jump.backtest import apply_signal, performance_metrics  # noqa: E402
 from adaptive_jump.config import load_config  # noqa: E402
+from adaptive_jump.infrastructure.artifacts import verify_run  # noqa: E402
 from adaptive_jump.regime_comparison import (  # noqa: E402
     concordance,
     covering,

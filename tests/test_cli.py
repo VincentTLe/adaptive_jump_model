@@ -7,10 +7,14 @@ import pandas as pd
 import pytest
 
 from adaptive_jump import data
-from adaptive_jump.artifacts import ArtifactError, verify_run, write_inventory
 from adaptive_jump.cli import RunError, load_frozen_data, main, run_replication
 from adaptive_jump.config import load_config
 from adaptive_jump.data import HttpResult
+from adaptive_jump.infrastructure.artifacts import (
+    ArtifactError,
+    verify_run,
+    write_inventory,
+)
 from adaptive_jump.models import FixedJMResult, HMMResult
 from adaptive_jump.walkforward import BaselineStudy, SelectionProgress, SelectionResult
 
@@ -194,7 +198,7 @@ def test_verify_run_dispatches_simple_jm_suite(
     )
     expected = {"run_id": run.name, "status": "complete"}
     monkeypatch.setattr(
-        f"adaptive_jump.simple_jm_verifier.{verifier_name}",
+        f"adaptive_jump.experiments.simple_jm.simple_jm_verifier.{verifier_name}",
         lambda selected: expected if selected == run.resolve() else None,
     )
 

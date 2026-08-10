@@ -73,7 +73,7 @@ def test_every_runnable_spec_is_listed() -> None:
     import re
 
     named: set[str] = set()
-    for source in (ROOT / "src/adaptive_jump").glob("*.py"):
+    for source in (ROOT / "src/adaptive_jump").rglob("*.py"):
         text = source.read_text(encoding="utf-8")
         named |= set(re.findall(r'"([a-z0-9-]+-\d{3})\.toml"', text))
         named |= {

@@ -82,7 +82,8 @@ def test_baseline_and_custom_variants_agree_on_the_scaler() -> None:
     """
     import inspect
 
-    from adaptive_jump import models, simple_jm_fitting
+    from adaptive_jump import models
+    from adaptive_jump.experiments.simple_jm import simple_jm_fitting
 
     baseline = inspect.getsource(models.fit_fixed_jm_window)
     custom = inspect.getsource(simple_jm_fitting._fit_custom_window)

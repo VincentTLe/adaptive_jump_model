@@ -7,8 +7,7 @@ import pandas as pd
 import pytest
 from jumpmodels.jump import dp, jump_penalty_to_mx
 
-from adaptive_jump.models import ModelError
-from adaptive_jump.simple_jm_return import (
+from adaptive_jump.experiments.simple_jm.simple_jm_return import (
     ReturnAwareError,
     ReturnAwareJumpModel,
     align_matured_targets,
@@ -17,6 +16,7 @@ from adaptive_jump.simple_jm_return import (
     return_aware_loss_matrix,
     standardize_matured_targets,
 )
+from adaptive_jump.models import ModelError
 
 
 def _path_value(loss: np.ndarray, jump_penalty: float, path) -> float:

@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import adaptive_jump.simple_jm_suite as suite
-import adaptive_jump.simple_jm_verifier as verifier
+import adaptive_jump.experiments.simple_jm.simple_jm_suite as suite
+import adaptive_jump.experiments.simple_jm.simple_jm_verifier as verifier
 from adaptive_jump.config import load_config
 
 ROOT = Path(__file__).resolve().parents[1]

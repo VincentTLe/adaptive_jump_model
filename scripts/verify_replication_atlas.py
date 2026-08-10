@@ -207,7 +207,7 @@ def build_joint(ours: pd.Series, theirs: pd.Series) -> pd.DataFrame:
 
 # ------------------------------------------------------------------ the items
 def item1() -> tuple[bool, str]:
-    from adaptive_jump.artifacts import verify_run
+    from adaptive_jump.infrastructure.artifacts import verify_run
 
     try:
         report = verify_run(V10)

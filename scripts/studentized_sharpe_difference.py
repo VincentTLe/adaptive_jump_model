@@ -238,12 +238,12 @@ import pandas as pd  # noqa: E402
 
 from adaptive_jump.backtest import performance_metrics  # noqa: E402
 from adaptive_jump.config import load_config  # noqa: E402
-from adaptive_jump.inference import stationary_bootstrap_indices  # noqa: E402
-from adaptive_jump.simple_jm_controls import (  # noqa: E402
+from adaptive_jump.experiments.simple_jm.simple_jm_controls import (  # noqa: E402
     build_control_path,
     confirm_two_observations,
     states_from_signal,
 )
+from adaptive_jump.inference import stationary_bootstrap_indices  # noqa: E402
 from adaptive_jump.walkforward import select_monthly_candidate  # noqa: E402
 
 RUN = (

@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import adaptive_jump.simple_jm_figures as figures
-from adaptive_jump.artifacts import (
+import adaptive_jump.experiments.simple_jm.simple_jm_figures as figures
+from adaptive_jump.infrastructure.artifacts import (
     TRADE_COLUMNS,
     ArtifactError,
     read_json,
