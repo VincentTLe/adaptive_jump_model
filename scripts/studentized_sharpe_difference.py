@@ -323,13 +323,15 @@ def estimator_scale(estimator: str, observations: int) -> float:
     `repo` must BE `performance_metrics`, which divides by `std(ddof=1)`, so it
     carries the Bessel factor.
 
-    `lw_excess` must NOT. It is Ledoit-Wolf (2008) Eq. (1)-(2) verbatim --
+    `lw_excess` must NOT. Its f is Ledoit-Wolf (2008) Eq. (1)-(2) --
     f(a,b,c,d) = a/sqrt(c - a^2) - b/sqrt(d - b^2), whose denominators are the
     population standard deviations implied by the uncentered moments, and Eq.
-    (4) is the gradient of exactly that function. Scaling it by sqrt((T-1)/T)
-    would silently make it a different estimator from the one the citation
-    names, which defeats its only purpose here: an independent cross-check
-    that the repo's 5-moment extension is not doing the work.
+    (4) is the gradient of exactly that function. (Their Eq. (1)-(2) is
+    unannualized; sqrt(252) is this repo's reporting convention applied on top,
+    and it cancels out of every studentized quantity.) Scaling f by
+    sqrt((T-1)/T) would silently make it a different estimator from the one the
+    citation names, which defeats its only purpose here: an independent
+    cross-check that the repo's 5-moment extension is not doing the work.
     """
     if estimator == "repo":
         return math.sqrt(ANNUALIZATION) * ddof_scale(observations)
@@ -347,10 +349,9 @@ def sharpe_difference(v: np.ndarray, estimator: str, observations: int) -> np.nd
         s1 = _sigma(m1, g1)
         s2 = _sigma(m2, g2)
         return root * ((m1 - k) / s1 - (m2 - k) / s2)
-    if estimator == "lw_excess":
-        a, b, c, d = (v[..., i] for i in range(4))
-        return root * (a / _sigma(a, c) - b / _sigma(b, d))
-    raise ValueError(f"unknown estimator: {estimator}")
+    # no trailing raise: estimator_scale() above already rejects unknown names
+    a, b, c, d = (v[..., i] for i in range(4))
+    return root * (a / _sigma(a, c) - b / _sigma(b, d))
 
 
 def _gradient_repo(v: np.ndarray, root: float) -> np.ndarray:
@@ -384,9 +385,8 @@ def gradient(v: np.ndarray, estimator: str, observations: int) -> np.ndarray:
     root = estimator_scale(estimator, observations)
     if estimator == "repo":
         return _gradient_repo(v, root)
-    if estimator == "lw_excess":
-        return _gradient_lw(v, root)
-    raise ValueError(f"unknown estimator: {estimator}")
+    # no trailing raise: estimator_scale() above already rejects unknown names
+    return _gradient_lw(v, root)
 
 
 # --------------------------------------------------------------------------
@@ -964,8 +964,10 @@ def _report(
         "              v = (mu1, mu2, gamma1, gamma2) with gradient Eq. (4) for the",
         "              canonical LW estimator on excess returns; v is extended to",
         "              (m1, m2, g1, g2, k) with k = E[cash] for the repo's Sharpe,",
-        "              which nets a stochastic cash leg in the numerator only. The",
-        "              5-vector gradient collapses onto Eq. (4) exactly at k = 0.",
+        "              which nets a stochastic cash leg in the numerator only. At",
+        "              k = 0 the 5-vector gradient collapses onto ddof_scale(T)",
+        "              times Eq. (4) -- the two estimators differ by that constant,",
+        "              and at k != 0 by their denominators as well.",
         "  (b) Student the bootstrap statistic is (Delta*_b - Delta_hat)/s(Delta*_b),",
         "              with s(Delta*_b) RECOMPUTED on each resample from the",
         "              block-sum estimator Psi* = (1/l) sum_j zeta_j zeta_j',",
@@ -1090,16 +1092,26 @@ def _report(
             f"Delta {canonical.delta:+.6f}, SE {canonical.standard_error:.6f}, "
             f"[{canonical.symmetric_low:+.5f}, {canonical.symmetric_high:+.5f}], "
             f"p {canonical.p_value_symmetric:.4f}",
-            "     (Ledoit-Wolf Eq. (1)-(2) verbatim, so it deliberately carries"
-            " NO ddof=1",
-            "      correction -- their f uses the population sd. Its Delta is"
-            " therefore",
-            f"      larger than the repo Delta by 1/ddof_scale(T) ="
-            f" {1.0 / ddof_scale(result.observations):.9f}, by construction",
-            "      and not by disagreement. The studentized statistic and the"
-            " p-value are",
-            "      invariant to that constant, which is why the two remain"
-            " comparable.)",
+            "     (This is a DIFFERENT estimator, not a rescaling of the one above. It",
+            "      standardizes by the population sd of the EXCESS return"
+            " sd_pop(r - k),",
+            "      where the repo standardizes by sd_ddof1(r) of the strategy"
+            " return and",
+            "      nets cash in the numerator only. It also carries no ddof=1"
+            " correction,",
+            "      because Ledoit-Wolf's f uses the population sd -- but that"
+            " constant is",
+            f"      the SMALLER part of the gap: observed ratio"
+            f" {canonical.delta / result.delta:.6f} vs"
+            f" {1.0 / ddof_scale(result.observations):.6f}",
+            "      from the ddof convention alone. The two agree exactly only when the",
+            "      cash leg is zero; on real data the difference in"
+            " denominators dominates,",
+            "      and its SIGN is not fixed across markets. The studentized"
+            " statistic and",
+            "      the p-value are invariant to any constant rescaling, which"
+            " is what keeps",
+            "      the two comparable as a cross-check.)",
             "",
         ]
     lines += [

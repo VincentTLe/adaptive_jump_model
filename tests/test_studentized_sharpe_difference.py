@@ -119,35 +119,48 @@ def test_moment_form_matches_performance_metrics_sharpe_difference(module):
 
 
 def test_moment_form_reproduces_each_arm_not_only_the_difference(module):
-    """A difference can match by cancelling two equal errors; the levels cannot."""
-    series = _series(module)
-    root = math.sqrt(module.ANNUALIZATION) * module.ddof_scale(series.observations)
-    for arm in ("challenger", "baseline"):
-        values = getattr(series, arm)
-        mean, second = values.mean(), (values**2).mean()
-        moment_sharpe = root * (mean - series.cash.mean()) / math.sqrt(second - mean**2)
-        assert moment_sharpe == pytest.approx(
-            annualized_excess_sharpe(pd.Series(values), pd.Series(series.cash)),
-            rel=0,
-            abs=1e-14,
-        )
+    """A difference can match by cancelling two equal errors; the levels cannot.
 
-
-def test_population_form_is_biased_by_exactly_the_bessel_factor(module):
-    """The old (ddof=0) number is recoverable, so the correction is a constant."""
+    This must go THROUGH the module -- an earlier version rebuilt the scale
+    constant locally and so passed even when `estimator_scale` was wrong.
+    Each arm is recovered by zeroing the other arm's contribution.
+    """
     series = _series(module)
-    v = module.moment_matrix(series, "repo").mean(axis=0)
-    corrected = float(module.sharpe_difference(v, "repo", series.observations))
-    population = corrected / module.ddof_scale(series.observations)
-    assert abs(population) > abs(corrected)
-    assert corrected / population == pytest.approx(
-        math.sqrt((series.observations - 1) / series.observations), rel=0, abs=1e-15
+    m1, m2, g1, g2, k = module.moment_matrix(series, "repo").mean(axis=0)
+    observations = series.observations
+    inert = k**2 + 1.0  # any second moment giving a positive variance at mean k
+
+    # Setting an arm's mean equal to the cash mean makes its term exactly zero,
+    # so f() returns the other arm alone -- computed by the module, not here.
+    challenger_only = float(
+        module.sharpe_difference(np.array([m1, k, g1, inert, k]), "repo", observations)
     )
+    baseline_only = float(
+        module.sharpe_difference(np.array([k, m2, inert, g2, k]), "repo", observations)
+    )
+    assert challenger_only == pytest.approx(
+        annualized_excess_sharpe(pd.Series(series.challenger), pd.Series(series.cash)),
+        rel=1e-13,
+        abs=0,
+    )
+    assert -baseline_only == pytest.approx(
+        annualized_excess_sharpe(pd.Series(series.baseline), pd.Series(series.cash)),
+        rel=1e-13,
+        abs=0,
+    )
+    # and the two arms really are different, so this is not two ways of zero
+    assert abs(challenger_only + baseline_only) > 1e-6
 
 
 def test_sigma_rejects_a_non_positive_variance(module):
     with pytest.raises(ValueError):
         module._sigma(np.array(1.0), np.array(0.5))
+
+
+def test_sigma_rejects_a_variance_of_exactly_zero(module):
+    """Pins `<= 0`, not `< 0`: a degenerate arm has an undefined Sharpe."""
+    with pytest.raises(ValueError):
+        module._sigma(np.array(1.0), np.array(1.0))
 
 
 # ---------------------------------------------------------------------------
@@ -191,9 +204,12 @@ def test_repo_gradient_collapses_onto_ledoit_wolf_with_a_zero_cash_leg(module):
         observations,
     )
     scale = module.ddof_scale(observations)
-    assert repo[:4] == pytest.approx(scale * canonical, rel=0, abs=1e-15)
+    # RELATIVE tolerance: these components are O(1e3), where one float64 ulp is
+    # already ~5e-13, so an absolute 1e-15 bound would test the association
+    # order of the multiplication rather than the mathematics.
+    assert repo[:4] == pytest.approx(scale * canonical, rel=1e-13, abs=0)
     # and the scaling is real, not a no-op that would make the test vacuous
-    assert repo[:4] != pytest.approx(canonical, rel=0, abs=1e-15)
+    assert repo[:4] != pytest.approx(canonical, rel=1e-13, abs=0)
 
 
 def test_delta_at_zero_cash_is_the_canonical_delta_times_the_bessel_factor(module):
@@ -219,22 +235,62 @@ def test_delta_at_zero_cash_is_the_canonical_delta_times_the_bessel_factor(modul
 
 
 def test_canonical_estimator_carries_no_bessel_correction(module):
-    """lw_excess must be Eq. (1)-(2) verbatim: its scale is sqrt(252), full stop."""
+    """lw_excess must be Eq. (1)-(2): its scale is sqrt(252) and nothing else."""
     for observations in (50, 500, 8565):
         assert module.estimator_scale("lw_excess", observations) == pytest.approx(
-            math.sqrt(module.ANNUALIZATION), rel=0, abs=1e-15
+            math.sqrt(module.ANNUALIZATION), rel=1e-15, abs=0
         )
         assert module.estimator_scale("repo", observations) == pytest.approx(
             math.sqrt(module.ANNUALIZATION) * module.ddof_scale(observations),
-            rel=0,
-            abs=1e-15,
+            rel=1e-15,
+            abs=0,
         )
     # the canonical gradient does not depend on T at all
     series = _series(module)
     v = module.moment_matrix(series, "lw_excess").mean(axis=0)
     assert module.gradient(v, "lw_excess", 100) == pytest.approx(
-        module.gradient(v, "lw_excess", 10_000), rel=0, abs=1e-15
+        module.gradient(v, "lw_excess", 10_000), rel=1e-15, abs=0
     )
+
+
+def test_canonical_moment_matrix_is_built_from_excess_returns(module):
+    """lw_excess must net cash BEFORE forming its moments, or it is not LW's f.
+
+    Without this the cash subtraction can be dropped entirely and every other
+    test in this file still passes -- the defining feature of the "canonical
+    excess-return cross-check" would be untested.
+    """
+    series = _series(module)
+    moments = module.moment_matrix(series, "lw_excess")
+    excess_challenger = series.challenger - series.cash
+    excess_baseline = series.baseline - series.cash
+    assert moments[:, 0] == pytest.approx(excess_challenger, rel=1e-15, abs=0)
+    assert moments[:, 1] == pytest.approx(excess_baseline, rel=1e-15, abs=0)
+    assert moments[:, 2] == pytest.approx(excess_challenger**2, rel=1e-15, abs=0)
+    assert moments[:, 3] == pytest.approx(excess_baseline**2, rel=1e-15, abs=0)
+    # and the cash leg is non-trivial, so dropping it would be a real change
+    assert np.abs(series.cash).mean() > 1e-6
+    assert moments[:, 0] != pytest.approx(series.challenger, rel=1e-9, abs=0)
+
+
+def test_canonical_delta_is_the_excess_return_sharpe_difference(module):
+    """The end-to-end statement of the same thing, in the repo's own terms."""
+    series = _series(module)
+    observations = series.observations
+    delta = float(
+        module.sharpe_difference(
+            module.moment_matrix(series, "lw_excess").mean(axis=0),
+            "lw_excess",
+            observations,
+        )
+    )
+    expected = math.sqrt(module.ANNUALIZATION) * (
+        (series.challenger - series.cash).mean()
+        / (series.challenger - series.cash).std(ddof=0)
+        - (series.baseline - series.cash).mean()
+        / (series.baseline - series.cash).std(ddof=0)
+    )
+    assert delta == pytest.approx(expected, rel=1e-13, abs=0)
 
 
 def test_cash_derivative_equals_its_analytic_value_and_is_not_zero(module):
@@ -264,7 +320,7 @@ def test_cash_derivative_equals_its_analytic_value_and_is_not_zero(module):
 
     # the two arms are deliberately not equal-volatility, so it must not be zero
     assert sigma_1 != pytest.approx(sigma_2, rel=1e-6)
-    assert abs(analytic) > 1e-3
+    assert abs(analytic) > 0.5 * abs(expected)  # not merely "bigger than tiny"
 
     step = 1e-8
     up, down = v.copy(), v.copy()
@@ -288,14 +344,29 @@ def test_cash_derivative_vanishes_exactly_when_the_volatilities_coincide(module)
     )
 
 
-def test_gradient_carries_the_same_bessel_factor_as_the_statistic(module):
-    """Delta and grad f must scale together or the HAC standard error is wrong."""
+@pytest.mark.parametrize("estimator", ["repo", "lw_excess"])
+def test_gradient_carries_the_same_scale_constant_as_the_statistic(module, estimator):
+    """Delta and grad f must carry the SAME constant, or the HAC SE is wrong.
+
+    Comparing gradient(T=100) with gradient(T=10000) does not establish this --
+    a build where the two functions used different constants would pass that.
+    Euler's theorem does not apply (f is not homogeneous), so the constant is
+    recovered directly: f and grad f are each linear in `root`, so the ratio
+    between two sample sizes must agree between them.
+    """
     series = _series(module)
-    v = module.moment_matrix(series, "repo").mean(axis=0)
-    small = module.gradient(v, "repo", 100)
-    large = module.gradient(v, "repo", 10_000)
-    expected = module.ddof_scale(100) / module.ddof_scale(10_000)
-    assert small == pytest.approx(large * expected, rel=1e-12)
+    v = module.moment_matrix(series, estimator).mean(axis=0)
+    ratio_statistic = float(module.sharpe_difference(v, estimator, 100)) / float(
+        module.sharpe_difference(v, estimator, 10_000)
+    )
+    grad_small = module.gradient(v, estimator, 100)
+    grad_large = module.gradient(v, estimator, 10_000)
+    ratio_gradient = grad_small / grad_large
+    assert ratio_gradient == pytest.approx(ratio_statistic, rel=1e-13, abs=0)
+    expected = module.estimator_scale(estimator, 100) / module.estimator_scale(
+        estimator, 10_000
+    )
+    assert ratio_statistic == pytest.approx(expected, rel=1e-13, abs=0)
 
 
 def test_unknown_estimator_is_rejected(module):
@@ -337,15 +408,115 @@ def test_block_standard_error_at_block_one_is_the_iid_delta_method(module):
     )
 
 
-def test_hac_standard_error_is_positive_and_delta_matches_the_moment_form(module):
+def test_block_sum_normalises_by_sqrt_block_at_a_real_block_length(module):
+    """Psi* = (1/l) sum_j zeta_j zeta_j' with zeta_j = b^-0.5 sum_{t in j} y_t.
+
+    At b = 1 the sqrt is invisible (sqrt(1) = 1), so the b = 1 reduction test
+    cannot see this normalisation at all. Any other exponent rescales Psi* by
+    a power of b and so rescales every bootstrap standard error.
+    """
+    series = _series(module, observations=400, seed=11)
+    moments = module.moment_matrix(series, "repo")
+    block = 20
+    observations, width = moments.shape
+    blocks = observations // block
+
+    v = moments.mean(axis=0)
+    centred = moments - v
+    zeta = centred[: blocks * block].reshape(blocks, block, width).sum(
+        axis=1
+    ) / math.sqrt(block)
+    psi = (zeta.T @ zeta / blocks) * (observations / (observations - width))
+    grad = module.gradient(v, "repo", observations)
+    expected = math.sqrt(float(grad @ psi @ grad) / observations)
+    assert module.block_standard_error(moments, block, "repo") == pytest.approx(
+        expected, rel=1e-12, abs=0
+    )
+
+    # dividing by b instead of sqrt(b) shrinks it by exactly sqrt(b) -- far
+    # outside the tolerance, so the exponent is genuinely pinned
+    assert expected / math.sqrt(block) != pytest.approx(expected, rel=1e-6, abs=0)
+
+
+def test_andrews_alpha_matches_its_closed_form_on_a_known_ar1(module):
+    """Andrews (1991) alpha(2) = 4 rho^2 sig^4/(1-rho)^8 / [sig^4/(1-rho)^4].
+
+    The automatic bandwidth 2.6614 (alpha T)^0.2 sets the HAC standard error,
+    hence the width of the published interval, and nothing else in this file
+    touched it. Pinned on a single AR(1) column where the answer is analytic.
+    """
+    rho = 0.6
+    rng = np.random.default_rng(3)
+    innovations = rng.normal(0.0, 1.0, 20_000)
+    series = np.empty_like(innovations)
+    series[0] = innovations[0]
+    for index in range(1, series.size):
+        series[index] = rho * series[index - 1] + innovations[index]
+
+    alpha = module.andrews_alpha(series[:, None])
+    # with one column the variance terms cancel: alpha = 4 rho^2 / (1-rho)^4
+    assert alpha == pytest.approx(4.0 * rho**2 / (1.0 - rho) ** 4, rel=0.05)
+    # a white-noise column must give a much smaller alpha
+    assert module.andrews_alpha(innovations[:, None]) < 0.1 * alpha
+
+
+def test_kernel_psi_uses_the_andrews_bandwidth_and_both_lag_directions(module):
+    """S_T = 2.6614 (alpha(2) T)^0.2, Parzen weights, Gamma(j) + Gamma(j)'.
+
+    The constant 2.6614 is Andrews (1991) Table I for the Parzen kernel and it
+    sets how many lags enter, hence the HAC standard error and the width of the
+    published interval. Rebuilt here from the formula rather than trusted.
+    """
+    rng = np.random.default_rng(5)
+    innovations = rng.normal(0.0, 1.0, (3000, 2))
+    y = np.empty_like(innovations)
+    y[0] = innovations[0]
+    for index in range(1, y.shape[0]):
+        y[index] = 0.5 * y[index - 1] + innovations[index]
+    y = y - y.mean(axis=0)
+
+    observations, width = y.shape
+    bandwidth = 2.6614 * (module.andrews_alpha(y) * observations) ** 0.2
+    bandwidth = float(min(max(bandwidth, 1.0), observations - 1.0))
+    expected = y.T @ y / observations
+    for lag in range(1, int(math.floor(bandwidth)) + 1):
+        weight = float(module.parzen_kernel(np.array(lag / bandwidth)))
+        if weight == 0.0:
+            continue
+        gamma = y[lag:].T @ y[:-lag] / observations
+        expected = expected + weight * (gamma + gamma.T)
+    expected = expected * (observations / (observations - width))
+
+    assert module.kernel_psi(y) == pytest.approx(expected, rel=1e-12, abs=0)
+    assert bandwidth > 1.0  # the lag loop actually runs on this series
+
+    # a wrong constant changes the answer materially, so it is genuinely pinned
+    narrow = 1.0 * (module.andrews_alpha(y) * observations) ** 0.2
+    assert narrow < bandwidth - 1.0
+
+
+def test_hac_standard_error_is_the_delta_method_formula(module):
+    """Pins sqrt(g' Psi g / T). Comparing its delta to `sharpe_difference` is
+    self-comparison -- `hac_standard_error` returns that very call -- so the
+    standard error itself is rebuilt here from its published definition."""
     series = _series(module)
     moments = module.moment_matrix(series, "repo")
-    delta, error, _ = module.hac_standard_error(moments, "repo")
-    assert error > 0.0
+    observations = moments.shape[0]
+    delta, error, prewhitened = module.hac_standard_error(moments, "repo")
+
+    v = moments.mean(axis=0)
+    psi, _ = module.prewhitened_psi(moments - v)
+    grad = module.gradient(v, "repo", observations)
+    expected = math.sqrt(float(grad @ psi @ grad) / observations)
+    assert error == pytest.approx(expected, rel=1e-13, abs=0)
+    assert isinstance(prewhitened, (bool, np.bool_))
+
+    # divide by T, not T-1: at this sample size the two differ by 1e-3 relative,
+    # far above the tolerance above, so the convention is genuinely pinned
+    wrong = math.sqrt(float(grad @ psi @ grad) / (observations - 1))
+    assert error != pytest.approx(wrong, rel=1e-6, abs=0)
     assert delta == pytest.approx(
-        float(module.sharpe_difference(moments.mean(axis=0), "repo", len(moments))),
-        rel=0,
-        abs=1e-15,
+        float(module.sharpe_difference(v, "repo", observations)), rel=0, abs=1e-15
     )
 
 
@@ -354,24 +525,34 @@ def test_hac_standard_error_is_positive_and_delta_matches_the_moment_form(module
 # ---------------------------------------------------------------------------
 
 
-def test_circular_block_indices_have_the_right_shape_and_wrap(module):
-    rng = np.random.default_rng(0)
-    drawn = module.circular_block_indices(50, 200, 7, rng)
-    assert drawn.shape == (200, 50)
-    assert drawn.min() >= 0 and drawn.max() < 50
-    # every block is a contiguous run modulo T
-    blocks = module.circular_block_indices(50, 200, 7, np.random.default_rng(0))[:, :7]
-    steps = np.diff(blocks, axis=1) % 50
-    assert (steps == 1).all()
+def test_circular_block_indices_actually_wrap_around_the_end(module):
+    """The wrap is the whole difference from a moving block, so it is observed.
 
-
-def test_moving_block_indices_never_wrap(module):
-    rng = np.random.default_rng(1)
-    drawn = module.moving_block_indices(50, 200, 7, rng)
-    assert drawn.shape == (200, 50)
+    Asserting only "contiguous modulo T" is satisfied by a moving block too.
+    A circular bootstrap draws starts uniformly on 0..T-1, so with 4000 draws
+    at T=50, b=7 some block MUST straddle the end -- and every index must still
+    be inside the sample.
+    """
+    drawn = module.circular_block_indices(50, 4000, 7, np.random.default_rng(0))
+    assert drawn.shape == (4000, 50)
     assert drawn.min() >= 0 and drawn.max() < 50
     blocks = drawn[:, :7]
-    assert (np.diff(blocks, axis=1) == 1).all()
+    steps = np.diff(blocks, axis=1) % 50
+    assert (steps == 1).all()
+    wrapped = (np.diff(blocks, axis=1) < 0).any(axis=1)
+    assert wrapped.any(), "no block wrapped: this is a moving block, not circular"
+    # starts should cover the whole index range, including the last b-1 positions
+    assert blocks[:, 0].max() > 50 - 7
+
+
+def test_moving_block_indices_never_wrap_even_when_many_are_drawn(module):
+    """The complementary property: a moving block must never straddle the end."""
+    drawn = module.moving_block_indices(50, 4000, 7, np.random.default_rng(1))
+    assert drawn.shape == (4000, 50)
+    assert drawn.min() >= 0 and drawn.max() < 50
+    blocks = drawn[:, :7]
+    assert (np.diff(blocks, axis=1) == 1).all()  # strictly increasing => no wrap
+    assert blocks[:, 0].max() <= 50 - 7  # and starts are restricted, unlike above
 
 
 @pytest.mark.parametrize("scheme", ["circular_block", "moving_block"])
@@ -391,19 +572,103 @@ def test_unknown_bootstrap_scheme_is_rejected(module):
 # ---------------------------------------------------------------------------
 
 
-def test_studentized_interval_is_centred_on_delta_and_p_value_is_a_probability(
+def test_symmetric_interval_uses_the_95th_percentile_of_the_absolute_statistic(
     module,
 ):
+    """LW Eq. (7): half-width = z*_{|.|,0.95} * s(Delta_hat), not any quantile.
+
+    "Midpoint == delta" and "0 < p <= 1" hold for EVERY quantile and every
+    standard error, so they pin nothing. The half-width is reconstructed here
+    from the module's own CONFIDENCE constant and checked to be sensitive to it.
+    """
+    series = _series(module, observations=400, seed=11)
+    result = module.studentized_bootstrap(
+        series, "repo", "circular_block", 20, 200, seed=123
+    )
+    half_width = 0.5 * (result.symmetric_high - result.symmetric_low)
+    implied_quantile = half_width / result.standard_error
+
+    # recompute the studentized draws independently and take the same quantile
+    moments = module.moment_matrix(series, "repo")
+    delta, standard_error, _ = module.hac_standard_error(moments, "repo")
+    rng = np.random.default_rng(123)
+    indices = module._indices("circular_block", series.observations, 200, 20, rng)
+    draws, errors = module._bootstrap_standard_errors(moments[indices], 20, "repo")
+    absolute = np.abs((draws - delta) / errors)
+    assert implied_quantile == pytest.approx(
+        float(np.quantile(absolute, module.CONFIDENCE)), rel=1e-12, abs=0
+    )
+    # and it is genuinely the 95th, distinguishable from the median
+    assert implied_quantile > float(np.quantile(absolute, 0.5))
+    assert result.standard_error == pytest.approx(standard_error, rel=1e-13, abs=0)
+    assert result.delta == pytest.approx(delta, rel=0, abs=1e-15)
+
+
+def test_symmetric_p_value_counts_the_correct_tail(module):
+    """LW Eq. (9): fraction of |t*| at least as large as |t_observed|, +1/+1.
+
+    A flipped comparison (<= instead of >=) gives a number that is still a
+    probability, so a range check cannot catch it. The count is reproduced here.
+    """
+    series = _series(module, observations=400, seed=11)
+    replications = 200
+    result = module.studentized_bootstrap(
+        series, "repo", "circular_block", 20, replications, seed=123
+    )
+    moments = module.moment_matrix(series, "repo")
+    delta, standard_error, _ = module.hac_standard_error(moments, "repo")
+    rng = np.random.default_rng(123)
+    indices = module._indices(
+        "circular_block", series.observations, replications, 20, rng
+    )
+    draws, errors = module._bootstrap_standard_errors(moments[indices], 20, "repo")
+    absolute = np.abs((draws - delta) / errors)
+    observed = abs(delta) / standard_error
+    expected = (np.count_nonzero(absolute >= observed) + 1) / (replications + 1)
+    assert result.p_value_symmetric == pytest.approx(expected, rel=0, abs=1e-15)
+    # the opposite tail is a different number here, so the direction is pinned
+    flipped = (np.count_nonzero(absolute <= observed) + 1) / (replications + 1)
+    assert expected != pytest.approx(flipped, rel=1e-6, abs=0)
+
+
+def test_equal_tailed_endpoints_invert_the_studentized_quantiles(module):
+    """The upper quantile builds the LOWER endpoint -- the inversion is the point.
+
+    Getting this backwards still yields an interval containing delta, so an
+    ordering assertion cannot catch it.
+    """
+    series = _series(module, observations=400, seed=11)
+    result = module.studentized_bootstrap(
+        series, "repo", "circular_block", 20, 200, seed=123
+    )
+    moments = module.moment_matrix(series, "repo")
+    delta, standard_error, _ = module.hac_standard_error(moments, "repo")
+    rng = np.random.default_rng(123)
+    indices = module._indices("circular_block", series.observations, 200, 20, rng)
+    draws, errors = module._bootstrap_standard_errors(moments[indices], 20, "repo")
+    studentized = (draws - delta) / errors
+    alpha = 1.0 - module.CONFIDENCE
+    low_q, high_q = np.quantile(studentized, [alpha / 2.0, 1.0 - alpha / 2.0])
+    assert result.equal_tailed_low == pytest.approx(
+        delta - float(high_q) * standard_error, rel=1e-12, abs=0
+    )
+    assert result.equal_tailed_high == pytest.approx(
+        delta - float(low_q) * standard_error, rel=1e-12, abs=0
+    )
+    assert result.equal_tailed_low < result.equal_tailed_high
+    # the two quantiles are distinct, so swapping them would be detected
+    assert float(high_q) != pytest.approx(float(low_q), rel=1e-6, abs=0)
+
+
+def test_bootstrap_result_reports_the_sample_it_was_given(module):
     series = _series(module, observations=400, seed=11)
     result = module.studentized_bootstrap(
         series, "repo", "circular_block", 20, 60, seed=123
     )
-    midpoint = 0.5 * (result.symmetric_low + result.symmetric_high)
-    assert midpoint == pytest.approx(result.delta, rel=0, abs=1e-12)
-    assert result.symmetric_low < result.symmetric_high
-    assert 0.0 < result.p_value_symmetric <= 1.0
-    assert 0.0 <= result.positive_fraction <= 1.0
     assert result.observations == series.observations
+    assert result.replications == 60
+    assert result.block == 20
+    assert 0.0 <= result.positive_fraction <= 1.0
 
 
 def test_studentized_bootstrap_is_deterministic_given_its_seed(module):

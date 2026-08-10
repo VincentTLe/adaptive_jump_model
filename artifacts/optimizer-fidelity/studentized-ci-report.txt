@@ -21,8 +21,10 @@ METHOD
               v = (mu1, mu2, gamma1, gamma2) with gradient Eq. (4) for the
               canonical LW estimator on excess returns; v is extended to
               (m1, m2, g1, g2, k) with k = E[cash] for the repo's Sharpe,
-              which nets a stochastic cash leg in the numerator only. The
-              5-vector gradient collapses onto Eq. (4) exactly at k = 0.
+              which nets a stochastic cash leg in the numerator only. At
+              k = 0 the 5-vector gradient collapses onto ddof_scale(T)
+              times Eq. (4) -- the two estimators differ by that constant,
+              and at k != 0 by their denominators as well.
   (b) Student the bootstrap statistic is (Delta*_b - Delta_hat)/s(Delta*_b),
               with s(Delta*_b) RECOMPUTED on each resample from the
               block-sum estimator Psi* = (1/l) sum_j zeta_j zeta_j',
@@ -85,11 +87,17 @@ US  T = 8565, Delta = +0.004391
       P(true delta > 0) and must never be written that way.)
   robustness, stationary bootstrap L = 63: [-0.03270, +0.04148], p 0.8318
   cross-check, canonical LW 4-moment excess-return Sharpe: Delta +0.004397, SE 0.019063, [-0.03421, +0.04300], p 0.8318
-     (Ledoit-Wolf Eq. (1)-(2) verbatim, so it deliberately carries NO ddof=1
-      correction -- their f uses the population sd. Its Delta is therefore
-      larger than the repo Delta by 1/ddof_scale(T) = 1.000058382, by construction
-      and not by disagreement. The studentized statistic and the p-value are
-      invariant to that constant, which is why the two remain comparable.)
+     (This is a DIFFERENT estimator, not a rescaling of the one above. It
+      standardizes by the population sd of the EXCESS return sd_pop(r - k),
+      where the repo standardizes by sd_ddof1(r) of the strategy return and
+      nets cash in the numerator only. It also carries no ddof=1 correction,
+      because Ledoit-Wolf's f uses the population sd -- but that constant is
+      the SMALLER part of the gap: observed ratio 1.001248 vs 1.000058
+      from the ddof convention alone. The two agree exactly only when the
+      cash leg is zero; on real data the difference in denominators dominates,
+      and its SIGN is not fixed across markets. The studentized statistic and
+      the p-value are invariant to any constant rescaling, which is what keeps
+      the two comparable as a cross-check.)
 
 DE  T = 8602, Delta = +0.022057
   days on which the two arms' returns differ at all: 110 / 8602 (1.28%)
@@ -106,11 +114,17 @@ DE  T = 8602, Delta = +0.022057
       P(true delta > 0) and must never be written that way.)
   robustness, stationary bootstrap L = 63: [-0.03072, +0.07483], p 0.4214
   cross-check, canonical LW 4-moment excess-return Sharpe: Delta +0.022065, SE 0.025730, [-0.02880, +0.07293], p 0.3948
-     (Ledoit-Wolf Eq. (1)-(2) verbatim, so it deliberately carries NO ddof=1
-      correction -- their f uses the population sd. Its Delta is therefore
-      larger than the repo Delta by 1/ddof_scale(T) = 1.000058131, by construction
-      and not by disagreement. The studentized statistic and the p-value are
-      invariant to that constant, which is why the two remain comparable.)
+     (This is a DIFFERENT estimator, not a rescaling of the one above. It
+      standardizes by the population sd of the EXCESS return sd_pop(r - k),
+      where the repo standardizes by sd_ddof1(r) of the strategy return and
+      nets cash in the numerator only. It also carries no ddof=1 correction,
+      because Ledoit-Wolf's f uses the population sd -- but that constant is
+      the SMALLER part of the gap: observed ratio 1.000363 vs 1.000058
+      from the ddof convention alone. The two agree exactly only when the
+      cash leg is zero; on real data the difference in denominators dominates,
+      and its SIGN is not fixed across markets. The studentized statistic and
+      the p-value are invariant to any constant rescaling, which is what keeps
+      the two comparable as a cross-check.)
 
 JP  T = 8336, Delta = +0.009276
   days on which the two arms' returns differ at all: 98 / 8336 (1.18%)
@@ -127,11 +141,17 @@ JP  T = 8336, Delta = +0.009276
       P(true delta > 0) and must never be written that way.)
   robustness, stationary bootstrap L = 63: [-0.02293, +0.04148], p 0.5742
   cross-check, canonical LW 4-moment excess-return Sharpe: Delta +0.009274, SE 0.016711, [-0.02343, +0.04198], p 0.5840
-     (Ledoit-Wolf Eq. (1)-(2) verbatim, so it deliberately carries NO ddof=1
-      correction -- their f uses the population sd. Its Delta is therefore
-      larger than the repo Delta by 1/ddof_scale(T) = 1.000059986, by construction
-      and not by disagreement. The studentized statistic and the p-value are
-      invariant to that constant, which is why the two remain comparable.)
+     (This is a DIFFERENT estimator, not a rescaling of the one above. It
+      standardizes by the population sd of the EXCESS return sd_pop(r - k),
+      where the repo standardizes by sd_ddof1(r) of the strategy return and
+      nets cash in the numerator only. It also carries no ddof=1 correction,
+      because Ledoit-Wolf's f uses the population sd -- but that constant is
+      the SMALLER part of the gap: observed ratio 0.999771 vs 1.000060
+      from the ddof convention alone. The two agree exactly only when the
+      cash leg is zero; on real data the difference in denominators dominates,
+      and its SIGN is not fixed across markets. The studentized statistic and
+      the p-value are invariant to any constant rescaling, which is what keeps
+      the two comparable as a cross-check.)
 
 BLOCK-LENGTH SENSITIVITY (studentized symmetric interval, circular block)
 

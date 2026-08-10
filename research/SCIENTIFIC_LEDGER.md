@@ -1257,3 +1257,36 @@ The regeneration is measurable: the 15 `repo` rows are bit-identical, the 3
 `lw_excess` rows move by exactly `1/sqrt((T−1)/T)` to 12 decimals, and every
 p-value is unchanged to the last digit — the invariance claim confirmed rather
 than argued.
+
+**Independent verification (separate agent) — found defects, now fixed.** The
+verification I recorded as owed came back with two things worth keeping.
+
+The first is a defect I introduced *while fixing the previous one*. The report
+told the reader that the canonical Ledoit–Wolf Δ is "larger than the repo Δ by
+`1/ddof_scale(T)`, by construction". That is the **zero-cash** identity, printed
+next to data with a nonzero cash leg. Its own numbers refute it: the claim is
+off by 4–21×, and for Japan the canonical Δ is *smaller*, the opposite of what
+it asserts. The real cause is that the two estimators use different
+denominators — `sd_ddof1(strategy)` versus `sd_pop(strategy − cash)` — and the
+ddof constant is the smaller part of the gap. Three commits in a row, the same
+failure mode: stating a clean relationship that holds in a special case as if it
+held in general.
+
+The second is that my regression suite was much weaker than it looked. A
+mutation battery killed only **7 of 18** deliberate faults. Survivors included:
+`lw_excess` dropping the cash subtraction entirely, the confidence quantile
+becoming the median, the p-value tail flipped, the equal-tailed endpoints
+swapped, the HAC variance divided by *T−1*, the block sum normalised by *b*
+instead of √*b*, and the circular bootstrap silently becoming a moving block —
+i.e. nearly every quantity that sets the width of the interval we publish.
+Eight assertions were vacuous, one spectacularly so: it defined
+`population := corrected/ddof_scale` and then asserted their ratio equals
+`ddof_scale`, which is true for *any* estimator whatsoever.
+
+The rebuilt suite kills **12 of 12**. `prewhitened_psi`'s VAR(1) recoloring
+remains untested and is recorded as a known gap rather than quietly left.
+
+The lesson is not "write more tests". It is that a test suite's value is not
+visible from reading it — every assertion here looked purposeful — and the only
+cheap way to find out is to break the code on purpose and see whether anything
+notices.
