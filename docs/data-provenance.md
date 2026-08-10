@@ -1,7 +1,7 @@
 # Data provenance
 
 Every canonical series below is rebuilt deterministically by
-`scripts/build_external_sources.py` from sha256-pinned raw inputs in
+`scripts/data/build_external_sources.py` from sha256-pinned raw inputs in
 `data/external/inputs/`, and every output hash is pinned again in the frozen
 research contract (`research-expanding-v9-3.toml`). The builder refuses to run
 if any input hash has moved.
@@ -64,7 +64,7 @@ official era does (0.9710 against 0.9678).
 Validated by rebuilding 1988-2023 with the reconstruction recipe and comparing
 against the official index it imitates, over their 9,070 shared sessions: daily
 log-return correlation **0.999603**, annualised volatility off by **0.0027 pp**,
-CAGR off by **0.0837 pp**. `scripts/build_sp500_tr.py` raises rather than
+CAGR off by **0.0837 pp**. `scripts/data/build_sp500_tr.py` raises rather than
 returns if any of the three thresholds fails.
 
 **This series replaced the CRSP value-weighted total market on 2026-07-28.** The
@@ -98,7 +98,7 @@ The omission was worth **3.24%/yr** across eighteen years of training data. Two
 independent signatures exposed it: the unrepaired series implies a German equity
 premium of −3.96%/yr over the risk-free rate across 18 years, and the missing
 yield matches two independent sources (OECD 3.02%, JST 3.24%). Repaired on
-2026-07-28 by `scripts/build_de_total_return.py`, which writes nothing unless
+2026-07-28 by `scripts/data/build_de_total_return.py`, which writes nothing unless
 three gates pass (reconstructed dividend rate +3.24% against the official era's
 +3.02%; equity premium −0.60% against JST's +0.02%; daily volatility unmoved at
 0.0042 pp). The repair is invisible to every published number being reproduced —
@@ -219,7 +219,7 @@ than re-downloaded. The v9 manifest already holds DTB3 for 1969-05-01..2023-12-2
 
 If a series ever does need refreshing, download it once in a browser, drop it in
 `data/external/inputs/`, and update the `INPUT_SHA256` pin in
-`scripts/build_external_sources.py`. The builder refuses to run on unpinned
+`scripts/data/build_external_sources.py`. The builder refuses to run on unpinned
 bytes, which is the property that makes browser downloads acceptable here.
 
 

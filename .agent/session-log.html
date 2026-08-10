@@ -39,9 +39,22 @@
 <body>
 <header>
   <h1>Session log</h1>
-  <p class="sub">115 session(s) · newest first · 2026-08-07 10:09 UTC</p>
+  <p class="sub">116 session(s) · newest first · 2026-08-10 09:56 UTC</p>
 </header>
 <main>
+    <article class="card">
+      <div class="head">
+        <span class="ts">2026-08-10T09:55Z</span><span class="who">claude · claude-opus-5</span>
+      </div>
+      <p class="goal">Phase D (PR #20, 79bbfc2): reorganized scripts/ by semantic role into audit/, data/, diagnostics/, experiments/, rendering/. No scientific, model or P&amp;L logic touched. An independent Codex review then found one real blocker: the sealed audit artifacts/audit/frequency-ladder-001/fault_injection.py addresses the frequency-ladder runner BY PATH, so moving it to scripts/experiments/ made the harness die on FileNotFoundError before injecting a single fault. Fixed in 4c7cfe0 by keeping scripts/run_frequency_ladder.py at its historical root path -- a forwarding wrapper cannot work here, because the harness patches and executes the source TEXT it finds at that path, so the wrapper&#x27;s own text would be what got faulted.</p>
+      <div class="grid">
+        <div><span class="lbl">Files touched</span><ul><li><code>scripts/{audit,data,diagnostics,experiments,rendering}/ - ~60 runners moved by role (79bbfc2, renames only)</code></li><li><code>scripts/run_frequency_ladder.py - retained at the historical root path (4c7cfe0), byte-identical to pre-Phase-D main (sha256 1e8634cd...58dd)</code></li><li><code>tests/test_frequency_ladder_audit.py - runner fixture loads the historical path again</code></li><li><code>TASK.md, docs/data-provenance.md, docs/unspecified-choices.md, pyproject.toml - script path references follow the moves</code></li><li><code>no changes under src/, artifacts/, research/, configs/ or the registry</code></li></ul></div>
+        <div><span class="lbl">Verification</span><ul><li>uv run pytest -q at 4c7cfe0: 533 passed, 1 xfailed (the known frequency-ladder jp 1989-07-03 xfail)</li><li>sealed fault_injection.py run unmodified: all 15 cases executed, F1-F6 + F9 CAUGHT, F7, F8 + F10-F14 SILENT - matches the matrix recorded in docs/audit/frequency-ladder-001-audit.md:575-588; each fault re-checked as actually present in the executed copy (14/14)</li><li>same harness re-run on pre-Phase-D main (fc99ac9): identical stdout, and byte-identical injected runner.py, spec.toml and summary.csv for every case</li><li>artifacts/frequency-ladder/01-run md5s unchanged; git diff vs main empty for artifacts/, research/ and configs/</li><li>ruff check clean on both changed files; git diff --check clean</li></ul></div>
+        <div><span class="lbl">Commit</span><p><code>79bbfc2 + 4c7cfe0 (pushed to refactor/scripts-layout-d, PR #20)</code></p></div>
+        <div><span class="lbl">Next step</span><p>PR #20 is awaiting final review and merge - do not merge from an agent session. Phase E has NOT started. Nothing in the test suite guards the sealed audit&#x27;s entry point, so a future move of scripts/run_frequency_ladder.py would break it silently again; a guard test is the obvious follow-up.</p></div>
+      </div>
+      <p class="notes"><span class="lbl">Notes</span>Gotcha for the next agent: artifacts/audit/frequency-ladder-001/fault_injection.py is a source-text fault injector, not an importer. It asserts on exact source anchors -- including the literal &#x27;ROOT = Path(__file__).resolve().parents[1]&#x27; -- rewrites the text, and runs the patched copy. Keeping the runner byte-identical also keeps the line numbers cited throughout docs/audit/frequency-ladder-001-audit.md resolving. Two stale paths were left alone as out of scope: fault_injection.py:14 SRC_MAP (dead constant, never read) and verify_tests_catch_faults.py&#x27;s /tmp fault directory.</p>
+    </article>
     <article class="card">
       <div class="head">
         <span class="ts">2026-08-07T10:09Z</span><span class="who">claude · claude-fable-5</span>

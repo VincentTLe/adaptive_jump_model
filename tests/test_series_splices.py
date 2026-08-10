@@ -31,7 +31,7 @@ INPUTS = EXTERNAL / "inputs"
 
 def _load_script(name: str) -> ModuleType:
     """Load a retained builder without making scripts a Python package."""
-    path = ROOT / "scripts" / f"{name}.py"
+    path = ROOT / "scripts" / "data" / f"{name}.py"
     spec = importlib.util.spec_from_file_location(f"_test_{name}", path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"cannot import builder: {path}")

@@ -305,7 +305,7 @@ across the whole window. Their series is almost certainly itself a chain.
 
 **What we chose.** Documented ladders: Germany OECD 3M interbank -> IMF IFS
 T-bill -> ECB 3M AAA; Japan IMF IFS T-bill -> BoJ 3M call after 2017-06
-(`scripts/build_external_sources.py`, splice deltas recorded in the config).
+(`scripts/data/build_external_sources.py`, splice deltas recorded in the config).
 
 **Consequence, measured.** Swapping the US 1-month for the 3-month bill moves
 features by 0.01 sigma, flips the sign of the signal on 0.57% of days, and
@@ -707,7 +707,7 @@ frozen question; do not run it casually against known targets.
 
 > [line 155-157] "For the risk-free rates, we use the 3-month Treasury Bill Yield from each corresponding country, sourced from the Global Financial Data (GFD) database."
 
-No day count, no compounding rule (`scripts/check_paper_claims.py` machine-checks
+No day count, no compounding rule (`scripts/audit/check_paper_claims.py` machine-checks
 that 252/365/360/day-count never appear in the body).
 
 **What we chose.** `annual_percent / 100 / 252`, simple and uncompounded,
