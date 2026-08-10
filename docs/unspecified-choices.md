@@ -1,8 +1,9 @@
 # Free parameters the paper never fixes
 
 Shu, Yu and Mulvey (2024), arXiv:2402.05272v3. Line numbers refer to
-`pdftotext -layout 2402.05272v3.pdf`, 1168 lines when split on newlines only
-(str.splitlines also breaks on the form feeds and shifts every number).
+`pdftotext -layout data/external/inputs/2402.05272v3.pdf`, 1168 lines when
+split on newlines only (str.splitlines also breaks on the form feeds and
+shifts every number).
 
 Every row here is a knob **we** had to set because the paper does not. Results
 are conditional on these settings. Read this file before proposing a change to

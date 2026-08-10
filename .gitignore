@@ -86,6 +86,7 @@ data/external/*
 # dissertation, slide decks) stay local-only.
 !data/external/inputs/
 data/external/inputs/*
+!data/external/inputs/2402.05272v3.pdf
 !data/external/inputs/shu_paper.txt
 !data/external/inputs/shu-yu-mulvey-2406.09578.pdf
 !data/external/inputs/shu-yu-mulvey-2406.09578.txt
