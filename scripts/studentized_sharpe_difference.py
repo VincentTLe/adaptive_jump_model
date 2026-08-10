@@ -740,7 +740,7 @@ def percentile_bootstrap(
 
 def build_series(market: str) -> Series:
     """states.pkl -> monthly selection -> control paths -> sealed OOS window."""
-    config = load_config(ROOT / "research-calibrated-v11.toml")
+    config = load_config(ROOT / "configs/baselines/research-calibrated-v11.toml")
     sealed_metrics = pd.read_csv(RUN / "metrics.csv")
     frame = pd.read_csv(RUN / market / "features.csv", parse_dates=["date"])
     returns = frame[["date", "equity_simple", "cash_return"]]

@@ -133,7 +133,7 @@ def main() -> int:
     n_jobs = int(sys.argv[1]) if len(sys.argv) > 1 else 28
     markets = sys.argv[2].split(",") if len(sys.argv) > 2 else ["de", "jp"]
     OUT.mkdir(parents=True, exist_ok=True)
-    config = load_config(ROOT / "research-calibrated-v10.toml")
+    config = load_config(ROOT / "configs/baselines/legacy/research-calibrated-v10.toml")
     which = sys.argv[3] if len(sys.argv) > 3 else "dense"
     menu = dense_menu() if which == "dense" else SPARSE_MENU
     print(f"menu = {which} ({len(menu)} values)", flush=True)

@@ -48,7 +48,7 @@ MENUS = {
 def main() -> int:
     markets = sys.argv[1].split(",") if len(sys.argv) > 1 else ["us", "de", "jp"]
     OUT.mkdir(parents=True, exist_ok=True)
-    config = load_config(ROOT / "research-calibrated-v10.toml")
+    config = load_config(ROOT / "configs/baselines/legacy/research-calibrated-v10.toml")
     rows = []
     for market in markets:
         frame = pd.read_csv(BASE / market / "features.csv", parse_dates=["date"])

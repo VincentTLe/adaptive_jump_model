@@ -49,7 +49,7 @@ def market_grid(config, market: str) -> tuple[float, ...]:
 
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
-    config = load_config(ROOT / "research-calibrated-v11.toml")
+    config = load_config(ROOT / "configs/baselines/research-calibrated-v11.toml")
     summary_rows: list[dict] = []
     changed_frames: list[pd.DataFrame] = []
 

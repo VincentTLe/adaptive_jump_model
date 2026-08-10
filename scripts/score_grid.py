@@ -83,7 +83,7 @@ def score(
     """
     if delay not in DELAYS:
         raise SystemExit(f"delay {delay!r} is not published; Table 5 has {DELAYS}")
-    config = load_config(ROOT / "research-calibrated-v10.toml")
+    config = load_config(ROOT / "configs/baselines/legacy/research-calibrated-v10.toml")
     frame = pd.read_csv(BASE / market / "features.csv", parse_dates=["date"])
     source = states_csv or (BASE / market / "jm-states.csv")
     states = pd.read_csv(source, index_col=0, parse_dates=[0])
@@ -144,7 +144,7 @@ def self_test() -> None:
         raise SystemExit(
             f"SELF TEST FAILED: DELAY is {DELAY}, but Table 4 is a delay-1 table"
         )
-    config = load_config(ROOT / "research-calibrated-v10.toml")
+    config = load_config(ROOT / "configs/baselines/legacy/research-calibrated-v10.toml")
     reported = pd.read_csv(BASE / "metrics.csv")
     worst = 0.0
     for market in ("us", "de", "jp"):

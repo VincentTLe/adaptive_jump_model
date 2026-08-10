@@ -158,7 +158,7 @@ def evaluate(frame: pd.DataFrame, states: pd.Series, grid, cfg, lo, hi) -> dict:
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    cfg = load_config(ROOT / "research-expanding-v9-3.toml")
+    cfg = load_config(ROOT / "configs/baselines/legacy/research-expanding-v9-3.toml")
     sealed = pd.read_csv(
         SEALED / "metrics-exploratory.csv", parse_dates=["start", "end"]
     )

@@ -15,8 +15,8 @@ from adaptive_jump.features import FeatureError, standardize_expanding
 from adaptive_jump.models import fit_fixed_jm_window
 
 ROOT = Path(__file__).resolve().parents[1]
-LEGACY = ROOT / "research.toml"
-VARIANT = ROOT / "research-expanding-v8-5.toml"
+LEGACY = ROOT / "configs/baselines/legacy/research.toml"
+VARIANT = ROOT / "configs/baselines/legacy/research-expanding-v8-5.toml"
 
 
 # ---------- config unlocks ----------

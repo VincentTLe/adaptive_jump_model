@@ -58,7 +58,7 @@ GRID: tuple[float, ...] = tuple(float(v) for v in range(1, 100, 10))  # 1,11,...
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    cfg = load_config(ROOT / "research-expanding-v9-4.toml")
+    cfg = load_config(ROOT / "configs/baselines/legacy/research-expanding-v9-4.toml")
     reported = pd.read_csv(RUN / "metrics.csv", parse_dates=["start", "end"])
     print(f"grid {GRID_NAME}: " + "|".join(f"{v:g}" for v in GRID), flush=True)
 

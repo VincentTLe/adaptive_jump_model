@@ -60,8 +60,8 @@ SPEC = ROOT / "research" / "lagged-capguard-001.toml"
 REGISTRY = ROOT / "research" / "experiment_registry.jsonl"
 
 GRID_CONFIG = {
-    "g1_table3": "research-expanding-v9-4.toml",
-    "g2_v10_us": "research-calibrated-v10.toml",
+    "g1_table3": "configs/baselines/legacy/research-expanding-v9-4.toml",
+    "g2_v10_us": "configs/baselines/legacy/research-calibrated-v10.toml",
 }
 MODELS = ["fixed", "lagged", "capguard"]
 

@@ -103,7 +103,7 @@ def _arm_cache(key: str) -> dict:
 
 def _build_arm(task: tuple[str, int]) -> str:
     market, delay = task
-    cfg = load_config(ROOT / "research-expanding-v9-4.toml")
+    cfg = load_config(ROOT / "configs/baselines/legacy/research-expanding-v9-4.toml")
     frame = pd.read_csv(RUN / market / "features.csv", parse_dates=["date"])
     states = pd.read_csv(
         UNION_DIR / market / "union-states.csv", parse_dates=["date"]
@@ -348,7 +348,7 @@ def _intersect_task(task: tuple[int, int, int]) -> tuple[np.ndarray, list]:
 
 
 def main() -> None:
-    cfg = load_config(ROOT / "research-expanding-v9-4.toml")
+    cfg = load_config(ROOT / "configs/baselines/legacy/research-expanding-v9-4.toml")
     OUT.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(0)
     executor = ProcessPoolExecutor(max_workers=N_JOBS,

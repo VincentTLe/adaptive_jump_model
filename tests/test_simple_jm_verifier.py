@@ -101,7 +101,7 @@ def test_trace_trade_rows_are_linked_to_verified_accounting(tmp_path: Path) -> N
 def test_replay_scaled_selector_uses_choices_signal_and_t_plus_2(
     tmp_path: Path,
 ) -> None:
-    config = load_config(ROOT / "research.toml")
+    config = load_config(ROOT / "configs/baselines/legacy/research.toml")
     dates = pd.bdate_range("2010-01-04", "2019-03-29", name="date")
     row = np.arange(len(dates))
     features = pd.DataFrame(

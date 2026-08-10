@@ -59,7 +59,7 @@ CHECK_SOURCES = {"v10-ninit60": V10_60, "v11-ninit60": V11_60}
 
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
-    cfg = load_config(ROOT / "research-calibrated-v10.toml")
+    cfg = load_config(ROOT / "configs/baselines/legacy/research-calibrated-v10.toml")
     parity_lines = []
     for market in ("us", "de", "jp"):
         out_dir = OUT / market

@@ -61,7 +61,7 @@ def windowed(
 
 
 def main() -> int:
-    config = load_config(ROOT / "research-calibrated-v11.toml")
+    config = load_config(ROOT / "configs/baselines/research-calibrated-v11.toml")
     sealed_metrics = pd.read_csv(RUN / "metrics.csv")
     suite = pd.read_csv(SUITE / "summary.csv")
     rows: list[dict] = []

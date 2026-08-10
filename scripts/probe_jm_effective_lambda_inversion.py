@@ -163,7 +163,7 @@ def trajectory_and_ceiling(
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    cfg = load_config(ROOT / "research-expanding-v9-4.toml")
+    cfg = load_config(ROOT / "configs/baselines/legacy/research-expanding-v9-4.toml")
     acc_rows, traj_rows, ceil_rows = [], [], []
     for market in ("us", "de", "jp"):
         position = load_fig5(market)

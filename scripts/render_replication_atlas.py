@@ -1011,7 +1011,7 @@ def main() -> None:
     dark_style()
     OUT_DATA.mkdir(parents=True, exist_ok=True)
     OUT_DOCS.mkdir(parents=True, exist_ok=True)
-    cfg = load_config(ROOT / "research-expanding-v9-4.toml")
+    cfg = load_config(ROOT / "configs/baselines/legacy/research-expanding-v9-4.toml")
 
     print("gate 0: verify_run on the v10 baseline …", flush=True)
     verify_run(RUN_V10)

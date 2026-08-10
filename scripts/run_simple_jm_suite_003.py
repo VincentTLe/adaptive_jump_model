@@ -25,7 +25,7 @@ from adaptive_jump import artifacts as _artifacts  # noqa: E402
 
 
 def main() -> int:
-    config = load_config(ROOT / "research-calibrated-v11.toml")
+    config = load_config(ROOT / "configs/baselines/research-calibrated-v11.toml")
     spec = load_simple_jm_spec(ROOT / "research" / "simple-jm-suite-003.toml", config)
     artifact = run_simple_jm_study(config, spec)
     _artifacts.verify_run(artifact)

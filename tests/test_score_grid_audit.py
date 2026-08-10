@@ -213,7 +213,7 @@ def test_apply_signal_acts_two_rows_after_the_signal():
 
 def test_scorer_constants_match_the_frozen_contract(scorer):
     """The scorer hardcodes delay, cost and drawdown basis; pin them to v10."""
-    config = load_config(ROOT / "research-calibrated-v10.toml")
+    config = load_config(ROOT / "configs/baselines/legacy/research-calibrated-v10.toml")
     backtest = config.document["backtest"]
     assert scorer.DELAY == backtest["primary_delay_trading_days"]
     assert scorer.DELAY + 1 == backtest["signal_to_return_offset"]

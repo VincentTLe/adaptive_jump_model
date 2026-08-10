@@ -14,7 +14,7 @@ from adaptive_jump.config import ConfigError, load_config
 from adaptive_jump.features import make_features, prepare_market
 
 ROOT = Path(__file__).resolve().parents[1]
-VARIANT = ROOT / "research-expanding-v8-5.toml"
+VARIANT = ROOT / "configs/baselines/legacy/research-expanding-v8-5.toml"
 
 
 def load_claim_checker() -> ModuleType:
