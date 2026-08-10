@@ -48,6 +48,15 @@ detailed provenance and audit trail. They are the authority when a specific
 number is in dispute, but you do not need to read them to understand the
 project.
 
+Following one to its contract: a registry row identifies its spec by
+`experiment_id` and `spec_sha256`, and the contract is
+`research/contracts/<experiment-id>.toml` — except `frequency-ladder-001`,
+which is pinned at `research/frequency-ladder-001.toml`. Rows written before
+the contracts were filed under `research/contracts/` still print the old
+`research/<experiment-id>.toml` in their descriptive `spec` field. The bytes
+and the `spec_sha256` they froze are unchanged, so the hash, not the path, is
+what binds a row to a file.
+
 ## What is in the repository
 
 ```text
