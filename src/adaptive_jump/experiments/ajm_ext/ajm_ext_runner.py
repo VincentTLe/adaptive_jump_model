@@ -20,7 +20,12 @@ from pathlib import Path
 import pandas as pd
 
 from adaptive_jump.backtest import apply_signal, buy_and_hold, performance_metrics
-from adaptive_jump.config import HMMProtocol, JMProtocol, SelectionProtocol
+from adaptive_jump.config import (
+    HMMProtocol,
+    JMProtocol,
+    SelectionProtocol,
+    resolve_repo_root,
+)
 from adaptive_jump.data import research_git_sha
 from adaptive_jump.experiments.ajm_ext.ajm_ext_arms import (
     ArmStates,
@@ -143,7 +148,11 @@ def run_transport_study(
     if contract is None:
         contract = load_ext_contract(contract_path)
     lock = load_data_lock(lock_path)
-    revision = git_sha or research_git_sha(Path(contract_path).resolve().parents[1])
+    # The clean-tree guard must inspect the repository, not whatever directory
+    # the contract happens to sit in: counting parents made the answer depend on
+    # contract depth, so filing contracts one level deeper would have run the
+    # guard's pathspecs from research/ and quietly matched nothing.
+    revision = git_sha or research_git_sha(resolve_repo_root(contract_path))
     run_id = f"ajm-ext-{contract.sha256[:12]}-{revision[:12]}"
     run_dir = Path(output_root) / run_id
     if run_dir.exists():

@@ -81,6 +81,53 @@ def smoke_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     )
 
 
+class _RootInspected(Exception):
+    """Stops the run the moment the production revision lookup has its root."""
+
+
+@pytest.mark.parametrize(
+    "relative",
+    ["research/ajm-ext-001.toml", "research/contracts/ajm-ext-001.toml"],
+)
+def test_contract_depth_does_not_move_the_inspected_repository(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, relative: str
+) -> None:
+    """The clean-tree guard inspects the repository, not the contract's folder.
+
+    ``research_git_sha`` runs its pathspecs -- ``src``, ``tests``, ``scripts``,
+    ``configs`` -- from the directory it is handed, so handing it ``research/``
+    would match nothing and wave a dirty tree through with a HEAD sha that does
+    not describe the code that ran. Counting parents made that depend on how
+    deep the contract sat; resolving the root marker does not.
+    """
+    root = tmp_path / "repo"
+    (root / "research/contracts").mkdir(parents=True)
+    (root / "pyproject.toml").write_text("[project]\nname = 'fixture'\n")
+    contract = root / relative
+    contract.write_bytes(CONTRACT.read_bytes())
+    lock = root / "research/ajm-ext-001-data.lock.toml"
+    lock.write_bytes(LOCK.read_bytes())
+
+    inspected: list[Path] = []
+
+    def _record(candidate: Path) -> str:
+        inspected.append(Path(candidate))
+        raise _RootInspected
+
+    monkeypatch.setattr(ajm_ext_runner, "research_git_sha", _record)
+
+    with pytest.raises(_RootInspected):
+        run_transport_study(
+            contract,
+            lock,
+            root / "data/external/fama-french",
+            tmp_path / "artifacts",
+            progress=lambda _message: None,
+        )
+
+    assert inspected == [root]
+
+
 def test_smoke_run_seals_a_complete_artifact(smoke_run: Path) -> None:
     run_dir = smoke_run
 

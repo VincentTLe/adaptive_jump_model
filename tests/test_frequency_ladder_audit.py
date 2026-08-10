@@ -37,6 +37,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = ROOT / "research/frequency-ladder-001.toml"
+RUNNER = ROOT / "scripts/run_frequency_ladder.py"
 REGISTRY = ROOT / "research/experiment_registry.jsonl"
 UNION = ROOT / "artifacts/jm-residual/01-grid-identification"
 RUN = ROOT / "artifacts/frequency-ladder/01-run"
@@ -123,6 +124,29 @@ def _derive(refits: pd.DataFrame, ladder, cutoff: pd.Timestamp) -> list[float]:
 # --------------------------------------------------------------------------
 # 1. what was run is what was frozen
 # --------------------------------------------------------------------------
+
+
+def test_the_sealed_injector_still_finds_the_runner_and_its_spec_anchor():
+    """Both files stay where the sealed fault injector expects to find them.
+
+    ``artifacts/audit/frequency-ladder-001/fault_injection.py`` is sealed, so it
+    cannot follow a move. It opens these two exact paths, asserts the SPEC
+    assignment below appears once in the runner's SOURCE TEXT, rewrites it, and
+    executes the patched copy. Relocating either file -- filing this contract
+    under ``research/contracts/`` with the other 35, say -- kills the harness
+    before it injects a single fault, and a harness that never runs looks
+    exactly like an audit that found nothing. A forwarding wrapper cannot cover
+    for a move either: the text at the pinned path is the text that gets
+    faulted, so the wrapper's own text is what would be tested.
+    """
+    assert RUNNER.is_file(), f"{RUNNER.name} is opened by path by the sealed audit"
+    assert SPEC.is_file(), f"{SPEC.name} is opened by path by the sealed audit"
+
+    anchor = 'SPEC = ROOT / "research/frequency-ladder-001.toml"'
+    assert RUNNER.read_text(encoding="utf-8").count(anchor) == 1, (
+        "the injector asserts this anchor is present exactly once before it "
+        f"rewrites the line: {anchor}"
+    )
 
 
 def test_frozen_spec_matches_its_registry_hash():
