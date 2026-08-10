@@ -28,11 +28,30 @@ from adaptive_jump.config import SelectionProtocol, load_config
 from adaptive_jump.walkforward import WalkForwardError, select_monthly_candidate
 
 ROOT = Path(__file__).resolve().parents[1]
+UNION_STATES = ROOT / "artifacts/jm-residual/01-grid-identification/us/union-states.csv"
+HEADERS = Path(__file__).parent / "fixtures/searched-menu-headers"
+# (searched menu, tracked copy of its header line). The menus are multi-megabyte
+# state matrices .gitignore keeps local; only their column names are under test,
+# so the header copy stands in on a checkout that does not have them. See that
+# directory's README for how the copies were made.
 MENUS = (
-    ROOT / "artifacts/jm-residual/01-grid-identification/us/union-states.csv",
-    ROOT / "artifacts/dense-menu/01-search/states-de.csv",
-    ROOT / "artifacts/dense-menu/01-search/states-jp.csv",
+    (UNION_STATES, HEADERS / "union-states.csv"),
+    (ROOT / "artifacts/dense-menu/01-search/states-de.csv", HEADERS / "states-de.csv"),
+    (ROOT / "artifacts/dense-menu/01-search/states-jp.csv", HEADERS / "states-jp.csv"),
 )
+
+
+def _require(*paths: Path) -> None:
+    """Skip, naming the file, when a local-only run artifact is absent.
+
+    These artifacts are large regenerable run outputs that .gitignore keeps out
+    of the repository, so a clean checkout does not have them. The audit only
+    means anything against the real artifact, so it says which one is missing
+    instead of dying on FileNotFoundError or passing on nothing.
+    """
+    for path in paths:
+        if not path.exists():
+            pytest.skip(f"{path.relative_to(ROOT)} not built in this checkout")
 
 
 @pytest.fixture(scope="module")
@@ -90,6 +109,7 @@ def test_penalty_must_match_exactly_one_column(scorer, tmp_path, columns, penalt
     menus are log spaced, so a mistyped lambda lands close enough to a
     neighbour to look plausible and score a different model.
     """
+    _require(scorer.BASE / "us/features.csv")
     source = _states_csv(tmp_path, columns)
     with pytest.raises(SystemExit) as raised:
         scorer.score("us", [penalty], source)
@@ -102,6 +122,7 @@ def test_a_penalty_present_in_the_menu_is_accepted(scorer, tmp_path):
     The duplicated penalty is rejected further down the pipeline, by the
     uniqueness check inside the selection code, not by the column matcher.
     """
+    _require(scorer.BASE / "us/features.csv")
     source = _states_csv(tmp_path, {"1.0": 0.0, "1.1": 1.0})
     with pytest.raises(WalkForwardError, match="candidate values must be unique"):
         scorer.score("us", [1.0, 1.0], source)
@@ -109,8 +130,17 @@ def test_a_penalty_present_in_the_menu_is_accepted(scorer, tmp_path):
 
 def test_searched_menus_are_far_wider_apart_than_the_matching_tolerance():
     """No two menu columns may be confusable at the matcher's tolerance."""
-    for menu in MENUS:
-        values = sorted(float(name) for name in pd.read_csv(menu, nrows=0).columns[1:])
+    for menu, header in MENUS:
+        # Where the menu itself is present, the tracked copy must still BE its
+        # header, so a regenerated menu cannot leave a stale copy passing here.
+        if menu.exists():
+            with menu.open(encoding="utf-8") as handle:
+                assert next(handle) == header.read_text(encoding="utf-8"), (
+                    f"{header.name} is stale: it is no longer the first line of "
+                    f"{menu.relative_to(ROOT)}"
+                )
+        names = pd.read_csv(header, nrows=0).columns[1:]
+        values = sorted(float(name) for name in names)
         gaps = [
             abs(a - b) / max(abs(b), 1e-9)
             for a, b in zip(values[1:], values[:-1], strict=True)
@@ -128,6 +158,7 @@ def test_searched_menus_are_far_wider_apart_than_the_matching_tolerance():
 
 
 def test_self_test_rejects_a_result_that_is_all_nan(scorer, monkeypatch):
+    _require(scorer.BASE / "metrics.csv")
     # The stubs below take ``delay`` because score() gained that parameter for
     # heldout-delay-001. Without it these three regressions died of TypeError
     # instead of testing anything, which is how a guard rail stops guarding.
@@ -143,6 +174,10 @@ def test_self_test_rejects_a_result_that_is_all_nan(scorer, monkeypatch):
 
 
 def test_self_test_exercises_the_states_csv_argument(scorer, monkeypatch):
+    # self_test() only reaches the states_csv path when the union menu is on
+    # disk, so without it this test would assert that a branch it never entered
+    # ran. The header copy cannot stand in: the gate is on the real file.
+    _require(scorer.BASE / "metrics.csv", UNION_STATES)
     seen: list[object] = []
 
     def recorder(market, penalties, states_csv=None, delay=1):

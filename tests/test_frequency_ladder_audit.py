@@ -48,6 +48,31 @@ MARKETS = ("us", "de", "jp")
 FEATURE_COLUMNS = ("dd_10", "sortino_20", "sortino_60")
 TRAINING_YEARS = 3000 / 252
 
+# The run outputs these audits measure. Every one of them is ignored by
+# .gitignore -- the sealed baseline is a hash-named run with a per-file
+# inventory, and the rest are megabyte state matrices and refit tables that are
+# regenerable -- so a clean checkout has none of them.
+UNION_REFITS = tuple(UNION / market / "union-refits.csv" for market in MARKETS)
+METRICS = BASE / "metrics.csv"
+DE_FEATURES = BASE / "de/features.csv"
+DE_SEALED_STATES = BASE / "de/jm-states.csv"
+DE_LADDER_STATES = RUN / "states-de.csv"
+LADDER_CELLS = RUN / "cells.csv"
+
+
+def _require(*paths: Path) -> None:
+    """Skip, naming the file, when a local-only run artifact is absent.
+
+    Each audit below re-derives or recomputes a number from the artifact it
+    names, so there is no smaller stand-in that still audits anything. Without
+    the artifact the test says which one is missing rather than dying on
+    FileNotFoundError -- or, for the xfail below, appearing to fail for the
+    reason it documents when it actually failed on a missing file.
+    """
+    for path in paths:
+        if not path.exists():
+            pytest.skip(f"{path.relative_to(ROOT)} not built in this checkout")
+
 
 def _module(name: str):
     """Import a script by path without running its ``main()``."""
@@ -209,6 +234,7 @@ def test_the_spec_declares_the_cells_delay_cost_and_bands_the_code_uses(spec):
 
 def test_every_arm_is_the_menu_the_refit_objectives_derive(spec):
     """The runner re-derives arm L only. Arm M carries the headline number."""
+    _require(*UNION_REFITS)
     ladder = spec["derivation"]["ladder_shifts_per_year"]
     cutoff = pd.Timestamp("1990-01-01")
     for market in MARKETS:
@@ -243,6 +269,7 @@ def test_no_window_dated_on_or_after_the_cutoff_can_move_the_menu(
     runner, spec, tmp_path, monkeypatch
 ):
     """Corrupt every post-cutoff objective; the derived menu must not move."""
+    _require(*UNION_REFITS)
     ladder = spec["derivation"]["ladder_shifts_per_year"]
     rng = np.random.default_rng(4)
     clean = {market: runner.derive(market, ladder) for market in MARKETS}
@@ -265,6 +292,7 @@ def test_no_window_dated_on_or_after_the_cutoff_can_move_the_menu(
 
 def test_contributing_windows_end_before_the_evaluation_period(runner):
     """Every window that feeds the menu must be over before scoring starts."""
+    _require(*UNION_REFITS, METRICS)
     reported = pd.read_csv(BASE / "metrics.csv", parse_dates=["start", "end"])
     for market in MARKETS:
         frame = _refits(market)
@@ -284,6 +312,7 @@ def test_contributing_windows_end_before_the_evaluation_period(runner):
 
 
 def test_the_cutoff_is_the_start_of_the_evaluation_period(runner):
+    _require(METRICS)
     reported = pd.read_csv(BASE / "metrics.csv", parse_dates=["start"])
     earliest = reported[reported.model == "fixed_jm"]["start"].min()
     assert runner.CUTOFF <= earliest
@@ -335,6 +364,7 @@ def test_every_menu_value_is_a_midpoint_of_the_union_penalty_grid(spec):
     later reader cannot mistake "the ladder is the only free choice" for a
     statement about the values.
     """
+    _require(*UNION_REFITS)
     for market in MARKETS:
         lam = np.array(sorted(_refits(market)["lambda"].unique()), dtype=float)
         midpoints = (lam[:-1] + lam[1:]) / 2.0
@@ -362,6 +392,7 @@ def test_the_recorded_objective_is_penalised_and_its_slope_brackets_jumps():
     counts at the two ends. Both are checked on the first German pre-1990
     window, at three consecutive union penalties.
     """
+    _require(DE_FEATURES, UNION / "de/union-refits.csv")
     from jumpmodels.jump import JumpModel
 
     market, penalties = "de", (1.0, 1.93069772888325, 3.72759372031494)
@@ -417,6 +448,7 @@ def test_the_recorded_objective_is_penalised_and_its_slope_brackets_jumps():
            "repaired or the spec is corrected.",
 )
 def test_no_contributing_window_has_a_decreasing_objective(runner):
+    _require(*UNION_REFITS)
     offenders = []
     for market in MARKETS:
         frame = _refits(market)
@@ -439,6 +471,7 @@ def test_no_contributing_window_has_a_decreasing_objective(runner):
 
 def test_the_headline_german_cells_reproduce_through_the_library(spec):
     """Recompute arm M / Germany without the runner and match the artifact."""
+    _require(DE_FEATURES, METRICS, DE_LADDER_STATES, LADDER_CELLS)
     sys.path.insert(0, str(ROOT / "src"))
     from adaptive_jump.backtest import apply_signal, performance_metrics
     from adaptive_jump.config import load_config
@@ -507,6 +540,7 @@ def test_the_german_comparison_changes_only_the_menu():
     The two German runs share the features file byte for byte, the evaluation
     window, and the state grid geometry; only the candidate penalties differ.
     """
+    _require(DE_SEALED_STATES, DE_LADDER_STATES)
     sealed = pd.read_csv(BASE / "de/jm-states.csv", index_col=0, parse_dates=[0])
     ladder = pd.read_csv(RUN / "states-de.csv", index_col=0, parse_dates=[0])
     assert ladder.index.equals(sealed.index)
