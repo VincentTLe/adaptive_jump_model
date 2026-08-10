@@ -60,7 +60,7 @@ research/                  frozen experiment contracts (*.toml), registry, ledge
 docs/theory/               mathematical formalizations (including DA-JM)
 docs/audit/                independent verification receipts
 docs/atlas/                the replication atlas
-artifacts/                 sealed run outputs and audit evidence (untracked)
+artifacts/                 committed audit evidence plus ignored runtime outputs
 data/                      inputs; data/raw/ is immutable (untracked)
 paper/                     manuscript draft and reference PDFs
 .agent/                    cross-agent handoff log

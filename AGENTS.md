@@ -18,9 +18,8 @@ speculative features, parallel model stacks, or new governance frameworks.
 
 The question this repository studies:
 
-> Can a causal Jump-Model-guided market/cash strategy identify persistent
-> unfavorable regimes well enough to achieve higher net risk-adjusted
-> performance than both buy-and-hold and a Gaussian HMM under the same protocol?
+> Can we improve the Shu-style Statistical Jump Model for causal equity/cash
+> market timing?
 
 **The primary estimand for a structural challenger is the paired delta against
 the fixed JM**: `Delta_m(v) = Sharpe_v,m − Sharpe_fixedJM,m` for market `m` and
@@ -91,7 +90,10 @@ that was actually run. If the check was not run, say so.
    explicit.
 3. **Frictions.** Apply the declared one-way cost (normally 10 bps) and the same
    delay in validation and evaluation. No cost-free or delay-free headline.
-4. **Holdout.** Development cutoff 2023-12-31. Once an outcome influences a
+4. **Holdout.** Development cutoff 2023-12-31. **No model or P&L experiment may
+   use post-2023 rows without explicit owner authorization.** An authorized
+   source audit already inspected public candidate series through July 2026, so
+   those dates are not untouched confirmation data. Once an outcome influences a
    choice, that sample is development data.
 5. **Data integrity.** `data/raw/` is immutable; never silently substitute a
    different series. Conclusion-bearing data carries source, field, cutoff,

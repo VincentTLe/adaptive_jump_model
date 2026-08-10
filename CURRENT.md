@@ -51,11 +51,16 @@ permanent. No replacement exists, and none is being built here.
 - **The optimizer can land in different local solutions.** Different random
   starting points sometimes give different fitted parameters and a few different
   daily states. This is a property of the method, not a bug — and it means a
-  small difference between two arms can be optimizer noise rather than signal.
+  small difference between two arms can reflect optimizer sensitivity rather
+  than the change being tested.
 - **So challengers are judged by the paired challenger-minus-fixed-JM
-  difference**, measured directly under identical conditions. When both arms
-  move together, that common movement cancels in the difference, which makes the
-  paired quantity far more stable than either arm's own spread.
+  difference**, measured directly under identical conditions rather than
+  inferred from each arm separately, because movement common to both arms can
+  cancel in the difference. In the one place this was measured — the
+  optimizer-fidelity diagnostic on confirmed_2d — the paired deltas were indeed
+  much tighter than the fixed JM's own raw Sharpe spread. That is an observed
+  result for that variant on that sample, not a guarantee that paired deltas
+  will be tighter for future challengers.
 - **Generic duration-dependent state regularization is not claimed as novel.**
   The published Deep Statistical Jump Model paper already notes its state-loss
   framework can penalize staying in one regime too long, and duration dependence
