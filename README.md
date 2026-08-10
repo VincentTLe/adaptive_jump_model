@@ -42,7 +42,7 @@ Development data stops at 2023-12-31.
    repository with an AI coding agent. They are behavior rules for agents, not
    documentation of results.
 
-`TASK.md`, `research/experiment_registry.jsonl`,
+`research/TASK.md`, `research/experiment_registry.jsonl`,
 `research/SCIENTIFIC_LEDGER.md`, `docs/audit/`, and `artifacts/` are the
 detailed provenance and audit trail. They are the authority when a specific
 number is in dispute, but you do not need to read them to understand the
@@ -52,11 +52,11 @@ project.
 
 ```text
 CURRENT.md                 human-facing current research state  <- start here
-TASK.md                    detailed / legacy research state
 src/adaptive_jump/         the pipeline: data -> features -> models -> selection -> P&L
 tests/                     behavioral and audit regression tests
 scripts/                   historical builders, diagnostics, and audit programs
-research/                  frozen experiment contracts (*.toml), registry, ledger
+research/                  TASK.md (detailed research state), registry, ledger
+research/contracts/        frozen experiment contracts (*.toml)
 docs/theory/               mathematical formalizations (including DA-JM)
 docs/audit/                independent verification receipts
 docs/atlas/                the replication atlas
@@ -97,8 +97,11 @@ adaptive-jump verify --run artifacts/<run_id>   # re-verify a sealed run
 ```
 
 Do not launch a new data fetch or a new experiment without its frozen contract
-in `research/*.toml` and a declared data role. Raw data and runtime outputs stay
-untracked under `data/` and `artifacts/`.
+in `research/contracts/*.toml` and a declared data role. One contract stays
+outside that directory — `research/frequency-ladder-001.toml` — because the
+sealed audit of that experiment opens both it and
+`scripts/run_frequency_ladder.py` by exact path. Raw data and runtime outputs
+stay untracked under `data/` and `artifacts/`.
 
 ## Cold archive
 

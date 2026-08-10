@@ -1,7 +1,7 @@
 """jm-inferred-grid-005: estimate the authors' grid from their own monthly choices.
 
-Frozen spec: research/jm-inferred-grid-005.toml (derivation rule fixed before
-the monthly histogram was looked at). The estimand is the AUTHORS' hidden
+Frozen spec: research/contracts/jm-inferred-grid-005.toml (derivation rule fixed
+before the monthly histogram was looked at). The estimand is the AUTHORS' hidden
 candidate set; the estimator is their Figure-5 path's monthly effective-lambda
 distribution through our 29-lambda family (-004 trajectory.csv). The single
 selection replay afterwards is a CONDITIONAL diagnostic, never confirmatory,

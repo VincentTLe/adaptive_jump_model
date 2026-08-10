@@ -1,7 +1,7 @@
 # Current Research State
 
 Last updated 2026-08-09. This is the human-facing summary of where the project
-stands. Read it on its own — you should not need `TASK.md`, the experiment
+stands. Read it on its own — you should not need `research/TASK.md`, the
 registry, or any audit receipt to understand it.
 
 ## 1. Question
@@ -138,7 +138,7 @@ only after the owner approves.
 
 ---
 
-If you need to check any of the above: `TASK.md` holds the detailed research
+If you need to check any of the above: `research/TASK.md` holds the detailed
 state, `research/experiment_registry.jsonl` the append-only experiment history,
 `research/SCIENTIFIC_LEDGER.md` the evidence and corrections, and `docs/audit/`
 the verification receipts.

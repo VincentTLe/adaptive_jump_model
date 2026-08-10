@@ -1,4 +1,4 @@
-"""Run the frozen held-out-delay test: research/heldout-delay-001.toml.
+"""Run the frozen held-out-delay test: research/contracts/heldout-delay-001.toml.
 
 This is a DRIVER, not a scorer. Every number it prints comes from
 score_grid.score(), the shared implementation whose known-answer self-test
@@ -27,7 +27,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from _shu_table5 import HELD_OUT, TABLE5_JM, grade  # noqa: E402
 from score_grid import score  # noqa: E402
 
-SPEC = ROOT / "research/heldout-delay-001.toml"
+SPEC = ROOT / "research/contracts/heldout-delay-001.toml"
 OUT = ROOT / "artifacts/heldout-delay/01-table5"
 CELLS = ("cagr", "sharpe", "calmar")
 

@@ -1,10 +1,11 @@
 # Task state (2026-08-09, reconciled with the registry after PR #10)
 
-> **Human readers: start with [CURRENT.md](CURRENT.md).** It gives the current
-> research state — question, baseline, findings, failures, active idea, next
-> step — in plain English. This file is the detailed research state: run IDs,
-> hashes, seed tables, and the full history behind those conclusions. Read it
-> when you need the underlying detail, not to find out where the project stands.
+> **Human readers: start with [CURRENT.md](../CURRENT.md).** It gives the
+> current research state — question, baseline, findings, failures, active idea,
+> next step — in plain English. This file is the detailed research state: run
+> IDs, hashes, seed tables, and the full history behind those conclusions. Read
+> it when you need the underlying detail, not to find out where the project
+> stands.
 
 This file is written from `research/experiment_registry.jsonl` and `main`. Where
 the two disagree, the registry wins and this file is wrong.
@@ -253,8 +254,8 @@ novelty position rests on a bounded literature search and is stated as such.
    so it stays off the critical path.
 
 Order once decisions land: revise the formalization doc → freeze a
-`research/*.toml` spec with its own experiment id (comparators B&H / HMM / JM /
-DA-JM, same features, data, selection, costs, delays) → then code.
+`research/contracts/*.toml` spec with its own experiment id (comparators B&H /
+HMM / JM / DA-JM, same features, data, selection, costs, delays) → then code.
 
 ## Rerun queue against v11-ninit60
 
@@ -265,7 +266,11 @@ DA-JM, same features, data, selection, costs, delays) → then code.
 - scale-free-penalty and feature-metric-rotation — need fresh specs (the old ids
   carry a mechanism-never-ran bug and a tautological falsifier respectively).
 - frequency-ladder-001 — open defect F-1 (JP 1989-07-03 window violates
-  monotonicity at n_init=10). Tracked by a pre-existing xfail.
+  monotonicity at n_init=10). Tracked by a pre-existing xfail. Its contract is
+  the one that stays at `research/frequency-ladder-001.toml` rather than moving
+  into `research/contracts/`: the sealed fault injector of its audit opens that
+  path, and the identical literal inside `scripts/run_frequency_ladder.py`,
+  as text.
 
 ## Closed tracks (stable)
 

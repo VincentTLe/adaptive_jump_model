@@ -21,12 +21,25 @@ from adaptive_jump.study_sources import registry_lock
 
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "research/experiment_registry.jsonl"
+CONTRACTS = ROOT / "research/contracts"
+# One contract does not live with the others. The sealed fault injector of the
+# frequency-ladder audit opens research/frequency-ladder-001.toml by path and
+# rewrites that same literal out of the runner's source text, so moving it
+# would silently disarm the audit rather than fail it.
+PINNED_CONTRACTS = {
+    "frequency-ladder-001": ROOT / "research/frequency-ladder-001.toml",
+}
 # Every study contract this repository can execute today. A new -002 spec that
 # is runnable but missing here is itself the bug this list exists to catch.
 RUNNABLE_SPECS = (
     "simple-jm-suite-002",
     "dd-loss-scale-002",
 )
+
+
+def _contract(experiment_id: str) -> Path:
+    """Where this experiment's frozen contract sits on disk today."""
+    return PINNED_CONTRACTS.get(experiment_id, CONTRACTS / f"{experiment_id}.toml")
 
 
 def _rows(experiment_id: str) -> list[dict]:
@@ -41,7 +54,7 @@ def _rows(experiment_id: str) -> list[dict]:
 
 @pytest.mark.parametrize("experiment_id", RUNNABLE_SPECS)
 def test_runnable_spec_matches_its_latest_registry_row(experiment_id: str) -> None:
-    spec = ROOT / "research" / f"{experiment_id}.toml"
+    spec = _contract(experiment_id)
     assert spec.is_file(), f"{experiment_id}: spec file is missing"
     rows = _rows(experiment_id)
     assert rows, f"{experiment_id}: no registry row"
@@ -80,11 +93,7 @@ def test_every_runnable_spec_is_listed() -> None:
             value
             for value in re.findall(r'EXPERIMENT_ID = "([a-z0-9-]+-\d{3})"', text)
         }
-    runnable = {
-        name
-        for name in named
-        if (ROOT / "research" / f"{name}.toml").is_file()
-    }
+    runnable = {name for name in named if _contract(name).is_file()}
 
     assert runnable == set(RUNNABLE_SPECS), (
         "the specs the code can run and RUNNABLE_SPECS disagree; add the new "

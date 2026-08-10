@@ -4,8 +4,9 @@
 Written by the verifier agent under the house rule: the verifier did not write
 the deliverable and did NOT open scripts/rendering/render_replication_atlas.py
 or scripts/experiments/probe_jm_disagreement_anatomy.py. Every convention below
-is implemented from the frozen spec (research/jm-disagreement-anatomy-010.toml)
-and the audit note's public definitions:
+is implemented from the frozen spec
+(research/contracts/jm-disagreement-anatomy-010.toml) and the audit note's
+public definitions:
 
 - shu path: un-shifted regime series = (1 - position).shift(-2).dropna(), 1 = bear
 - -004 daily agreement: joined = union.join(shu, how="inner").dropna() over the
@@ -44,7 +45,7 @@ GRID_DIR = ROOT / "artifacts/jm-residual/01-grid-identification"
 ATLAS = ROOT / "artifacts/jm-residual/atlas"
 ANATOMY = ROOT / "artifacts/jm-residual/10-disagreement-anatomy"
 CEILING = ROOT / "artifacts/jm-residual/04-effective-lambda-inversion/ceiling.csv"
-SPEC = ROOT / "research/jm-disagreement-anatomy-010.toml"
+SPEC = ROOT / "research/contracts/jm-disagreement-anatomy-010.toml"
 HTML = ROOT / "docs/atlas/replication-atlas.html"
 MARKETS = ("us", "de", "jp")
 TABLE3_GRID = (0.0, 5.0, 15.0, 35.0, 70.0, 150.0)

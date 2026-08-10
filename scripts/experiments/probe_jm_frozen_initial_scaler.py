@@ -1,9 +1,9 @@
 """jm-standardizer-geometry-003: the frozen-initial scaler, the family's last member.
 
-Frozen spec: research/jm-standardizer-geometry-003.toml (sequential-testing
-risk declared there). Reuses the -002 probe-local loop, whose src-parity gate
-passed in all three markets; V3 plugs in a scaler fitted once on the FIRST
-3000-day complete window and frozen for the whole sample.
+Frozen spec: research/contracts/jm-standardizer-geometry-003.toml
+(sequential-testing risk declared there). Reuses the -002 probe-local loop,
+whose src-parity gate passed in all three markets; V3 plugs in a scaler fitted
+once on the FIRST 3000-day complete window and frozen for the whole sample.
 """
 
 from __future__ import annotations

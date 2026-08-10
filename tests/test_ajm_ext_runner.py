@@ -18,8 +18,8 @@ from adaptive_jump.infrastructure.artifacts import verify_inventory
 from adaptive_jump.models import HMMResult
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTRACT = ROOT / "research/ajm-ext-001.toml"
-LOCK = ROOT / "research/ajm-ext-001-data.lock.toml"
+CONTRACT = ROOT / "research/contracts/ajm-ext-001.toml"
+LOCK = ROOT / "research/contracts/ajm-ext-001-data.lock.toml"
 REGIONS = ("Fama-French Europe", "Fama-French Japan", "Fama-French North America")
 
 

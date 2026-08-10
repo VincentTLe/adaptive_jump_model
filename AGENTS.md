@@ -146,13 +146,13 @@ that was actually run. If the check was not run, say so.
 ## 4. Project language: English only
 
 All persistent project material is English: `README.md`, `CURRENT.md`,
-`TASK.md`, this file, `CLAUDE.md`, everything under `docs/` and `research/`, the
-manuscript, specs, receipts, the ledger, registry entries, generated reports,
-comments, docstrings, test names, CLI messages, commit messages, and
-agent-written PR and issue text. Do not translate third-party sources, quoted
-paper text, raw data, proper names, or literal strings whose original form is
-provenance. Do not mass-translate historical files, and never edit an
-append-only registry entry over language — append a correction.
+`research/TASK.md`, this file, `CLAUDE.md`, everything under `docs/` and
+`research/`, the manuscript, specs, receipts, the ledger, registry entries,
+generated reports, comments, docstrings, test names, CLI messages, commit
+messages, and agent-written PR and issue text. Do not translate third-party
+sources, quoted paper text, raw data, proper names, or literal strings whose
+original form is provenance. Do not mass-translate historical files, and never
+edit an append-only registry entry over language — append a correction.
 
 ## 5. Working rules
 

@@ -505,7 +505,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if arguments.command == "run":
             config = load_config(arguments.config)
-            research = config.repo_root / "research"
+            contracts = config.repo_root / "research" / "contracts"
             if arguments.study == "replication":
                 frozen = load_frozen_data(config, arguments.manifest)
                 artifact = run_replication(config, frozen)
@@ -513,12 +513,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 raise RunError("--manifest is only valid for replication")
             elif arguments.study == "simple-jm-suite":
                 spec = load_simple_jm_spec(
-                    research / "simple-jm-suite-002.toml", config
+                    contracts / "simple-jm-suite-002.toml", config
                 )
                 artifact = run_simple_jm_study(config, spec)
             elif arguments.study == "dd-loss-scale":
                 spec = load_dd_loss_scale_spec(
-                    research / "dd-loss-scale-002.toml", config
+                    contracts / "dd-loss-scale-002.toml", config
                 )
                 artifact = run_dd_loss_scale_study(config, spec)
             _artifacts.verify_run(artifact)

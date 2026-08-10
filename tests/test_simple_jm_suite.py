@@ -397,7 +397,7 @@ def test_load_dd_loss_scale_spec_accepts_frozen_contract(tmp_path: Path) -> None
     research.mkdir()
     spec_path = research / f"{suite.LOSS_SCALE_EXPERIMENT_ID}.toml"
     spec_path.write_text(
-        (ROOT / "research/dd-loss-scale-001.toml")
+        (ROOT / "research/contracts/dd-loss-scale-001.toml")
         .read_text(encoding="utf-8")
         .replace("dd-loss-scale-001", suite.LOSS_SCALE_EXPERIMENT_ID)
         .replace("simple-jm-suite-001", suite.EXPERIMENT_ID),

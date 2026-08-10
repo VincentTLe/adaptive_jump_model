@@ -1,7 +1,7 @@
 """lagged-capguard-001: cap-guarded lagged challenger, US only, both grids.
 
-Frozen spec: research/lagged-capguard-001.toml (hash pinned in the registry
-FROZEN row; this runner refuses to start on drift). Construction and gates are
+Frozen spec: research/contracts/lagged-capguard-001.toml (hash pinned in the
+registry FROZEN row; this runner refuses to start on drift). Construction and gates are
 the spec's [construction]/[gates_before_readout] sections, executed literally:
 the fixed legs must reproduce the sealed artifacts bit-for-bit, the challenger
 decode must nest fixed at beta zero on every day, and the monthly block map is
@@ -33,7 +33,7 @@ from adaptive_jump.experiments.ajm_ext.ajm_ext_arms import (  # noqa: E402
 from adaptive_jump.models import fixed_jm_states  # noqa: E402
 from adaptive_jump.walkforward import select_monthly_candidate  # noqa: E402
 
-SPEC = ROOT / "research" / "lagged-capguard-001.toml"
+SPEC = ROOT / "research" / "contracts" / "lagged-capguard-001.toml"
 REGISTRY = ROOT / "research" / "experiment_registry.jsonl"
 RUN_V10 = ROOT / "artifacts" / "fixed-baselines" / (
     "fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736"

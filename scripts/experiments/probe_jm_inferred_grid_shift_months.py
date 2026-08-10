@@ -1,10 +1,11 @@
 """jm-inferred-grid-006: the shift-months estimator, second and final.
 
-Frozen spec: research/jm-inferred-grid-006.toml (sequential declaration and
-estimator-family exhaustion inside). Recomputes per-month best-lambda from the
--004 inputs restricted to months where the authors' path actually shifts,
-with ties broken toward the LARGEST lambda (opposite of -005, bracketing any
-residual tie effect), then repeats the identical conditional replay.
+Frozen spec: research/contracts/jm-inferred-grid-006.toml (sequential
+declaration and estimator-family exhaustion inside). Recomputes per-month
+best-lambda from the -004 inputs restricted to months where the authors' path
+actually shifts, with ties broken toward the LARGEST lambda (opposite of -005,
+bracketing any residual tie effect), then repeats the identical conditional
+replay.
 """
 
 from __future__ import annotations

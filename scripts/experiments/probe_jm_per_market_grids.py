@@ -1,6 +1,6 @@
 """jm-per-market-grid-009: per-market grids across all three delays + frontiers.
 
-Frozen spec: research/jm-per-market-grid-009.toml. Consumes the -008
+Frozen spec: research/contracts/jm-per-market-grid-009.toml. Consumes the -008
 persisted per-arm results (adversarially verified). Every nonexistence
 statement is scoped to subsets (sizes 2-8) of the 29-lambda sourced menu.
 """

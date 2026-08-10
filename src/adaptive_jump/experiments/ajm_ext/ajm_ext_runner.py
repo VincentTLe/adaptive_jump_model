@@ -47,7 +47,7 @@ from adaptive_jump.infrastructure.artifacts import write_inventory, write_json
 from adaptive_jump.models import hmm_states, smoothed_hmm_states
 from adaptive_jump.walkforward import select_monthly_candidate
 
-# Inherited from the lagged-evidence lineage (research/ajm-ext-001.toml
+# Inherited from the lagged-evidence lineage (research/contracts/ajm-ext-001.toml
 # [protocol] inherits): solver constants of the sealed v10 era, prior-free HMM.
 JM_CONSTANTS = {"n_init": 10, "random_state": 0, "max_iter": 1000, "tol": 1e-8}
 # One declared deviation from the inherited constants: n_iter 1000 -> 10000.
@@ -375,8 +375,8 @@ def main() -> int:
     arguments = parser.parse_args()
     repo = Path(arguments.repo).resolve()
     run_dir = run_transport_study(
-        repo / "research/ajm-ext-001.toml",
-        repo / "research/ajm-ext-001-data.lock.toml",
+        repo / "research/contracts/ajm-ext-001.toml",
+        repo / "research/contracts/ajm-ext-001-data.lock.toml",
         repo / "data/external/fama-french",
         repo / "artifacts/ajm-ext-001",
         n_jobs=arguments.n_jobs,
