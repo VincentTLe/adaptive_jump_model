@@ -593,7 +593,7 @@ def render(
 
 
 def main() -> int:
-    config = load_config(ROOT / "research-calibrated-v11.toml")
+    config = load_config(ROOT / "configs/baselines/research-calibrated-v11.toml")
     OUT.mkdir(parents=True, exist_ok=True)
     summaries: list[dict] = []
     lines = [

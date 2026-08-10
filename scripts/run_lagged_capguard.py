@@ -39,8 +39,8 @@ RUN_V10 = ROOT / "artifacts" / "fixed-baselines" / (
 UNION = ROOT / "artifacts" / "jm-residual" / "01-grid-identification"
 OUT = ROOT / "artifacts" / "lagged-capguard" / "01-us"
 GRID_CONFIGS = {
-    "g1_table3": "research-expanding-v9-4.toml",
-    "g2_v10_us": "research-calibrated-v10.toml",
+    "g1_table3": "configs/baselines/legacy/research-expanding-v9-4.toml",
+    "g2_v10_us": "configs/baselines/legacy/research-calibrated-v10.toml",
 }
 
 

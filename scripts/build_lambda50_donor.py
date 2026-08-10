@@ -38,7 +38,9 @@ MARKETS = ("us", "de", "jp")
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="research-calibrated-v10.toml")
+    parser.add_argument(
+        "--config", default="configs/baselines/legacy/research-calibrated-v10.toml"
+    )
     parser.add_argument("--baselines-run", required=True)
     parser.add_argument("--output-root", default=None)
     arguments = parser.parse_args()

@@ -308,7 +308,9 @@ def test_baseline_integration_keeps_metrics_sealed_until_boundaries_pass(
         "adaptive_jump.walkforward.hmm_states",
         lambda *_: pytest.fail("precomputed HMM was ignored"),
     )
-    config = load_config(Path(__file__).resolve().parents[1] / "research.toml")
+    config = load_config(
+        Path(__file__).resolve().parents[1] / "configs/baselines/legacy/research.toml"
+    )
     config = replace(
         config,
         model_protocol=ModelProtocol(2, 5, 0, 1),

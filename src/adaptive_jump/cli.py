@@ -470,7 +470,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="adaptive-jump")
     commands = parser.add_subparsers(dest="command", required=True)
     fetch = commands.add_parser("fetch", help="acquire the frozen source bundle")
-    fetch.add_argument("--config", required=True, help="path to research.toml")
+    fetch.add_argument("--config", required=True, help="path to a protocol config")
     run = commands.add_parser("run", help="execute a frozen research study")
     run.add_argument(
         "--study",
@@ -481,7 +481,7 @@ def build_parser() -> argparse.ArgumentParser:
             "dd-loss-scale",
         ],
     )
-    run.add_argument("--config", required=True, help="path to research.toml")
+    run.add_argument("--config", required=True, help="path to a protocol config")
     run.add_argument("--manifest", help="exact acquisition manifest path")
     verify = commands.add_parser("verify", help="verify a sealed research run")
     verify.add_argument("--run", required=True, help="path to one run directory")

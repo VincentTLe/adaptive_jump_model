@@ -19,7 +19,9 @@ from adaptive_jump.data import (
     research_git_sha,
 )
 
-CONFIG = load_config(Path(__file__).resolve().parents[1] / "research.toml")
+CONFIG = load_config(
+    Path(__file__).resolve().parents[1] / "configs/baselines/legacy/research.toml"
+)
 START = date(1970, 1, 1)
 CUTOFF = date(2023, 12, 31)
 
@@ -282,10 +284,10 @@ def test_git_provenance_rejects_result_affecting_diff(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "relative",
     [
-        # Where protocol configs live today...
+        # The root, where a config could still reappear...
         "research.toml",
         "research-calibrated-v11.toml",
-        # ...and where Phase B2 will move them. Both must stay guarded, or a
+        # ...and configs/, where they live now. Both must stay guarded, or a
         # config edited mid-run would be silently absent from the recorded
         # provenance.
         "configs/research-calibrated-v11.toml",

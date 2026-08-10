@@ -23,7 +23,7 @@ def test_fetch_cli_runs_complete_fixture_pipeline(
     """The live acquisition path: hash-pinned local files plus one FRED series."""
     name = "research-calibrated-v10.toml"
     config = tmp_path / name
-    config.write_bytes((ROOT / name).read_bytes())
+    config.write_bytes((ROOT / "configs/baselines/legacy" / name).read_bytes())
     document = tomllib.loads(config.read_text())
     pinned = [
         source["file_path"]
@@ -158,7 +158,7 @@ def test_simple_jm_cli_uses_shared_runner(
                 "--study",
                 study,
                 "--config",
-                str(ROOT / "research.toml"),
+                str(ROOT / "configs/baselines/legacy/research.toml"),
             ]
         )
         == 0
@@ -203,7 +203,9 @@ def test_verify_run_dispatches_simple_jm_suite(
 
 def _manifest_fixture(tmp_path: Path) -> tuple[Path, Path]:
     config_path = tmp_path / "research.toml"
-    config_path.write_bytes((ROOT / "research.toml").read_bytes())
+    config_path.write_bytes(
+        (ROOT / "configs/baselines/legacy/research.toml").read_bytes()
+    )
     config = load_config(config_path)
     sources = []
     for market in config.markets:

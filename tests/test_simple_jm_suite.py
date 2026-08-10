@@ -34,6 +34,7 @@ def test_implementation_hashes_cover_result_code_and_environment_lock() -> None:
 
 
 ROOT = Path(__file__).resolve().parents[1]
+LEGACY_RESEARCH = ROOT / "configs/baselines/legacy/research.toml"
 
 
 def test_runner_error_follows_artifact_error_contract() -> None:
@@ -146,7 +147,7 @@ def test_metric_rows_use_paper_turnover_and_count_switches() -> None:
         "static_lambda50": path,
     }
 
-    rows = suite.metric_rows("us", paths, load_config(ROOT / "research.toml"))
+    rows = suite.metric_rows("us", paths, load_config(LEGACY_RESEARCH))
     static = next(row for row in rows if row["model"] == "static_lambda50")
 
     assert suite.PAPER_TURNOVER_SCALE == 0.5
@@ -172,7 +173,7 @@ def test_decision_requires_strict_positive_gap_in_every_market(monkeypatch) -> N
         }
 
     monkeypatch.setattr(suite, "performance_metrics", fake_metrics)
-    config = load_config(ROOT / "research.toml")
+    config = load_config(LEGACY_RESEARCH)
     dates = pd.bdate_range("2023-01-02", periods=4)
     rows = []
     for market in suite.MARKETS:
@@ -369,7 +370,7 @@ post_2023_access = false
 def test_load_simple_jm_spec_accepts_matching_frozen_registry(tmp_path: Path) -> None:
     spec_path = _write_suite_contract(tmp_path)
     config = replace(
-        load_config(ROOT / "research.toml"), path=tmp_path / "research.toml"
+        load_config(LEGACY_RESEARCH), path=tmp_path / "research.toml"
     )
 
     loaded = suite.load_simple_jm_spec(spec_path, config)
@@ -382,7 +383,7 @@ def test_load_simple_jm_spec_accepts_matching_frozen_registry(tmp_path: Path) ->
 def test_load_simple_jm_spec_rejects_registry_hash_mismatch(tmp_path: Path) -> None:
     spec_path = _write_suite_contract(tmp_path, registered_hash="0" * 64)
     config = replace(
-        load_config(ROOT / "research.toml"), path=tmp_path / "research.toml"
+        load_config(LEGACY_RESEARCH), path=tmp_path / "research.toml"
     )
 
     with pytest.raises(
@@ -418,7 +419,7 @@ def test_load_dd_loss_scale_spec_accepts_frozen_contract(tmp_path: Path) -> None
         encoding="utf-8",
     )
     config = replace(
-        load_config(ROOT / "research.toml"), path=tmp_path / "research.toml"
+        load_config(LEGACY_RESEARCH), path=tmp_path / "research.toml"
     )
 
     loaded = suite.load_dd_loss_scale_spec(spec_path, config)
@@ -516,7 +517,7 @@ def test_fit_market_task_routes_declared_dd_loss_scale(
 
     with pytest.raises(RuntimeError, match="scale captured"):
         suite._fit_market_task(
-            (str(tmp_path), "us", variant, load_config(ROOT / "research.toml"))
+            (str(tmp_path), "us", variant, load_config(LEGACY_RESEARCH))
         )
 
     assert observed == [expected_scale]
@@ -560,7 +561,7 @@ def test_load_simple_jm_spec_wraps_invalid_registry_rows(
 ) -> None:
     spec_path = _write_suite_contract(tmp_path)
     config = replace(
-        load_config(ROOT / "research.toml"), path=tmp_path / "research.toml"
+        load_config(LEGACY_RESEARCH), path=tmp_path / "research.toml"
     )
     (tmp_path / "research/experiment_registry.jsonl").write_text(
         registry_text, encoding="utf-8"
@@ -575,7 +576,7 @@ def test_load_simple_jm_spec_wraps_invalid_registry_rows(
 def test_load_simple_jm_spec_rejects_non_table_sections(tmp_path: Path) -> None:
     spec_path = _write_suite_contract(tmp_path)
     config = replace(
-        load_config(ROOT / "research.toml"), path=tmp_path / "research.toml"
+        load_config(LEGACY_RESEARCH), path=tmp_path / "research.toml"
     )
     spec_path.write_text(
         f'schema_version = 1\nexperiment_id = "{suite.EXPERIMENT_ID}"\n'

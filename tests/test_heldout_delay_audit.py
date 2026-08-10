@@ -306,7 +306,7 @@ def test_arm_a_is_the_sealed_configs_own_grid():
     sys.path.insert(0, str(ROOT / "src"))
     from adaptive_jump.config import load_config
 
-    config = load_config(ROOT / "research-calibrated-v10.toml")
+    config = load_config(ROOT / "configs/baselines/legacy/research-calibrated-v10.toml")
     arm = _spec()["arms"]["A_sealed_default"]
     for market in ("us", "de", "jp"):
         assert tuple(arm[market]) == tuple(config.jm_protocol_for(market).lambda_grid)

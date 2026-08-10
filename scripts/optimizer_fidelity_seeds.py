@@ -77,7 +77,7 @@ def parse_centers(raw: object) -> np.ndarray:
 
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
-    config = load_config(ROOT / "research-calibrated-v11.toml")
+    config = load_config(ROOT / "configs/baselines/research-calibrated-v11.toml")
     summary_rows: list[dict] = []
     level3_rows: list[dict] = []
 

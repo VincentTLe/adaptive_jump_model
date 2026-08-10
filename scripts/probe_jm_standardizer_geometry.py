@@ -253,7 +253,7 @@ def selection_metrics(frame, states, cfg, lo, hi) -> dict:
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    cfg = load_config(ROOT / "research-expanding-v9-4.toml")
+    cfg = load_config(ROOT / "configs/baselines/legacy/research-expanding-v9-4.toml")
     reported = pd.read_csv(RUN / "metrics-exploratory.csv",
                            parse_dates=["start", "end"])
 

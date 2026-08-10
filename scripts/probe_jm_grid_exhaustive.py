@@ -149,7 +149,7 @@ def _enumerate_task(task: tuple[str, int, int, int]) -> dict:
 def _evaluate_task(task: tuple[str, list[bytes]]) -> list[dict]:
     market, vectors = task
     cache = _market_cache(market)
-    cfg = load_config(ROOT / "research-expanding-v9-4.toml")
+    cfg = load_config(ROOT / "configs/baselines/legacy/research-expanding-v9-4.toml")
     dates = pd.to_datetime(cache["dates"])
     prepared = pd.DataFrame({
         "date": dates,
@@ -219,7 +219,7 @@ def parity_gate(market: str, cfg, executor) -> str:
 
 
 def main() -> None:
-    cfg = load_config(ROOT / "research-expanding-v9-4.toml")
+    cfg = load_config(ROOT / "configs/baselines/legacy/research-expanding-v9-4.toml")
     OUT.mkdir(parents=True, exist_ok=True)
     parity_lines, frontier_rows, solution_rows = [], [], []
     executor = ProcessPoolExecutor(max_workers=N_JOBS,

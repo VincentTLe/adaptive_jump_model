@@ -49,7 +49,7 @@ from adaptive_jump.tv_jump import (  # noqa: E402
 )
 from adaptive_jump.walkforward import select_monthly_candidate  # noqa: E402
 
-CONFIG = ROOT / "research-calibrated-v10.toml"
+CONFIG = ROOT / "configs/baselines/legacy/research-calibrated-v10.toml"
 BASELINE = (
     ROOT / "artifacts/fixed-baselines/"
     "fixed-baselines-36ca1ace131c-ed7abd7daea3-f9f3e0a93736"

@@ -477,7 +477,7 @@ def test_the_headline_german_cells_reproduce_through_the_library(spec):
     from adaptive_jump.config import load_config
     from adaptive_jump.walkforward import select_monthly_candidate
 
-    config = load_config(ROOT / "research-calibrated-v10.toml")
+    config = load_config(ROOT / "configs/baselines/legacy/research-calibrated-v10.toml")
     menu = [float(v) for v in spec["arms"]["M_no_freeze"]["de"]]
     frame = pd.read_csv(BASE / "de/features.csv", parse_dates=["date"])
     states = pd.read_csv(RUN / "states-de.csv", index_col=0, parse_dates=[0])
@@ -551,7 +551,7 @@ def test_the_german_comparison_changes_only_the_menu():
     sys.path.insert(0, str(ROOT / "src"))
     from adaptive_jump.config import load_config
 
-    config = load_config(ROOT / "research-calibrated-v10.toml")
+    config = load_config(ROOT / "configs/baselines/legacy/research-calibrated-v10.toml")
     sealed_menu = set(config.jm_protocol_for("de").lambda_grid)
     ladder_menu = {float(c) for c in ladder.columns}
     assert sealed_menu.isdisjoint(ladder_menu), (

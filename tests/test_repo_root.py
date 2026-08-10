@@ -1,9 +1,9 @@
 """Repository-root discovery must not depend on where a config file sits.
 
-Protocol configs live at the repository root today. These tests pin the
-behaviour that lets them move under ``configs/`` later without silently
-redirecting artifacts, data, or the experiment registry into the config's own
-directory.
+Protocol configs live under ``configs/baselines/`` — the current comparator at
+that level, superseded ones in ``legacy/`` below it. These tests pin the
+behaviour that lets them sit there without silently redirecting artifacts,
+data, or the experiment registry into the config's own directory.
 """
 
 from pathlib import Path
@@ -13,15 +13,16 @@ import pytest
 from adaptive_jump.config import load_config, resolve_repo_root
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG_NAMES = (
-    "research.toml",
-    "research-expanding-v8-5.toml",
-    "research-expanding-v9-3.toml",
-    "research-expanding-v9-4.toml",
-    "research-calibrated-v10.toml",
-    "research-calibrated-v10-ninit60.toml",
-    "research-calibrated-v11.toml",
+CANONICAL_CONFIG = "configs/baselines/research-calibrated-v11.toml"
+LEGACY_CONFIGS = (
+    "configs/baselines/legacy/research.toml",
+    "configs/baselines/legacy/research-expanding-v8-5.toml",
+    "configs/baselines/legacy/research-expanding-v9-3.toml",
+    "configs/baselines/legacy/research-expanding-v9-4.toml",
+    "configs/baselines/legacy/research-calibrated-v10.toml",
+    "configs/baselines/legacy/research-calibrated-v10-ninit60.toml",
 )
+CONFIG_NAMES = (CANONICAL_CONFIG, *LEGACY_CONFIGS)
 
 
 def _repo(tmp_path: Path) -> Path:
@@ -32,16 +33,33 @@ def _repo(tmp_path: Path) -> Path:
     return root
 
 
-def _config_at(target: Path, source: str = "research-calibrated-v11.toml") -> Path:
+def _config_at(target: Path, source: str = CANONICAL_CONFIG) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes((ROOT / source).read_bytes())
     return target
 
 
-@pytest.mark.parametrize("name", CONFIG_NAMES)
-def test_every_root_config_resolves_the_real_repository(name: str) -> None:
-    """Today's configs must keep resolving exactly the root they always did."""
-    assert load_config(ROOT / name).repo_root == ROOT
+@pytest.mark.parametrize("relative", CONFIG_NAMES)
+def test_every_protocol_config_resolves_the_real_repository(relative: str) -> None:
+    """Each config really sits under configs/ and still resolves the same root."""
+    config_path = ROOT / relative
+    assert config_path.is_file()
+    assert load_config(config_path).repo_root == ROOT
+
+
+def test_the_canonical_comparator_sits_above_the_superseded_ones() -> None:
+    """v11 is the current comparator; the six it replaced sit one level down."""
+    baselines = ROOT / "configs" / "baselines"
+
+    assert [path.name for path in sorted(baselines.glob("*.toml"))] == [
+        "research-calibrated-v11.toml"
+    ]
+    assert len(list((baselines / "legacy").glob("*.toml"))) == len(LEGACY_CONFIGS)
+
+
+def test_no_protocol_config_is_left_at_the_repository_root() -> None:
+    """A stray root copy would be a second writable version of a sealed config."""
+    assert list(ROOT.glob("research*.toml")) == []
 
 
 @pytest.mark.parametrize(
@@ -135,7 +153,7 @@ def test_repo_root_follows_a_replaced_config_path(tmp_path: Path) -> None:
     """`replace(config, path=...)` retargets the root, as callers rely on."""
     from dataclasses import replace
 
-    config = load_config(ROOT / "research.toml")
+    config = load_config(ROOT / "configs/baselines/legacy/research.toml")
     redirected = replace(config, path=tmp_path / "research.toml")
 
     assert config.repo_root == ROOT

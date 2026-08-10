@@ -68,7 +68,7 @@ def main() -> int:
     arms = spec["arms"]
     markets = spec["sources"]["markets"]
     OUT.mkdir(parents=True, exist_ok=True)
-    config = load_config(ROOT / "research-calibrated-v10.toml")
+    config = load_config(ROOT / "configs/baselines/legacy/research-calibrated-v10.toml")
     n_jobs = int(sys.argv[1]) if len(sys.argv) > 1 else 28
 
     # The frozen full ladder must equal what the objectives say today. If the

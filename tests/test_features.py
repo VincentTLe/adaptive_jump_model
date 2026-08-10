@@ -14,7 +14,9 @@ from adaptive_jump.features import (
     prepare_market,
 )
 
-CONFIG = load_config(Path(__file__).resolve().parents[1] / "research.toml")
+CONFIG = load_config(
+    Path(__file__).resolve().parents[1] / "configs/baselines/legacy/research.toml"
+)
 
 
 def canonical(dates, values) -> pd.DataFrame:

@@ -317,9 +317,9 @@ def research_git_sha(root: Path) -> str:
         # added later. ':(glob)' keeps '*' from crossing '/', so experiment
         # configs under research/ stay out of scope.
         ":(glob)research-*.toml",
-        # Where protocol configs are moving. Listed now, while it still matches
-        # nothing, so the move itself cannot quietly drop configs out of the
-        # guard: a dirty config must fail the run before and after the move.
+        # Where protocol configs live. The two root entries above are kept so a
+        # config that reappears at the root is still guarded rather than
+        # silently unwatched.
         "configs",
         "pyproject.toml",
         "uv.lock",

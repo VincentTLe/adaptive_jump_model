@@ -53,7 +53,7 @@ _C: dict = {}
 
 def build_cache(market: str) -> dict:
     """One monthly-CV surface for all 48 candidates, plus the return series."""
-    config = load_config(ROOT / "research-calibrated-v10.toml")
+    config = load_config(ROOT / "configs/baselines/legacy/research-calibrated-v10.toml")
     frame = pd.read_csv(BASE / market / "features.csv", parse_dates=["date"])
     states = pd.read_csv(DENSE / f"states-{market}.csv", index_col=0, parse_dates=[0])
     states.columns = [float(c) for c in states.columns]

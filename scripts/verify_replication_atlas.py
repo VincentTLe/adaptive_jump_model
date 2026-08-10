@@ -311,7 +311,7 @@ def reconstruct_v94() -> dict[str, pd.Series]:
     from adaptive_jump.config import load_config
     from adaptive_jump.walkforward import select_monthly_candidate
 
-    cfg = load_config(ROOT / "research-expanding-v9-4.toml")
+    cfg = load_config(ROOT / "configs/baselines/legacy/research-expanding-v9-4.toml")
     grid = tuple(float(v) for v in cfg.jm_protocol.lambda_grid)
     if not np.allclose(grid, TABLE3_GRID):
         raise SystemExit(f"v9.4 lambda grid {grid} != Table-3 grid {TABLE3_GRID}")

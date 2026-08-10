@@ -17,7 +17,7 @@ from adaptive_jump.config import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = ROOT / "research-expanding-v9-4.toml"
+BASE = ROOT / "configs/baselines/legacy/research-expanding-v9-4.toml"
 
 LABEL_OLD = 'claim_label = "proxy replication"'
 LABEL_NEW = 'claim_label = "calibrated baseline"'

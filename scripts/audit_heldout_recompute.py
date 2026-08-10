@@ -72,7 +72,7 @@ def grade(rel: float) -> str:
 
 def path_for(market: str, grid, states_csv: Path | None, delay: int):
     """The full daily path for one grid at one delay. No windowing here."""
-    config = load_config(ROOT / "research-calibrated-v10.toml")
+    config = load_config(ROOT / "configs/baselines/legacy/research-calibrated-v10.toml")
     frame = pd.read_csv(BASE / market / "features.csv", parse_dates=["date"])
     src = states_csv or (BASE / market / "jm-states.csv")
     states = pd.read_csv(src, index_col=0, parse_dates=[0])

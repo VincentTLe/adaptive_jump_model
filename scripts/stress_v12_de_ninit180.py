@@ -36,7 +36,7 @@ OUT = ROOT / "artifacts/v12-stress-gate"
 
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
-    cfg = load_config(ROOT / "research-calibrated-v11.toml")
+    cfg = load_config(ROOT / "configs/baselines/research-calibrated-v11.toml")
     frame = pd.read_csv(FEATURES, parse_dates=["date"])
     ref_refits = pd.read_csv(REF_DIR / "union-refits.csv", parse_dates=["fit_date"])
     ref_refits = ref_refits[ref_refits["lambda"].isin(GRID)]

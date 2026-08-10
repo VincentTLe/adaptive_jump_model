@@ -12,7 +12,7 @@ from adaptive_jump.config import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG = ROOT / "research.toml"
+CONFIG = ROOT / "configs/baselines/legacy/research.toml"
 
 
 def test_load_frozen_proxy_contract() -> None:
