@@ -48,6 +48,46 @@ detailed provenance and audit trail. They are the authority when a specific
 number is in dispute, but you do not need to read them to understand the
 project.
 
+## Scientific code path
+
+`src/adaptive_jump/` contains thirty-odd modules, but the current baseline is
+five of them, in this order:
+
+```text
+data.py        ->  features.py  ->  models.py  ->  walkforward.py       ->  backtest.py
+data              features          fixed JM       monthly selection        P&L
+                                                   -> signal
+```
+
+Everything else in that directory is protocol support, infrastructure, or
+machinery from completed studies. **[src/adaptive_jump/README.md](src/adaptive_jump/README.md)**
+says which is which, and where a future challenger model goes.
+
+`scripts/` and `research/` have their own READMEs for the same reason: not
+every file in them is current.
+
+## The canonical baseline
+
+The comparator every challenger is measured against:
+
+```text
+config      research-calibrated-v11.toml          (repository root)
+sealed run  artifacts/fixed-baselines/
+            fixed-baselines-5b12efa2948c-d57a9e7d9c07-b277dea3beb3
+```
+
+The run directory's `config.lock.toml` is byte-identical to
+`research-calibrated-v11.toml`; `5b12efa2948c` in the run ID is that file's
+sha256 prefix.
+
+Two naming traps worth knowing:
+
+- **"v11-ninit60" is this config and this run.** The `n_init = 60` setting
+  lives inside `research-calibrated-v11.toml`, not in its filename. Do not open
+  `research-calibrated-v10-ninit60.toml` — that is a superseded v10 config.
+- **`research/*.toml` are frozen contracts for individual studies**, one per
+  experiment. None of them is the canonical baseline.
+
 ## What is in the repository
 
 ```text
@@ -100,14 +140,15 @@ Do not launch a new data fetch or a new experiment without its frozen contract
 in `research/*.toml` and a declared data role. Raw data and runtime outputs stay
 untracked under `data/` and `artifacts/`.
 
-## Cold archive
+## Backups
 
-The complete pre-cleanup workspace and Git history are stored at:
+Two verified snapshots of the workspace and Git history exist:
 
 ```text
-/home/tle/research-archive/adaptive_jump_model/2026-08-05-pre-cleanup
+local   /home/tle/research-archive/adaptive_jump_model/2026-08-09-pre-research-safety
+MooseFS /net/home/tle/research-archive/adaptive_jump_model/2026-08-09-pre-research-safety
 ```
 
-`ARCHIVE.sha256`, a per-file manifest, `zstd -t`, and `git bundle verify` all
-passed. This archive is on the same physical machine, so it protects against
-cleanup mistakes, not against disk failure.
+The local copy protects against mistakes in the working tree; the independent
+MooseFS copy protects against loss of the local workstation or its storage.
+This pair is not geographic off-site protection.

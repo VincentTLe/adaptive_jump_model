@@ -293,7 +293,20 @@ def select_monthly_candidate(
     checkpoint_every: int = 12,
     progress: Callable[[SelectionProgress], None] | None = None,
 ) -> SelectionResult:
-    """Select a state path monthly using only trailing validation returns."""
+    """Select a state path monthly using only trailing validation returns.
+
+    One *candidate* is one column of ``candidate_states``: a lambda (jump
+    penalty) for the fixed JM, a median-filter smoothing value for the HMM.
+    Each candidate carries its own daily state path for the whole sample.
+
+    On each month-end decision date every candidate is scored on *its own*
+    net-of-cost strategy returns -- the same delay, position, turnover and
+    transaction-cost accounting the live backtest uses -- over the trailing
+    ``protocol.validation_years`` calendar years ending on that date. The
+    highest annualized excess Sharpe wins, ties broken by ``protocol.tie_rule``.
+    The chosen candidate's states are then held until the next decision date,
+    so only past information ever enters a choice.
+    """
     if checkpoint_every < 1:
         raise WalkForwardError("selection checkpoint interval must be positive")
     if protocol.tie_rule not in {"lower_smoothing", "higher_smoothing"}:
@@ -307,6 +320,8 @@ def select_monthly_candidate(
 
     candidate_returns = pd.DataFrame(index=dates, columns=candidates, dtype=float)
     for candidate in candidates:
+        # jumpmodels orders state 0 as the higher-training-cumulative-return
+        # regime. Therefore 1 - state maps state 0 -> equity and state 1 -> cash.
         risky_signal = 1.0 - states[candidate]
         path = apply_signal(
             prepared,
@@ -526,6 +541,8 @@ def _compose_selected_signal(
     for candidate in states.columns:
         mask = active == candidate
         selected_state.loc[mask] = states.loc[mask, candidate]
+    # jumpmodels orders state 0 as the higher-training-cumulative-return regime.
+    # Therefore 1 - state maps state 0 -> equity and state 1 -> cash.
     signal = 1.0 - selected_state
     signal.name = "selected_signal"
     return signal

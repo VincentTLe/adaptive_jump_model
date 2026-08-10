@@ -25,7 +25,27 @@ found such an improvement.
 The comparator is the **sealed v11-ninit60 fixed Jump Model baseline**. *Sealed*
 means its configuration and fitted results are frozen and stored, so every
 challenger is compared against exactly the same numbers rather than a freshly
-refit target.
+refit target. Concretely:
+
+```text
+config      research-calibrated-v11.toml
+sealed run  fixed-baselines-5b12efa2948c-d57a9e7d9c07-b277dea3beb3
+```
+
+The `n_init = 60` that "ninit60" refers to is a setting inside that config, not
+part of its filename.
+
+**Lambda is not permanently fixed.** "Fixed" means the switching penalty does
+not vary from day to day *within* a fitted path. The model keeps one candidate
+path per lambda in the market's grid and re-picks one every month: each
+candidate is scored on its own net-of-cost strategy returns over the trailing
+eight calendar years, and the highest annualized excess Sharpe wins. Only past
+data enters that choice.
+
+**State labels.** State 0 is the favorable / equity regime and state 1 the
+unfavorable / cash regime. That is not an arbitrary convention: the
+`jumpmodels` library sorts fitted states by decreasing cumulative excess return
+on the training window, so the higher-return regime is always state 0.
 
 A challenger is judged by the *paired difference* in each market: the
 challenger's Sharpe minus the fixed JM's Sharpe under identical conditions.
