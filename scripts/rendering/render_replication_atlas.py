@@ -16,7 +16,8 @@ Honesty frame, mirrored on the HTML banner:
 - v10 is a CALIBRATED baseline — its grids were searched against the
   published cells, so agreement with them is by construction, not evidence;
 - every agreement / effective-lambda curve is DESCRIPTIVE and barred from
-  seeding any grid or config (research/jm-effective-lambda-inversion-004.toml);
+  seeding any grid or config
+  (research/contracts/jm-effective-lambda-inversion-004.toml);
 - all numbers are repeatedly inspected development data; no holdout claim.
 """
 
@@ -88,7 +89,7 @@ C_THEIRS, C_V94, C_CONST = "#E69F00", "#56B4E9", "#34d1a3"
 C_V10, C_AGREE_BEAR, C_HMM = "#CC79A7", "#8a3a44", "#7bdcb5"
 NO_CANDIDACY = (
     "Descriptive only — barred from seeding any grid or config "
-    "(research/jm-effective-lambda-inversion-004.toml)."
+    "(research/contracts/jm-effective-lambda-inversion-004.toml)."
 )
 ERA_LINES = {
     "us": [],

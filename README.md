@@ -57,8 +57,18 @@ what proves you have the right contract. Contracts live in
 `fixed-baseline-assumption-audit-001` is `hyperparameter-grid-attribution.toml`,
 and `frequency-ladder-001` stays pinned at `research/frequency-ladder-001.toml`.
 Rows written before the contracts moved still print the old
-`research/<name>.toml` in their descriptive `spec` field; the bytes and the hash
-they froze are unchanged.
+`research/<name>.toml` in their descriptive `spec` field; the move changed no
+contract's bytes.
+
+Hashing does not resolve every row, and that is not a symptom of the move. Of
+the 43 experiment ids carrying a registered hash, 32 match a contract on disk.
+Eight name specs no longer present. Three — `jm-standardizer-geometry-002`,
+`jm-standardizer-geometry-003` and `lagged-capguard-001` — have a contract of
+that name whose current bytes match no hash ever registered for them, so the
+bytes those results were run against are recoverable only from Git history.
+Each of the three is byte-identical to its pre-move version; the divergence
+predates this layout and is recorded as an open question, not as a resolution
+rule.
 
 ## What is in the repository
 
