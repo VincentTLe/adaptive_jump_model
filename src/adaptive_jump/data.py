@@ -94,7 +94,7 @@ def acquire(
     http_get: HttpGetter | None = None,
 ) -> Path:
     """Acquire all configured sources and write a complete manifest last."""
-    root = Path(repo_root or config.path.parent).resolve()
+    root = Path(repo_root or config.repo_root).resolve()
     timestamp = created_at or datetime.now(UTC)
     if timestamp.tzinfo is None:
         raise AcquisitionError("created_at must be timezone-aware")
@@ -317,6 +317,10 @@ def research_git_sha(root: Path) -> str:
         # added later. ':(glob)' keeps '*' from crossing '/', so experiment
         # configs under research/ stay out of scope.
         ":(glob)research-*.toml",
+        # Where protocol configs are moving. Listed now, while it still matches
+        # nothing, so the move itself cannot quietly drop configs out of the
+        # guard: a dirty config must fail the run before and after the move.
+        "configs",
         "pyproject.toml",
         "uv.lock",
         "scripts",

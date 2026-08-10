@@ -86,7 +86,7 @@ def load_frozen_data(
     config: ResearchConfig, manifest_path: str | Path | None = None
 ) -> FrozenData:
     """Resolve and independently verify one exact acquisition manifest."""
-    root = config.path.parent
+    root = config.repo_root
     if manifest_path is None:
         candidates = sorted(
             (root / config.raw_root).glob(f"{config.config_id}-*/manifest.json")
@@ -123,12 +123,9 @@ def prepare_manifest_market(
         (source["market"], source["kind"]): source
         for source in frozen.document["sources"]
     }
-    equity = pd.read_csv(
-        config.path.parent / records[(market_id, "equity")]["canonical"]["path"]
-    )
-    cash = pd.read_csv(
-        config.path.parent / records[(market_id, "cash")]["canonical"]["path"]
-    )
+    root = config.repo_root
+    equity = pd.read_csv(root / records[(market_id, "equity")]["canonical"]["path"])
+    cash = pd.read_csv(root / records[(market_id, "cash")]["canonical"]["path"])
     frame = prepare_market(equity, cash, markets[market_id], config)
     requested = date.fromisoformat(config.document["oos_start"]["requested"])
     start = effective_oos_start(
@@ -190,7 +187,7 @@ def _verify_manifest(
 
 def run_replication(config: ResearchConfig, frozen: FrozenData) -> Path:
     """Run or exactly resume the sealed three-market baseline study."""
-    root = config.path.parent
+    root = config.repo_root
     git_sha = research_git_sha(root)
     identity = {
         "config_sha256": config.sha256,
@@ -508,7 +505,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if arguments.command == "run":
             config = load_config(arguments.config)
-            research = config.path.parent / "research"
+            research = config.repo_root / "research"
             if arguments.study == "replication":
                 frozen = load_frozen_data(config, arguments.manifest)
                 artifact = run_replication(config, frozen)

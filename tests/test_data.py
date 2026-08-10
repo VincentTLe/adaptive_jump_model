@@ -279,6 +279,59 @@ def test_git_provenance_rejects_result_affecting_diff(tmp_path: Path) -> None:
         research_git_sha(tmp_path)
 
 
+@pytest.mark.parametrize(
+    "relative",
+    [
+        # Where protocol configs live today...
+        "research.toml",
+        "research-calibrated-v11.toml",
+        # ...and where Phase B2 will move them. Both must stay guarded, or a
+        # config edited mid-run would be silently absent from the recorded
+        # provenance.
+        "configs/research-calibrated-v11.toml",
+        "configs/baselines/research-calibrated-v11.toml",
+        "configs/baselines/legacy/research-calibrated-v11.toml",
+    ],
+)
+def test_git_provenance_guards_configs_wherever_they_live(
+    tmp_path: Path, relative: str
+) -> None:
+    config = tmp_path / relative
+    config.parent.mkdir(parents=True, exist_ok=True)
+    config.write_text("config_id = 'fixture'\n")
+    _git_commit_all(tmp_path)
+    assert len(research_git_sha(tmp_path)) == 40
+
+    config.write_text("config_id = 'edited'\n")
+    with pytest.raises(AcquisitionError, match="tracked files are dirty"):
+        research_git_sha(tmp_path)
+
+    config.write_text("config_id = 'fixture'\n")
+    sibling = config.with_name("research-untracked.toml")
+    sibling.write_text("config_id = 'untracked'\n")
+    with pytest.raises(AcquisitionError, match="untracked files exist"):
+        research_git_sha(tmp_path)
+
+
+def test_git_provenance_ignores_files_outside_the_guarded_scope(
+    tmp_path: Path,
+) -> None:
+    """The guard must fail on real config edits, not on everything."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src/example.py").write_text("VALUE = 1\n")
+    _git_commit_all(tmp_path)
+
+    (tmp_path / "notes.md").write_text("scratch\n")
+    assert len(research_git_sha(tmp_path)) == 40
+
+
+def _git_commit_all(root: Path) -> None:
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+    identity = ["-c", "user.name=Test", "-c", "user.email=test@example.com"]
+    subprocess.run(["git", *identity, "add", "."], cwd=root, check=True)
+    subprocess.run(["git", *identity, "commit", "-qm", "fixture"], cwd=root, check=True)
+
+
 def _fixture_run(root: Path) -> Path:
     """Acquire through the two live providers: pinned local files plus FRED."""
     payload = b"date,value\n2023-01-03,100.0\n2023-12-29,101.0\n"
