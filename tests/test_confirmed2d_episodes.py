@@ -1,6 +1,6 @@
 """Focused regressions for the episode-anatomy helpers.
 
-`scripts/probe_confirmed2d_episodes.py` reduces a paired daily return
+`scripts/diagnostics/probe_confirmed2d_episodes.py` reduces a paired daily return
 difference to divergence EPISODES, and the conclusions drawn from it (every
 episode is one day; one US day carries more than the whole net; the frozen
 partition is not cost-complete and its residual is exactly the settlement days)
@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[1]
 @pytest.fixture(scope="module")
 def module():
     """Import the probe without executing ``main()``."""
-    path = ROOT / "scripts/probe_confirmed2d_episodes.py"
+    path = ROOT / "scripts/diagnostics/probe_confirmed2d_episodes.py"
     spec = importlib.util.spec_from_file_location("confirmed2d_under_test", path)
     loaded = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = loaded

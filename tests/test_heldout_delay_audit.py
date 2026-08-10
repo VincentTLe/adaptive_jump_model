@@ -39,13 +39,12 @@ MARKET_HEADER = {"S&P 500": "us", "DAX": "de", "Nikkei 225": "jp"}
 ROW_LABEL = {"Return": "cagr", "Sharpe": "sharpe", "Calmar": "calmar"}
 
 
-def _module(name: str):
-    """Import a script by path without running its ``main()``."""
+def _module(relative: str):
+    """Import a script by its path under ``scripts/`` without running ``main()``."""
     if str(ROOT / "scripts") not in sys.path:
         sys.path.insert(0, str(ROOT / "scripts"))
-    spec = importlib.util.spec_from_file_location(
-        f"{name}_under_audit", ROOT / "scripts" / f"{name}.py"
-    )
+    path = ROOT / "scripts" / f"{relative}.py"
+    spec = importlib.util.spec_from_file_location(f"{path.stem}_under_audit", path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
@@ -285,13 +284,14 @@ def test_frozen_spec_matches_its_registry_hash():
 
 def test_the_driver_runs_the_arms_the_spec_declares():
     """The driver must not carry its own copy of a grid, an arm or a delay."""
-    driver = _module("run_heldout_delay")
+    driver = _module("experiments/run_heldout_delay")
     spec = _spec()
     assert set(spec["arms"]) == {"A_sealed_default", "B_minimax_search"}
     assert spec["protocol"]["held_out_delays"] == [5, 10]
     assert spec["protocol"]["in_sample_delay"] == 1
     assert tuple(spec["protocol"]["cells"]) == driver.CELLS
-    source = (ROOT / "scripts/run_heldout_delay.py").read_text(encoding="utf-8")
+    driver_path = ROOT / "scripts/experiments/run_heldout_delay.py"
+    source = driver_path.read_text(encoding="utf-8")
     for arm in spec["arms"].values():
         for market in spec["sources"]["markets"]:
             for value in arm[market]:

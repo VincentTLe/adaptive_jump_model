@@ -74,15 +74,14 @@ def _require(*paths: Path) -> None:
             pytest.skip(f"{path.relative_to(ROOT)} not built in this checkout")
 
 
-def _module(name: str):
-    """Import a script by path without running its ``main()``."""
+def _module(relative: str):
+    """Import a script by its path under ``scripts/`` without running ``main()``."""
     if str(ROOT / "scripts") not in sys.path:
         sys.path.insert(0, str(ROOT / "scripts"))
     if str(ROOT / "src") not in sys.path:
         sys.path.insert(0, str(ROOT / "src"))
-    spec = importlib.util.spec_from_file_location(
-        f"{name}_under_audit", ROOT / "scripts" / f"{name}.py"
-    )
+    path = ROOT / "scripts" / f"{relative}.py"
+    spec = importlib.util.spec_from_file_location(f"{path.stem}_under_audit", path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
@@ -96,7 +95,7 @@ def spec() -> dict:
 
 @pytest.fixture(scope="module")
 def runner():
-    return _module("run_frequency_ladder")
+    return _module("experiments/run_frequency_ladder")
 
 
 def _refits(market: str) -> pd.DataFrame:

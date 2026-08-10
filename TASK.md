@@ -116,7 +116,7 @@ Retracted 2026-08-09T07:40Z, before it reached any DA-JM decision:
    a positive delta.
 
 What is *not* retracted: inference on a Sharpe difference is a legitimate,
-studied problem. `scripts/studentized_sharpe_difference.py` now implements the
+studied problem. `scripts/diagnostics/studentized_sharpe_difference.py` now implements the
 Ledoit & Wolf (2008) studentized time-series bootstrap properly (HAC
 delta-method SE over the moment vector, bootstrap-t on a dependence-preserving
 resampler). Results (confirmed_2d minus fixed JM, seed 0, delay 1): us +0.00439

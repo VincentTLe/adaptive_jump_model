@@ -1,8 +1,9 @@
 """Focused regressions for the studentized Sharpe-difference helpers.
 
-`scripts/studentized_sharpe_difference.py` re-derives the repo's Sharpe from a
-vector of uncentered moments so that the difference of two Sharpe ratios is a
-smooth function of means (Ledoit & Wolf 2008). Every test here pins a property
+`scripts/diagnostics/studentized_sharpe_difference.py` re-derives the repo's
+Sharpe from a vector of uncentered moments so that the difference of two Sharpe
+ratios is a smooth function of means (Ledoit & Wolf 2008). Every test here pins
+a property
 whose violation silently produces a number that no other artifact in this
 project would reproduce:
 
@@ -42,7 +43,7 @@ ROOT = Path(__file__).resolve().parents[1]
 @pytest.fixture(scope="module")
 def module():
     """Import the script without executing ``main()``."""
-    path = ROOT / "scripts/studentized_sharpe_difference.py"
+    path = ROOT / "scripts/diagnostics/studentized_sharpe_difference.py"
     spec = importlib.util.spec_from_file_location("studentized_under_test", path)
     loaded = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = loaded

@@ -50,7 +50,7 @@ select = ["B", "E", "F", "I", "UP"]
 # has to sit on the same line to be readable as a pair, which cannot fit in 88.
 # Wrapping them would make the one thing this table exists for -- checking a
 # digest against a name by eye -- harder rather than easier.
-"scripts/build_external_sources.py" = ["E501"]
+"scripts/data/build_external_sources.py" = ["E501"]
 # Shu's Table 4, transcribed verbatim into the module docstring so every target
 # number in this project has one auditable origin. Reflowing the transcription
 # to fit a line limit would destroy the only property it has.

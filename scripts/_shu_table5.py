@@ -30,9 +30,9 @@ here turned it into a testable prediction. That is false and was retracted by
 docs/audit/heldout-delay-001-audit.md, which named this exact docstring as "the
 load-bearing false statement". The evidence:
 
-  scripts/probe_jm_grid_exhaustive2.pass_mask()  screens candidate grids
+  scripts/experiments/probe_jm_grid_exhaustive2.pass_mask()  screens candidate grids
       directly against the Table-5 JM cells at delays 5 and 10, tolerance 0.05
-  scripts/gate_v10_reseal.py:89-96               fails the reseal unless every
+  scripts/audit/gate_v10_reseal.py:89-96               fails the reseal unless every
       delay-5 and delay-10 cell is inside 0.05 in every market
 
 Any grid drawn from those searches is 18/18 inside this screen BY CONSTRUCTION,

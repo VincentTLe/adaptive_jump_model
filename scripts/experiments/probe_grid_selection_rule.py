@@ -1,0 +1,243 @@
+"""grid-selection-rule-001: order the admissible grids by a stated rule.
+
+The v10 contract picked its per-market grid by taking the first row of an
+examples file. This replaces that with a rule declared before any agreement is
+computed: among the grids ALREADY qualified by the published table, adopt the
+one whose monthly-selected state sequence agrees most with the sequence the
+authors themselves ran, read out of the published Figure 5 vectors.
+
+No new grid search happens here. No strategy metric enters the selection.
+"""
+
+import itertools
+import os
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from concurrent.futures import ProcessPoolExecutor  # noqa: E402
+from multiprocessing import get_context  # noqa: E402
+
+from experiments.probe_jm_grid_exhaustive2 import (  # noqa: E402
+    _arm_cache,
+    arm_key,
+    choice_matrix,
+    digest_array,
+)
+
+# IN/BEST overridable via env var (same mechanism as the -008/-009
+# scripts, added 2026-08-08): IN must match AJM_EXHAUSTIVE_OUT and BEST
+# must match AJM_PER_MARKET_OUT from whichever -008/-009 run this reads.
+# Referenced inside _sweep(), which runs in forkserver worker processes.
+IN = Path(os.environ.get(
+    "AJM_EXHAUSTIVE_OUT", str(ROOT / "artifacts/jm-residual/08-exhaustive-nine-arms")
+))
+BEST = Path(os.environ.get(
+    "AJM_PER_MARKET_OUT", str(ROOT / "artifacts/jm-residual/09-per-market-grids")
+))
+FIG = ROOT / "artifacts/hmm-residual/04-figure6-path"
+OUT = Path(os.environ.get(
+    "AJM_RULE_OUT", str(ROOT / "artifacts/grid-selection-rule/01-rule")
+))
+MARKETS = ("us", "de", "jp")
+DELAYS = (1, 5, 10)
+SIZES = range(2, 9)
+# ADOPTED = the CURRENT baseline this run should check against. Defaults
+# to v10's original grids (the question -001 first asked); the n_init=60
+# rerun overrides this via env var to v11's grids (the question that
+# actually matters once v11 is the adopted baseline).
+_DEFAULT_ADOPTED = {
+    "us": "0.0,21.544346900318832,70.0",
+    "de": "150.0,500.0",
+    "jp": "10.0,220.0",
+}
+ADOPTED = {
+    market: tuple(
+        float(v) for v in os.environ.get(
+            f"AJM_ADOPTED_{market.upper()}", _DEFAULT_ADOPTED[market]
+        ).split(",")
+    )
+    for market in MARKETS
+}
+
+
+def authors_states(market: str) -> pd.Series:
+    """Their regime sequence: the shading is the position, shifted by t+2."""
+    path = pd.read_csv(FIG / f"position-fig5-{market}-jm.csv", parse_dates=["date"])
+    position = path.set_index("date")["position"].astype(float)
+    return (1.0 - position).shift(-2).dropna()
+
+
+def _sweep(task):
+    """Agreement for every admissible grid in one (market, size, slice)."""
+    market, size, lo, hi, target_values, target_positions = task
+    keys = [arm_key(market, delay) for delay in DELAYS]
+    caches = {key: _arm_cache(key) for key in keys}
+    # The admissible set is exactly the one -009 defined: us reaches 14 of 14,
+    # so its delay-1 set is the full-pass digests; de and jp reach only 13 of
+    # 14, so their delay-1 set is the best-7-of-8 digests. Delays 5 and 10 are
+    # full-pass in every market.
+    passes = {}
+    for key in keys:
+        if key.endswith("-d1") and market in ("de", "jp"):
+            passes[key] = np.load(BEST / f"{market}-d1-7of8-digests.npy")
+        else:
+            passes[key] = np.load(IN / f"{key}-pass-digests.npy")
+    primary = caches[keys[0]]
+    lambdas = primary["lambdas"]
+    states = primary["states"]
+    governing = primary["governing"]
+
+    combos = np.array(
+        list(
+            itertools.islice(
+                itertools.combinations(range(len(lambdas)), size), lo, hi
+            )
+        ),
+        dtype=np.int64,
+    )
+    if not len(combos):
+        return []
+
+    best: list = []
+    seen: dict[bytes, float] = {}
+    for start in range(0, len(combos), 4000):
+        block = combos[start : start + 4000]
+        good = np.ones(len(block), dtype=bool)
+        block_choices = None
+        for key in keys:
+            choices, invalid = choice_matrix(caches[key], block)
+            if key == keys[0]:
+                block_choices = choices
+            digests = digest_array(
+                [choices[i].tobytes() for i in range(len(block))]
+            )
+            good &= np.isin(digests, passes[key]) & ~invalid
+            if not good.any():
+                break
+        if not good.any():
+            continue
+        for index in np.nonzero(good)[0]:
+            key_bytes = block_choices[index].tobytes()
+            score = seen.get(key_bytes)
+            if score is None:
+                # day -> selected lambda column -> state
+                chosen = block_choices[index][governing]
+                ours = states[np.arange(len(states)), chosen]
+                mine = ours[target_positions]
+                both = ~np.isnan(mine)
+                score = (
+                    float((mine[both] == target_values[both]).mean())
+                    if both.any()
+                    else float("nan")
+                )
+                seen[key_bytes] = score
+            best.append((score, tuple(float(lambdas[j]) for j in block[index])))
+    # No per-chunk truncation: the admissible sets are small enough (US
+    # 36,657 / DE 366 / JP 2,948 per jm-per-market-grid-009) to keep every
+    # row and sort once at the market level in main(). An earlier version of
+    # this probe returned best[:200] per chunk, which silently dropped the
+    # tail of chunks with >200 admissible grids (recorded as a CORRECTION in
+    # the registry, 2026-08-01T05:28:40Z: US retained 11,181/36,657, JP
+    # retained 1,513/2,948; DE was unaffected at 366/366). Fixed 2026-08-07.
+    best.sort(key=lambda row: (-row[0], len(row[1]), max(row[1]), row[1]))
+    return best
+
+
+def main() -> int:
+    n_jobs = int(sys.argv[1]) if len(sys.argv) > 1 else 28
+    OUT.mkdir(parents=True, exist_ok=True)
+    summary = []
+    for market in MARKETS:
+        cache = _arm_cache(arm_key(market, 1))
+        dates = pd.DatetimeIndex(cache["dates"].astype("datetime64[ns]"))
+        theirs = authors_states(market)
+        common = dates.intersection(theirs.index)
+        positions = np.searchsorted(dates.values, common.values)
+        target = theirs.loc[common].to_numpy(float)
+        print(
+            f"{market}: comparing {len(common)} days against the authors' sequence "
+            f"({common[0].date()} to {common[-1].date()})",
+            flush=True,
+        )
+
+        tasks = []
+        total = len(cache["lambdas"])
+        for size in SIZES:
+            count = len(list(itertools.combinations(range(total), size)))
+            step = max(1, count // 24)
+            for lo in range(0, count, step):
+                tasks.append(
+                    (market, size, lo, min(lo + step, count), target, positions)
+                )
+        executor = ProcessPoolExecutor(
+            max_workers=n_jobs, mp_context=get_context("forkserver")
+        )
+        try:
+            collected: list = []
+            for chunk in executor.map(_sweep, tasks):
+                collected.extend(chunk)
+        finally:
+            executor.shutdown()
+
+        if not collected:
+            raise SystemExit(
+                f"{market}: no admissible grid was found; the digest sets do not "
+                "describe the set -009 reported and the rule cannot be applied"
+            )
+        collected.sort(key=lambda row: (-row[0], len(row[1]), max(row[1]), row[1]))
+        frame = pd.DataFrame(
+            [
+                {"agreement": s, "grid": "|".join(f"{v:g}" for v in g)}
+                for s, g in collected
+            ]
+        )
+        frame.to_csv(OUT / f"ranking-{market}.csv", index=False)
+        adopted_key = "|".join(f"{v:g}" for v in ADOPTED[market])
+        adopted_row = frame[frame.grid == adopted_key]
+        winner_score, winner_grid = collected[0]
+        ties = sum(1 for s, _ in collected if s == winner_score)
+        adopted_score = (
+            float(adopted_row["agreement"].iloc[0])
+            if len(adopted_row)
+            else float("nan")
+        )
+        print(
+            f"  winner  {'|'.join(f'{v:g}' for v in winner_grid):<28} "
+            f"agreement {winner_score:.4f}  ({ties} grids tie)"
+        )
+        print(
+            f"  adopted {adopted_key:<28} agreement {adopted_score:.4f}"
+            f"  -> {'SAME' if winner_grid == ADOPTED[market] else 'DIFFERS'}"
+        )
+        print(
+            f"  admissible grids ranked: {len(frame)}; agreement spread "
+            f"[{frame.agreement.min():.4f}, {frame.agreement.max():.4f}]",
+            flush=True,
+        )
+        summary.append(
+            {
+                "market": market,
+                "compared_days": len(common),
+                "winner": "|".join(f"{v:g}" for v in winner_grid),
+                "winner_agreement": winner_score,
+                "winner_ties": ties,
+                "adopted": adopted_key,
+                "adopted_agreement": adopted_score,
+                "differs": winner_grid != ADOPTED[market],
+                "ranked": len(frame),
+            }
+        )
+    pd.DataFrame(summary).to_csv(OUT / "summary.csv", index=False)
+    print("\nwrote", OUT / "summary.csv")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

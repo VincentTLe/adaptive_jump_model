@@ -18,7 +18,7 @@ VARIANT = ROOT / "configs/baselines/legacy/research-expanding-v8-5.toml"
 
 
 def load_claim_checker() -> ModuleType:
-    path = ROOT / "scripts" / "check_paper_claims.py"
+    path = ROOT / "scripts" / "audit" / "check_paper_claims.py"
     spec = importlib.util.spec_from_file_location("check_paper_claims", path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
