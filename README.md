@@ -1,102 +1,106 @@
 # Adaptive Jump Model
 
-This project asks one research question: can a causal adaptive Jump Model beat
-Shu-style fixed Jump Models and ordinary market-timing controls on public data
-that was not used to tune the method?
+A research repository studying **causal regime-switching models for equity/cash
+market timing**, built on the Statistical Jump Model of Shu, Yu, and Mulvey
+(2024, arXiv:2402.05272).
 
-## Scientific Position
+## The scientific question
 
-An exact reconstruction of Shu, Yu, and Mulvey's final-v3 JM row is not
-identifiable from the public paper and available proxy data. The repository's
-large grid searches found settings that match published cells, but those
-settings are target-calibrated development artifacts, not reproduction
-measurements. They must not be used as evidence that the authors' method was
-recovered.
+> Can we improve the Shu-style Statistical Jump Model for causal equity/cash
+> market timing?
 
-That closes grid hunting as the main task. The lagged-evidence extension
-(`AJM-EXT-001`) has since been run to completion and **closed NOT SUPPORTED**
-(2026-08-06, transport gate 0/3 — EU −0.167 / JP −0.162 / NA −0.176, receipt
-`docs/audit/2026-08-06-ajm-ext-d1-receipt.md`); its confirmation region was
-never opened and is burned. The next direction under preparation is the
-**Duration-Aware Jump Model (DA-JM)** — an explicit regime-age (semi-Markov)
-cost that nests the fixed JM exactly at `beta = 1`; formalization and
-verification receipts live in `docs/theory/` and `docs/audit/`, with no
-frozen experiment spec yet. For current state always read
-[TASK.md](TASK.md) and the registry — they are the authority, not this file.
+Everything in this repository exists to answer that one question honestly. Most
+of what has been tried has failed, and those failures are recorded rather than
+hidden.
 
-## Closed Experiment: AJM-EXT-001 (lagged evidence)
+## What a Statistical Jump Model is
 
-Challenger: lagged evidence with `beta = ln(4)`. It changes the transition cost
-using only the prior day's state-loss evidence. At `beta = 0` it exactly nests
-the fixed JM. Result: NOT SUPPORTED on all three transport regions (above).
+A Jump Model looks at daily market features — here, downside deviation and two
+Sortino-style risk measures — and assigns each day to one of two regimes:
+favorable or unfavorable. The strategy holds the equity index in the favorable
+regime and cash in the unfavorable one.
 
-Paired fixed-JM baselines:
+Two things make it a *jump* model rather than a plain classifier:
 
-| Grid | Standardization |
-| --- | --- |
-| Shu arXiv-v1 `{10,22,50,100,220,500,1000}` | trailing-window ddof=0 |
-| Shu arXiv-v1 `{10,22,50,100,220,500,1000}` | causal expanding ddof=1 |
-| Shu-v3 Table-3 `{0,5,15,35,70,150}` | trailing-window ddof=0 |
-| Shu-v3 Table-3 `{0,5,15,35,70,150}` | causal expanding ddof=1 |
+1. It fits the regime centers and the day-by-day regime path together, choosing
+   the path that best explains the data.
+2. It charges a penalty, `lambda`, every time the path switches regimes. A large
+   `lambda` produces long, stable regimes; a small one produces a jumpy path
+   that trades constantly and pays transaction costs.
 
-*Table-3 values are the paper's illustrative shift-rate example (lines
-620-648 of the extracted text), not a disclosed selection/production grid;
-used here as one candidate baseline family with published provenance,
-alongside the withdrawn arXiv-v1 grid.*
+Every result here is **causal**: a decision made at the end of day `t` uses only
+data up to `t`, and earns its return at `t+2`. Trading costs 10 bps one way.
+Development data stops at 2023-12-31.
 
-All arms use the same 3,000-observation fit window, January/July refits,
-eight-year past-only validation, `t+2` return timing, and 10-bps one-way cost.
-The complete data roles, transport gate, confirmation rule, and stop budget are
-in [the frozen contract](research/ajm-ext-001.toml), hash-pinned by its
-registry event (2026-08-05).
+## Where a human should start
 
-Current status is [TASK.md](TASK.md).
+1. **README.md** — this file: what the project is and how to run it.
+2. **[CURRENT.md](CURRENT.md)** — the current research state in plain English:
+   the baseline, what we know, what failed, the active idea, and the next step.
+   This is the file to read to find out where the project actually stands.
+3. **AGENTS.md / CLAUDE.md** — read these only if you are driving this
+   repository with an AI coding agent. They are behavior rules for agents, not
+   documentation of results.
 
-## What Is Verified
+`TASK.md`, `research/experiment_registry.jsonl`,
+`research/SCIENTIFIC_LEDGER.md`, `docs/audit/`, and `artifacts/` are the
+detailed provenance and audit trail. They are the authority when a specific
+number is in dispute, but you do not need to read them to understand the
+project.
 
-The shared model tests cover causal fitting, exact serial/parallel parity,
-checkpoint resume, fixed-JM nesting, and future-prefix invariance. The canonical
-fitter now rejects a fit window if its objective decreases as lambda increases;
-such a decrease is impossible at the global optimum and exposes a local-fit
-failure. Passing this gate is necessary, but does not prove a global optimum.
+## What is in the repository
 
-The older DD-only development result improved net Sharpe in all three local
-markets but beat both buy-and-hold and HMM only in the US. It did not establish
-a cross-market model and is not the active challenger.
+```text
+CURRENT.md                 human-facing current research state  <- start here
+TASK.md                    detailed / legacy research state
+src/adaptive_jump/         the pipeline: data -> features -> models -> selection -> P&L
+tests/                     behavioral and audit regression tests
+scripts/                   historical builders, diagnostics, and audit programs
+research/                  frozen experiment contracts (*.toml), registry, ledger
+docs/theory/               mathematical formalizations (including DA-JM)
+docs/audit/                independent verification receipts
+docs/atlas/                the replication atlas
+artifacts/                 sealed run outputs and audit evidence (untracked)
+data/                      inputs; data/raw/ is immutable (untracked)
+paper/                     manuscript draft and reference PDFs
+.agent/                    cross-agent handoff log
+```
 
-## Run And Verify
+## Environment
+
+Python 3.12.3, managed with [uv](https://docs.astral.sh/uv/). The project is
+installed editable into `.venv` and the dependency set is pinned by `uv.lock`.
+
+```bash
+cd /home/tle/adaptive_jump_model
+source .venv/bin/activate
+```
+
+If the environment ever needs to be rebuilt from scratch:
 
 ```bash
 uv python install 3.12.3
 uv sync --locked --extra data
-.venv/bin/pytest -q
-.venv/bin/adaptive-jump verify --run artifacts/<run_id>
 ```
 
-Do not run a new fetch or experiment without its frozen contract and data role.
-Raw data and runtime outputs remain ignored under `data/` and `artifacts/`.
+Do not install packages into `.venv` with `pip`; this project's dependency set
+is resolved and locked by uv.
 
-## Repository Map
+## Basic commands
 
-```text
-research/ajm-ext-001.toml  closed scientific contract (NOT SUPPORTED, 2026-08-06)
-TASK.md                    current phase, gates, and next action
-research/experiment_registry.jsonl
-                           append-only experiment and correction history
-research/SCIENTIFIC_LEDGER.md
-                           detailed scientific evidence
-research/STATUS.md         quantitative development results (old README tables)
-paper/                     manuscript draft; figures need an archive restore
-src/adaptive_jump/         shared data -> features -> models -> selection -> P&L
-tests/                     behavioral and audit regression tests
-scripts/                   historical builders, diagnostics, and audit programs
-artifacts/                 four live replay dependencies plus compact audit evidence
-data/                      v10 local inputs and the one live processed generation
-docs/audit/                historical review findings
-.agent/                    cross-agent handoff log
+```bash
+pytest -q                                   # run the test suite
+ruff check .                                # lint
+
+adaptive-jump --help                        # fetch | run | verify | report | figures
+adaptive-jump verify --run artifacts/<run_id>   # re-verify a sealed run
 ```
 
-## Cold Archive
+Do not launch a new data fetch or a new experiment without its frozen contract
+in `research/*.toml` and a declared data role. Raw data and runtime outputs stay
+untracked under `data/` and `artifacts/`.
+
+## Cold archive
 
 The complete pre-cleanup workspace and Git history are stored at:
 
@@ -106,4 +110,4 @@ The complete pre-cleanup workspace and Git history are stored at:
 
 `ARCHIVE.sha256`, a per-file manifest, `zstd -t`, and `git bundle verify` all
 passed. This archive is on the same physical machine, so it protects against
-cleanup mistakes, not disk failure.
+cleanup mistakes, not against disk failure.
