@@ -1,5 +1,11 @@
 # Task state (2026-08-09, reconciled with the registry after PR #10)
 
+> **Human readers: start with [CURRENT.md](CURRENT.md).** It gives the current
+> research state — question, baseline, findings, failures, active idea, next
+> step — in plain English. This file is the detailed research state: run IDs,
+> hashes, seed tables, and the full history behind those conclusions. Read it
+> when you need the underlying detail, not to find out where the project stands.
+
 This file is written from `research/experiment_registry.jsonl` and `main`. Where
 the two disagree, the registry wins and this file is wrong.
 
