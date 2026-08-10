@@ -17,7 +17,8 @@ Status: **math only, no code, no frozen experiment spec yet.**
   (registry `da-jm-open-questions-factfinding-2026-08-09`) and the owner
   decisions of 2026-08-09 (D_max=504 with hazard-level geometric tail;
   left-censored first in-window segment; restricted-mean anchors computed
-  from v12; beta roles 2.0 primary / 0.5 adversarial / 1.0 identity). The
+  from the approved canonical baseline, to be selected before any anchor is
+  computed; beta roles 2.0 primary / 0.5 adversarial / 1.0 identity). The
   v1 receipt covers the v1 math; every v2-specific claim below cites the
   fact-finding NOTE that verified it.
 
@@ -157,7 +158,7 @@ days on the sealed canonical paths — too few to identify hazard shape
 beyond it; and the failure mode DA-JM targets (short re-entries) lives at
 young ages. If the cap binds often it is reported as a limitation.
 
-## 5. Anchors: restricted mean, interior segments, per (market, state), from v12
+## 5. Anchors: restricted mean, interior segments, per (market, state)
 
 Owner decision 2026-08-09 (replacing v1's sigmoid back-out AND the interim
 full-mean proposal):
@@ -166,8 +167,10 @@ full-mean proposal):
 mu504_{m,k} = mean( min(D_i, 504) )
 ```
 
-over the **interior** segments i of market m, state k, of the **v12**
-canonical monthly-selected fixed-JM delay-1 state path — excluding the
+over the **interior** segments i of market m, state k, of the canonical
+monthly-selected fixed-JM delay-1 state path of the **baseline explicitly
+approved and frozen for the eventual DA-JM experiment** (see the note at the
+end of this section) — excluding the
 first segment (left-censored: the regime may predate the OOS window) and
 the final segment (right-censored: still running at sample end). Then for
 every beta arm, solve the scale so the restricted mean matches:
@@ -201,10 +204,24 @@ Verified properties (fact-finding NOTE):
   full mean 464.5 vs median 97 over only 15 segments) and is consistent
   with the memory zone: the statistic never looks past the age range where
   the model has memory.
-- Anchors are computed from sealed v12 artifacts (deterministic, never
-  searched) and are disclosed as in-sample-flavored development anchors.
-  **They must be recomputed from v12, not v11** — v12 changes DE's grid
-  and therefore DE's canonical path.
+- Anchors are computed from sealed artifacts (deterministic, never searched)
+  and are disclosed as in-sample-flavored development anchors.
+
+**Which baseline the anchors come from is NOT yet decided, and no anchor may
+be computed until it is.** Earlier versions of this document said the anchors
+come from v12. That is withdrawn: **v12 failed** its own pre-frozen
+convergence gate (`v12-de-ninit180-stress-gate`, 2026-08-09) and was stopped,
+it is never retroactively rescued, and no v12 artifact exists to anchor to.
+The anchors come from the canonical baseline that is explicitly approved and
+frozen for the DA-JM experiment itself — which today is undecided, because the
+currently canonical v11-ninit60 is known defective on DE (its grid fails the
+admissibility rule that selected it) and its replacement protocol (working
+name v13) requires an estimand-terms optimizer-fidelity requirement frozen
+before it runs. Since the choice of baseline changes each market's canonical
+path, and DE's most of all, computing anchors before the baseline is selected
+would silently fix them to a path that may not be the one the experiment uses.
+The anchor computation is therefore blocked on that decision, not merely
+pending.
 
 ## 6. Interpretation of beta (excess form)
 
@@ -307,8 +324,10 @@ Decided (frozen intent; the experiment spec will restate them verbatim):
 3. **No duration state across refits** — architecture fact, nothing to
    decide (Section 7).
 4. **Anchors**: restricted mean to 504, interior segments only, per
-   (market, state), computed from **v12**, re-anchored per beta
-   (Section 5).
+   (market, state), re-anchored per beta (Section 5). The baseline they are
+   computed FROM is deliberately not decided here — see "Still open" below;
+   it is the baseline explicitly approved and frozen for the DA-JM
+   experiment, and **no anchor is computed until that baseline is selected**.
 5. **beta roles**: 2.0 PRIMARY (preregistered, motivated by the
    August-2022 autopsy BEFORE DA-JM existed), 0.5 ADVERSARIAL control,
    1.0 IDENTITY gate. No winner selection between 0.5 and 2.0 on the
@@ -396,25 +415,38 @@ Still open (to pin in the spec, none block the doc):
   requirement, not a gate; the resampling itself is descriptive) and
   the exact synthetic-recovery metric for classes A/B/C.
 - Per-state beta: explicitly deferred (one new parameter only).
-- **Which baseline the anchors are computed from.** The v12 reseal is
-  STOPPED: its pre-frozen convergence gate FAILED (registry
-  `v12-de-ninit180-stress-gate`, 2026-08-09 — 254/255 DE fits identical
-  at n_init=180, one window improved, so v12 does not seal at n_init=60).
-  Per owner decision the response is NOT to escalate n_init again but to
-  characterize whether optimizer uncertainty reaches the estimand at all
-  (registry `optimizer-fidelity-characterization-2026-08-09`, five
-  independent seed families). Anchors are computed from whichever
-  baseline stands after that characterization, and cannot be computed
-  before it.
+- **Which baseline the anchors are computed from — the blocking one.**
+  **v12 FAILED and is not a candidate.** Its pre-frozen convergence gate
+  stopped it (registry `v12-de-ninit180-stress-gate`, 2026-08-09 — 254/255
+  DE fits identical at n_init=180, one window improved; the rule required
+  objectives AND states to match), that record stands permanently, and it is
+  never retroactively rescued. Nothing in this document may say the anchors
+  come from v12.
+
+  The optimizer-fidelity characterization is now COMPLETE (verdict
+  PROPAGATING, with the paired L4 delta the level that applies to a
+  challenger). Its result is a statement about the CRITERION — objective
+  identity across restart depths is too strong for an estimand-fidelity
+  policy — and not a rehabilitation of any grid. The currently canonical
+  v11-ninit60 remains known defective on DE, and its replacement protocol
+  (working name v13) requires an estimand-terms fidelity requirement frozen
+  BEFORE it runs; that has not happened, so **no approved DA-JM baseline
+  exists yet**. Anchors come from the canonical baseline explicitly approved
+  and frozen for this experiment, and cannot be computed before that
+  selection is made.
 
 ## 9. What this document is not
 
 No frozen experiment spec, no code, no anchors computed yet.
 
 Order as revised by the owner after the v12 gate failed (2026-08-09):
-v12 stress gate (**DONE — FAILED, v12 stopped**) → optimizer-fidelity
-characterization with independent seeds (**running**) → decide the
-baseline question from the frozen escalation ladder, with **no further
-n_init escalation under either outcome** → (parallel: lambda50 donor
-rebuild + metadata-driven trace receipt) → second novelty pass (**DONE**)
-→ freeze DA-JM spec → implement + mechanism gates → only then P&L.
+v12 stress gate (**DONE — FAILED, v12 stopped, never rescued**) →
+optimizer-fidelity characterization with independent seeds (**DONE —
+PROPAGATING, paired L4 verified**) → second novelty pass (**DONE**) →
+**decide the canonical baseline for this experiment**, with no further
+n_init escalation under any outcome and with any replacement protocol's
+fidelity requirement frozen in estimand terms before it runs (**OPEN — this
+is the blocker**) → compute anchors from that approved baseline → freeze the
+DA-JM spec → implement + mechanism gates → only then P&L.
+
+No anchors have been computed. No spec is frozen. No code exists.

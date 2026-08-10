@@ -4,10 +4,19 @@ Why episodes. confirmed_2d is a causal post-filter that can only act at a
 regime transition: it holds the previous state until the raw state repeats.
 Its position path is therefore identical to the fixed JM's on the overwhelming
 majority of days, and the arms' return paths coincide except around the
-handful of transitions the filter delays. A daily bootstrap over ~8,500 days
-treats those days as ~8,500 independent draws, which misstates the effective
-information. The unit of analysis that matches the mechanism is the DIVERGENCE
-EPISODE.
+handful of transitions the filter delays. The unit of analysis that matches
+the mechanism is therefore the DIVERGENCE EPISODE.
+
+WORDING CORRECTION (2026-08-09, owner). This paragraph previously said that a
+daily block bootstrap "treats those days as ~8,500 independent draws". That is
+wrong about the method and is withdrawn: a block bootstrap does not assume the
+daily observations are independent -- resampling blocks rather than rows is
+precisely how it preserves serial dependence. The real limitation is in the
+ESTIMAND, not the resampler: the daily-return Sharpe difference between these
+two arms is dominated by only tens of transition-related observations, so
+episode-level analysis is the more mechanism-relevant unit of analysis. Only
+this motivation paragraph is affected; the definition block below is unchanged
+and was still fixed before any result was seen.
 
 DEFINITION FIXED BEFORE ANY RESULT WAS SEEN (owner brief, 2026-08-09; this
 docstring records the definition as it was written down before the first run,
@@ -559,6 +568,13 @@ def render(
         f"{summary['closed_n_positive']} positive of "
         f"{summary['closed_n_positive'] + summary['closed_n_negative']}, "
         f"p = {summary['closed_sign_test_p_two_sided']:.4f}",
+        "   HOW TO READ IT (owner wording, 2026-08-09): the closed-episode sign",
+        "   counts are approximately balanced and do not reject a 50/50 sign",
+        "   model under the descriptive sign-test assumptions (episodes treated",
+        "   as independent Bernoulli trials, zero deltas dropped). That is all",
+        "   the statistic says. A non-significant sign test does NOT prove the",
+        "   sign process is a coin flip: at these counts the test has little",
+        "   power, and failing to reject is not evidence for the null.",
         "",
         "SECONDARY (robustness only): episodes padded +/-5 trading days, merged",
         f"   merged episodes {summary['padded_n_episodes']}   days "

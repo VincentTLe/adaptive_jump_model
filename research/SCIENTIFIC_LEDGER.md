@@ -1195,3 +1195,37 @@ written into `docs/theory/da-jm-formalization.md` item 6): effect size →
 cross-market transport → mechanism consistency → robustness → external
 transport → resampling evidence last and descriptive only. Neither
 "interval contains 0" nor "interval excludes 0" decides success.
+
+## 2026-08-09 — the Sharpe I bootstrapped was not the Sharpe this repo reports
+
+**Defect (mine), found and fixed in the same patch.**
+`scripts/studentized_sharpe_difference.py` re-derives the Sharpe from
+uncentered moments so the difference is a smooth function of means (the
+Ledoit–Wolf construction). I wrote the denominator as
+`sqrt(second_moment − mean²)` — the **population** standard deviation — while
+every other Sharpe in this repository comes from `performance_metrics` with
+`volatility_ddof=1`, the **sample** standard deviation. The two are different
+estimators, so the Δ I reported was a number no other artifact here could
+reproduce. Nothing flagged it: the intervals looked reasonable, and a
+plausible-looking number is exactly what this failure mode produces.
+
+The fix is exact matching, not a renaming. By the Bessel identity
+`(1/(T−1))Σ(r−m)² = (T/(T−1))(g − m²)`, the whole correction is one constant,
+`sqrt((T−1)/T)`, applied to Δ and to `grad f`. Because it multiplies `Δ̂`,
+`Δ*`, `s(Δ̂)` and `s(Δ*)` alike and every resample has length T, **the
+studentized statistic and both p-values are invariant** — only Δ and the
+endpoints move, by 5.8e-5 relative (us 0.004391656 → 0.004391400). So the
+published reading never changed. That is the uncomfortable part: an estimator
+mismatch that happens to be immaterial here would have been material for any
+statistic that does not divide it back out, and I had no test that would have
+caught either case.
+
+There is now a hard gate in `main()` (`SystemExit` if the moment form and
+`performance_metrics` disagree by more than 1e-12) and a regression suite that
+pins the estimand on each arm separately, not only on the difference — a
+difference can match by cancelling two equal errors. Fault injection confirms
+the test can fail.
+
+**Not independently verified.** Written and checked by the same agent, against
+the separate-verifier rule, because the session was scoped to a wording patch
+with no new experiment. Owed before any DA-JM decision cites these intervals.

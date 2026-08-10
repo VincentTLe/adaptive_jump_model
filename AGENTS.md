@@ -17,20 +17,41 @@ reason to deviate.
 There are two distinct levels of evidence. A mathematical extension has local
 value when it changes the fixed-JM objective in a verified, causal, identifiable
 way or improves a declared mechanism metric. It has economic value only when
-the resulting strategy beats both same-sample benchmarks. For market `m`, the
-primary economic gap for prespecified variant `v` is:
+the resulting strategy beats the benchmarks under the same protocol.
 
-`G_m(v) = Sharpe_v,m - max(Sharpe_BuyHold,m, Sharpe_HMM,m)`.
+**The primary estimand for a structural challenger is the paired delta against
+the fixed JM.** For market `m` and prespecified variant `v`:
 
-The cross-market target is `G_m(v) > 0` for the same `v` in every declared
-market. Maximum drawdown,
-turnover, cash fraction, and switch count are secondary guardrails. Exact
-numbers reported by Shu, Yu, and Mulvey are context, not a replication target,
-because this repository uses a later public proxy sample.
+`Delta_m(v) = Sharpe_v,m - Sharpe_fixedJM,m`.
 
-The sealed v7 proxy study is the current development baseline, not permanent
-proof and not a reason to forbid new exploratory work. Data limitations are
-reported separately from model behavior.
+The fixed JM is the arm the extension claims to improve, so it is the arm the
+extension must beat. The cross-market target is `Delta_m(v) > 0` for the same
+frozen `v` in every declared market, with non-trivial magnitude. Pairing is not
+cosmetic: a perturbation that moves both arms together contributes a common
+component that cancels in the difference, which is why the paired delta is
+measured directly rather than inferred from each arm's separate spread.
+
+The **stronger economic criterion**, which a variant must also satisfy before it
+is claimed to be economically useful, is:
+
+`Sharpe_v,m > max(Sharpe_fixedJM,m, Sharpe_HMM,m, Sharpe_BuyHold,m)`.
+
+**Beating HMM and buy-and-hold while losing to the fixed JM is NOT evidence that
+an extension improved the JM.** It only shows the JM family beats those
+benchmarks, which is already the established baseline result. Any variant that
+loses to fixed JM in a market has failed in that market regardless of how it
+scores against HMM or B&H, and must be reported that way.
+
+Maximum drawdown, turnover, cash fraction, and switch count are secondary
+guardrails. Exact numbers reported by Shu, Yu, and Mulvey are context, not a
+replication target, because this repository uses a later public proxy sample.
+
+The canonical baseline for downstream work is whichever fixed-baselines config
+is currently sealed and recorded as canonical in `TASK.md` and the registry —
+today v11-ninit60 (`5b12efa2…`), with its known DE defect disclosed. A sealed
+baseline is a fixed comparator, not permanent proof, and not a reason to forbid
+new exploratory work. Data limitations are reported separately from model
+behavior.
 
 Priority is:
 
