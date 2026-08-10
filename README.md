@@ -48,14 +48,17 @@ detailed provenance and audit trail. They are the authority when a specific
 number is in dispute, but you do not need to read them to understand the
 project.
 
-Following one to its contract: a registry row identifies its spec by
-`experiment_id` and `spec_sha256`, and the contract is
-`research/contracts/<experiment-id>.toml` — except `frequency-ladder-001`,
-which is pinned at `research/frequency-ladder-001.toml`. Rows written before
-the contracts were filed under `research/contracts/` still print the old
-`research/<experiment-id>.toml` in their descriptive `spec` field. The bytes
-and the `spec_sha256` they froze are unchanged, so the hash, not the path, is
-what binds a row to a file.
+Following one to its contract: the binding is the hash, not the filename. A row
+carries `frozen_spec_hash`, or `spec_sha256` on the `heldout-delay-001` and
+`frequency-ladder-001` rows; hashing a candidate file and matching that value is
+what proves you have the right contract. Contracts live in
+`research/contracts/`, usually as `<experiment-id>.toml`, with three deviations:
+`endpoint-grid-audit-001` is `endpoint-grid-audit.toml`,
+`fixed-baseline-assumption-audit-001` is `hyperparameter-grid-attribution.toml`,
+and `frequency-ladder-001` stays pinned at `research/frequency-ladder-001.toml`.
+Rows written before the contracts moved still print the old
+`research/<name>.toml` in their descriptive `spec` field; the bytes and the hash
+they froze are unchanged.
 
 ## What is in the repository
 
