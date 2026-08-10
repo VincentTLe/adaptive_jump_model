@@ -56,17 +56,25 @@ what proves you have the right contract. Contracts live in
 `endpoint-grid-audit-001` is `endpoint-grid-audit.toml`,
 `fixed-baseline-assumption-audit-001` is `hyperparameter-grid-attribution.toml`,
 and `frequency-ladder-001` stays pinned at `research/frequency-ladder-001.toml`.
-A `research/<name>.toml` path written before the move now reads as
-`research/contracts/<name>.toml`. Such paths survive in registry rows'
-descriptive `spec` field, in audit receipts, and inside one frozen contract's
-own prose: `ajm-ext-001` states that every protocol field it does not list —
-selection tie rule, minimum valid returns, metric definitions, turnover
-formula, degenerate-fit handling — is inherited verbatim from
+Except for that pinned contract, a `research/<name>.toml` path written before
+the move now reads as `research/contracts/<name>.toml`. Such paths survive in
+registry rows' descriptive `spec` field, in audit receipts, and inside one
+frozen contract's own prose: `ajm-ext-001` states that every protocol field it
+does not list — selection tie rule, minimum valid returns, metric definitions,
+turnover formula, degenerate-fit handling — is inherited verbatim from
 `research/lagged-evidence-performance-001.toml`, now
 `research/contracts/lagged-evidence-performance-001.toml`. None of those
 strings can be rewritten: a sealed contract's bytes are its identity, and
 editing them makes its own loader refuse to run it. The move changed no
 contract's bytes.
+
+The same reading applies to the replication atlas. Its figures, its HTML, and
+the renderer that produced them cite
+`research/jm-effective-lambda-inversion-004.toml` — the path that was correct
+when that certified deliverable was generated, and now
+`research/contracts/jm-effective-lambda-inversion-004.toml`. The deliverable
+and its verifier receipt are left as they were certified rather than
+re-rendered against the new layout.
 
 Hashing does not resolve every row, and that is not a symptom of the move. Of
 the 43 experiment ids carrying a registered hash, 32 match a contract on disk.
