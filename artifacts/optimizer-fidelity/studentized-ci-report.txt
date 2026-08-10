@@ -84,7 +84,12 @@ US  T = 8565, Delta = +0.004391
      (this is a property of the resampling distribution. It is NOT
       P(true delta > 0) and must never be written that way.)
   robustness, stationary bootstrap L = 63: [-0.03270, +0.04148], p 0.8318
-  cross-check, canonical LW 4-moment excess-return Sharpe: Delta +0.004397, SE 0.019061, [-0.03421, +0.04300], p 0.8318
+  cross-check, canonical LW 4-moment excess-return Sharpe: Delta +0.004397, SE 0.019063, [-0.03421, +0.04300], p 0.8318
+     (Ledoit-Wolf Eq. (1)-(2) verbatim, so it deliberately carries NO ddof=1
+      correction -- their f uses the population sd. Its Delta is therefore
+      larger than the repo Delta by 1/ddof_scale(T) = 1.000058382, by construction
+      and not by disagreement. The studentized statistic and the p-value are
+      invariant to that constant, which is why the two remain comparable.)
 
 DE  T = 8602, Delta = +0.022057
   days on which the two arms' returns differ at all: 110 / 8602 (1.28%)
@@ -100,7 +105,12 @@ DE  T = 8602, Delta = +0.022057
      (this is a property of the resampling distribution. It is NOT
       P(true delta > 0) and must never be written that way.)
   robustness, stationary bootstrap L = 63: [-0.03072, +0.07483], p 0.4214
-  cross-check, canonical LW 4-moment excess-return Sharpe: Delta +0.022064, SE 0.025728, [-0.02880, +0.07292], p 0.3948
+  cross-check, canonical LW 4-moment excess-return Sharpe: Delta +0.022065, SE 0.025730, [-0.02880, +0.07293], p 0.3948
+     (Ledoit-Wolf Eq. (1)-(2) verbatim, so it deliberately carries NO ddof=1
+      correction -- their f uses the population sd. Its Delta is therefore
+      larger than the repo Delta by 1/ddof_scale(T) = 1.000058131, by construction
+      and not by disagreement. The studentized statistic and the p-value are
+      invariant to that constant, which is why the two remain comparable.)
 
 JP  T = 8336, Delta = +0.009276
   days on which the two arms' returns differ at all: 98 / 8336 (1.18%)
@@ -116,7 +126,12 @@ JP  T = 8336, Delta = +0.009276
      (this is a property of the resampling distribution. It is NOT
       P(true delta > 0) and must never be written that way.)
   robustness, stationary bootstrap L = 63: [-0.02293, +0.04148], p 0.5742
-  cross-check, canonical LW 4-moment excess-return Sharpe: Delta +0.009273, SE 0.016710, [-0.02343, +0.04198], p 0.5840
+  cross-check, canonical LW 4-moment excess-return Sharpe: Delta +0.009274, SE 0.016711, [-0.02343, +0.04198], p 0.5840
+     (Ledoit-Wolf Eq. (1)-(2) verbatim, so it deliberately carries NO ddof=1
+      correction -- their f uses the population sd. Its Delta is therefore
+      larger than the repo Delta by 1/ddof_scale(T) = 1.000059986, by construction
+      and not by disagreement. The studentized statistic and the p-value are
+      invariant to that constant, which is why the two remain comparable.)
 
 BLOCK-LENGTH SENSITIVITY (studentized symmetric interval, circular block)
 

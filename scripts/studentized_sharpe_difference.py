@@ -84,10 +84,11 @@ WHAT IS IMPLEMENTED
         d/dg_2 = +sqrt(A) (m_2 - k) / (2 sig_2^3)
         d/dk   =  sqrt(A) (1/sig_2 - 1/sig_1).
 
-    Setting k == 0 and A == 1 collapses this exactly onto Ledoit-Wolf Eq. (4),
-    so the extension is a strict generalization, not a different method.  The
-    canonical 4-moment Ledoit-Wolf estimator on excess returns is ALSO run, as
-    a cross-check that the extension is not doing the work.
+    Setting k == 0 and A == 1 collapses this onto Ledoit-Wolf Eq. (4) up to the
+    Bessel constant below, so the extension is a strict generalization of their
+    function, not a different method.  The canonical 4-moment Ledoit-Wolf
+    estimator on excess returns is ALSO run, as a cross-check that the
+    extension is not doing the work.
 
     ddof=1, NOT ddof=0 (correction, 2026-08-09).  A moment vector of uncentered
     moments yields the POPULATION standard deviation sqrt(g - m^2), whereas
@@ -102,14 +103,30 @@ WHAT IS IMPLEMENTED
 
         ddof_scale(T) = sqrt((T - 1) / T),
 
-    applied here to Delta and hence to its gradient for BOTH estimators.  The
-    repo estimator now equals `performance_metrics`' Sharpe difference exactly
-    (asserted in `main` to 1e-12, and in
-    `tests/test_studentized_sharpe_difference.py`).  Because the constant
-    multiplies Delta_hat, Delta*, s(Delta_hat) and s(Delta*) alike, and every
-    resample has the same length T, the studentized statistic and both p-values
-    are invariant to it; only the reported Delta and interval endpoints move,
-    by that same 6e-5 relative factor.
+    applied to Delta and hence to its gradient.  The repo estimator now equals
+    `performance_metrics`' Sharpe difference exactly (asserted in `main` to
+    1e-12, and in `tests/test_studentized_sharpe_difference.py`).
+
+    The factor is applied to the `repo` estimator ONLY (correction, 2026-08-09,
+    owner-caught in review).  It was first applied to both, which was wrong:
+    `lw_excess` is Ledoit-Wolf Eq. (1)-(2) verbatim, whose denominators ARE the
+    population sds implied by the uncentered moments, and Eq. (4) is the
+    gradient of precisely that function.  Rescaling it would have left this
+    script with two Bessel-corrected estimators and no canonical one, so the
+    "cross-check against the published estimator" would have been checking the
+    repo convention against itself.  The two therefore differ by construction:
+
+        Delta_repo = ddof_scale(T) * Delta_lw   (at a zero cash leg),
+        grad_repo[:4] = ddof_scale(T) * grad_lw (same condition),
+
+    which is asserted as a RELATIONSHIP in the tests, not as equality.
+
+    Because the constant multiplies Delta_hat, Delta*, s(Delta_hat) and
+    s(Delta*) alike, and every resample has the same length T, the studentized
+    statistic and both p-values are invariant to it; only the reported Delta
+    and interval endpoints move, by that same 6e-5 relative factor.  The
+    invariance is what makes it safe for the two estimators to carry different
+    constants: they remain directly comparable on the studentized scale.
 
 (b) Studentization.  The bootstrap statistic is the studentized/centered
     (Delta*_b - Delta_hat) / s(Delta*_b), NOT Delta*_b itself, and s(Delta*_b)
@@ -300,15 +317,31 @@ def ddof_scale(observations: int) -> float:
     return math.sqrt((observations - VOLATILITY_DDOF) / observations)
 
 
-def _scale(observations: int) -> float:
-    """Annualization times the Bessel correction; multiplies Delta and grad f."""
-    return math.sqrt(ANNUALIZATION) * ddof_scale(observations)
+def estimator_scale(estimator: str, observations: int) -> float:
+    """The leading constant of Delta = f(v). It is ESTIMATOR-SPECIFIC.
+
+    `repo` must BE `performance_metrics`, which divides by `std(ddof=1)`, so it
+    carries the Bessel factor.
+
+    `lw_excess` must NOT. It is Ledoit-Wolf (2008) Eq. (1)-(2) verbatim --
+    f(a,b,c,d) = a/sqrt(c - a^2) - b/sqrt(d - b^2), whose denominators are the
+    population standard deviations implied by the uncentered moments, and Eq.
+    (4) is the gradient of exactly that function. Scaling it by sqrt((T-1)/T)
+    would silently make it a different estimator from the one the citation
+    names, which defeats its only purpose here: an independent cross-check
+    that the repo's 5-moment extension is not doing the work.
+    """
+    if estimator == "repo":
+        return math.sqrt(ANNUALIZATION) * ddof_scale(observations)
+    if estimator == "lw_excess":
+        return math.sqrt(ANNUALIZATION)
+    raise ValueError(f"unknown estimator: {estimator}")
 
 
 def sharpe_difference(v: np.ndarray, estimator: str, observations: int) -> np.ndarray:
     """Delta = f(v); v is (..., p) so bootstrap chunks evaluate in one call."""
     v = np.asarray(v, dtype=float)
-    root = _scale(observations)
+    root = estimator_scale(estimator, observations)
     if estimator == "repo":
         m1, m2, g1, g2, k = (v[..., i] for i in range(5))
         s1 = _sigma(m1, g1)
@@ -348,7 +381,7 @@ def _gradient_lw(v: np.ndarray, root: float) -> np.ndarray:
 
 def gradient(v: np.ndarray, estimator: str, observations: int) -> np.ndarray:
     v = np.asarray(v, dtype=float)
-    root = _scale(observations)
+    root = estimator_scale(estimator, observations)
     if estimator == "repo":
         return _gradient_repo(v, root)
     if estimator == "lw_excess":
@@ -1057,6 +1090,16 @@ def _report(
             f"Delta {canonical.delta:+.6f}, SE {canonical.standard_error:.6f}, "
             f"[{canonical.symmetric_low:+.5f}, {canonical.symmetric_high:+.5f}], "
             f"p {canonical.p_value_symmetric:.4f}",
+            "     (Ledoit-Wolf Eq. (1)-(2) verbatim, so it deliberately carries"
+            " NO ddof=1",
+            "      correction -- their f uses the population sd. Its Delta is"
+            " therefore",
+            f"      larger than the repo Delta by 1/ddof_scale(T) ="
+            f" {1.0 / ddof_scale(result.observations):.9f}, by construction",
+            "      and not by disagreement. The studentized statistic and the"
+            " p-value are",
+            "      invariant to that constant, which is why the two remain"
+            " comparable.)",
             "",
         ]
     lines += [

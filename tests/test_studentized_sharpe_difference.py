@@ -160,18 +160,27 @@ def test_gradient_matches_a_central_finite_difference(module, estimator):
     assert module.check_gradient(_series(module), estimator) < 1e-6
 
 
-def test_repo_gradient_collapses_onto_ledoit_wolf_with_a_zero_cash_leg(module):
-    """Setting k = 0 must reproduce Eq. (4); otherwise it is a different method."""
+def _zero_cash_series(module):
     challenger, baseline, _ = _arms()
-    zero_cash = np.zeros_like(challenger)
-    series = module.Series(
+    return module.Series(
         market="synthetic",
         challenger=challenger,
         baseline=baseline,
-        cash=zero_cash,
+        cash=np.zeros_like(challenger),
         challenger_sharpe=math.nan,
         baseline_sharpe=math.nan,
     )
+
+
+def test_repo_gradient_collapses_onto_ledoit_wolf_with_a_zero_cash_leg(module):
+    """At k = 0 the two gradients differ by the Bessel constant and nothing else.
+
+    They are NOT equal, and asserting equality would be asserting that the
+    canonical estimator carries the repo's ddof=1 convention -- which it must
+    not, or it stops being Ledoit-Wolf Eq. (1)-(2). The relationship is what
+    makes the repo form a scaled generalization rather than a different method.
+    """
+    series = _zero_cash_series(module)
     observations = series.observations
     repo = module.gradient(
         module.moment_matrix(series, "repo").mean(axis=0), "repo", observations
@@ -181,8 +190,102 @@ def test_repo_gradient_collapses_onto_ledoit_wolf_with_a_zero_cash_leg(module):
         "lw_excess",
         observations,
     )
-    assert repo[:4] == pytest.approx(canonical, rel=0, abs=1e-12)
-    assert repo[4] == pytest.approx(0.0, abs=1e-9) or repo[4] != 0.0
+    scale = module.ddof_scale(observations)
+    assert repo[:4] == pytest.approx(scale * canonical, rel=0, abs=1e-15)
+    # and the scaling is real, not a no-op that would make the test vacuous
+    assert repo[:4] != pytest.approx(canonical, rel=0, abs=1e-15)
+
+
+def test_delta_at_zero_cash_is_the_canonical_delta_times_the_bessel_factor(module):
+    """The same relationship at the level of the statistic, not just its gradient."""
+    series = _zero_cash_series(module)
+    observations = series.observations
+    repo = float(
+        module.sharpe_difference(
+            module.moment_matrix(series, "repo").mean(axis=0), "repo", observations
+        )
+    )
+    canonical = float(
+        module.sharpe_difference(
+            module.moment_matrix(series, "lw_excess").mean(axis=0),
+            "lw_excess",
+            observations,
+        )
+    )
+    assert repo == pytest.approx(
+        module.ddof_scale(observations) * canonical, rel=1e-14, abs=0
+    )
+    assert abs(repo) < abs(canonical)
+
+
+def test_canonical_estimator_carries_no_bessel_correction(module):
+    """lw_excess must be Eq. (1)-(2) verbatim: its scale is sqrt(252), full stop."""
+    for observations in (50, 500, 8565):
+        assert module.estimator_scale("lw_excess", observations) == pytest.approx(
+            math.sqrt(module.ANNUALIZATION), rel=0, abs=1e-15
+        )
+        assert module.estimator_scale("repo", observations) == pytest.approx(
+            math.sqrt(module.ANNUALIZATION) * module.ddof_scale(observations),
+            rel=0,
+            abs=1e-15,
+        )
+    # the canonical gradient does not depend on T at all
+    series = _series(module)
+    v = module.moment_matrix(series, "lw_excess").mean(axis=0)
+    assert module.gradient(v, "lw_excess", 100) == pytest.approx(
+        module.gradient(v, "lw_excess", 10_000), rel=0, abs=1e-15
+    )
+
+
+def test_cash_derivative_equals_its_analytic_value_and_is_not_zero(module):
+    """d/dk = sqrt(252) sqrt((T-1)/T) (1/sig_2 - 1/sig_1).
+
+    This coordinate has no counterpart in Ledoit-Wolf Eq. (4) -- it is the whole
+    content of the 5-moment extension -- so it is pinned to its closed form and
+    to a finite difference of the function actually used. It vanishes only when
+    the two arms have equal volatility, which is why an "is it zero?" assertion
+    would be testing a coincidence rather than the derivative.
+    """
+    series = _series(module)
+    observations = series.observations
+    v = module.moment_matrix(series, "repo").mean(axis=0)
+    m1, m2, g1, g2, _ = v
+
+    sigma_1 = math.sqrt(g1 - m1**2)
+    sigma_2 = math.sqrt(g2 - m2**2)
+    expected = (
+        math.sqrt(module.ANNUALIZATION)
+        * module.ddof_scale(observations)
+        * (1.0 / sigma_2 - 1.0 / sigma_1)
+    )
+
+    analytic = module.gradient(v, "repo", observations)[4]
+    assert analytic == pytest.approx(expected, rel=1e-13, abs=0)
+
+    # the two arms are deliberately not equal-volatility, so it must not be zero
+    assert sigma_1 != pytest.approx(sigma_2, rel=1e-6)
+    assert abs(analytic) > 1e-3
+
+    step = 1e-8
+    up, down = v.copy(), v.copy()
+    up[4] += step
+    down[4] -= step
+    numeric = float(
+        module.sharpe_difference(up, "repo", observations)
+        - module.sharpe_difference(down, "repo", observations)
+    ) / (2.0 * step)
+    assert analytic == pytest.approx(numeric, rel=1e-6)
+
+
+def test_cash_derivative_vanishes_exactly_when_the_volatilities_coincide(module):
+    """The one case where zero is the right answer -- stated as a consequence."""
+    series = _series(module)
+    v = module.moment_matrix(series, "repo").mean(axis=0).copy()
+    m1, m2, g1, _, _ = v
+    v[3] = g1 - m1**2 + m2**2  # force sigma_2 == sigma_1
+    assert module.gradient(v, "repo", series.observations)[4] == pytest.approx(
+        0.0, abs=1e-12
+    )
 
 
 def test_gradient_carries_the_same_bessel_factor_as_the_statistic(module):

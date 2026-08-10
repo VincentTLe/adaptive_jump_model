@@ -1229,3 +1229,31 @@ the test can fail.
 **Not independently verified.** Written and checked by the same agent, against
 the separate-verifier rule, because the session was scoped to a wording patch
 with no new experiment. Owed before any DA-JM decision cites these intervals.
+
+**Review correction to the above (owner-caught, same day, before merge).** The
+fix had two defects of its own, and both are the same kind of mistake as the
+original: a correction applied wider than the thing it corrects.
+
+I scaled *both* estimators by `sqrt((T−1)/T)`. Only `repo` should carry it.
+`lw_excess` is Ledoit & Wolf Eq. (1)–(2) verbatim, whose denominators *are* the
+population sds; scaling it left the script with two Bessel-corrected estimators
+and no canonical one, so the "cross-check against the published estimator" was
+checking the repo convention against itself. Scaling is now estimator-specific
+and the zero-cash collapse is asserted as a *relationship*,
+`grad_repo[:4] = ddof_scale(T) · grad_lw`, not as equality.
+
+And one of the tests I wrote to prevent exactly this class of error was itself
+vacuous: `assert x == approx(0.0, abs=1e-9) or x != 0.0` is true for every
+finite value. The cash derivative is `sqrt(252)·sqrt((T−1)/T)·(1/σ₂ − 1/σ₁)`,
+which vanishes only when the two arms have equal volatility; on the fixture it
+is **+2.59**. The tautology was tolerating a coordinate three orders of
+magnitude from the zero it pretended to allow. The lesson worth keeping is that
+a test containing `or` between "is zero" and "is not zero" asserts nothing, and
+that writing tests to pin an estimand does not help if the assertions are not
+themselves falsifiable. Every new test here was fault-injected before it was
+believed.
+
+The regeneration is measurable: the 15 `repo` rows are bit-identical, the 3
+`lw_excess` rows move by exactly `1/sqrt((T−1)/T)` to 12 decimals, and every
+p-value is unchanged to the last digit — the invariance claim confirmed rather
+than argued.
