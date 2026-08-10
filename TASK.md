@@ -169,15 +169,34 @@ No frozen spec. No experiment id. No implementation. Nothing in
 `src/adaptive_jump/` implements a duration-aware objective, and nothing may
 until a spec is frozen.
 
-What exists is theory, all independently verified:
+What exists is theory. The mathematics was independently verified; the
+novelty position rests on a bounded literature search and is stated as such.
 
-1. **Novelty** — two independent passes (`da-jm-novelty-sweep-2026-08-08`,
-   `da-jm-novelty-second-pass-2026-08-09`). Duration dependence itself is decades
-   old (Sichel 1991; Durland & McCurdy 1994; Bulla & Bulla 2006). No duration,
-   semi-Markov, dwell-time or hazard modification of the jump penalty exists in
-   the SJM lineage as of 2026-08 (51 forward citations, arXiv sweep with the
-   penalty form verified in text, ~7 targeted phrasings). Disclosed coverage
-   limit: 9 citers reachable at title level only.
+1. **Novelty — narrow, and not a non-existence claim.** In the literature
+   reviewed so far we have not found an *implemented* Statistical Jump Model
+   with an explicit hazard-parameterized or semi-Markov duration law solved
+   through an augmented-state dynamic program. However, Deep Statistical Jump
+   Models explicitly notes that its generic state-loss framework can encode
+   prior beliefs such as penalizing remaining in one state for too long.
+   **Generic duration-dependent state regularization is therefore NOT claimed
+   as novel.** Duration dependence in regime models is itself decades old
+   (Sichel 1991; Durland & McCurdy 1994; Bulla & Bulla 2006).
+
+   What Deep SJM does not appear to provide — and what DA-JM proposes — is an
+   explicit regime-age state `d`, a duration distribution, an explicit hazard
+   `h(d)`, a discrete-Weibull duration law, an augmented `(state, age)` dynamic
+   program, the `beta = 1` nesting construction, or a duration-aware SJM
+   empirical experiment.
+
+   Scope and limits of the search (two passes,
+   `da-jm-novelty-sweep-2026-08-08` and `da-jm-novelty-second-pass-2026-08-09`;
+   51 forward citations, an arXiv sweep with the penalty form verified in text,
+   ~7 targeted phrasings): 9 citing works were reachable at title level only,
+   Google Scholar is not crawlable, and Deep Statistical Jump Models
+   (SSRN 5817083, local copy `paper/ssrn-5817083.pdf`) was assessed at abstract
+   level only in the 2026-07-30 sweep because it was gated at the time. **A
+   literature search cannot prove non-existence**, so nothing here may be
+   written as a categorical claim about the field.
 2. **Formalization** — `docs/theory/da-jm-formalization.md` plus receipt
    `docs/audit/2026-08-08-da-jm-formalization-receipt.md`: discrete-Weibull
    duration family, hazard-decomposed augmented-state DP `V_t(k,d)`, reduction

@@ -118,25 +118,37 @@ WHAT IS IMPLEMENTED
     estimators and no canonical one, so the "cross-check against the published
     estimator" would have been checking the repo convention against itself.
 
-    The two estimators are NEVER exactly equal.  Under a ZERO cash leg they
-    differ by the Bessel factor and nothing else:
+    The two are NOT IDENTICAL FUNCTIONS.  Under a ZERO cash leg their outputs
+    are related by the Bessel factor and nothing else:
 
         Delta_repo    = ddof_scale(T) * Delta_lw      (cash == 0),
         grad_repo[:4] = ddof_scale(T) * grad_lw       (cash == 0).
 
-    Under a NONZERO cash leg they differ by that factor AND by their
-    denominators -- repo divides by sd_ddof1 of the strategy return, lw by the
-    population sd of the excess return -- so the zero-cash relation above does
-    NOT carry over, and on this data the denominator term is the larger of the
-    two and its sign is not fixed across markets.  Both statements are asserted
-    as RELATIONSHIPS in the tests, never as equality.
+    Under a NONZERO cash leg their denominator definitions also differ -- repo
+    divides by sd_ddof1 of the strategy return, lw by the population sd of the
+    excess return -- so the zero-cash relation above does NOT carry over, and
+    on this data the denominator term is the larger of the two and its sign is
+    not fixed across markets.  Both statements are asserted as RELATIONSHIPS in
+    the tests, never as equality.
+
+    Note the distinction, which the wording above deliberately preserves: two
+    functions being non-identical does NOT mean their numerical outputs can
+    never coincide.  At Delta_lw == 0 the zero-cash relation gives Delta_repo
+    == 0 as well, so the outputs do coincide there.  "Not identical" is a
+    statement about the functions, not a claim that equality never occurs.
 
     Because the constant multiplies Delta_hat, Delta*, s(Delta_hat) and
     s(Delta*) alike, and every resample has the same length T, the studentized
-    statistic and both p-values are invariant to it; only the reported Delta
-    and interval endpoints move, by that same 6e-5 relative factor.  The
+    statistic and both p-values are invariant under multiplication by a
+    POSITIVE NONZERO constant; only the reported Delta and interval endpoints
+    move, by that same 6e-5 relative factor.  The positivity matters: at c == 0
+    the studentized ratio is undefined, and a negative c would flip the sign of
+    the signed studentized draws (the symmetric statistic uses |.| and would
+    survive, the equal-tailed endpoints would not).  ddof_scale(T) > 0 for
+    every T > 1, so the condition holds throughout this script.  That
     invariance is what makes it safe for the two estimators to carry different
-    constants: they remain directly comparable on the studentized scale.
+    positive constants: they remain directly comparable on the studentized
+    scale.
 
 (b) Studentization.  The bootstrap statistic is the studentized/centered
     (Delta*_b - Delta_hat) / s(Delta*_b), NOT Delta*_b itself, and s(Delta*_b)
@@ -1116,19 +1128,24 @@ def _report(
             f"      the SMALLER part of the gap: observed ratio"
             f" {canonical.delta / result.delta:.6f} vs"
             f" {1.0 / ddof_scale(result.observations):.6f}",
-            "      from the ddof convention alone. The two are NEVER exactly"
-            " equal: at a",
-            "      zero cash leg they still differ by the ddof/Bessel factor"
-            " ddof_scale(T),",
-            "      i.e. Delta_repo = ddof_scale(T) * Delta_lw; with a nonzero"
-            " cash leg they",
-            "      differ by that factor AND by their denominator definitions,"
-            " and on this",
-            "      data the denominator term dominates and its SIGN is not"
-            " fixed across",
-            "      markets. The studentized statistic and",
-            "      the p-value are invariant to any constant rescaling, which"
-            " is what keeps",
+            "      from the ddof convention alone. The two are NOT identical"
+            " functions. With a",
+            "      zero cash leg their outputs are related by the ddof/Bessel factor,",
+            "      Delta_repo = ddof_scale(T) * Delta_lw. With a nonzero cash"
+            " leg their",
+            "      denominator definitions also differ, and on this data that"
+            " term is the",
+            "      larger of the two and its SIGN is not fixed across markets."
+            " (Non-identical",
+            "      functions can still agree numerically in special cases --"
+            " at Delta_lw = 0",
+            "      both are 0 -- so this is a statement about the functions,"
+            " not a claim that",
+            "      equality never occurs.) The studentized statistic and",
+            "      the p-value are invariant under multiplication by a POSITIVE"
+            " NONZERO",
+            "      constant -- ddof_scale(T) > 0, so that holds here -- which is"
+            " what keeps",
             "      the two comparable as a cross-check.)",
             "",
         ]

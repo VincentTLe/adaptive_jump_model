@@ -1213,7 +1213,9 @@ The fix is exact matching, not a renaming. By the Bessel identity
 `(1/(T−1))Σ(r−m)² = (T/(T−1))(g − m²)`, the whole correction is one constant,
 `sqrt((T−1)/T)`, applied to Δ and to `grad f`. Because it multiplies `Δ̂`,
 `Δ*`, `s(Δ̂)` and `s(Δ*)` alike and every resample has length T, **the
-studentized statistic and both p-values are invariant** — only Δ and the
+studentized statistic and both p-values are invariant under multiplication by
+a positive nonzero constant** — and `sqrt((T−1)/T) > 0` for every `T > 1`, so
+the condition holds here. Only Δ and the
 endpoints move, by 5.8e-5 relative (us 0.004391656 → 0.004391400). So the
 published reading never changed. That is the uncomfortable part: an estimator
 mismatch that happens to be immaterial here would have been material for any
@@ -1306,3 +1308,21 @@ rather than another fix: `AGENTS.md` now carries an **Anti-overclaim rules**
 section and the principle *AI confidence is not evidence*. The operative one
 here is the first: if a result was shown under a condition — cash = 0, beta = 1,
 one market, one seed — that condition must appear in the conclusion.
+
+**Fifth instance — the correction itself overcorrected (owner-caught, same
+review).** Fixing the above, I wrote "the two estimators are NEVER exactly
+equal". That swaps one absolute for another. The defensible statement is that
+they are **not identical functions**; two non-identical functions can still
+agree numerically in special cases, and here they do — at `Δ_lw = 0` the
+zero-cash relation gives `Δ_repo = 0` too. Two further scope slips in the same
+sentence: "invariant to any constant rescaling" should be *positive nonzero*
+constant (at `c = 0` the studentized ratio is undefined; a negative `c` flips
+the signed draws and the equal-tailed endpoints), and the DA-JM novelty claim
+asserted that no duration/semi-Markov/hazard modification *exists* in the SJM
+lineage — a literature search cannot establish non-existence, and Deep
+Statistical Jump Models already notes its generic state loss can penalize
+staying in a state too long.
+
+The pattern underneath all five is one habit: reaching for the strongest
+sentence the evidence almost supports. The fix is not more caution in tone but
+naming the scope in the sentence itself.

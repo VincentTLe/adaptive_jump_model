@@ -93,13 +93,16 @@ US  T = 8565, Delta = +0.004391
       nets cash in the numerator only. It also carries no ddof=1 correction,
       because Ledoit-Wolf's f uses the population sd -- but that constant is
       the SMALLER part of the gap: observed ratio 1.001248 vs 1.000058
-      from the ddof convention alone. The two are NEVER exactly equal: at a
-      zero cash leg they still differ by the ddof/Bessel factor ddof_scale(T),
-      i.e. Delta_repo = ddof_scale(T) * Delta_lw; with a nonzero cash leg they
-      differ by that factor AND by their denominator definitions, and on this
-      data the denominator term dominates and its SIGN is not fixed across
-      markets. The studentized statistic and
-      the p-value are invariant to any constant rescaling, which is what keeps
+      from the ddof convention alone. The two are NOT identical functions. With a
+      zero cash leg their outputs are related by the ddof/Bessel factor,
+      Delta_repo = ddof_scale(T) * Delta_lw. With a nonzero cash leg their
+      denominator definitions also differ, and on this data that term is the
+      larger of the two and its SIGN is not fixed across markets. (Non-identical
+      functions can still agree numerically in special cases -- at Delta_lw = 0
+      both are 0 -- so this is a statement about the functions, not a claim that
+      equality never occurs.) The studentized statistic and
+      the p-value are invariant under multiplication by a POSITIVE NONZERO
+      constant -- ddof_scale(T) > 0, so that holds here -- which is what keeps
       the two comparable as a cross-check.)
 
 DE  T = 8602, Delta = +0.022057
@@ -123,13 +126,16 @@ DE  T = 8602, Delta = +0.022057
       nets cash in the numerator only. It also carries no ddof=1 correction,
       because Ledoit-Wolf's f uses the population sd -- but that constant is
       the SMALLER part of the gap: observed ratio 1.000363 vs 1.000058
-      from the ddof convention alone. The two are NEVER exactly equal: at a
-      zero cash leg they still differ by the ddof/Bessel factor ddof_scale(T),
-      i.e. Delta_repo = ddof_scale(T) * Delta_lw; with a nonzero cash leg they
-      differ by that factor AND by their denominator definitions, and on this
-      data the denominator term dominates and its SIGN is not fixed across
-      markets. The studentized statistic and
-      the p-value are invariant to any constant rescaling, which is what keeps
+      from the ddof convention alone. The two are NOT identical functions. With a
+      zero cash leg their outputs are related by the ddof/Bessel factor,
+      Delta_repo = ddof_scale(T) * Delta_lw. With a nonzero cash leg their
+      denominator definitions also differ, and on this data that term is the
+      larger of the two and its SIGN is not fixed across markets. (Non-identical
+      functions can still agree numerically in special cases -- at Delta_lw = 0
+      both are 0 -- so this is a statement about the functions, not a claim that
+      equality never occurs.) The studentized statistic and
+      the p-value are invariant under multiplication by a POSITIVE NONZERO
+      constant -- ddof_scale(T) > 0, so that holds here -- which is what keeps
       the two comparable as a cross-check.)
 
 JP  T = 8336, Delta = +0.009276
@@ -153,13 +159,16 @@ JP  T = 8336, Delta = +0.009276
       nets cash in the numerator only. It also carries no ddof=1 correction,
       because Ledoit-Wolf's f uses the population sd -- but that constant is
       the SMALLER part of the gap: observed ratio 0.999771 vs 1.000060
-      from the ddof convention alone. The two are NEVER exactly equal: at a
-      zero cash leg they still differ by the ddof/Bessel factor ddof_scale(T),
-      i.e. Delta_repo = ddof_scale(T) * Delta_lw; with a nonzero cash leg they
-      differ by that factor AND by their denominator definitions, and on this
-      data the denominator term dominates and its SIGN is not fixed across
-      markets. The studentized statistic and
-      the p-value are invariant to any constant rescaling, which is what keeps
+      from the ddof convention alone. The two are NOT identical functions. With a
+      zero cash leg their outputs are related by the ddof/Bessel factor,
+      Delta_repo = ddof_scale(T) * Delta_lw. With a nonzero cash leg their
+      denominator definitions also differ, and on this data that term is the
+      larger of the two and its SIGN is not fixed across markets. (Non-identical
+      functions can still agree numerically in special cases -- at Delta_lw = 0
+      both are 0 -- so this is a statement about the functions, not a claim that
+      equality never occurs.) The studentized statistic and
+      the p-value are invariant under multiplication by a POSITIVE NONZERO
+      constant -- ddof_scale(T) > 0, so that holds here -- which is what keeps
       the two comparable as a cross-check.)
 
 BLOCK-LENGTH SENSITIVITY (studentized symmetric interval, circular block)

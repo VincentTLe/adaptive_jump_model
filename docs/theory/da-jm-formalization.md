@@ -42,29 +42,50 @@ CV rule, the online decode, the costs. This is the load-bearing change from
 v1, which replaced lambda and therefore had to translate it into a
 probability scale (the step that failed numerically).
 
-Already-published neighbors (two independent novelty passes, registry
+Already-published neighbors (two bounded novelty passes, registry
 `da-jm-novelty-sweep-2026-08-08` and
 `da-jm-novelty-second-pass-2026-08-09`): CJM's state-pair matrix
-`Lambda[i][j]` is zero-diagonal and strictly first-order; no Mulvey-lab
-paper implements any duration/hazard penalty; across 51 forward citations
-and every 2025-2026 SJM-lineage paper (penalty form verified in text) the
-constant per-transition lambda is unmodified.
+`Lambda[i][j]` is zero-diagonal and strictly first-order; in the Mulvey-lab
+papers read we did not find an implemented duration/hazard penalty; across
+51 forward citations and the 2025-2026 SJM-lineage papers whose penalty
+form we verified in text, the constant per-transition lambda is unmodified.
+
+**One important qualification (added 2026-08-09, owner-caught).** Deep
+Statistical Jump Models explicitly notes that its generic state-loss
+framework `L_state` can encode prior beliefs such as accumulating a penalty
+when the model stays in one state for too long. So the *idea* of
+duration-dependent state regularization is already present in the lineage
+and is **not** claimed here as novel. What we have not found implemented is
+the specific construction below: an explicit regime-age state `d`, a
+duration distribution with an explicit hazard `h(d)`, the discrete-Weibull
+law, the augmented `(state, age)` dynamic program, the `beta = 1` nesting,
+and a duration-aware SJM empirical experiment.
 
 **Frozen novelty wording (owner instruction, 2026-08-09).** The only
 claim permitted is the narrow intersection one:
 
-> To our knowledge, no prior work incorporates explicit regime-duration /
-> hazard dependence into the penalized dynamic-programming objective of
-> the Statistical Jump Model family.
+> In the literature reviewed so far, we have not found an implemented
+> Statistical Jump Model with an explicit hazard-parameterized or
+> semi-Markov duration law solved through an augmented-state dynamic
+> program. Deep Statistical Jump Models does note that its generic
+> state-loss framework can penalize remaining in a state for too long, so
+> generic duration-dependent state regularization is not claimed as novel.
 
 Explicitly forbidden phrasings: "we are the first duration-aware regime
 model" (false — Sichel 1991, Durland & McCurdy 1994, Bulla & Bulla 2006);
 "no duration-aware Jump Model exists" (too strong for the coverage
-achieved); "DA-JM is novel" (too vague). The novelty is the intersection
-SJM penalized clustering + explicit duration hazard + augmented DP, and
-because 9 citing works were unreachable and Google Scholar is not
-crawlable, the manuscript must say "to our knowledge", never a categorical
-non-existence claim.
+achieved); "no duration/semi-Markov/dwell-time/hazard modification exists
+in the SJM lineage" (false as stated — Deep SJM's generic state loss can
+already express a stay-too-long penalty); "DA-JM is novel" (too vague).
+The novelty is the intersection SJM penalized clustering + explicit
+duration hazard + augmented DP. Because 9 citing works were unreachable,
+Google Scholar is not crawlable, and Deep Statistical Jump Models was
+assessed at abstract level only in the 2026-07-30 sweep (it was gated then;
+a local copy now exists at `paper/ssrn-5817083.pdf`), the manuscript must
+say "in the literature reviewed so far, we have not found", never a
+categorical non-existence claim. **A literature search cannot prove
+non-existence, and the novelty position must never be described as
+"independently verified" in the sense the mathematics is.**
 
 ## 2. The DA-JM objective: excess duration cost
 

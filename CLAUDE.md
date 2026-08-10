@@ -21,46 +21,57 @@ Do not write large implementations unless explicitly asked.
 Use concise explanations.
 If code is wrong, identify the smallest fix.
 
-## Communicating with the owner
+## Communicating research results
 
-The owner is an undergraduate researcher using AI-assisted coding. He does not
-need to understand every implementation detail, but he MUST understand every
-result-affecting assumption, model change, parameter choice, experiment-design
-choice, and scientific conclusion.
+The owner is an undergraduate researcher using AI-assisted coding.
 
-1. **Default language is Vietnamese.** Standard technical English terms are
-   fine, but do not mix the two casually sentence by sentence. The first time a
-   term matters, explain it in simple Vietnamese.
+The owner does not need to understand every implementation detail, but must be
+able to understand every result-affecting assumption, model change, parameter
+choice, experiment-design choice, and scientific conclusion.
 
-2. **Meaning before machinery.** For any important result, answer in this
-   order: *Chuyện gì vừa xảy ra? Tại sao nó quan trọng? Nó có thay đổi kết luận
-   research không? Tiếp theo nên làm gì?* Formulas, hashes, test counts and
-   statistical machinery come after that, not before.
+Use plain English. All project material is English-only; see the language rule
+in `AGENTS.md`.
 
-3. **Never report an important number without saying what it means.** Not
-   "DE spread = 0.0117", but "ở Germany, đổi cách khởi tạo optimizer làm Sharpe
-   đổi khoảng 0.012 trong kiểm tra này — đây là phép đo độ nhạy, không phải
-   ngưỡng model mới phải vượt".
+Avoid jargon when simpler language is available. When a technical term is
+necessary, explain what question it answers before using it heavily —
+*optimizer nonuniqueness*: does the same model give a different answer when it
+starts from a different initialization? *paired delta*: under identical
+conditions, how much better than the JM is the new model? *baseline nesting*:
+is there a setting that turns the new model back into the old one? *causality*:
+does today's decision accidentally use future data?
 
-4. **Explain a necessary technical term as a simple question.** Optimizer
-   nonuniqueness → "cùng một model nhưng khởi tạo khác nhau có cho kết quả khác
-   không?". Paired delta → "với cùng điều kiện, model mới hơn JM bao nhiêu?".
-   Baseline nesting → "có setting nào làm model mới trở lại đúng model cũ
-   không?". Causality → "quyết định hôm nay có vô tình dùng dữ liệu tương lai
-   không?".
+Never report an important number without saying what it means. Not
+"DE spread = 0.0117", but "in Germany, changing optimizer initialization moved
+the measured Sharpe by about 0.012 in this diagnostic. This is a sensitivity
+measurement, not a threshold that a future model must exceed."
 
-5. **Every completed task is reported in this structure:**
+Every completed research task begins with:
 
-   - `### Những gì bạn cần hiểu` — tối đa 5 gạch đầu dòng, tiếng Việt đơn giản,
-     không thuật ngữ trừ khi giải thích ngay.
-   - `### Đã thay đổi gì`
-   - `### Không thay đổi gì` — nói rõ: model có đổi không, data có đổi không,
-     P&L có đổi không, kết luận research có đổi không.
-   - `### Điều gì vẫn có thể sai`
-   - `### Chi tiết kỹ thuật`
+### What you need to understand
 
-6. **If the owner says he does not understand something, simplify it.** Do not
-   answer with more jargon or more detail.
+Maximum five bullets. Plain English. No unexplained jargon.
+
+Then:
+
+### What changed
+
+### What did not change
+
+Explicitly state whether the model changed, the data changed, P&L changed, and
+the scientific conclusion changed.
+
+### What could still be wrong
+
+### Technical details
+
+Meaning must come before machinery. Do not lead with hashes, test counts,
+implementation internals, statistical terminology, or long formulas. First
+answer: (1) What happened? (2) Why does it matter? (3) Does it change the
+scientific conclusion? (4) What should happen next? Only then give technical
+details.
+
+If the owner says he does not understand something, simplify it. Do not answer
+with more jargon or more detail.
 
 ## Free parameters the paper never fixes
 

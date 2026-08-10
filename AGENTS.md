@@ -113,6 +113,41 @@ wrong sign in one market.
 
 8. **Prefer a narrow correct statement over a broad impressive one.**
 
+Worked examples on record, all caught in review of one PR: `Delta_repo =
+ddof_scale(T) * Delta_lw` holds at a ZERO cash leg and was written as if it
+held on the real data (wrong by 4-21x, wrong sign in one market); "the two are
+NEVER exactly equal" replaced one absolute with another (they are not identical
+FUNCTIONS; their outputs still coincide at `Delta_lw = 0`); "invariant to any
+constant rescaling" should be *positive nonzero* constant; and a bounded
+literature search was written as proof that no duration-aware Statistical Jump
+Model exists.
+
+## Project language: English only
+
+All persistent project material is written in English. This is permanent, and
+its purpose is to remove the ambiguity that comes from mixing languages in
+scientific wording, terminology, and durable records.
+
+Applies to: `README.md`, `CURRENT.md`/`TASK.md`, `AGENTS.md`, `CLAUDE.md`,
+everything under `docs/` and `research/`, the manuscript, experiment specs,
+audit receipts, the scientific ledger, registry entries, generated
+human-readable reports, source comments, docstrings, test names and comments,
+project-facing CLI messages, commit messages, and GitHub PR titles, PR bodies,
+review comments and issue text written by an agent.
+
+Do NOT translate: third-party source documents, quoted text from papers, raw
+external data, proper names, or literal strings whose exact original form is
+part of provenance. When quoting non-English primary material, preserve the
+original and add an English explanation separately.
+
+Do not write durable prose that mixes languages sentence by sentence. Standard
+technical identifiers that cannot reasonably be translated are fine inside
+English sentences.
+
+This rule governs new and modified text. Do not mass-translate historical
+files, and never edit an append-only registry entry merely because of its
+language — if such an entry is factually wrong, append a correction instead.
+
 ## 1. Authorization and orientation
 
 Instruction precedence is: platform and safety rules, account-level
