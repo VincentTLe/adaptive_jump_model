@@ -12,7 +12,8 @@ Work completed:
 - implemented the feature pipeline;
 - implemented the fixed Jump Model walk-forward process;
 - implemented monthly lambda selection;
-- implemented the one-day delayed equity/cash backtest with transaction costs;
+- implemented the delayed equity/cash backtest with transaction costs (a signal
+  at day `t` earns the return at `t+2`, at 10 basis points one way);
 - compared results for the US, Germany, and Japan.
 
 Main lesson:

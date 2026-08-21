@@ -41,7 +41,13 @@ data.py
 
 These files live in `src/adaptive_jump/`.
 
-Completed experiment code lives under `src/adaptive_jump/experiments/`.
+Experiment code lives in two places, and an inventory has to cover both:
+
+- `src/adaptive_jump/experiments/` — the experiment families promoted into the package;
+- `scripts/experiments/`, `scripts/diagnostics/`, and a few top-level `scripts/*.py`
+  runners — probes and diagnostics that also produced results, including several
+  that motivated this reset (grid selection, optimizer fidelity, the frequency
+  ladder).
 
 ## Archive and audit material
 
