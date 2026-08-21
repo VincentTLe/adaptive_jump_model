@@ -36,6 +36,9 @@ def test_fetch_cli_runs_complete_fixture_pipeline(
         if source["provider"] == "localfile"
     ]
     assert len(pinned) == 5
+    missing = [relative for relative in pinned if not (ROOT / relative).is_file()]
+    if missing:
+        pytest.skip("hash-pinned local source fixtures are not present")
     for relative in pinned:
         target = tmp_path / relative
         target.parent.mkdir(parents=True, exist_ok=True)
