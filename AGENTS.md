@@ -31,27 +31,27 @@ Do not make a large research change without owner approval.
 
 ## Scientific rules
 
-1. No future-data leakage. Anything used to decide at day `t` must be
-   computable from information available at or before `t`.
-2. The timing and cost protocol is fixed. A state inferred at the end of day `t`
-   is a signal at `t`; the position it implies is held from `t+2`, and both that
-   day's return and its transaction cost land on `t+2`. The cost is 10 basis
-   points one way. These values are declared in
-   `configs/baselines/research-calibrated-v11.toml` under `[backtest]` and are
-   enforced in `src/adaptive_jump/config.py`. Do not change them inside an
-   experiment, and never present a cost-free or delay-free number as strategy
+1. **No future data.** A decision made on day `t` may only use information that
+   existed on or before day `t`.
+
+2. **Timing and cost are fixed.** A signal on day `t` earns its return two
+   trading days later, on `t+2`, and pays its trading cost on that same day.
+   The cost is 10 basis points one way. These numbers are set in
+   `configs/baselines/research-calibrated-v11.toml` and enforced in
+   `src/adaptive_jump/config.py`. Do not change them inside an experiment.
+   Never show a result with no cost or no delay as if it were real strategy
    performance.
-3. Development data ends `2023-12-31`. Using anything after that needs the
-   owner's explicit permission. The 2024-01-01..2026-06-30 window is not a fresh
-   holdout: it was already opened and read in `holdout-2026-001`
-   (`research/experiment_registry.jsonl`), so it is spent development data and
-   cannot support an independent validation claim.
-4. Input data is evidence, not a working file. `data/raw/` and the built series
-   under `data/external/` must not be edited or rebuilt without the owner
-   asking, and one market series must never be quietly substituted for another.
-   These files are ignored by Git, so a local change will not appear in
-   `git status` — the config's pinned `sha256` is the only thing that would
-   catch it.
+
+3. **Results are scored on 1990-2023.** Anything after `2023-12-31` needs the
+   owner's permission first. The 2024-2026 window is not a fresh test set: it
+   was already opened and read once (`holdout-2026-001` in the registry), so it
+   can no longer prove that a result holds on unseen data.
+
+4. **Do not edit the input data.** The files in `data/raw/` and `data/external/`
+   are the evidence. Do not rebuild them unless the owner asks, and never swap
+   one market's series for another. Git ignores these files, so if they change,
+   `git status` will look clean.
+
 5. Do not tune an unknown paper setting simply to match the paper's reported numbers.
 6. Do not hide failed or inconclusive experiments.
 7. Do not call something reproduced, verified, or proven unless the specific check was actually run.

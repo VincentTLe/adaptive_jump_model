@@ -20,19 +20,22 @@ A large amount of the repository was built and checked with AI assistance. Sever
 - Most did not produce a clear, robust improvement.
 - Some experiments produced interesting behavior, but those results still depend on a pipeline that needs a cleaner independent audit.
 
-## The baseline everything is measured against
+## What everything is compared against
 
-The comparator is the sealed **v11-ninit60** fixed Jump Model, configured in
-`configs/baselines/research-calibrated-v11.toml`. *Sealed* means its
-configuration and fitted results are frozen and stored, so every challenger is
-compared against the same numbers instead of a freshly refit target. The older
-configs in `configs/baselines/legacy/` (v10, v9.4, and earlier) use different
-lambda grids and optimizer settings; they are history, not the current
-comparator, and auditing one of them answers a different question.
+The comparator is the sealed **v11-ninit60** fixed Jump Model, set up in
+`configs/baselines/research-calibrated-v11.toml`.
 
-Its German leg has a known defect: the selected grid fails the admissibility
-rule that was supposed to pick it, and some German fits are not fully converged
-at the sealed optimizer setting. That is part of why the question below is open.
+*Sealed* means its settings and its fitted results are frozen and saved, so
+every new idea is measured against the same numbers instead of a freshly
+refitted target.
+
+`configs/baselines/legacy/` holds older versions (v10, v9.4, and earlier). They
+use different lambda grids and optimizer settings. They are history, not the
+current comparator, and auditing one of them answers a different question.
+
+Known problem: the German leg is not clean. Its lambda grid fails the rule that
+was supposed to pick it, and some German fits did not fully converge. That is
+part of why the first question below is still open.
 
 ## What is not settled
 

@@ -41,13 +41,24 @@ data.py
 
 These files live in `src/adaptive_jump/`.
 
-Experiment code lives in two places, and an inventory has to cover both:
+Experiment code sits in two places. An inventory has to cover both:
 
-- `src/adaptive_jump/experiments/` — the experiment families promoted into the package;
-- `scripts/experiments/`, `scripts/diagnostics/`, and a few top-level `scripts/*.py`
-  runners — probes and diagnostics that also produced results, including several
-  that motivated this reset (grid selection, optimizer fidelity, the frequency
+- `src/adaptive_jump/experiments/` — experiments that were moved into the package;
+- `scripts/experiments/` and `scripts/diagnostics/` — over 40 more probe and
+  diagnostic scripts, several of which also produced results, including the ones
+  that triggered this reset (grid selection, optimizer fidelity, the frequency
   ladder).
+
+## What period the results cover
+
+Results are scored on **1990-2023** in all three markets.
+
+The raw data starts in the 1960s, but that early part is warm-up, not results.
+Before the model can make its first decision it needs 3000 trading days to fit
+(about 12 years) and then 8 more years to pick lambda. So the first scored month
+is January 1990.
+
+Anything after `2023-12-31` is off limits without the owner's permission.
 
 ## Archive and audit material
 
