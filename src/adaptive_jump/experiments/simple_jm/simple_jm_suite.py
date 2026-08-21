@@ -10,7 +10,6 @@ import tomllib
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, replace
 from datetime import UTC, date, datetime
-from multiprocessing import get_context
 from pathlib import Path
 from time import monotonic
 from typing import Any
@@ -54,6 +53,7 @@ from adaptive_jump.infrastructure.artifacts import (
     write_inventory,
     write_json,
 )
+from adaptive_jump.infrastructure.runtime.processes import process_pool_context
 from adaptive_jump.walkforward import (
     SelectionResult,
     boundary_diagnostic,
@@ -1034,7 +1034,7 @@ def _parallel_fit(
     ]
     output = {}
     with ProcessPoolExecutor(
-        max_workers=workers, mp_context=get_context("forkserver")
+        max_workers=workers, mp_context=process_pool_context()
     ) as executor:
         futures = {executor.submit(_fit_market_task, task): task for task in tasks}
         for future in as_completed(futures):

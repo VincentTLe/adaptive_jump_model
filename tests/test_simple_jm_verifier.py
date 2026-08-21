@@ -178,6 +178,7 @@ def test_implementation_source_requires_one_complete_historical_snapshot(
     tmp_path: Path,
 ) -> None:
     _git(tmp_path, "init", "-q")
+    _git(tmp_path, "config", "core.autocrlf", "false")
     first = tmp_path / "first.py"
     second = tmp_path / "second.py"
     first.write_text("first-old\n", encoding="utf-8")

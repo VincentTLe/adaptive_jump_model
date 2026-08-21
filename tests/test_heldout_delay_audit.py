@@ -205,7 +205,9 @@ class _Reached(Exception):
 
 
 @pytest.mark.parametrize("delay", [1, 5, 10])
-def test_delay_reaches_the_cross_validation(scorer, monkeypatch, delay):
+def test_delay_reaches_the_cross_validation(
+    scorer, monkeypatch, synthetic_base, delay
+):
     """Table 5's caption applies the delay in the CV, not only in execution."""
     seen: list[int] = []
 
@@ -213,9 +215,10 @@ def test_delay_reaches_the_cross_validation(scorer, monkeypatch, delay):
         seen.append(kwargs["delay_trading_days"])
         raise _Reached
 
+    monkeypatch.setattr(scorer, "BASE", synthetic_base)
     monkeypatch.setattr(scorer, "select_monthly_candidate", recorder)
     with pytest.raises(_Reached):
-        scorer.score("us", [0.0, 21.544346900318832, 70.0], delay=delay)
+        scorer.score("xx", [0.0, 70.0], delay=delay)
     assert seen == [delay]
 
 

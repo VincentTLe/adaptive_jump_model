@@ -8,7 +8,6 @@ from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
-from multiprocessing import get_context
 
 import numpy as np
 import pandas as pd
@@ -21,6 +20,7 @@ from threadpoolctl import threadpool_limits
 
 from adaptive_jump.config import HMMProtocol, JMProtocol, ModelProtocol
 from adaptive_jump.infrastructure.runtime import model_runtime as runtime
+from adaptive_jump.infrastructure.runtime.processes import process_pool_context
 
 FEATURE_COLUMNS = ("dd_10", "sortino_20", "sortino_60")
 
@@ -272,7 +272,7 @@ def _fixed_jm_states_parallel(
         governing.append(refit_terminals[-1] if refit_terminals else -1)
 
     executor = ProcessPoolExecutor(
-        max_workers=n_jobs, mp_context=get_context("forkserver")
+        max_workers=n_jobs, mp_context=process_pool_context()
     )
     try:
         fit_tasks = [
@@ -396,7 +396,7 @@ def hmm_states(
         records = initial.fits.to_dict("records")
         first_terminal += len(records)
     executor = (
-        ProcessPoolExecutor(max_workers=n_jobs, mp_context=get_context("forkserver"))
+        ProcessPoolExecutor(max_workers=n_jobs, mp_context=process_pool_context())
         if n_jobs > 1
         else None
     )

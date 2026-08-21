@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
-from multiprocessing import get_context
 
 import numpy as np
 import pandas as pd
@@ -21,6 +20,7 @@ from threadpoolctl import threadpool_limits
 
 from adaptive_jump.config import ModelProtocol
 from adaptive_jump.features import make_features, standardize_expanding
+from adaptive_jump.infrastructure.runtime.processes import process_pool_context
 from adaptive_jump.models import FEATURE_COLUMNS, FixedJMResult, fixed_jm_states
 from adaptive_jump.tv_jump import (
     dp_tv,
@@ -188,7 +188,7 @@ def challenger_states(
     ]
     if n_jobs > 1 and len(chunks) > 1:
         with ProcessPoolExecutor(
-            max_workers=n_jobs, mp_context=get_context("forkserver")
+            max_workers=n_jobs, mp_context=process_pool_context()
         ) as pool:
             decoded = list(
                 pool.map(

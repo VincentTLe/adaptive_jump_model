@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -94,12 +95,14 @@ def test_handoff_rejects_bad_input_before_append(tmp_path: Path) -> None:
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     agent_dir = tmp_path / ".agent"
     agent_dir.mkdir()
+    shutil.copy2(HANDOFF, agent_dir / "handoff.sh")
+    shutil.copy2(RENDER, agent_dir / "render_log.py")
     log = agent_dir / "session-log.jsonl"
 
     bad = canonical_entry()
     bad["files"] = [1]
     result = subprocess.run(
-        ["bash", str(HANDOFF), json.dumps(bad)],
+        ["bash", ".agent/handoff.sh", json.dumps(bad)],
         cwd=tmp_path,
         check=False,
         capture_output=True,
@@ -112,7 +115,7 @@ def test_handoff_rejects_bad_input_before_append(tmp_path: Path) -> None:
 
     valid = json.dumps(canonical_entry())
     result = subprocess.run(
-        ["bash", str(HANDOFF), valid],
+        ["bash", ".agent/handoff.sh", valid],
         cwd=tmp_path,
         check=False,
         capture_output=True,

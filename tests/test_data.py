@@ -110,7 +110,10 @@ def test_localfile_rejects_symlink_escape(tmp_path: Path) -> None:
     local_dir.mkdir(parents=True)
     outside = tmp_path / "outside.csv"
     outside.write_bytes(payload)
-    (local_dir / "fixture.csv").symlink_to(outside)
+    try:
+        (local_dir / "fixture.csv").symlink_to(outside)
+    except (NotImplementedError, OSError):
+        pytest.skip("this checkout cannot create symlinks")
 
     with pytest.raises(AcquisitionError, match="unsafe localfile path"):
         fetch_source(
