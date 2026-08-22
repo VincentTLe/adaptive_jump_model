@@ -61,6 +61,27 @@ part of why the first question below is still open.
 
 Detailed contracts, hashes, receipts, registry entries, and AI session logs are archive material. They matter only when checking a specific historical claim.
 
+## Repository cleanup — what is left
+
+Old material with no code dependency now sits under `archive/`. Four things
+were deliberately left where they are, because a script or a test still points
+at each of them:
+
+- `paper/manuscript.tex` — a test requires it at exactly that path;
+- `docs/audit/` — an audit script scans every markdown file in it;
+- `docs/atlas/` — one script writes it, another reads it back to verify it;
+- `docs/capguard-diagnosis/` — a diagnosis script writes its figures there.
+
+The question for the next pass is whether that old audit machinery is still
+needed at all. A file being referenced by an old audit script or test is not by
+itself a reason for the file to exist. Review the machinery and the files it
+holds in place together, rather than preserving the files because the machinery
+mentions them.
+
+Also noted, not fixed: `docs/theory/da-jm-formalization.md` describes work that
+`CURRENT.md` has parked, and `scripts/audit/check_paper_claims.py` claims to
+check the frozen contracts but its pattern matches none of them.
+
 ## Current stop rule
 
 Do not add more research complexity until the owner can explain the result-producing pipeline and the important past experiments in plain language.

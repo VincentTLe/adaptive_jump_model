@@ -18,8 +18,8 @@ dist/
 # Third-party paywalled PDFs the owner downloaded via institutional SSRN
 # access into paper/ for reading -- unlike arXiv preprints, SSRN's terms do
 # not grant redistribution, so these stay local-only. paper/*.pdf that IS
-# this project's own manuscript output (paper/split-v1/, paper/submission/)
-# is unaffected -- this lists exact filenames, not a blanket paper/*.pdf rule.
+# this project's own manuscript output (now under archive/paper/) is
+# unaffected -- this lists exact filenames, not a blanket paper/*.pdf rule.
 paper/s10479-026-07041-z.pdf
 paper/ssrn-4556048.pdf
 paper/ssrn-5235747.pdf

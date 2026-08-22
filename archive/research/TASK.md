@@ -1,6 +1,6 @@
 # Task state (2026-08-09, reconciled with the registry after PR #10)
 
-> **Human readers: start with [CURRENT.md](../CURRENT.md).** It gives the
+> **Human readers: start with [CURRENT.md](../../CURRENT.md).** It gives the
 > current research state — question, baseline, findings, failures, active idea,
 > next step — in plain English. This file is the detailed research state: run
 > IDs, hashes, seed tables, and the full history behind those conclusions. Read
