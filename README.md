@@ -63,7 +63,7 @@ Anything after `2023-12-31` is off limits without the owner's permission.
 
 ## Archive and audit material
 
-The repository contains a large amount of historical material under `research/`, `docs/audit/`, `artifacts/`, and `.agent/`.
+The repository contains a large amount of historical material under `research/`, `docs/audit/`, and `artifacts/`.
 
 That material is kept for traceability. It is not the main reading path and should only be opened when checking a specific old result.
 
