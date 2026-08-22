@@ -1,154 +1,72 @@
 # Adaptive Jump Model
 
-A research repository studying **causal regime-switching models for equity/cash
-market timing**, built on the Statistical Jump Model of Shu, Yu, and Mulvey
-(2024, arXiv:2402.05272).
+This repository studies the Statistical Jump Model of Shu, Yu, and Mulvey for a simple equity/cash regime-switching strategy.
 
-## The scientific question
+## What this project has done
 
-> Can we improve the Shu-style Statistical Jump Model for causal equity/cash
-> market timing?
+1. Rebuilt a public-data version of the Shu-style pipeline for the US, Germany, and Japan.
+2. Tested several changes to the Jump Model.
+3. Found that many changes did not produce a clear, reliable improvement.
+4. Found real problems in the research pipeline and baseline choices, including data, grid-selection, optimizer, and testing issues.
+5. Stopped adding new models until the core pipeline is independently checked.
 
-Everything in this repository exists to answer that one question honestly. Most
-of what has been tried has failed, and those failures are recorded rather than
-hidden.
+## Current status
 
-## What a Statistical Jump Model is
+No current experimental result is treated as final.
 
-A Jump Model looks at daily market features — here, downside deviation and two
-Sortino-style risk measures — and assigns each day to one of two regimes:
-favorable or unfavorable. The strategy holds the equity index in the favorable
-regime and cash in the unfavorable one.
+The immediate job is:
 
-Two things make it a *jump* model rather than a plain classifier:
+1. verify the core pipeline from data to final P&L;
+2. decide which old experiments are still trustworthy;
+3. only then choose the paper question.
 
-1. It fits the regime centers and the day-by-day regime path together, choosing
-   the path that best explains the data.
-2. It charges a penalty, `lambda`, every time the path switches regimes. A large
-   `lambda` produces long, stable regimes; a small one produces a jumpy path
-   that trades constantly and pays transaction costs.
+Read these files in order:
 
-Every result here is **causal**: a decision made at the end of day `t` uses only
-data up to `t`, and earns its return at `t+2`. Trading costs 10 bps one way.
-Development data stops at 2023-12-31.
+- `CURRENT.md` — where the project stands now.
+- `SUMMER_2026.md` — what happened this summer.
 
-## Where a human should start
+Everything else is secondary.
 
-1. **README.md** — this file: what the project is and how to run it.
-2. **[CURRENT.md](CURRENT.md)** — the current research state in plain English:
-   the baseline, what we know, what failed, the active idea, and the next step.
-   This is the file to read to find out where the project actually stands.
-3. **AGENTS.md / CLAUDE.md** — read these only if you are driving this
-   repository with an AI coding agent. They are behavior rules for agents, not
-   documentation of results.
+## Core code
 
-`research/TASK.md`, `research/experiment_registry.jsonl`,
-`research/SCIENTIFIC_LEDGER.md`, `docs/audit/`, and `artifacts/` are the
-detailed provenance and audit trail. They are the authority when a specific
-number is in dispute, but you do not need to read them to understand the
-project.
-
-Following one to its contract: the binding is the hash, not the filename. A row
-carries `frozen_spec_hash`, or `spec_sha256` on the `heldout-delay-001` and
-`frequency-ladder-001` rows; hashing a candidate file and matching that value is
-what proves you have the right contract. Contracts live in
-`research/contracts/`, usually as `<experiment-id>.toml`, with three deviations:
-`endpoint-grid-audit-001` is `endpoint-grid-audit.toml`,
-`fixed-baseline-assumption-audit-001` is `hyperparameter-grid-attribution.toml`,
-and `frequency-ladder-001` stays pinned at `research/frequency-ladder-001.toml`.
-Except for that pinned contract, a `research/<name>.toml` path written before
-the move now reads as `research/contracts/<name>.toml`. Such paths survive in
-registry rows' descriptive `spec` field, in audit receipts, and inside one
-frozen contract's own prose: `ajm-ext-001` states that every protocol field it
-does not list — selection tie rule, minimum valid returns, metric definitions,
-turnover formula, degenerate-fit handling — is inherited verbatim from
-`research/lagged-evidence-performance-001.toml`, now
-`research/contracts/lagged-evidence-performance-001.toml`. None of those
-strings can be rewritten: a sealed contract's bytes are its identity, and
-editing them makes its own loader refuse to run it. The move changed no
-contract's bytes.
-
-The same reading applies to the replication atlas. Its figures, its HTML, and
-the renderer that produced them cite
-`research/jm-effective-lambda-inversion-004.toml` — the path that was correct
-when that certified deliverable was generated, and now
-`research/contracts/jm-effective-lambda-inversion-004.toml`. The deliverable
-and its verifier receipt are left as they were certified rather than
-re-rendered against the new layout.
-
-Hashing does not resolve every row, and that is not a symptom of the move. Of
-the 43 experiment ids carrying a registered hash, 32 match a contract on disk.
-Eight name specs no longer present. Three — `jm-standardizer-geometry-002`,
-`jm-standardizer-geometry-003` and `lagged-capguard-001` — have a contract of
-that name whose current bytes match no hash ever registered for them, so the
-bytes those results were run against are recoverable only from Git history.
-Each of the three is byte-identical to its pre-move version; the divergence
-predates this layout and is recorded as an open question, not as a resolution
-rule.
-
-## What is in the repository
+The main scientific path is:
 
 ```text
-CURRENT.md                 human-facing current research state  <- start here
-src/adaptive_jump/         the pipeline: data -> features -> models -> selection -> P&L
-tests/                     behavioral and audit regression tests
-scripts/                   historical builders, diagnostics, and audit programs
-research/                  TASK.md (detailed research state), registry, ledger
-research/contracts/        frozen experiment contracts (*.toml)
-docs/theory/               mathematical formalizations (including DA-JM)
-docs/audit/                independent verification receipts
-docs/atlas/                the replication atlas
-artifacts/                 committed audit evidence plus ignored runtime outputs
-data/                      inputs; data/raw/ is immutable (untracked)
-paper/                     manuscript draft and reference PDFs
-.agent/                    cross-agent handoff log
+data.py
+  -> features.py
+  -> models.py
+  -> walkforward.py
+  -> backtest.py
 ```
 
-## Environment
+These files live in `src/adaptive_jump/`.
 
-Python 3.12.3, managed with [uv](https://docs.astral.sh/uv/). The project is
-installed editable into `.venv` and the dependency set is pinned by `uv.lock`.
+Experiment code sits in two places. An inventory has to cover both:
 
-```bash
-cd /home/tle/adaptive_jump_model
-source .venv/bin/activate
-```
+- `src/adaptive_jump/experiments/` — experiments that were moved into the package;
+- `scripts/experiments/` and `scripts/diagnostics/` — over 40 more probe and
+  diagnostic scripts, several of which also produced results, including the ones
+  that triggered this reset (grid selection, optimizer fidelity, the frequency
+  ladder).
 
-If the environment ever needs to be rebuilt from scratch:
+## What period the results cover
 
-```bash
-uv python install 3.12.3
-uv sync --locked --extra data
-```
+The current baseline and the main comparisons are scored on **1990-2023** in
+all three markets. A few older or auxiliary experiments used shorter windows.
 
-Do not install packages into `.venv` with `pip`; this project's dependency set
-is resolved and locked by uv.
+The raw data starts in the 1960s, but that early part is warm-up, not results.
+Before the model can make its first decision it needs 3000 trading days to fit
+(about 12 years) and then 8 more years to pick lambda. So the first scored month
+is January 1990.
 
-## Basic commands
+Anything after `2023-12-31` is off limits without the owner's permission.
 
-```bash
-pytest -q                                   # run the test suite
-ruff check .                                # lint
+## Archive and audit material
 
-adaptive-jump --help                        # fetch | run | verify | report | figures
-adaptive-jump verify --run artifacts/<run_id>   # re-verify a sealed run
-```
+The repository contains a large amount of historical material under `research/`, `docs/audit/`, `artifacts/`, and `.agent/`.
 
-Do not launch a new data fetch or a new experiment without its frozen contract
-in `research/contracts/*.toml` and a declared data role. One contract stays
-outside that directory — `research/frequency-ladder-001.toml` — because the
-sealed audit of that experiment opens both it and
-`scripts/run_frequency_ladder.py` by exact path. Raw data and runtime outputs
-stay untracked under `data/` and `artifacts/`.
+That material is kept for traceability. It is not the main reading path and should only be opened when checking a specific old result.
 
-## Cold archive
+## Rule for new work
 
-The complete pre-cleanup workspace and Git history are stored at:
-
-```text
-/home/tle/research-archive/adaptive_jump_model/2026-08-05-pre-cleanup
-```
-
-`ARCHIVE.sha256`, a per-file manifest, `zstd -t`, and `git bundle verify` all
-passed. This archive is on the same physical machine, so it protects against
-cleanup mistakes, not against disk failure.
+Do not add a new model or experiment until the current pipeline has been independently audited and the owner can explain the result-producing path in plain language.
