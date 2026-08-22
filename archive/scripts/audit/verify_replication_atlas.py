@@ -34,7 +34,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]  # archive/scripts/audit/ -> repo root
 V10 = (
     ROOT
     / "artifacts/fixed-baselines"
@@ -46,7 +46,7 @@ ATLAS = ROOT / "artifacts/jm-residual/atlas"
 ANATOMY = ROOT / "artifacts/jm-residual/10-disagreement-anatomy"
 CEILING = ROOT / "artifacts/jm-residual/04-effective-lambda-inversion/ceiling.csv"
 SPEC = ROOT / "research/contracts/jm-disagreement-anatomy-010.toml"
-HTML = ROOT / "docs/atlas/replication-atlas.html"
+HTML = ROOT / "archive/docs/atlas/replication-atlas.html"
 MARKETS = ("us", "de", "jp")
 TABLE3_GRID = (0.0, 5.0, 15.0, 35.0, 70.0, 150.0)
 WINDOW = ("1990-01-01", "2023-12-31")

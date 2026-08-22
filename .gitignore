@@ -26,6 +26,11 @@ paper/ssrn-5235747.pdf
 paper/ssrn-5817083.pdf
 paper/ssrn-6933278.pdf
 
+# Rendered figure pages. The certified copies of the two HTML deliverables
+# live in archive/docs/; these paths are where the renderers rewrite them.
+docs/atlas/
+docs/capguard-diagnosis/
+
 # Market data and generated outputs
 data/*.tar.zst
 data/raw/*

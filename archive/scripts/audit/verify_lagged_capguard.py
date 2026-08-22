@@ -47,7 +47,7 @@ import pandas as pd
 from adaptive_jump.backtest import performance_metrics
 from adaptive_jump.config import load_config
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]  # archive/scripts/audit/ -> repo root
 ART = ROOT / "artifacts" / "lagged-capguard" / "01-us"
 SEALED = (
     ROOT
