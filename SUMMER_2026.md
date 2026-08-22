@@ -18,7 +18,8 @@ Work completed:
 
 Main lesson:
 
-> The paper cannot be reproduced exactly from public information alone.
+> We have not been able to reproduce the paper exactly from the public
+> information available to us.
 
 Important missing or uncertain pieces include the original source data and some implementation choices such as the exact lambda grid and feature standardization details.
 

@@ -42,15 +42,20 @@ Do not make a large research change without owner approval.
    Never show a result with no cost or no delay as if it were real strategy
    performance.
 
-3. **Results are scored on 1990-2023.** Anything after `2023-12-31` needs the
-   owner's permission first. The 2024-2026 window is not a fresh test set: it
-   was already opened and read once (`holdout-2026-001` in the registry), so it
-   can no longer prove that a result holds on unseen data.
+3. **The baseline and the main comparisons are scored on 1990-2023.** A few
+   older or auxiliary experiments used shorter windows, so check the artifact
+   before quoting a period. Anything after `2023-12-31` needs the owner's
+   permission first. The 2024-2026 window is not a fresh test set: it was
+   already opened and read once (`holdout-2026-001` in the registry), so it can
+   no longer prove that a result holds on unseen data.
 
-4. **Do not edit the input data.** The files in `data/raw/` and `data/external/`
-   are the evidence. Do not rebuild them unless the owner asks, and never swap
-   one market's series for another. Git ignores these files, so if they change,
-   `git status` will look clean.
+4. **Never overwrite the current input files.** The files in `data/raw/` and
+   `data/external/` are the evidence an audit is checking. Rebuilding data to
+   verify it is fine and expected — but write the rebuilt copy somewhere else
+   and compare it against the current files. The builders in `scripts/data/`
+   write straight into `data/external/` by default, so redirect their output
+   first. Never swap one market's series for another. Git ignores these files,
+   so if they do change, `git status` will still look clean.
 
 5. Do not tune an unknown paper setting simply to match the paper's reported numbers.
 6. Do not hide failed or inconclusive experiments.

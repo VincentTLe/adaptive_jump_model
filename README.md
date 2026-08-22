@@ -51,7 +51,8 @@ Experiment code sits in two places. An inventory has to cover both:
 
 ## What period the results cover
 
-Results are scored on **1990-2023** in all three markets.
+The current baseline and the main comparisons are scored on **1990-2023** in
+all three markets. A few older or auxiliary experiments used shorter windows.
 
 The raw data starts in the 1960s, but that early part is warm-up, not results.
 Before the model can make its first decision it needs 3000 trading days to fit
