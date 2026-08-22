@@ -39,7 +39,7 @@ from adaptive_jump.walkforward import select_monthly_candidate  # noqa: E402
 
 # The original v9.4-hash run directory (fixed-baselines-34e51cd7a388-...) is
 # gone from disk (2026-08-07). Substituted with the v10 run: its features.csv
-# is byte-identical to v9.4's by reseal gate 2 (scripts/audit/gate_v10_reseal.py),
+# is byte-identical to v9.4's by reseal gate 2 (archive/scripts/audit/gate_v10_reseal.py),
 # and rebuilding us-d1's cache from it reproduces the sealed v9.4 anchor
 # (34 shifts / 0.21868067717454... bear / 8565 days) to float precision.
 RUN = ROOT / "artifacts" / "fixed-baselines" / (

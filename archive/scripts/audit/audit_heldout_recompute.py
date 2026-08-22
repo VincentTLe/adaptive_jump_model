@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]  # archive/scripts/audit/ -> repo root
 sys.path.insert(0, str(ROOT / "src"))
 
 from adaptive_jump.backtest import apply_signal, performance_metrics  # noqa: E402
